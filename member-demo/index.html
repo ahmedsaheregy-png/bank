@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>جرّب النظام كعضو - SAWYAN BANK</title>
+    <meta name="description" content="اختبر لوحة تحكم العضو في SAWYAN BANK قبل التسجيل">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="../css/preview.css">
+    <link rel="stylesheet" href="../css/bidi-support.css">
+    <link rel="stylesheet" href="member-demo.css">
+</head>
+
+<body>
+    <!-- Demo Notice Bar -->
+    <div class="demo-notice">
+        <span>🎮 أنت في الوضع التجريبي - البيانات وهمية للعرض فقط</span>
+        <a href="../../member-dashboard/register.html" class="btn btn-primary"
+            style="padding: 0.25rem 1rem; font-size: 0.875rem;">
+            سجّل الآن
+        </a>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="demo-nav">
+        <div class="nav-content">
+            <a href="../index.html" class="nav-logo">
+                <span>SAWYAN BANK</span>
+            </a>
+
+            <div class="demo-user">
+                <div class="user-avatar">م</div>
+                <div class="user-info">
+                    <span class="user-name">محمد أحمد (تجريبي)</span>
+                    <span class="user-level">🏆 عضو ذهبي</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="demo-layout">
+        <!-- Sidebar -->
+        <aside class="demo-sidebar">
+            <ul class="sidebar-menu">
+                <li class="menu-item active" data-section="dashboard">
+                    <span class="menu-icon">📊</span>
+                    <span>لوحة التحكم</span>
+                </li>
+                <li class="menu-item" data-section="wallet">
+                    <span class="menu-icon">💰</span>
+                    <span>المحفظة</span>
+                </li>
+                <li class="menu-item" data-section="transactions">
+                    <span class="menu-icon">💳</span>
+                    <span>العمليات</span>
+                </li>
+                <li class="menu-item" data-section="team">
+                    <span class="menu-icon">👥</span>
+                    <span>فريقي</span>
+                </li>
+                <li class="menu-item" data-section="qrcode">
+                    <span class="menu-icon">📱</span>
+                    <span>QR Code</span>
+                </li>
+            </ul>
+
+            <div class="sidebar-cta">
+                <p>هذا عرض تجريبي</p>
+                <a href="../../member-dashboard/register.html" class="btn btn-primary">
+                    انضم للحصول على حسابك
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="demo-main">
+            <!-- Dashboard Section -->
+            <section class="demo-section active" id="section-dashboard">
+                <h2>مرحباً، <span class="text-gradient">محمد</span> 👋</h2>
+                <p class="section-subtitle">إليك ملخص حسابك التجريبي</p>
+
+                <!-- Stats Cards -->
+                <div class="stats-cards">
+                    <div class="stat-card">
+                        <div class="stat-card-icon" style="background: var(--gradient-accent);">💰</div>
+                        <div class="stat-card-content">
+                            <span class="stat-card-value">2,340</span>
+                            <span class="stat-card-label">رصيد المحفظة</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-icon" style="background: var(--gradient-primary);">📈</div>
+                        <div class="stat-card-content">
+                            <span class="stat-card-value">+890</span>
+                            <span class="stat-card-label">أرباح هذا الشهر</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-icon" style="background: var(--gradient-gold);">💳</div>
+                        <div class="stat-card-content">
+                            <span class="stat-card-value">47</span>
+                            <span class="stat-card-label">عملية مكتملة</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-icon" style="background: var(--gradient-secondary);">👥</div>
+                        <div class="stat-card-content">
+                            <span class="stat-card-value">23</span>
+                            <span class="stat-card-label">أعضاء الفريق</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Transactions -->
+                <div class="content-card">
+                    <div class="card-header">
+                        <h3>آخر العمليات</h3>
+                        <button class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+                            عرض الكل
+                        </button>
+                    </div>
+                    <div class="transactions-list" id="recent-transactions">
+                        <!-- Will be populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Calculator -->
+                <div class="content-card calculator-card">
+                    <div class="card-header">
+                        <h3>🧮 حاسبة الكاشباك</h3>
+                    </div>
+                    <div class="calculator-body">
+                        <div class="calc-input-group">
+                            <label>قيمة المشتريات (ريال)</label>
+                            <input type="number" id="calc-amount" value="500" min="1">
+                        </div>
+                        <div class="calc-input-group">
+                            <label>نسبة الكاشباك (%)</label>
+                            <input type="number" id="calc-rate" value="10" min="1" max="25">
+                        </div>
+                        <div class="calc-result">
+                            <span class="result-label">الكاشباك المتوقع:</span>
+                            <span class="result-value" id="calc-result">50.00 ر.س</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Wallet Section -->
+            <section class="demo-section" id="section-wallet">
+                <h2>💰 محفظتي</h2>
+                <p class="section-subtitle">إدارة رصيدك ومعاملاتك المالية</p>
+
+                <div class="wallet-overview">
+                    <div class="wallet-main-card">
+                        <div class="wallet-balance-big">
+                            <span class="balance-label">الرصيد المتاح</span>
+                            <span class="balance-value">2,340.00</span>
+                            <span class="balance-currency">ريال سعودي</span>
+                        </div>
+                        <div class="wallet-actions">
+                            <button class="btn btn-accent" onclick="simulateWithdraw()">
+                                💸 سحب الرصيد
+                            </button>
+                            <button class="btn btn-secondary">
+                                📊 كشف حساب
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="wallet-stats-grid">
+                        <div class="wallet-stat-box">
+                            <span class="ws-icon">📥</span>
+                            <span class="ws-value">4,560</span>
+                            <span class="ws-label">إجمالي المكتسب</span>
+                        </div>
+                        <div class="wallet-stat-box">
+                            <span class="ws-icon">📤</span>
+                            <span class="ws-value">2,220</span>
+                            <span class="ws-label">إجمالي المسحوب</span>
+                        </div>
+                        <div class="wallet-stat-box">
+                            <span class="ws-icon">⏳</span>
+                            <span class="ws-value">150</span>
+                            <span class="ws-label">قيد المعالجة</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Transactions Section -->
+            <section class="demo-section" id="section-transactions">
+                <h2>💳 العمليات</h2>
+                <p class="section-subtitle">سجل جميع عملياتك ومعاملاتك</p>
+
+                <div class="content-card">
+                    <div class="transactions-list full" id="all-transactions">
+                        <!-- Will be populated by JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Team Section -->
+            <section class="demo-section" id="section-team">
+                <h2>👥 فريقي</h2>
+                <p class="section-subtitle">شجرة الإحالة وأعضاء فريقك</p>
+
+                <div class="team-stats">
+                    <div class="team-stat-card left">
+                        <h4>الفرع الأيسر</h4>
+                        <div class="team-stat-value">12</div>
+                        <div class="team-stat-label">عضو</div>
+                        <div class="team-volume">حجم: 34,500 ر.س</div>
+                    </div>
+                    <div class="team-center">
+                        <div class="member-node main">
+                            <span>أنت</span>
+                        </div>
+                    </div>
+                    <div class="team-stat-card right">
+                        <h4>الفرع الأيمن</h4>
+                        <div class="team-stat-value">11</div>
+                        <div class="team-stat-label">عضو</div>
+                        <div class="team-volume">حجم: 31,200 ر.س</div>
+                    </div>
+                </div>
+
+                <!-- Referral Link -->
+                <div class="content-card referral-card">
+                    <h3>🔗 رابط الإحالة الخاص بك</h3>
+                    <div class="referral-link-box">
+                        <input type="text" readonly value="https://sawyan.bank/ref/DEMO1234" id="referral-link">
+                        <button class="btn btn-primary" onclick="copyReferralLink()">
+                            📋 نسخ
+                        </button>
+                    </div>
+                    <p class="referral-hint">شارك هذا الرابط لدعوة أعضاء جدد واكسب عمولات من مشترياتهم</p>
+                </div>
+            </section>
+
+            <!-- QR Code Section -->
+            <section class="demo-section" id="section-qrcode">
+                <h2>📱 QR Code</h2>
+                <p class="section-subtitle">استخدم كود QR الخاص بك عند الشراء</p>
+
+                <div class="qr-card">
+                    <div class="qr-display">
+                        <div class="qr-placeholder-big">
+                            <div class="qr-pattern">
+                                <div class="qr-corner tl"></div>
+                                <div class="qr-corner tr"></div>
+                                <div class="qr-corner bl"></div>
+                                <div class="qr-inner">QR</div>
+                            </div>
+                        </div>
+                        <div class="member-code">DEMO-1234</div>
+                    </div>
+                    <div class="qr-info">
+                        <h3>كيف تستخدم QR Code؟</h3>
+                        <ol class="qr-steps">
+                            <li>عند الشراء من أي تاجر معتمد</li>
+                            <li>اطلب من التاجر مسح الكود</li>
+                            <li>سيتم إضافة الكاشباك تلقائياً</li>
+                        </ol>
+                        <button class="btn btn-primary btn-lg" style="margin-top: 1rem;">
+                            📥 تحميل الكود
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="toast" id="toast">
+        <span class="toast-icon">✓</span>
+        <span class="toast-message" id="toast-message">تم النسخ بنجاح!</span>
+    </div>
+
+    <script src="../js/demo-data.js"></script>
+    <script src="member-demo.js"></script>
+</body>
+
+</html>

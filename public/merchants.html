@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>التجار المعتمدون - SAWYAN BANK</title>
+    <meta name="description" content="اكتشف جميع التجار المعتمدين في SAWYAN BANK واحصل على كاشباك يصل إلى 20%">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="../css/preview.css">
+    <link rel="stylesheet" href="../css/bidi-support.css">
+    <link rel="stylesheet" href="merchants.css">
+    <style>
+        /* CRITICAL FIX: Force Badge Size & Hide Broken Images */
+        .merchant-card .merchant-cashback-small,
+        .merchant-cashback-badge {
+            position: absolute !important;
+            width: auto !important;
+            height: auto !important;
+            display: inline-block !important;
+            top: 10px !important;
+            right: 10px !important;
+            padding: 2px 8px !important;
+            background: white !important;
+            color: #10b981 !important;
+            z-index: 100 !important;
+            font-size: 0.75rem !important;
+            font-weight: 700 !important;
+            border-radius: 4px !important;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1) !important;
+        }
+
+        /* Hide broken images explicitly */
+        img[src=""],
+        img:not([src]) {
+            display: none !important;
+        }
+
+        /* Hide the premium badge to remove dark bar */
+        .merchant-badge {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="preview-nav" id="navbar">
+        <div class="container">
+            <div class="nav-content">
+                <a href="../index.html" class="nav-logo">
+                    <span>SAWYAN BANK</span>
+                </a>
+
+                <!-- Hamburger Menu Button للموبايل -->
+                <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileMenu()">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
+
+                <ul class="nav-links" id="navLinks">
+                    <li><a href="../index.html">الرئيسية</a></li>
+                    <li><a href="merchants.html" class="active">التجار</a></li>
+                    <li><a href="../member-demo/index.html">جرّب كعضو</a></li>
+                </ul>
+
+                <div class="nav-cta" id="navCta">
+                    <a href="../../member-dashboard/login.html" class="btn btn-secondary">تسجيل دخول</a>
+                    <a href="../../member-dashboard/register.html" class="btn btn-primary">انضم الآن</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Menu Overlay -->
+        <div class="mobile-menu-overlay" id="mobileMenuOverlay" onclick="closeMobileMenu()"></div>
+
+        <!-- Mobile Menu Drawer -->
+        <div class="mobile-menu" id="mobileMenu">
+            <div class="mobile-menu-header">
+                <span class="mobile-menu-title">SAWYAN BANK</span>
+                <button class="mobile-menu-close" onclick="closeMobileMenu()">&times;</button>
+            </div>
+            <div class="mobile-menu-links">
+                <a href="../index.html">الرئيسية</a>
+                <a href="merchants.html">التجار</a>
+                <a href="../member-demo/index.html">جرّب كعضو</a>
+            </div>
+            <div class="mobile-menu-cta">
+                <a href="../../member-dashboard/login.html" class="btn btn-secondary btn-block">تسجيل دخول</a>
+                <a href="../../member-dashboard/register.html" class="btn btn-primary btn-block">انضم الآن</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="page-header">
+        <div class="container">
+            <h1>التجار <span class="text-gradient">المعتمدون</span></h1>
+            <p>اكتشف أكثر من 800 تاجر معتمد وابدأ في كسب الكاشباك</p>
+        </div>
+    </section>
+
+    <!-- Filters -->
+    <section class="filters-section">
+        <div class="container">
+            <div class="filters-bar">
+                <div class="search-box">
+                    <input type="text" id="search-input" placeholder="ابحث عن تاجر...">
+                    <span class="search-icon">🔍</span>
+                </div>
+
+                <select id="category-filter" class="filter-select">
+                    <option value="all">جميع الفئات</option>
+                </select>
+
+                <select id="sort-filter" class="filter-select">
+                    <option value="cashback">أعلى كاشباك</option>
+                    <option value="rating">الأعلى تقييماً</option>
+                    <option value="transactions">الأكثر شعبية</option>
+                </select>
+            </div>
+
+            <!-- Categories Pills -->
+            <div class="categories-pills" id="categories-pills">
+                <!-- Will be populated by JS -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Merchants Grid -->
+    <section class="section">
+        <div class="container">
+            <div class="merchants-count">
+                <span id="merchants-count">0</span> تاجر
+            </div>
+
+            <div class="merchants-grid" id="merchants-grid">
+                <!-- Will be populated by JS -->
+            </div>
+
+            <!-- Empty State -->
+            <div class="empty-state" id="empty-state" style="display: none;">
+                <div class="empty-icon">🔍</div>
+                <h3>لا توجد نتائج</h3>
+                <p>جرّب البحث بكلمات مختلفة أو اختر فئة أخرى</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-box">
+                <h2>🏪 هل أنت تاجر؟</h2>
+                <p>انضم لشبكة SAWYAN BANK وزِد مبيعاتك من خلال نظام الولاء</p>
+                <a href="../../merchant-dashboard/register.html" class="btn btn-gold btn-lg">
+                    سجّل متجرك الآن
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="preview-footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <a href="../index.html" class="nav-logo">
+                        <span>SAWYAN BANK</span>
+                    </a>
+                </div>
+                <ul class="footer-links">
+                    <li><a href="../index.html">الرئيسية</a></li>
+                    <li><a href="#">الشروط والأحكام</a></li>
+                    <li><a href="#">تواصل معنا</a></li>
+                </ul>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Merchant Modal -->
+    <div class="modal-overlay" id="merchant-modal">
+        <div class="modal-content">
+            <button class="modal-close" id="modal-close">&times;</button>
+            <div id="modal-body">
+                <!-- Will be populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <script src="../../shared/config/supabase.js"></script>
+    <script src="../js/demo-data.js"></script>
+    <script src="merchants.js"></script>
+    <script>
+        // Mobile Menu Functions
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const overlay = document.getElementById('mobileMenuOverlay');
+            const btn = document.getElementById('mobileMenuBtn');
+
+            menu.classList.toggle('active');
+            overlay.classList.toggle('active');
+            btn.classList.toggle('active');
+
+            if (menu.classList.contains('active')) {
+                document.body.style.overflow = 'hidden';
+            } else {
+                document.body.style.overflow = '';
+            }
+        }
+
+        function closeMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const overlay = document.getElementById('mobileMenuOverlay');
+            const btn = document.getElementById('mobileMenuBtn');
+
+            menu.classList.remove('active');
+            overlay.classList.remove('active');
+            btn.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    </script>
+</body>
+
+</html>

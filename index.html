@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAWYAN BANK - استكشف منصة الكاشباك الأولى</title>
+    <meta name="description"
+        content="اكتشف نظام SAWYAN BANK للكاشباك والتسويق الشبكي. احصل على استرداد نقدي من كل عملية شراء.">
+
+    <!-- Google Fonts - Tajawal for Arabic, Poppins for Logo -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/preview.css">
+    <link rel="stylesheet" href="css/bidi-support.css">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="preview-nav" id="navbar">
+        <div class="container">
+            <div class="nav-content">
+                <a href="index.html" class="nav-logo">
+                    <span>SAWYAN BANK</span>
+                </a>
+
+                <!-- Hamburger Menu Button للموبايل -->
+                <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileMenu()">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
+
+                <ul class="nav-links" id="navLinks">
+                    <li><a href="#features" class="active">المميزات</a></li>
+                    <li><a href="public/merchants.html">التجار</a></li>
+                    <li><a href="member-demo/index.html">جرّب كعضو</a></li>
+                    <li><a href="#how-it-works">كيف يعمل</a></li>
+                </ul>
+
+                <div class="nav-cta" id="navCta">
+                    <a href="auth-gateway.html" class="btn btn-secondary">تسجيل دخول</a>
+                    <a href="auth-gateway.html" class="btn btn-primary">ابدأ الآن</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Menu Overlay -->
+        <div class="mobile-menu-overlay" id="mobileMenuOverlay" onclick="closeMobileMenu()"></div>
+
+        <!-- Mobile Menu Drawer -->
+        <div class="mobile-menu" id="mobileMenu">
+            <div class="mobile-menu-header">
+                <span class="mobile-menu-title">SAWYAN BANK</span>
+                <button class="mobile-menu-close" onclick="closeMobileMenu()">&times;</button>
+            </div>
+            <div class="mobile-menu-links">
+                <a href="#features" onclick="closeMobileMenu()">المميزات</a>
+                <a href="public/merchants.html">التجار</a>
+                <a href="member-demo/index.html">جرّب كعضو</a>
+                <a href="#how-it-works" onclick="closeMobileMenu()">كيف يعمل</a>
+            </div>
+            <div class="mobile-menu-cta">
+                <a href="auth-gateway.html" class="btn btn-secondary btn-block">تسجيل دخول</a>
+                <a href="auth-gateway.html" class="btn btn-primary btn-block">ابدأ الآن</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-text">
+                    <h1>
+                        <span>احصل على</span>
+                        <span class="text-gradient">كاشباك حقيقي</span>
+                        <span>من كل عملية شراء</span>
+                    </h1>
+                    <p class="hero-subtitle">
+                        انضم لأكثر من 12,000 عضو يستفيدون من استرداد نقدي يصل إلى 20%
+                        من مشترياتهم لدى أكثر من 800 تاجر معتمد
+                    </p>
+                    <div class="hero-buttons">
+                        <a href="../member-dashboard/register.html" class="btn btn-primary btn-lg">
+                            🚀 ابدأ الآن مجاناً
+                        </a>
+                        <a href="member-demo/index.html" class="btn btn-secondary btn-lg">
+                            👁️ جرّب النظام
+                        </a>
+                    </div>
+
+                    <div class="hero-stats">
+                        <div class="stat-item">
+                            <div class="stat-value" id="stat-members" data-target="12547">12,547</div>
+                            <div class="stat-label">عضو نشط</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="stat-merchants" data-target="856">856</div>
+                            <div class="stat-label">تاجر معتمد</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="stat-cashback" data-target="2500000">2.5 مليون</div>
+                            <div class="stat-label">ريال كاشباك</div>
+                        </div>
+                        <!-- Added Transaction Stat from image if needed, assuming hidden somewhere or dynamic -->
+                        <div class="stat-item">
+                            <div class="stat-value" id="stat-transactions" data-target="98432">98,432</div>
+                            <div class="stat-label">عملية مكتملة</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hero-visual">
+                    <div class="hero-card">
+                        <div class="demo-wallet-card">
+                            <div class="wallet-header">
+                                <span class="wallet-logo">💳</span>
+                                <span class="wallet-name">محفظتي</span>
+                            </div>
+                            <div class="wallet-balance">
+                                <span class="balance-label">الرصيد المتاح</span>
+                                <span class="balance-amount">2,340.00</span>
+                                <span class="balance-currency">ريال سعودي</span>
+                            </div>
+                            <div class="wallet-stats">
+                                <div class="wallet-stat">
+                                    <span class="ws-value">+890</span>
+                                    <span class="ws-label">هذا الشهر</span>
+                                </div>
+                                <div class="wallet-stat">
+                                    <span class="ws-value">47</span>
+                                    <span class="ws-label">عملية</span>
+                                </div>
+                            </div>
+                            <div class="wallet-qr">
+                                <div class="qr-placeholder">QR</div>
+                                <span>امسح للدفع</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Floating Elements -->
+                    <div class="floating-element floating-1">
+                        <span>💰</span>
+                        <span>+25 ر.س كاشباك</span>
+                    </div>
+                    <div class="floating-element floating-2">
+                        <span>⭐</span>
+                        <span>عضو ذهبي</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- User Types Section -->
+    <section class="section" id="features">
+        <div class="container">
+            <div class="section-header">
+                <h2>اختر <span class="text-gradient">طريقك</span></h2>
+                <p>سواء كنت متسوقاً أو تاجراً أو تبحث عن دخل إضافي، لدينا ما يناسبك</p>
+            </div>
+
+            <div class="user-type-cards">
+                <!-- Customer Card -->
+                <div class="user-type-card customer">
+                    <div class="user-type-icon">🛍️</div>
+                    <h3>أنا متسوق / عضو</h3>
+                    <p>احصل على كاشباك من كل عملية شراء لدى التجار المعتمدين</p>
+                    <ul class="user-type-features">
+                        <li>كاشباك يصل إلى 20%</li>
+                        <li>محفظة إلكترونية</li>
+                        <li>QR Code شخصي</li>
+                        <li>سحب فوري</li>
+                    </ul>
+                    <div class="card-buttons">
+                        <a href="../member-dashboard/register.html" class="btn btn-primary">سجّل الآن</a>
+                        <a href="../member-dashboard/login.html" class="btn btn-secondary">دخول</a>
+                    </div>
+                </div>
+
+                <!-- Merchant Card -->
+                <div class="user-type-card merchant">
+                    <div class="user-type-icon">🏪</div>
+                    <h3>أنا تاجر</h3>
+                    <p>زِد مبيعاتك واجذب عملاء جدد من خلال نظام الولاء</p>
+                    <ul class="user-type-features">
+                        <li>نظام ولاء متكامل</li>
+                        <li>إحصائيات مفصلة</li>
+                        <li>لوحة تحكم سهلة</li>
+                        <li>دعم متواصل</li>
+                    </ul>
+                    <div class="card-buttons">
+                        <a href="../merchant-dashboard/register.html" class="btn btn-gold">سجّل متجرك</a>
+                        <a href="../merchant-dashboard/login.html" class="btn btn-secondary">دخول</a>
+                    </div>
+                </div>
+
+                <!-- Member Card -->
+                <div class="user-type-card member">
+                    <div class="user-type-icon">💎</div>
+                    <h3>أريد دخل إضافي</h3>
+                    <p>اكسب من الكاشباك ومن بناء فريقك في نظام الإحالة</p>
+                    <ul class="user-type-features">
+                        <li>عمولات من الفريق</li>
+                        <li>نظام الشجرة الثنائية</li>
+                        <li>مكافآت شهرية</li>
+                        <li>أكاديمية تدريبية</li>
+                    </ul>
+                    <a href="member-demo/index.html" class="btn btn-accent">جرّب النظام</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="section how-it-works-section" id="how-it-works">
+        <div class="container">
+            <div class="section-header">
+                <h2>كيف <span class="text-gradient">يعمل؟</span></h2>
+                <p>خطوات بسيطة للبدء في جني الأرباح</p>
+            </div>
+
+            <div class="steps-container">
+                <div class="step-card">
+                    <div class="step-number">1</div>
+                    <div class="step-icon">📝</div>
+                    <h4>سجّل مجاناً</h4>
+                    <p>أنشئ حسابك في دقائق واحصل على QR Code خاص بك</p>
+                </div>
+                <div class="step-arrow">←</div>
+                <div class="step-card">
+                    <div class="step-number">2</div>
+                    <div class="step-icon">🛒</div>
+                    <h4>تسوّق</h4>
+                    <p>اشترِ من أي تاجر معتمد وأظهر QR Code الخاص بك</p>
+                </div>
+                <div class="step-arrow">←</div>
+                <div class="step-card">
+                    <div class="step-number">3</div>
+                    <div class="step-icon">💰</div>
+                    <h4>احصل على كاشباك</h4>
+                    <p>يُضاف الكاشباك تلقائياً إلى محفظتك</p>
+                </div>
+                <div class="step-arrow">←</div>
+                <div class="step-card">
+                    <div class="step-number">4</div>
+                    <div class="step-icon">💳</div>
+                    <h4>اسحب أرباحك</h4>
+                    <p>اسحب رصيدك في أي وقت لحسابك البنكي</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats-section">
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-number">12,547+</div>
+                    <div class="stat-label">عضو نشط</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-icon">🏪</div>
+                    <div class="stat-number">856+</div>
+                    <div class="stat-label">تاجر معتمد</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-icon">💳</div>
+                    <div class="stat-number">98,432</div>
+                    <div class="stat-label">عملية مكتملة</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-number">2.5 مليون+</div>
+                    <div class="stat-label">ريال كاشباك موزع</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Featured Merchants -->
+    <section class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2>تجار <span class="text-gradient">مميزون</span></h2>
+                <p>بعض التجار المعتمدين الذين يقدمون أفضل نسب الكاشباك</p>
+            </div>
+
+            <div class="merchants-grid" id="featured-merchants">
+                <!-- Will be populated by JS -->
+            </div>
+
+            <div class="text-center" style="margin-top: var(--spacing-2xl);">
+                <a href="public/merchants.html" class="btn btn-primary btn-lg">
+                    عرض جميع التجار (856+)
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-box">
+                <h2>🎁 انضم الآن واحصل على <span class="text-gold">بونص ترحيبي</span></h2>
+                <p>سجّل اليوم واحصل على 50 ريال رصيد مجاني في محفظتك</p>
+                <div class="cta-buttons">
+                    <a href="../member-dashboard/register.html" class="btn btn-primary btn-lg">
+                        ابدأ الآن مجاناً
+                    </a>
+                    <a href="member-demo/index.html" class="btn btn-outline btn-lg">
+                        جرّب أولاً
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="preview-footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <a href="index.html" class="nav-logo">
+                        <span>SAWYAN BANK</span>
+                    </a>
+                    <p style="margin-top: 0.5rem; color: var(--preview-gray);">
+                        © 2025 جميع الحقوق محفوظة
+                    </p>
+                    <div style="margin-top: 10px;">
+                        <a href="../admin-dashboard/login.html"
+                            style="color: #64748b; text-decoration: none; font-size: 0.8rem; border: 1px solid #cbd5e1; padding: 2px 8px; border-radius: 4px;">🔐
+                            دخول الإدارة</a>
+                    </div>
+                </div>
+                <ul class="footer-links">
+                    <li><a href="public/merchants.html">التجار</a></li>
+                    <li><a href="#">الشروط والأحكام</a></li>
+                    <li><a href="#">سياسة الخصوصية</a></li>
+                    <li><a href="#">تواصل معنا</a></li>
+                </ul>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Demo Wallet Card Styles -->
+    <style>
+        .demo-wallet-card {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-xl);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .wallet-header {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .wallet-logo {
+            font-size: 1.5rem;
+        }
+
+        .wallet-name {
+            font-weight: 600;
+            color: var(--preview-gray-light);
+        }
+
+        .wallet-balance {
+            text-align: center;
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .balance-label {
+            display: block;
+            font-size: 0.875rem;
+            color: var(--preview-gray);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .balance-amount {
+            display: block;
+            font-size: 3rem;
+            font-weight: 800;
+            background: var(--gradient-gold);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .balance-currency {
+            display: block;
+            font-size: 0.875rem;
+            color: var(--preview-gray-light);
+        }
+
+        .wallet-stats {
+            display: flex;
+            justify-content: space-around;
+            padding: var(--spacing-md) 0;
+            border-top: 1px solid var(--glass-border);
+            border-bottom: 1px solid var(--glass-border);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .wallet-stat {
+            text-align: center;
+        }
+
+        .ws-value {
+            display: block;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--preview-accent);
+        }
+
+        .ws-label {
+            font-size: 0.75rem;
+            color: var(--preview-gray);
+        }
+
+        .wallet-qr {
+            text-align: center;
+            margin-top: auto;
+        }
+
+        .qr-placeholder {
+            width: 80px;
+            height: 80px;
+            background: var(--preview-white);
+            border-radius: var(--radius-md);
+            margin: 0 auto var(--spacing-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--preview-dark);
+            font-weight: 700;
+        }
+
+        .wallet-qr span {
+            font-size: 0.75rem;
+            color: var(--preview-gray);
+        }
+
+        /* Steps */
+        .how-it-works-section {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;
+        }
+
+        .steps-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-md);
+            flex-wrap: wrap;
+        }
+
+        .step-card {
+            background: #ffffff;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-xl);
+            text-align: center;
+            flex: 1;
+            min-width: 200px;
+            max-width: 250px;
+            position: relative;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            transition: var(--transition-normal);
+        }
+
+        .step-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(16, 185, 129, 0.15);
+            border-color: var(--preview-secondary);
+        }
+
+        .step-number {
+            position: absolute;
+            top: -15px;
+            right: -15px;
+            width: 45px;
+            height: 45px;
+            background: var(--gradient-secondary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.25rem;
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
+
+        .step-icon {
+            font-size: 2.5rem;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .step-card h4 {
+            margin-bottom: var(--spacing-sm);
+            color: #0f2744;
+        }
+
+        .step-card p {
+            font-size: 0.875rem;
+            margin: 0;
+            color: #64748b;
+        }
+
+        .step-arrow {
+            font-size: 2rem;
+            color: var(--preview-secondary);
+            font-weight: bold;
+        }
+
+        @media (max-width: 900px) {
+            .step-arrow {
+                display: none;
+            }
+
+            .steps-container {
+                gap: var(--spacing-lg);
+            }
+        }
+    </style>
+
+    <script src="../shared/config/supabase.js"></script>
+    <script src="js/demo-data.js"></script>
+    <script src="js/preview.js"></script>
+
+    <!-- Theme Toggle Button -->
+    <button class="theme-toggle" id="themeToggle" title="تبديل الوضع">
+        <span class="icon-moon">🌙</span>
+        <span class="icon-sun">☀️</span>
+    </button>
+
+    <!-- Theme Toggle Script -->
+    <script>
+        (function () {
+            const themeToggle = document.getElementById('themeToggle');
+            const html = document.documentElement;
+
+            // Check for saved theme preference or default to dark
+            const savedTheme = localStorage.getItem('sawyan-theme') || 'dark';
+            if (savedTheme === 'light') {
+                html.setAttribute('data-theme', 'light');
+            }
+
+            themeToggle.addEventListener('click', () => {
+                const currentTheme = html.getAttribute('data-theme');
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+
+                if (newTheme === 'light') {
+                    html.setAttribute('data-theme', 'light');
+                } else {
+                    html.removeAttribute('data-theme');
+                }
+
+                localStorage.setItem('sawyan-theme', newTheme);
+            });
+        })();
+
+        // Mobile Menu Functions
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const overlay = document.getElementById('mobileMenuOverlay');
+            const btn = document.getElementById('mobileMenuBtn');
+
+            menu.classList.toggle('active');
+            overlay.classList.toggle('active');
+            btn.classList.toggle('active');
+
+            // Prevent body scroll when menu is open
+            if (menu.classList.contains('active')) {
+                document.body.style.overflow = 'hidden';
+            } else {
+                document.body.style.overflow = '';
+            }
+        }
+
+        function closeMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const overlay = document.getElementById('mobileMenuOverlay');
+            const btn = document.getElementById('mobileMenuBtn');
+
+            menu.classList.remove('active');
+            overlay.classList.remove('active');
+            btn.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    </script>
+</body>
+
+</html>

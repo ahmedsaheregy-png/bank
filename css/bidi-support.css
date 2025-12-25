@@ -1,0 +1,138 @@
+/* ============================================
+   SAWYAN BANK - Bidirectional Text Support
+   دعم النص ثنائي الاتجاه (RTL + LTR)
+   ============================================ */
+
+/* ===== Logo and English Elements - الشعار والعناصر الإنجليزية ===== */
+.nav-logo,
+.nav-logo span,
+.mobile-menu-title {
+    direction: ltr;
+    unicode-bidi: isolate;
+    font-family: 'Poppins', sans-serif !important;
+}
+
+/* ===== Numbers and Statistics - الأرقام والإحصائيات ===== */
+.stat-value,
+.stat-number,
+.balance-amount,
+.balance-value,
+.stat-card-value,
+.ws-value,
+.team-stat-value,
+.merchant-rating-compact,
+.merchant-cashback-small,
+.wallet-balance-big .balance-value {
+    direction: ltr;
+    unicode-bidi: isolate;
+    display: inline-block;
+}
+
+/* ===== Rating Stars - تقييم النجوم ===== */
+.merchant-rating-compact {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    direction: ltr;
+}
+
+.merchant-rating-compact span:first-child {
+    color: #fbbf24;
+}
+
+/* ===== Fix Star Position in RTL ===== */
+.star-rating,
+.stars-interactive {
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+
+/* ===== Cashback Badge - شارة الكاشباك ===== */
+.merchant-cashback-small {
+    direction: ltr;
+    unicode-bidi: isolate;
+    text-align: center;
+}
+
+/* ===== Transaction Amounts - مبالغ العمليات ===== */
+.transaction-amount,
+.amount-value,
+.cashback-value {
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+
+/* ===== Fix Plus/Minus Signs - إصلاح علامات + و - ===== */
+.positive-amount,
+.negative-amount {
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+
+/* ===== Arabic Text in Stats - النص العربي في الإحصائيات ===== */
+.stat-label,
+.stat-card-label,
+.ws-label,
+.balance-label,
+.balance-currency {
+    direction: rtl;
+    unicode-bidi: normal;
+}
+
+/* ===== Hero Stats Section ===== */
+.hero-stats .stat-item {
+    text-align: center;
+}
+
+.hero-stats .stat-value {
+    font-weight: 800;
+    direction: rtl;
+    unicode-bidi: normal;
+}
+
+/* ===== Stats Section Grid ===== */
+.stats-section .stat-number {
+    font-weight: 700;
+    direction: rtl;
+    unicode-bidi: normal;
+}
+
+/* ===== Merchant Card Number Fix ===== */
+.merchant-card .merchant-rating-compact,
+.merchant-card .merchant-cashback-small {
+    font-family: 'Inter', sans-serif !important;
+}
+
+/* ===== Wallet Card Values ===== */
+.demo-wallet-card .wallet-stats .ws-value {
+    font-family: 'Inter', sans-serif !important;
+}
+
+/* ===== QR Code Section ===== */
+.member-code {
+    direction: ltr;
+    unicode-bidi: isolate;
+    font-family: 'Courier New', monospace;
+}
+
+/* ===== Price and Currency ===== */
+.price,
+.amount,
+.currency-value {
+    direction: ltr;
+    unicode-bidi: embed;
+}
+
+/* ===== Phone Numbers ===== */
+.phone-number,
+[type="tel"] {
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+
+/* ===== Email ===== */
+.email,
+[type="email"] {
+    direction: ltr;
+    unicode-bidi: isolate;
+}

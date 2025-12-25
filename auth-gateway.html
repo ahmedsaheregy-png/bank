@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ابدأ الآن - SAWYAN BANK</title>
+    <meta name="description" content="سجّل أو سجّل دخول في SAWYAN BANK كعضو أو تاجر">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="css/preview.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #dbeafe 100%);
+            min-height: 100vh;
+        }
+
+        .auth-gateway {
+            min-height: calc(100vh - 80px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--spacing-2xl);
+            padding-top: 100px;
+        }
+
+        .gateway-container {
+            max-width: 900px;
+            width: 100%;
+        }
+
+        .gateway-header {
+            text-align: center;
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .gateway-header h1 {
+            font-size: 2.5rem;
+            color: var(--preview-primary-dark);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .gateway-header p {
+            font-size: 1.125rem;
+            color: #64748b;
+        }
+
+        .gateway-cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-xl);
+        }
+
+        .gateway-card {
+            background: #ffffff;
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-2xl);
+            text-align: center;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+        }
+
+        .gateway-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12);
+        }
+
+        .gateway-card.member {
+            border-top: 4px solid var(--preview-secondary);
+        }
+
+        .gateway-card.member:hover {
+            border-color: var(--preview-secondary);
+        }
+
+        .gateway-card.merchant {
+            border-top: 4px solid var(--preview-gold);
+        }
+
+        .gateway-card.merchant:hover {
+            border-color: var(--preview-gold);
+        }
+
+        .gateway-icon {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto var(--spacing-xl);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+        }
+
+        .gateway-card.member .gateway-icon {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .gateway-card.merchant .gateway-icon {
+            background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+        }
+
+        .gateway-card h2 {
+            font-size: 1.75rem;
+            color: var(--preview-primary-dark);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .gateway-card p {
+            color: #64748b;
+            margin-bottom: var(--spacing-xl);
+            font-size: 1rem;
+            line-height: 1.7;
+        }
+
+        .gateway-features {
+            list-style: none;
+            text-align: right;
+            margin-bottom: var(--spacing-xl);
+            padding: 0;
+        }
+
+        .gateway-features li {
+            padding: var(--spacing-sm) 0;
+            color: #475569;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .gateway-features li::before {
+            content: '✓';
+            color: var(--preview-secondary);
+            font-weight: bold;
+        }
+
+        .gateway-card.merchant .gateway-features li::before {
+            color: var(--preview-gold);
+        }
+
+        .gateway-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .gateway-buttons .btn {
+            width: 100%;
+            padding: var(--spacing-md) var(--spacing-xl);
+            font-size: 1.1rem;
+        }
+
+        .gateway-card.member .btn-primary {
+            background: var(--gradient-secondary);
+        }
+
+        .gateway-card.merchant .btn-primary {
+            background: var(--gradient-gold);
+            color: #0f172a;
+        }
+
+        .gateway-footer {
+            text-align: center;
+            margin-top: var(--spacing-2xl);
+            color: #64748b;
+        }
+
+        .gateway-footer a {
+            color: var(--preview-primary);
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .gateway-cards {
+                grid-template-columns: 1fr;
+            }
+
+            .gateway-header h1 {
+                font-size: 1.75rem;
+            }
+
+            .auth-gateway {
+                padding: var(--spacing-lg);
+                padding-top: 80px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="preview-nav" id="navbar">
+        <div class="container">
+            <div class="nav-content">
+                <a href="index.html" class="nav-logo">
+                    <span>SAWYAN BANK</span>
+                </a>
+
+                <!-- Hamburger Menu Button للموبايل -->
+                <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileMenu()">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
+
+                <ul class="nav-links" id="navLinks">
+                    <li><a href="index.html">الرئيسية</a></li>
+                    <li><a href="public/merchants.html">التجار</a></li>
+                    <li><a href="member-demo/index.html">جرّب كعضو</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Mobile Menu Overlay -->
+        <div class="mobile-menu-overlay" id="mobileMenuOverlay" onclick="closeMobileMenu()"></div>
+
+        <!-- Mobile Menu Drawer -->
+        <div class="mobile-menu" id="mobileMenu">
+            <div class="mobile-menu-header">
+                <span class="mobile-menu-title">SAWYAN BANK</span>
+                <button class="mobile-menu-close" onclick="closeMobileMenu()">&times;</button>
+            </div>
+            <div class="mobile-menu-links">
+                <a href="index.html">الرئيسية</a>
+                <a href="public/merchants.html">التجار</a>
+                <a href="member-demo/index.html">جرّب كعضو</a>
+            </div>
+            <div class="mobile-menu-cta">
+                <a href="../member-dashboard/register.html" class="btn btn-primary btn-block">تسجيل كعضو</a>
+                <a href="../merchant-dashboard/register.html" class="btn btn-gold btn-block">تسجيل كتاجر</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Auth Gateway -->
+    <section class="auth-gateway">
+        <div class="gateway-container">
+            <div class="gateway-header">
+                <h1>🚀 ابدأ رحلتك مع <span class="text-gradient">SAWYAN BANK</span></h1>
+                <p>اختر نوع حسابك للمتابعة</p>
+            </div>
+
+            <div class="gateway-cards">
+                <!-- Member Card -->
+                <div class="gateway-card member">
+                    <div class="gateway-icon">👤</div>
+                    <h2>عضو / متسوق</h2>
+                    <p>احصل على كاشباك من كل عملية شراء واكسب من بناء فريقك</p>
+
+                    <ul class="gateway-features">
+                        <li>كاشباك يصل إلى 20%</li>
+                        <li>محفظة إلكترونية</li>
+                        <li>QR Code شخصي</li>
+                        <li>سحب فوري للأرباح</li>
+                        <li>عمولات من الفريق</li>
+                    </ul>
+
+                    <div class="gateway-buttons">
+                        <a href="../member-dashboard/register.html" class="btn btn-primary">
+                            ✨ تسجيل حساب جديد
+                        </a>
+                        <a href="../member-dashboard/login.html" class="btn btn-secondary">
+                            لدي حساب - تسجيل الدخول
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Merchant Card -->
+                <div class="gateway-card merchant">
+                    <div class="gateway-icon">🏪</div>
+                    <h2>تاجر / صاحب نشاط</h2>
+                    <p>زِد مبيعاتك واجذب عملاء جدد من خلال نظام الولاء الذكي</p>
+
+                    <ul class="gateway-features">
+                        <li>نظام ولاء متكامل</li>
+                        <li>إحصائيات مفصلة</li>
+                        <li>لوحة تحكم سهلة</li>
+                        <li>دعم متواصل</li>
+                        <li>تقارير المبيعات</li>
+                    </ul>
+
+                    <div class="gateway-buttons">
+                        <a href="../merchant-dashboard/register.html" class="btn btn-primary">
+                            🏪 سجّل متجرك الآن
+                        </a>
+                        <a href="../merchant-dashboard/login.html" class="btn btn-secondary">
+                            لدي حساب - تسجيل الدخول
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="gateway-footer">
+                <p>غير متأكد؟ <a href="member-demo/index.html">جرّب النظام مجاناً</a> قبل التسجيل</p>
+            </div>
+        </div>
+    </section>
+
+    <script src="js/preview.js"></script>
+    <script>
+        // Mobile Menu Functions
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const overlay = document.getElementById('mobileMenuOverlay');
+            const btn = document.getElementById('mobileMenuBtn');
+
+            menu.classList.toggle('active');
+            overlay.classList.toggle('active');
+            btn.classList.toggle('active');
+
+            if (menu.classList.contains('active')) {
+                document.body.style.overflow = 'hidden';
+            } else {
+                document.body.style.overflow = '';
+            }
+        }
+
+        function closeMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const overlay = document.getElementById('mobileMenuOverlay');
+            const btn = document.getElementById('mobileMenuBtn');
+
+            menu.classList.remove('active');
+            overlay.classList.remove('active');
+            btn.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    </script>
+</body>
+
+</html>
