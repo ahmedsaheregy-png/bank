@@ -2427,88 +2427,42 @@ span {
     width: 100%;
 }
 
-/* ============================================
-   Mobile Responsive Fixes
-   ============================================ */
-@media (max-width: 768px) {
-    .hero-content {
-        grid-template-columns: 1fr;
-        text-align: center;
-    }
-
-    .hero-visual {
-        display: none;
-    }
-
-    .hero-stats {
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-
-    .user-type-cards,
-    .user-type-cards.two-cards {
-        grid-template-columns: 1fr;
-        max-width: 100%;
-    }
-
-    .steps-container {
-        grid-template-columns: 1fr;
-    }
-
-    .step-arrow {
-        transform: rotate(-90deg);
-        margin: var(--spacing-sm) auto;
-    }
-
+@media (max-width: 640px) {
     .merchants-grid {
         grid-template-columns: 1fr;
-    }
 
-    .nav-links {
-        display: none;
-    }
+        /* Update Cashback Badge Size - CLEAN FIX */ .merchant-cashback-badge,
+         .merchant-cashback  {
+                 padding:  2px 8px  !important;
+                 font-size:  0.75rem  !important;
+                 top:  10px  !important;
+                 right:  10px  !important;
+                 border-radius:  4px  !important;
+                 width:  auto  !important;
+                 height:  auto  !important;
+                 background:  white  !important;
+                 color:  #10b981  !important;
+                 z-index:  10  !important;
+                 box-shadow:  0 2px 5px rgba(0, 0, 0, 0.1)  !important;
+             
+        }
 
-    .section-header h2 {
-        font-size: 1.5rem;
-    }
+           /* FORCE FIX for Homepage Badge */ .merchant-cashback-small  {
+                 position:  absolute  !important;
+                 width:  auto  !important;
+                 height:  auto  !important;
+                 display:  inline-block  !important;
+                 top:  10px  !important;
+                 right:  10px  !important;
+                 padding:  2px 8px  !important;
+                 background:  white  !important;
+                 color:  #10b981  !important;
+                 z-index:  100  !important;
+                 font-size:  0.75rem  !important;
+                 font-weight:  700  !important;
+                 border-radius:  4px  !important;
+                 box-shadow:  0 2px 5px rgba(0, 0, 0, 0.1)  !important;
+             
+        }
 
-    .section-header p {
-        font-size: 1rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .hero-text h1 span:first-child {
-        font-size: 1.5rem;
-    }
-
-    .hero-text h1 .text-gradient {
-        font-size: 1.3rem;
-    }
-
-    .hero-subtitle {
-        font-size: 1rem;
-    }
-
-    .hero-buttons {
-        flex-direction: column;
-        gap: var(--spacing-sm);
-    }
-
-    .step-card {
-        min-height: auto;
-        padding: var(--spacing-lg);
-    }
-
-    .step-card h4 {
-        font-size: 1.1rem;
-    }
-
-    .user-type-card {
-        padding: var(--spacing-lg);
-    }
-
-    .cta-box {
-        padding: var(--spacing-xl);
-    }
-}
+          
