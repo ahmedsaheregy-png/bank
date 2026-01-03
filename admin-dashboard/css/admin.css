@@ -1,0 +1,570 @@
+/* Admin Dashboard Additional Styles */
+
+.stat-card.stat-primary {
+    border-left: 4px solid var(--color-blue-500);
+}
+
+.stat-card.stat-success {
+    border-left: 4px solid var(--color-green-500);
+}
+
+.stat-card.stat-info {
+    border-left: 4px solid var(--color-blue-400);
+}
+
+.stat-card.stat-warning {
+    border-left: 4px solid var(--color-warning);
+}
+
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: var(--spacing-6);
+    margin-bottom: var(--spacing-8);
+}
+
+.chart-card {
+    background: white;
+    padding: var(--spacing-6);
+    border-radius: var(--border-radius-xl);
+    box-shadow: var(--shadow-md);
+}
+
+.chart-card h3 {
+    margin-bottom: var(--spacing-4);
+    font-size: var(--font-size-lg);
+}
+
+.chart-placeholder {
+    height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-gray-50);
+    border-radius: var(--border-radius-lg);
+    color: var(--color-text-secondary);
+}
+
+.recent-activity {
+    background: white;
+    padding: var(--spacing-8);
+    border-radius: var(--border-radius-xl);
+    box-shadow: var(--shadow-md);
+}
+
+.recent-activity h2 {
+    margin-bottom: var(--spacing-6);
+}
+
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-4);
+}
+
+.activity-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-4);
+    padding: var(--spacing-4);
+    border-bottom: 1px solid var(--color-gray-200);
+}
+
+.activity-item:last-child {
+    border-bottom: none;
+}
+
+.activity-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.activity-details {
+    flex: 1;
+}
+
+.activity-title {
+    font-weight: var(--font-weight-semibold);
+    margin-bottom: var(--spacing-1);
+}
+
+.activity-description {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}
+
+.activity-time {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    flex-shrink: 0;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-6);
+}
+
+.table-container {
+    background: white;
+    border-radius: var(--border-radius-xl);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table thead {
+    background: var(--color-gray-100);
+}
+
+.data-table th {
+    padding: var(--spacing-4);
+    text-align: right;
+    font-weight: var(--font-weight-semibold);
+    border-bottom: 2px solid var(--color-gray-200);
+}
+
+.data-table td {
+    padding: var(--spacing-4);
+    border-bottom: 1px solid var(--color-gray-200);
+}
+
+.data-table tbody tr:hover {
+    background: var(--color-gray-50);
+}
+
+.badge {
+    display: inline-block;
+    padding: var(--spacing-1) var(--spacing-3);
+    border-radius: var(--border-radius-full);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+}
+
+.badge-success {
+    background: var(--color-green-100);
+    color: var(--color-green-700);
+}
+
+.badge-danger {
+    background: #FEE2E2;
+    color: #991B1B;
+}
+
+.btn-sm {
+    padding: var(--spacing-2) var(--spacing-3);
+    font-size: var(--font-size-sm);
+    border-radius: var(--border-radius-md);
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-family-arabic);
+    transition: var(--transition-fast);
+}
+
+.btn-sm.btn-primary {
+    background: var(--color-primary);
+    color: white;
+}
+
+.btn-sm.btn-warning {
+    background: var(--color-warning);
+    color: white;
+}
+
+.btn-sm:hover {
+    opacity: 0.9;
+}
+
+@media (max-width: 768px) {
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .data-table {
+        min-width: 800px;
+    }
+}
+
+/* ===== Additional Mobile Improvements for Admin ===== */
+
+/* تحسين البطاقات الإحصائية */
+@media (max-width: 480px) {
+
+    .stat-card.stat-primary,
+    .stat-card.stat-success,
+    .stat-card.stat-info,
+    .stat-card.stat-warning {
+        border-left-width: 3px;
+    }
+}
+
+/* تحسين الرسوم البيانية */
+@media (max-width: 480px) {
+    .chart-card {
+        padding: var(--spacing-4);
+    }
+
+    .chart-card h3 {
+        font-size: 1rem;
+    }
+
+    .chart-placeholder {
+        height: 200px;
+    }
+}
+
+/* تحسين قائمة النشاط */
+@media (max-width: 480px) {
+    .recent-activity {
+        padding: var(--spacing-4);
+    }
+
+    .recent-activity h2 {
+        font-size: 1.1rem;
+    }
+
+    .activity-item {
+        flex-wrap: wrap;
+        gap: var(--spacing-2);
+    }
+
+    .activity-icon {
+        font-size: 1.5rem;
+    }
+
+    .activity-title {
+        font-size: 0.9rem;
+    }
+
+    .activity-description {
+        font-size: 0.8rem;
+    }
+
+    .activity-time {
+        width: 100%;
+        text-align: right;
+        padding-top: var(--spacing-2);
+        border-top: 1px solid var(--color-gray-200);
+    }
+}
+
+/* تحسين صفحات الإعدادات */
+@media (max-width: 640px) {
+    .settings-container {
+        padding: 0;
+    }
+
+    .settings-section {
+        background: white;
+        padding: var(--spacing-4);
+        border-radius: var(--border-radius-lg);
+        margin-bottom: var(--spacing-4);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .settings-section h3 {
+        font-size: 1rem;
+        margin-bottom: var(--spacing-4);
+    }
+
+    .settings-actions {
+        flex-direction: column !important;
+    }
+
+    .settings-actions .btn {
+        width: 100%;
+    }
+}
+
+/* تحسين Report Filters */
+@media (max-width: 640px) {
+    .report-filters {
+        padding: var(--spacing-4) !important;
+    }
+
+    .report-filters h3 {
+        font-size: 1rem !important;
+    }
+
+    .report-filters>div {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* تحسين Badges */
+@media (max-width: 480px) {
+    .badge {
+        font-size: 0.7rem;
+        padding: 2px 8px;
+    }
+}
+
+/* تحسين أزرار الإجراءات */
+@media (max-width: 480px) {
+    .btn-sm {
+        font-size: 0.75rem;
+        padding: var(--spacing-1) var(--spacing-2);
+    }
+}
+
+/* تحسين عنوان الصفحة */
+@media (max-width: 480px) {
+    .page-header h2 {
+        font-size: 1.1rem;
+    }
+}
+
+/* ===== Admin Settings & Withdrawals Styles ===== */
+
+.settings-admin-page,
+.withdrawals-admin-page,
+.support-admin-page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding-bottom: 100px;
+}
+
+/* Filter Bar */
+.filter-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+}
+
+.filter-btn {
+    background: #F3F4F6;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    font-family: 'Tajawal', sans-serif;
+}
+
+.filter-btn.active {
+    background: var(--color-primary, #10B981);
+    color: white;
+}
+
+.filter-btn:hover:not(.active) {
+    background: #E5E7EB;
+}
+
+/* Withdrawal Cards */
+.withdrawals-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.withdrawal-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-right: 4px solid #9CA3AF;
+}
+
+.withdrawal-card.status-pending {
+    border-right-color: #F59E0B;
+}
+
+.withdrawal-card.status-approved,
+.withdrawal-card.status-completed {
+    border-right-color: #10B981;
+}
+
+.withdrawal-card.status-rejected {
+    border-right-color: #EF4444;
+}
+
+.withdrawal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.withdrawal-amount {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #1F2937;
+}
+
+.withdrawal-status {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.withdrawal-status.status-pending {
+    background: #FEF3C7;
+    color: #92400E;
+}
+
+.withdrawal-status.status-approved,
+.withdrawal-status.status-completed {
+    background: #D1FAE5;
+    color: #065F46;
+}
+
+.withdrawal-status.status-rejected {
+    background: #FEE2E2;
+    color: #991B1B;
+}
+
+.withdrawal-details p {
+    margin: 6px 0;
+    font-size: 0.9rem;
+    color: #4B5563;
+}
+
+.withdrawal-details strong {
+    color: #1F2937;
+}
+
+.withdrawal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #E5E7EB;
+}
+
+.btn-approve {
+    flex: 1;
+    background: #10B981;
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Tajawal', sans-serif;
+}
+
+.btn-reject {
+    flex: 1;
+    background: #EF4444;
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Tajawal', sans-serif;
+}
+
+.btn-approve:hover {
+    background: #059669;
+}
+
+.btn-reject:hover {
+    background: #DC2626;
+}
+
+/* Support Stats Grid */
+.support-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.support-stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.support-stat-card .stat-value {
+    display: block;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--color-primary, #10B981);
+}
+
+.support-stat-card .stat-label {
+    display: block;
+    font-size: 0.85rem;
+    color: #6B7280;
+    margin-top: 4px;
+}
+
+.tickets-section {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.tickets-section h3 {
+    margin: 0 0 16px 0;
+    color: #1F2937;
+}
+
+/* Checkbox Label */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--color-primary, #10B981);
+}
+
+/* Mobile Responsive */
+@media (max-width: 640px) {
+    .filter-bar {
+        gap: 6px;
+    }
+
+    .filter-btn {
+        padding: 8px 12px;
+        font-size: 0.85rem;
+    }
+
+    .withdrawal-card {
+        padding: 16px;
+    }
+
+    .withdrawal-amount {
+        font-size: 1.1rem;
+    }
+
+    .withdrawal-actions {
+        flex-direction: column;
+    }
+
+    .support-stats-grid {
+        gap: 8px;
+    }
+
+    .support-stat-card {
+        padding: 16px;
+    }
+
+    .support-stat-card .stat-value {
+        font-size: 1.5rem;
+    }
+}

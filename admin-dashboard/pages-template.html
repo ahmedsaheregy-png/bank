@@ -1,0 +1,186 @@
+<!-- Commissions Page -->
+<div id="commissionsPage" class="page">
+    <div class="page-header">
+        <h2>إدارة العمولات</h2>
+        <button class="btn btn-primary" onclick="exportCommissions()">تصدير Excel</button>
+    </div>
+    <div class="stats-grid" style="margin-bottom: 2rem;">
+        <div class="stat-card stat-success">
+            <div class="stat-icon">💰</div>
+            <div class="stat-info">
+                <div class="stat-label">إجمالي العمولات</div>
+                <div class="stat-value" id="totalCommissionsAmount">0 ج.م</div>
+            </div>
+        </div>
+        <div class="stat-card stat-info">
+            <div class="stat-icon">📊</div>
+            <div class="stat-info">
+                <div class="stat-label">عمولات هذا الشهر</div>
+                <div class="stat-value" id="monthCommissions">0 ج.م</div>
+            </div>
+        </div>
+    </div>
+    <div class="table-container">
+        <table class="data-table" id="commissionsTable">
+            <thead>
+                <tr>
+                    <th>التاجر</th>
+                    <th>إجمالي العمليات</th>
+                    <th>إجمالي المبيعات</th>
+                    <th>إجمالي العمولات</th>
+                    <th>النسبة %</th>
+                </tr>
+            </thead>
+            <tbody id="commissionsTableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Disputes Page -->
+<div id="disputesPage" class="page">
+    <div class="page-header">
+        <h2>إدارة الشكاوى والنزاعات</h2>
+        <button class="btn btn-primary" onclick="exportDisputes()">تصدير Excel</button>
+    </div>
+    <div class="table-container">
+        <table class="data-table" id="disputesTable">
+            <thead>
+                <tr>
+                    <th>كود الشكوى</th>
+                    <th>العملية</th>
+                    <th>العضو</th>
+                    <th>التاجر</th>
+                    <th>السبب</th>
+                    <th>التاريخ</th>
+                    <th>الحالة</th>
+                    <th>إجراءات</th>
+                </tr>
+            </thead>
+            <tbody id="disputesTableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Support Page -->
+<div id="supportPage" class="page">
+    <div class="page-header">
+        <h2>طلبات الدعم الفني</h2>
+        <button class="btn btn-primary" onclick="exportSupport()">تصدير Excel</button>
+    </div>
+    <div class="table-container">
+        <table class="data-table" id="supportTable">
+            <thead>
+                <tr>
+                    <th>كود التذكرة</th>
+                    <th>المستخدم</th>
+                    <th>النوع</th>
+                    <th>الموضوع</th>
+                    <th>الأولوية</th>
+                    <th>التاريخ</th>
+                    <th>الحالة</th>
+                    <th>إجراءات</th>
+                </tr>
+            </thead>
+            <tbody id="supportTableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Reports Page -->
+<div id="reportsPage" class="page">
+    <div class="page-header">
+        <h2>التقارير والإحصائيات</h2>
+    </div>
+    
+    <div class="report-filters" style="background: var(--surface-color); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
+        <h3 style="margin-bottom: 1rem;">فلترة التقارير</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <div>
+                <label>من تاريخ</label>
+                <input type="date" id="reportStartDate" class="form-control">
+            </div>
+            <div>
+                <label>إلى تاريخ</label>
+                <input type="date" id="reportEndDate" class="form-control">
+            </div>
+            <div>
+                <label>نوع التقرير</label>
+                <select id="reportType" class="form-control">
+                    <option value="all">جميع التقارير</option>
+                    <option value="transactions">تقرير العمليات</option>
+                    <option value="commissions">تقرير العمولات</option>
+                    <option value="members">تقرير الأعضاء</option>
+                    <option value="merchants">تقرير التجار</option>
+                </select>
+            </div>
+            <div style="display: flex; align-items: flex-end;">
+                <button class="btn btn-primary btn-block" onclick="generateReport()">إنشاء التقرير</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="reportResults" class="report-results">
+        <p class="empty-state">اختر نوع التقرير والفترة الزمنية ثم اضغط على "إنشاء التقرير"</p>
+    </div>
+</div>
+
+<!-- Settings Page -->
+<div id="settingsPage" class="page">
+    <div class="page-header">
+        <h2>إعدادات النظام</h2>
+    </div>
+    
+    <div class="settings-container">
+        <div class="settings-section">
+            <h3>إعدادات العمولات</h3>
+            <div class="form-group">
+                <label>نسبة العمولة الافتراضية (%)</label>
+                <input type="number" id="defaultCommission" class="form-control" step="0.1" min="0" max="100">
+            </div>
+            <div class="form-group">
+                <label>الحد الأدنى للعمولة (ج.م)</label>
+                <input type="number" id="minCommission" class="form-control" step="0.01" min="0">
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h3>إعدادات النظام</h3>
+            <div class="form-group">
+                <label>اسم النظام</label>
+                <input type="text" id="systemName" class="form-control" value="SAWYAN BANK">
+            </div>
+            <div class="form-group">
+                <label>بريد الدعم الفني</label>
+                <input type="email" id="supportEmail" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>رقم الدعم الفني</label>
+                <input type="tel" id="supportPhone" class="form-control">
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h3>إدارة المديرين</h3>
+            <button class="btn btn-primary" onclick="addNewAdmin()">إضافة مدير جديد</button>
+            <div class="table-container" style="margin-top: 1rem;">
+                <table class="data-table" id="adminsTable">
+                    <thead>
+                        <tr>
+                            <th>الاسم</th>
+                            <th>البريد الإلكتروني</th>
+                            <th>الصلاحيات</th>
+                            <th>الحالة</th>
+                            <th>إجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="settings-actions" style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: flex-end;">
+            <button class="btn btn-outline" onclick="resetSettings()">إعادة تعيين</button>
+            <button class="btn btn-primary" onclick="saveSettings()">حفظ الإعدادات</button>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم التاجر - SAWYAN BANK</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../shared/css/variables.css">
+    <link rel="stylesheet" href="../shared/css/logo.css">
+    <link rel="stylesheet" href="../shared/css/notifications.css">
+    <link rel="stylesheet" href="../shared/css/image-upload.css">
+    <link rel="stylesheet" href="../member-dashboard/css/dashboard.css">
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div id="logoContainer"></div>
+            </div>
+
+            <div class="user-profile">
+                <h3 id="businessName">تاجر</h3>
+                <p id="merchantCode" class="member-code">كود التاجر: -</p>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-page="home">
+                    <span class="icon">🏠</span>
+                    <span>الرئيسية</span>
+                </a>
+                <a href="#" class="nav-item" data-page="pending">
+                    <span class="icon">⏳</span>
+                    <span>طلبات معلقة</span>
+                </a>
+                <a href="#" class="nav-item" data-page="scan">
+                    <span class="icon">📷</span>
+                    <span>تسجيل عملية</span>
+                </a>
+                <a href="#" class="nav-item" data-page="transactions">
+                    <span class="icon">💳</span>
+                    <span>العمليات المكتملة</span>
+                </a>
+                <a href="#" class="nav-item" data-page="financial">
+                    <span class="icon">📊</span>
+                    <span>الموقف المالي</span>
+                </a>
+                <a href="#" class="nav-item" data-page="settings">
+                    <span class="icon">⚙️</span>
+                    <span>الإعدادات</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="btn btn-outline btn-block" onclick="logout()">تسجيل الخروج</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="dashboard-header">
+                <h1 id="pageTitle">لوحة التحكم</h1>
+            </header>
+
+            <div class="content-area">
+                <!-- Home Page -->
+                <div id="homePage" class="page active">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">💳</div>
+                            <div class="stat-info">
+                                <div class="stat-label">عمليات اليوم</div>
+                                <div class="stat-value" id="todayTransactions">0</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon">💰</div>
+                            <div class="stat-info">
+                                <div class="stat-label">مبيعات اليوم</div>
+                                <div class="stat-value" id="todaySales">0.00 ج.م</div>
+                            </div>
+                        </div>
+
+                        <!-- Commission Ledger Card (New) -->
+                        <div class="stat-card stat-warning">
+                            <div class="stat-icon">⚖️</div>
+                            <div class="stat-info">
+                                <div class="stat-label">المستحقات للإدارة</div>
+                                <div class="stat-value" id="totalCommissionsDue">0.00 ج.م</div>
+                                <small style="color: #666; font-size: 0.8rem;">عمولات متراكمة</small>
+                            </div>
+                        </div>
+
+                        <div class="stat-card stat-info">
+                            <div class="stat-icon">📦</div>
+                            <div class="stat-info">
+                                <div class="stat-label">إجمالي العمليات</div>
+                                <div class="stat-value" id="totalTransactionsCount">0</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon">💸</div>
+                            <div class="stat-info">
+                                <div class="stat-label">المستحق للشركة</div>
+                                <div class="stat-value" id="pendingPayment">0.00 ج.م</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scan Page -->
+                <div id="scanPage" class="page">
+                    <h2>تسجيل عملية جديدة</h2>
+                    <div class="scan-section">
+                        <button onclick="openScanner()" class="btn btn-primary btn-lg">📷 مسح QR Code</button>
+                        <p class="or-divider">أو</p>
+                        <div class="manual-input">
+                            <input type="text" id="memberCodeInput" class="form-control"
+                                placeholder="أدخل كود العضو يدوياً">
+                        </div>
+                    </div>
+
+                    <form id="transactionForm" class="transaction-form" style="display: none;">
+                        <div class="form-group">
+                            <label>المبلغ الإجمالي *</label>
+                            <input type="number" id="amount" required class="form-control" step="0.01" min="0">
+                        </div>
+
+                        <!-- نوع العملية -->
+                        <div class="form-group">
+                            <label>نوع العملية</label>
+                            <div class="transaction-type-options">
+                                <label class="radio-option">
+                                    <input type="radio" name="transactionType" value="documentation" checked>
+                                    <span class="radio-label">توثيق فقط</span>
+                                </label>
+                                <label class="radio-option disabled-option">
+                                    <input type="radio" name="transactionType" value="wallet_payment" disabled>
+                                    <span class="radio-label">توثيق + دفع من المحفظة</span>
+                                    <span class="coming-soon-badge">قريباً بإذن الله</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-block">تسجيل العملية</button>
+                    </form>
+                </div>
+
+                <!-- Other Pages -->
+                <div id="pendingPage" class="page"></div>
+                <div id="transactionsPage" class="page"></div>
+                <div id="financialPage" class="page"></div>
+                <div id="settingsPage" class="page"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Bottom Navigation للموبايل -->
+    <nav class="bottom-nav">
+        <a href="#" class="bottom-nav-item active" data-page="home">
+            <span class="bottom-nav-icon">🏠</span>
+            <span class="bottom-nav-label">الرئيسية</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-page="scan">
+            <span class="bottom-nav-icon">📷</span>
+            <span class="bottom-nav-label">تسجيل</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-page="pending">
+            <span class="bottom-nav-icon">⏳</span>
+            <span class="bottom-nav-label">المعلقة</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-page="more" onclick="toggleMoreMenu(event)">
+            <span class="bottom-nav-icon">☰</span>
+            <span class="bottom-nav-label">المزيد</span>
+        </a>
+    </nav>
+
+    <!-- قائمة المزيد -->
+    <div class="more-menu" id="moreMenu">
+        <div class="more-menu-header">
+            <h3>المزيد</h3>
+            <button onclick="closeMoreMenu()" class="close-btn">&times;</button>
+        </div>
+        <div class="more-menu-items">
+            <a href="#" class="more-menu-item" data-page="transactions" onclick="goToPage('transactions')">
+                <span>💳</span> العمليات المكتملة
+            </a>
+            <a href="#" class="more-menu-item" data-page="financial" onclick="goToPage('financial')">
+                <span>📊</span> الموقف المالي
+            </a>
+            <a href="#" class="more-menu-item" data-page="settings" onclick="goToPage('settings')">
+                <span>⚙️</span> الإعدادات
+            </a>
+            <a href="#" class="more-menu-item logout" onclick="logout()">
+                <span>🚪</span> تسجيل الخروج
+            </a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../shared/config/supabase.js"></script>
+    <script src="../shared/components/logo.js"></script>
+    <script src="../shared/components/notifications.js"></script>
+    <script src="../shared/components/image-upload.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script>
+        // تهيئة الإشعارات بعد تحميل البيانات
+        document.addEventListener('DOMContentLoaded', function () {
+            setTimeout(() => {
+                const merchant = JSON.parse(localStorage.getItem('sawyan_merchant') || '{}');
+                if (merchant.id) {
+                    SAWYAN.Notifications.init('merchant', merchant.id);
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+
+</html>

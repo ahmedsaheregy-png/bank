@@ -1,0 +1,477 @@
+/* ============================================
+   SAWYAN BANK - Image Upload Styles
+   ============================================ */
+
+/* مكون رفع الصور */
+.image-uploader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.image-preview {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%);
+    border: 3px dashed #3B82F6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.image-preview:hover {
+    border-color: #1D4ED8;
+    transform: scale(1.02);
+    box-shadow: 0 8px 25px rgba(59, 130, 246, 0.2);
+}
+
+.image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.image-preview .placeholder {
+    font-size: 1.2rem;
+    color: #6B7280;
+    text-align: center;
+    padding: 10px;
+}
+
+.upload-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.upload-progress {
+    width: 100%;
+    max-width: 200px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 6px;
+    background: #E5E7EB;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3B82F6, #10B981);
+    border-radius: 3px;
+    animation: progress-loading 1.5s ease-in-out infinite;
+    width: 60%;
+}
+
+@keyframes progress-loading {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    100% {
+        transform: translateX(200%);
+    }
+}
+
+.progress-text {
+    font-size: 0.75rem;
+    color: #6B7280;
+    text-align: center;
+    display: block;
+    margin-top: 4px;
+}
+
+/* صور البروفايل */
+.profile-avatar-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.profile-avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3B82F6, #10B981);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+    position: relative;
+}
+
+.profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-placeholder {
+    font-size: 3rem;
+}
+
+.btn-change-avatar {
+    background: linear-gradient(135deg, #3B82F6, #2563EB);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.btn-change-avatar:hover {
+    background: linear-gradient(135deg, #2563EB, #1D4ED8);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* معاينة صورة الفاتورة */
+.invoice-upload-wrapper {
+    position: relative;
+}
+
+.invoice-preview {
+    position: relative;
+    max-width: 100%;
+    margin-top: 10px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.invoice-preview img {
+    width: 100%;
+    max-height: 200px;
+    object-fit: contain;
+    border-radius: 12px;
+}
+
+.btn-remove-image {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.9);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.btn-remove-image:hover {
+    background: #DC2626;
+    transform: scale(1.1);
+}
+
+/* لوجو التاجر (مربع) */
+.merchant-logo-preview {
+    width: 150px;
+    height: 150px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border: 3px dashed #94A3B8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.merchant-logo-preview:hover {
+    border-color: #3B82F6;
+    box-shadow: 0 8px 25px rgba(59, 130, 246, 0.15);
+}
+
+.merchant-logo-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* صفحة البروفايل الكاملة */
+.profile-page {
+    padding-bottom: 100px;
+    /* مساحة للزر الثابت */
+}
+
+.page-title-mobile {
+    font-size: 1.5rem;
+    color: #1F2937;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.profile-header-card {
+    background: linear-gradient(135deg, #3B82F6 0%, #10B981 100%);
+    border-radius: 20px;
+    padding: 30px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    color: white;
+    box-shadow: 0 10px 40px rgba(59, 130, 246, 0.3);
+}
+
+.profile-info-brief {
+    text-align: center;
+}
+
+.profile-info-brief h3 {
+    font-size: 1.3rem;
+    margin-bottom: 8px;
+}
+
+.member-code-badge {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    backdrop-filter: blur(10px);
+}
+
+/* أقسام الإعدادات */
+.settings-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.settings-section-card {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    border: 1px solid #E5E7EB;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
+    cursor: pointer;
+    font-weight: 600;
+    color: #1F2937;
+    transition: background 0.2s;
+}
+
+.section-header:hover {
+    background: linear-gradient(135deg, #F1F5F9 0%, #E5E7EB 100%);
+}
+
+.toggle-icon {
+    font-size: 0.8rem;
+    color: #6B7280;
+    transition: transform 0.3s;
+}
+
+.section-content {
+    padding: 20px;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+.section-content.collapsed {
+    display: none;
+}
+
+/* مجموعة الحقول */
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+@media (max-width: 600px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group:last-child {
+    margin-bottom: 0;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #374151;
+    font-size: 0.9rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #E5E7EB;
+    border-radius: 12px;
+    font-size: 1rem;
+    transition: all 0.2s;
+    font-family: inherit;
+    background: white;
+}
+
+.form-control:focus {
+    border-color: #3B82F6;
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+.form-control::placeholder {
+    color: #9CA3AF;
+}
+
+textarea.form-control {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.form-text {
+    font-size: 0.8rem;
+    color: #6B7280;
+    margin-top: 6px;
+}
+
+/* أزرار الحفظ الثابتة */
+.settings-actions-fixed {
+    position: fixed;
+    bottom: 70px;
+    /* فوق Bottom Nav */
+    left: 0;
+    right: 0;
+    padding: 16px 20px;
+    background: linear-gradient(to top, white 80%, transparent);
+    z-index: 100;
+}
+
+@media (min-width: 768px) {
+    .settings-actions-fixed {
+        bottom: 0;
+        left: 280px;
+        /* مساحة الـ Sidebar */
+        background: white;
+        border-top: 1px solid #E5E7EB;
+    }
+}
+
+.btn-save-profile {
+    background: linear-gradient(135deg, #10B981, #059669);
+    color: white;
+    border: none;
+    padding: 14px 24px;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.btn-save-profile:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.btn-save-profile:disabled {
+    background: #9CA3AF;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* رابط الإحالة */
+.referral-section {
+    background: linear-gradient(135deg, #EEF2FF, #E0E7FF);
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    margin-top: 20px;
+}
+
+.referral-link-container {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.referral-link-container input {
+    flex: 1;
+    background: white;
+    border: 2px solid #C7D2FE;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    color: #4338CA;
+}
+
+.btn-copy {
+    background: #4F46E5;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.btn-copy:hover {
+    background: #4338CA;
+}
+
+/* تحسينات للموبايل */
+@media (max-width: 768px) {
+    .profile-header-card {
+        padding: 25px 15px;
+        border-radius: 16px;
+    }
+
+    .profile-avatar {
+        width: 100px;
+        height: 100px;
+    }
+
+    .avatar-placeholder {
+        font-size: 2.5rem;
+    }
+
+    .section-header {
+        padding: 14px 16px;
+        font-size: 0.95rem;
+    }
+
+    .section-content {
+        padding: 16px;
+    }
+
+    .settings-section-card {
+        border-radius: 12px;
+    }
+}

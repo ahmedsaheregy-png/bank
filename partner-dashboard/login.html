@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - شريك النجاح</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../shared/css/variables.css">
+    <link rel="stylesheet" href="../shared/css/logo.css">
+    <link rel="stylesheet" href="../member-dashboard/css/auth.css">
+    <style>
+        .auth-card {
+            border-top: 4px solid #8b5cf6;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div id="logoContainer" class="logo-section"></div>
+
+            <h1>🤝 تسجيل دخول شريك النجاح</h1>
+            <p class="subtitle">مرحباً بعودتك!</p>
+
+            <form id="loginForm" class="auth-form">
+                <div class="form-group">
+                    <label>كود الشريك أو البريد الإلكتروني</label>
+                    <input type="text" id="identifier" required class="form-control"
+                        placeholder="أدخل كود الشريك أو البريد">
+                </div>
+
+                <div class="form-group">
+                    <label>كلمة المرور</label>
+                    <input type="password" id="password" required class="form-control" placeholder="أدخل كلمة المرور">
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">دخول</button>
+
+                <div class="auth-footer">
+                    <p><a href="forgot-password.html" class="forgot-link">نسيت كلمة المرور؟</a></p>
+                    <p>ليس لديك حساب؟ <a href="register.html">سجل كشريك نجاح</a></p>
+                    <p style="margin-top: 1rem;"><a href="../index.html">← العودة للرئيسية</a></p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../shared/config/supabase.js"></script>
+    <script src="../shared/components/logo.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.SAWYAN && window.SAWYAN.Logo) {
+                document.getElementById('logoContainer').innerHTML = window.SAWYAN.Logo.full();
+            }
+
+            document.getElementById('loginForm').addEventListener('submit', async function (e) {
+                e.preventDefault();
+
+                const identifier = document.getElementById('identifier').value;
+                const password = document.getElementById('password').value;
+
+                try {
+                    let query = window.SAWYAN.supabase
+                        .from('partners')
+                        .select('*');
+
+                    if (identifier.includes('@')) {
+                        query = query.eq('email', identifier);
+                    } else {
+                        query = query.eq('partner_code', identifier);
+                    }
+
+                    const { data: partner, error: partnerError } = await query.single();
+
+                    if (partnerError || !partner) {
+                        alert('كود الشريك أو البريد غير صحيح');
+                        return;
+                    }
+
+                    if (partner.password_hash !== password) {
+                        alert('كلمة المرور غير صحيحة');
+                        return;
+                    }
+
+                    if (!partner.is_active) {
+                        alert('الحساب غير مفعل. تواصل مع الدعم.');
+                        return;
+                    }
+
+                    localStorage.setItem('sawyan_partner', JSON.stringify(partner));
+                    localStorage.setItem('sawyan_partner_id', partner.id);
+
+                    window.location.href = 'dashboard.html';
+                } catch (error) {
+                    console.error('Login error:', error);
+                    alert('خطأ: ' + error.message);
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

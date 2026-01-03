@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم الأدمن - SAWYAN BANK</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../shared/css/variables.css">
+    <link rel="stylesheet" href="../member-dashboard/css/dashboard.css">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div id="logoContainer"></div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-page="home">
+                    <span class="icon">🏠</span>
+                    <span>الرئيسية</span>
+                </a>
+                <a href="#" class="nav-item" data-page="members">
+                    <span class="icon">👥</span>
+                    <span>الأعضاء</span>
+                </a>
+                <a href="#" class="nav-item" data-page="merchants">
+                    <span class="icon">🏪</span>
+                    <span>التجار</span>
+                </a>
+                <a href="#" class="nav-item" data-page="transactions">
+                    <span class="icon">💳</span>
+                    <span>العمليات</span>
+                </a>
+                <a href="#" class="nav-item" data-page="commissions">
+                    <span class="icon">💰</span>
+                    <span>العمولات</span>
+                </a>
+                <a href="#" class="nav-item" data-page="disputes">
+                    <span class="icon">⚠️</span>
+                    <span>الشكاوى</span>
+                </a>
+                <a href="#" class="nav-item" data-page="support">
+                    <span class="icon">🎫</span>
+                    <span>الدعم الفني</span>
+                </a>
+                <a href="#" class="nav-item" data-page="reports">
+                    <span class="icon">📊</span>
+                    <span>التقارير</span>
+                </a>
+                <a href="#" class="nav-item" data-page="settings">
+                    <span class="icon">⚙️</span>
+                    <span>الإعدادات</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="btn btn-outline btn-block" onclick="logout()">تسجيل الخروج</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="dashboard-header">
+                <h1 id="pageTitle">لوحة تحكم الأدمن</h1>
+                <div class="user-info">
+                    <span id="adminName">مدير النظام</span>
+                    <span class="member-code">Super Admin</span>
+                </div>
+            </header>
+
+            <div class="content-area" id="contentArea">
+                <!-- Home Page -->
+                <div id="homePage" class="page active">
+                    <div class="stats-grid">
+                        <div class="stat-card stat-primary">
+                            <div class="stat-icon">👥</div>
+                            <div class="stat-info">
+                                <div class="stat-label">إجمالي الأعضاء</div>
+                                <div class="stat-value" id="totalMembers">0</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card stat-success">
+                            <div class="stat-icon">🏪</div>
+                            <div class="stat-info">
+                                <div class="stat-label">إجمالي التجار</div>
+                                <div class="stat-value" id="totalMerchants">0</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card stat-info">
+                            <div class="stat-icon">💳</div>
+                            <div class="stat-info">
+                                <div class="stat-label">إجمالي العمليات</div>
+                                <div class="stat-value" id="totalTransactions">0</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card stat-warning">
+                            <div class="stat-icon">💰</div>
+                            <div class="stat-info">
+                                <div class="stat-label">إجمالي العمولات</div>
+                                <div class="stat-value" id="totalCommissions">0 ج.م</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="charts-grid">
+                        <div class="chart-card">
+                            <h3>العمليات اليومية (آخر 7 أيام)</h3>
+                            <div id="dailyChart" class="chart-placeholder">
+                                <p>الرسم البياني سيظهر هنا</p>
+                            </div>
+                        </div>
+
+                        <div class="chart-card">
+                            <h3>التوزيع حسب الفئات</h3>
+                            <div id="categoryChart" class="chart-placeholder">
+                                <p>الرسم البياني سيظهر هنا</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="recent-activity">
+                        <h2>النشاط الأخير</h2>
+                        <div id="activityList" class="activity-list"></div>
+                    </div>
+                </div>
+
+                <!-- Members Page -->
+                <div id="membersPage" class="page">
+                    <div class="page-header">
+                        <h2>إدارة الأعضاء</h2>
+                        <button class="btn btn-primary" onclick="exportMembers()">تصدير Excel</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="membersTable">
+                            <thead>
+                                <tr>
+                                    <th>كود العضوية</th>
+                                    <th>الاسم</th>
+                                    <th>البريد الإلكتروني</th>
+                                    <th>الموبايل</th>
+                                    <th>تاريخ التسجيل</th>
+                                    <th>الحالة</th>
+                                    <th>إجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="membersTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Merchants Page -->
+                <div id="merchantsPage" class="page">
+                    <div class="page-header">
+                        <h2>إدارة التجار</h2>
+                        <button class="btn btn-primary" onclick="exportMerchants()">تصدير Excel</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="merchantsTable">
+                            <thead>
+                                <tr>
+                                    <th>كود التاجر</th>
+                                    <th>اسم النشاط</th>
+                                    <th>النوع</th>
+                                    <th>الفئة</th>
+                                    <th>النسبة %</th>
+                                    <th>الحالة</th>
+                                    <th>إجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="merchantsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Transactions Page -->
+                <div id="transactionsPage" class="page">
+                    <div class="page-header">
+                        <h2>جميع العمليات</h2>
+                        <button class="btn btn-primary" onclick="exportTransactions()">تصدير Excel</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="transactionsTable">
+                            <thead>
+                                <tr>
+                                    <th>كود العملية</th>
+                                    <th>العضو</th>
+                                    <th>التاجر</th>
+                                    <th>المبلغ</th>
+                                    <th>العمولة</th>
+                                    <th>التاريخ</th>
+                                    <th>الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Other pages -->
+                <div id="commissionsPage" class="page"></div>
+                <div id="disputesPage" class="page"></div>
+                <div id="supportPage" class="page"></div>
+                <div id="reportsPage" class="page"></div>
+                <div id="settingsPage" class="page"></div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../shared/config/supabase.js"></script>
+    <script src="../shared/components/logo.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+
+</html>

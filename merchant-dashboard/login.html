@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - تاجر</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../shared/css/variables.css">
+    <link rel="stylesheet" href="../shared/css/logo.css">
+    <link rel="stylesheet" href="css/auth.css">
+</head>
+
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div id="logoContainer" class="logo-section"></div>
+
+            <h1>تسجيل الدخول - تاجر</h1>
+            <p class="subtitle">مرحباً بعودتك!</p>
+
+            <form id="loginForm" class="auth-form">
+                <div class="form-group">
+                    <label>كود التاجر أو اسم النشاط</label>
+                    <input type="text" id="identifier" required class="form-control"
+                        placeholder="مثال: M001 أو اسم النشاط">
+                </div>
+
+                <div class="form-group">
+                    <label>كلمة المرور</label>
+                    <input type="password" id="password" required class="form-control" value="123456">
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">دخول</button>
+
+                <div class="auth-footer">
+                    <p><a href="forgot-password.html" class="forgot-link">نسيت كلمة المرور؟</a></p>
+                    <p>ليس لديك حساب؟ <a href="register.html">سجل الآن</a></p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../shared/config/supabase.js"></script>
+    <script src="../shared/components/logo.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.SAWYAN && window.SAWYAN.Logo) {
+                document.getElementById('logoContainer').innerHTML = window.SAWYAN.Logo.full();
+            }
+
+            document.getElementById('loginForm').addEventListener('submit', async function (e) {
+                e.preventDefault();
+
+                const identifier = document.getElementById('identifier').value;
+                const password = document.getElementById('password').value;
+
+                try {
+                    // البحث أولاً بكود التاجر
+                    let { data: merchant, error: merchantError } = await window.SAWYAN.supabase
+                        .from('merchants')
+                        .select('*')
+                        .eq('merchant_code', identifier.toUpperCase())
+                        .single();
+
+                    // إذا لم يُوجد، نبحث باسم النشاط
+                    if (!merchant) {
+                        const result = await window.SAWYAN.supabase
+                            .from('merchants')
+                            .select('*')
+                            .ilike('business_name', `%${identifier}%`)
+                            .limit(1)
+                            .single();
+
+                        merchant = result.data;
+                        merchantError = result.error;
+                    }
+
+                    if (!merchant) {
+                        alert('لم يتم العثور على حساب تاجر بهذا الكود أو الاسم.\n\nتأكد من:\n1. كتابة الكود بشكل صحيح (مثل M001)\n2. أو اسم النشاط كما هو مسجل');
+                        return;
+                    }
+
+                    // التحقق من كلمة المرور
+                    if (merchant.password_hash !== password) {
+                        alert('كلمة المرور غير صحيحة');
+                        return;
+                    }
+
+                    // التحقق من حالة الحساب
+                    if (!merchant.is_active) {
+                        alert('الحساب غير مفعل. تواصل مع الدعم.');
+                        return;
+                    }
+
+                    // حفظ بيانات التاجر في localStorage
+                    localStorage.setItem('sawyan_merchant', JSON.stringify(merchant));
+                    localStorage.setItem('sawyan_merchant_id', merchant.id);
+
+                    // الانتقال للوحة التحكم
+                    window.location.href = 'dashboard.html';
+                } catch (error) {
+                    console.error('Login error:', error);
+                    alert('خطأ: ' + error.message);
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل عضو جديد - SAWYAN BANK</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../shared/css/variables.css">
+    <link rel="stylesheet" href="../shared/css/logo.css">
+    <link rel="stylesheet" href="css/auth.css">
+    <style>
+        /* تصميم محسّن لمحدد الدولة ومفتاح الهاتف */
+        .phone-input-wrapper {
+            display: flex;
+            gap: 10px;
+            align-items: stretch;
+        }
+
+        .country-code-selector {
+            position: relative;
+            min-width: 110px;
+            flex-shrink: 0;
+        }
+
+        .country-code-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 15px;
+            background: var(--color-white, #fff);
+            border: 2px solid var(--color-gray-200, #E5E7EB);
+            border-radius: var(--border-radius-lg, 12px);
+            cursor: pointer;
+            height: 100%;
+            font-size: 16px;
+            color: var(--color-text, #111827);
+            transition: all 0.3s ease;
+        }
+
+        .country-code-btn:hover {
+            border-color: var(--color-primary, #10B981);
+        }
+
+        .country-code-btn .flag {
+            font-size: 22px;
+        }
+
+        .country-code-btn .dial-code {
+            font-weight: 600;
+            direction: ltr;
+            color: var(--color-text, #111827);
+        }
+
+        .country-code-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            min-width: 280px;
+            background: var(--color-white, #fff);
+            border: 2px solid var(--color-gray-200, #E5E7EB);
+            border-radius: var(--border-radius-lg, 12px);
+            max-height: 280px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            margin-top: 4px;
+        }
+
+        .country-code-dropdown.show {
+            display: block;
+        }
+
+        .country-code-dropdown .search-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: none;
+            border-bottom: 1px solid var(--color-gray-200, #E5E7EB);
+            background: var(--color-gray-50, #F9FAFB);
+            color: var(--color-text, #111827);
+            font-size: 14px;
+            font-family: var(--font-family-arabic);
+        }
+
+        .country-code-dropdown .search-input::placeholder {
+            color: var(--color-gray-400, #9CA3AF);
+        }
+
+        .country-code-dropdown .search-input:focus {
+            outline: none;
+            background: var(--color-white, #fff);
+        }
+
+        .country-code-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .country-code-option:hover {
+            background: var(--color-green-50, #E8FFF8);
+        }
+
+        .country-code-option .flag {
+            font-size: 20px;
+        }
+
+        .country-code-option .dial-code {
+            font-weight: 600;
+            color: var(--color-primary, #10B981);
+            direction: ltr;
+            min-width: 55px;
+        }
+
+        .country-code-option .country-name {
+            font-size: 13px;
+            color: var(--color-gray-500, #6B7280);
+        }
+
+        .phone-input-wrapper .form-control {
+            flex: 1;
+        }
+
+        /* تصميم محسّن للقوائم المنسدلة */
+        .country-select {
+            position: relative;
+        }
+
+        .country-select select {
+            appearance: none;
+            -webkit-appearance: none;
+            padding-right: 40px !important;
+        }
+
+        .country-select::after {
+            content: '▼';
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary, #888);
+            pointer-events: none;
+            font-size: 12px;
+        }
+
+        /* تصميم الأقسام الإجبارية */
+        .required-fields-section {
+            background: linear-gradient(135deg, var(--color-green-50, #E8FFF8), var(--color-blue-50, #EFF6FF));
+            border: 2px solid var(--color-primary, #10B981);
+            border-radius: var(--border-radius-xl, 16px);
+            padding: 24px;
+            margin-bottom: 25px;
+        }
+
+        .required-fields-section h3 {
+            color: var(--color-primary-dark, #047857);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: var(--font-size-lg, 18px);
+        }
+
+        .required-fields-section h3::before {
+            content: '✦';
+            color: var(--color-primary, #10B981);
+        }
+
+        /* عرض كود العضوية */
+        .member-code-display {
+            display: none;
+            background: linear-gradient(135deg, var(--color-green-50, #E8FFF8), var(--color-blue-50, #EFF6FF));
+            border: 2px solid var(--color-primary, #10B981);
+            border-radius: var(--border-radius-xl, 16px);
+            padding: 24px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .member-code-display.show {
+            display: block;
+        }
+
+        .member-code-display .code-label {
+            font-size: 14px;
+            color: var(--color-text-secondary, #6B7280);
+            margin-bottom: 8px;
+        }
+
+        .member-code-display .code-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--color-primary, #10B981);
+            font-family: 'Poppins', sans-serif;
+        }
+
+        /* Loading state */
+        .btn-loading {
+            position: relative;
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        .btn-loading::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        @keyframes spin {
+            to {
+                transform: translateY(-50%) rotate(360deg);
+            }
+        }
+
+        /* تحسين قوائم الدول */
+        .country-select select option {
+            padding: 10px;
+        }
+
+        /* نجمة الحقول الإجبارية */
+        .required-star {
+            color: #EF4444;
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-right: 3px;
+        }
+
+        /* إصلاح محاذاة حقول الجنسية ودولة الإقامة */
+        .form-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            width: 100%;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .form-row .form-group.country-select {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .form-row .form-group.country-select select {
+            width: 100%;
+        }
+
+        /* ========== أنماط الوضع الداكن ========== */
+        [data-theme="dark"] .auth-card {
+            background: var(--color-gray-800, #1F2937);
+            color: var(--color-gray-50, #F9FAFB);
+        }
+
+        [data-theme="dark"] h1,
+        [data-theme="dark"] .form-group label {
+            color: var(--color-gray-50, #F9FAFB);
+        }
+
+        [data-theme="dark"] .subtitle {
+            color: var(--color-gray-400, #9CA3AF);
+        }
+
+        [data-theme="dark"] .form-control {
+            background: var(--color-gray-700, #374151);
+            border-color: var(--color-gray-600, #4B5563);
+            color: var(--color-gray-50, #F9FAFB);
+        }
+
+        [data-theme="dark"] .form-control::placeholder {
+            color: var(--color-gray-400, #9CA3AF);
+        }
+
+        [data-theme="dark"] .form-control:focus {
+            border-color: var(--color-primary, #10B981);
+        }
+
+        [data-theme="dark"] .country-code-btn {
+            background: var(--color-gray-700, #374151);
+            border-color: var(--color-gray-600, #4B5563);
+            color: var(--color-gray-50, #F9FAFB);
+        }
+
+        [data-theme="dark"] .country-code-btn .dial-code {
+            color: var(--color-gray-50, #F9FAFB);
+        }
+
+        [data-theme="dark"] .country-code-dropdown {
+            background: var(--color-gray-800, #1F2937);
+            border-color: var(--color-gray-600, #4B5563);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        [data-theme="dark"] .country-code-dropdown .search-input {
+            background: var(--color-gray-700, #374151);
+            border-color: var(--color-gray-600, #4B5563);
+            color: var(--color-gray-50, #F9FAFB);
+        }
+
+        [data-theme="dark"] .country-code-dropdown .search-input:focus {
+            background: var(--color-gray-700, #374151);
+        }
+
+        [data-theme="dark"] .country-code-option:hover {
+            background: rgba(16, 185, 129, 0.15);
+        }
+
+        [data-theme="dark"] .country-code-option .country-name {
+            color: var(--color-gray-400, #9CA3AF);
+        }
+
+        [data-theme="dark"] .required-fields-section {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(59, 130, 246, 0.1));
+            border-color: var(--color-primary, #10B981);
+        }
+
+        [data-theme="dark"] .required-fields-section h3 {
+            color: var(--color-primary-light, #5DFDCB);
+        }
+
+        [data-theme="dark"] .optional-section {
+            background: var(--color-gray-700, #374151);
+            border-color: var(--color-gray-600, #4B5563);
+        }
+
+        [data-theme="dark"] .optional-badge {
+            background: var(--color-gray-600, #4B5563);
+            color: var(--color-gray-300, #D1D5DB);
+            border-color: var(--color-gray-500, #6B7280);
+        }
+
+        [data-theme="dark"] .form-note {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: var(--color-blue-500, #3B82F6);
+        }
+
+        [data-theme="dark"] .form-note p {
+            color: var(--color-gray-300, #D1D5DB);
+        }
+
+        [data-theme="dark"] .form-note code {
+            background: var(--color-gray-700, #374151);
+            color: var(--color-primary-light, #5DFDCB);
+        }
+
+        [data-theme="dark"] .auth-footer {
+            border-color: var(--color-gray-600, #4B5563);
+        }
+
+        [data-theme="dark"] .auth-footer p {
+            color: var(--color-gray-400, #9CA3AF);
+        }
+
+        [data-theme="dark"] .member-code-display {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(59, 130, 246, 0.15));
+        }
+
+        [data-theme="dark"] .member-code-display .code-label {
+            color: var(--color-gray-400, #9CA3AF);
+        }
+
+        /* ========== أنماط عرض اسم الراعي ========== */
+        .sponsor-name-display {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            background: var(--color-gray-50, #F9FAFB);
+            border: 2px solid var(--color-gray-200, #E5E7EB);
+            border-radius: var(--border-radius-lg, 12px);
+            min-height: 52px;
+            transition: all 0.3s ease;
+        }
+
+        .sponsor-name-display.loading {
+            background: linear-gradient(90deg, var(--color-gray-100) 25%, var(--color-gray-50) 50%, var(--color-gray-100) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -200% 0;
+            }
+
+            100% {
+                background-position: 200% 0;
+            }
+        }
+
+        .sponsor-name-display.valid {
+            background: var(--color-green-50, #E8FFF8);
+            border-color: var(--color-primary, #10B981);
+        }
+
+        .sponsor-name-display.invalid {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: var(--color-error, #EF4444);
+        }
+
+        .sponsor-name-text {
+            font-size: 15px;
+            color: var(--color-text-secondary, #6B7280);
+            transition: color 0.3s ease;
+        }
+
+        .sponsor-name-display.valid .sponsor-name-text {
+            color: var(--color-primary-dark, #047857);
+            font-weight: 600;
+        }
+
+        .sponsor-name-display.invalid .sponsor-name-text {
+            color: var(--color-error, #EF4444);
+        }
+
+        .sponsor-status-icon {
+            font-size: 20px;
+            min-width: 24px;
+            text-align: center;
+        }
+
+        /* Dark mode for sponsor name */
+        [data-theme="dark"] .sponsor-name-display {
+            background: var(--color-gray-700, #374151);
+            border-color: var(--color-gray-600, #4B5563);
+        }
+
+        [data-theme="dark"] .sponsor-name-display.valid {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: var(--color-primary, #10B981);
+        }
+
+        [data-theme="dark"] .sponsor-name-display.invalid {
+            background: rgba(239, 68, 68, 0.15);
+        }
+
+        [data-theme="dark"] .sponsor-name-text {
+            color: var(--color-gray-400, #9CA3AF);
+        }
+
+        [data-theme="dark"] .sponsor-name-display.valid .sponsor-name-text {
+            color: var(--color-primary-light, #5DFDCB);
+        }
+
+        @media (max-width: 640px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div id="logoContainer" class="logo-section"></div>
+
+            <h1>تسجيل عضو جديد</h1>
+            <p class="subtitle">انضم إلى SAWYAN BANK</p>
+
+            <!-- عرض كود العضوية بعد التسجيل الناجح -->
+            <div id="memberCodeDisplay" class="member-code-display">
+                <div class="code-label">كود عضويتك</div>
+                <div id="generatedCode" class="code-value">---</div>
+            </div>
+
+            <form id="registerForm" class="auth-form">
+                <!-- الحقول الإجبارية أولاً -->
+                <div class="required-fields-section">
+                    <h3>البيانات الإجبارية</h3>
+
+                    <div class="form-group">
+                        <label>الاسم الكامل <span class="required-star">*</span></label>
+                        <input type="text" id="fullName" required class="form-control" placeholder="أدخل الاسم الكامل">
+                    </div>
+
+                    <div class="form-group">
+                        <label>كود الأب لاين (الراعي) <span class="required-star">*</span></label>
+                        <input type="text" id="sponsorCode" required class="form-control"
+                            placeholder="أدخل كود الراعي (للتسجيل تحت المؤسس استخدم: 1)">
+                    </div>
+
+                    <div class="form-group sponsor-name-group">
+                        <label>اسم الراعي</label>
+                        <div class="sponsor-name-display" id="sponsorNameDisplay">
+                            <span class="sponsor-name-text" id="sponsorNameText">سيظهر اسم الراعي هنا...</span>
+                            <span class="sponsor-status-icon" id="sponsorStatusIcon"></span>
+                        </div>
+                        <input type="hidden" id="sponsorId" value="">
+                    </div>
+
+                </div>
+
+                <!-- المعلومات الاختيارية -->
+                <div class="form-section optional-section">
+                    <h3>معلومات إضافية <span class="optional-badge">(اختياري - يمكن إكماله لاحقاً)</span></h3>
+
+                    <div class="form-group">
+                        <label>رقم الهاتف</label>
+                        <div class="phone-input-wrapper">
+                            <div class="country-code-selector">
+                                <button type="button" id="countryCodeBtn" class="country-code-btn">
+                                    <span class="flag">🇪🇬</span>
+                                    <span class="dial-code">+20</span>
+                                </button>
+                                <div id="countryCodeDropdown" class="country-code-dropdown">
+                                    <input type="text" class="search-input" placeholder="بحث..." id="countryCodeSearch">
+                                    <div id="countryCodeList"></div>
+                                </div>
+                            </div>
+                            <input type="tel" id="phone" class="form-control" placeholder="123 456 7890">
+                            <input type="hidden" id="phoneCountryCode" value="EG">
+                            <input type="hidden" id="phoneDialCode" value="+20">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>البريد الإلكتروني</label>
+                        <input type="email" id="email" class="form-control" placeholder="example@email.com">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>تاريخ الميلاد</label>
+                            <input type="date" id="dateOfBirth" class="form-control">
+                        </div>
+
+                        <div class="form-group">
+                            <label>الجنس</label>
+                            <select id="gender" class="form-control">
+                                <option value="">اختر...</option>
+                                <option value="male">ذكر</option>
+                                <option value="female">أنثى</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>الحالة الاجتماعية</label>
+                        <select id="maritalStatus" class="form-control">
+                            <option value="">اختر...</option>
+                            <option value="single">أعزب</option>
+                            <option value="married">متزوج</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- الهوية والعنوان -->
+                <div class="form-section optional-section">
+                    <h3>الهوية والعنوان <span class="optional-badge">(اختياري - يمكن إكماله لاحقاً)</span></h3>
+
+                    <div class="form-group">
+                        <label>رقم الهوية الوطنية</label>
+                        <input type="text" id="nationalId" class="form-control" placeholder="رقم الهوية أو جواز السفر">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group country-select">
+                            <label>الجنسية</label>
+                            <select id="nationality" class="form-control">
+                                <option value="">اختر الجنسية...</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group country-select">
+                            <label>دولة الإقامة</label>
+                            <select id="countryOfResidence" class="form-control">
+                                <option value="">اختر دولة الإقامة...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>المدينة</label>
+                        <input type="text" id="city" class="form-control" placeholder="مثال: القاهرة">
+                    </div>
+
+                    <div class="form-group">
+                        <label>العنوان التفصيلي</label>
+                        <textarea id="address" class="form-control" rows="3"
+                            placeholder="الشارع، الحي، المنطقة..."></textarea>
+                    </div>
+                </div>
+
+                <div class="form-note">
+                    <p><strong>ملاحظة:</strong> كلمة المرور الافتراضية: <code>123456</code></p>
+                    <p class="info-text">الحقول المميزة بعلامة (*) إجبارية للتسجيل. يمكنك إكمال باقي البيانات لاحقاً من
+                        لوحة التحكم.</p>
+                </div>
+
+                <button type="submit" id="submitBtn" class="btn btn-primary btn-block">تسجيل</button>
+
+                <div class="auth-footer">
+                    <p>لديك حساب؟ <a href="login.html">تسجيل الدخول</a></p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../shared/config/supabase.js"></script>
+    <script src="../shared/components/logo.js"></script>
+    <script src="../shared/data/countries.js"></script>
+    <script src="js/register.js"></script>
+</body>
+
+</html>

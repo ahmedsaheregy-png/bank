@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل دخول الأدمن - SAWYAN BANK</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../shared/css/variables.css">
+    <link rel="stylesheet" href="../shared/css/logo.css">
+    <link rel="stylesheet" href="../member-dashboard/css/auth.css">
+    <style>
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--color-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <div class="auth-container">
+        <div class="auth-card">
+            <div id="logoContainer" class="logo-section"></div>
+
+            <h1>تسجيل دخول الأدمن</h1>
+            <p class="subtitle">لوحة التحكم الإدارية</p>
+
+            <div class="form-note" style="margin-bottom: 20px;">
+                <p><strong>📋 البيانات الافتراضية:</strong></p>
+                <p>Email: <code>admin@sawyan.com</code></p>
+                <p>Password: <code>123456</code></p>
+            </div>
+
+            <form id="loginForm" class="auth-form">
+                <div class="form-group">
+                    <label>البريد الإلكتروني</label>
+                    <input type="email" id="email" required class="form-control" value="admin@sawyan.com"
+                        placeholder="admin@sawyan.com">
+                </div>
+
+                <div class="form-group">
+                    <label>كلمة المرور</label>
+                    <input type="password" id="password" required class="form-control" value="123456"
+                        placeholder="123456">
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">دخول</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../shared/config/supabase.js"></script>
+    <script src="../shared/components/logo.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.SAWYAN && window.SAWYAN.Logo) {
+                document.getElementById('logoContainer').innerHTML = window.SAWYAN.Logo.full();
+            }
+
+            const loadingOverlay = document.getElementById('loadingOverlay');
+
+            document.getElementById('loginForm').addEventListener('submit', async function (e) {
+                e.preventDefault();
+
+                const email = document.getElementById('email').value.trim();
+                const password = document.getElementById('password').value;
+
+                // إظهار loading
+                loadingOverlay.classList.add('active');
+
+                try {
+                    // البحث عن الأدمن في جدول admins
+                    const { data: admin, error: queryError } = await window.SAWYAN.supabase
+                        .from('admins')
+                        .select('*')
+                        .eq('email', email)
+                        .single();
+
+                    if (queryError || !admin) {
+                        throw new Error('البريد الإلكتروني غير موجود');
+                    }
+
+                    // التحقق من كلمة المرور
+                    if (admin.password_hash !== password) {
+                        throw new Error('كلمة المرور غير صحيحة');
+                    }
+
+                    // التحقق من حالة الحساب
+                    if (!admin.is_active) {
+                        throw new Error('الحساب غير مفعل');
+                    }
+
+                    // حفظ بيانات الأدمن في localStorage
+                    localStorage.setItem('sawyan_admin', JSON.stringify(admin));
+                    localStorage.setItem('sawyan_user_type', 'admin');
+
+                    // إخفاء loading
+                    loadingOverlay.classList.remove('active');
+
+                    // نجح الدخول
+                    window.location.href = 'dashboard.html';
+
+                } catch (error) {
+                    // إخفاء loading
+                    loadingOverlay.classList.remove('active');
+
+                    console.error('Login Error:', error);
+                    alert('❌ خطأ في تسجيل الدخول:\n\n' + error.message + '\n\nتأكد من:\n✓ تنفيذ schema.sql في Supabase');
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
