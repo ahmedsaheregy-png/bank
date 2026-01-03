@@ -396,7 +396,7 @@ function openMerchantModal(merchantId) {
             ${reviewsHTML}
             
             <div class="merchant-modal-actions" style="margin-top: var(--spacing-xl);">
-                <a href="../../member-dashboard/register.html" class="btn btn-primary">
+                <a href="../member-dashboard/register.html" class="btn btn-primary">
                     سجّل للحصول على الكاشباك
                 </a>
                 <button class="btn btn-secondary" onclick="closeMerchantModal()">

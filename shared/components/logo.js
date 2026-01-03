@@ -1,7 +1,7 @@
 // SAWYAN BANK - Logo
 const SawyanLogo = {
     full: () => `
-        <a href="../preview/index.html" class="logo-link">
+        <a href="../index.html" class="logo-link">
             <div class="logo-text">
                 <span class="logo-main">SAWYAN BANK</span>
             </div>
@@ -9,7 +9,7 @@ const SawyanLogo = {
     `,
 
     icon: () => `
-        <a href="../preview/index.html" class="logo-link">
+        <a href="../index.html" class="logo-link">
             <div class="logo-text">
                 <span class="logo-main">SAWYAN BANK</span>
             </div>
