@@ -1255,10 +1255,21 @@ function closeTransactionModal() {
 
 // دالة اختيار طريقة الدفع
 function selectPaymentMethod(method) {
-    const invoiceGroup = document.querySelector('#transInvoiceFile').closest('.form-group');
+    console.log('🔄 selectPaymentMethod triggered with:', method);
+
+    // محاولة العثور على العناصر بأمان
+    const invoiceInput = document.getElementById('transInvoiceFile');
+    const invoiceGroup = invoiceInput ? invoiceInput.closest('.form-group') : null;
     const providerSection = document.getElementById('paymentProviderSection');
     const alertText = document.getElementById('paymentAlertText');
     const submitBtn = document.getElementById('submitTransactionBtn');
+
+    console.log(' Debug Elements:', {
+        hasInvoiceGroup: !!invoiceGroup,
+        hasProviderSection: !!providerSection,
+        hasAlert: !!alertText,
+        hasBtn: !!submitBtn
+    });
 
     // إزالة التحديد السابق
     document.querySelectorAll('.payment-option').forEach(el => el.classList.remove('selected'));
@@ -1267,9 +1278,12 @@ function selectPaymentMethod(method) {
     if (selectedInput) {
         selectedInput.closest('.payment-option').classList.add('selected');
         selectedInput.checked = true;
+    } else {
+        console.warn('⚠️ Could not find radio input for:', method);
     }
 
     if (method === 'outside') {
+        console.log('👉 Applying OUTSIDE changes');
         // دفع خارج التطبيق
         if (invoiceGroup) invoiceGroup.style.display = 'block';
         if (providerSection) providerSection.style.display = 'none';
@@ -1283,6 +1297,7 @@ function selectPaymentMethod(method) {
         }
     }
     else if (method === 'provider') {
+        console.log('👉 Applying PROVIDER changes');
         // دفع عبر التطبيق
         if (invoiceGroup) invoiceGroup.style.display = 'none';
         if (providerSection) providerSection.style.display = 'block';
