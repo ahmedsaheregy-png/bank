@@ -1255,6 +1255,7 @@ function closeTransactionModal() {
 
 // دالة اختيار طريقة الدفع
 function selectPaymentMethod(method) {
+    // alert('Debug: Running new code v1.2'); // For verification
     console.log('🔄 selectPaymentMethod triggered with:', method);
 
     // محاولة العثور على العناصر بأمان
