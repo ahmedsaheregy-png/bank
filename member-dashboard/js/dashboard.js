@@ -1506,6 +1506,24 @@ async function submitMemberTransaction(e) {
             return;
         }
 
+        const type = selectedProviderRadio.getAttribute('data-type');
+
+        // التحقق من الحقول الديناميكية
+        const container = document.getElementById('paymentDetailsInputs');
+        if (type === 'card') {
+            const cardNum = container.querySelector('input[placeholder*="0000"]')?.value;
+            if (!cardNum || cardNum.length < 10) {
+                alert('الرجاء إدخال رقم البطاقة بشكل صحيح');
+                return;
+            }
+        } else if (type === 'wallet') {
+            const phone = container.querySelector('input[type="tel"]')?.value;
+            if (!phone || phone.length < 10) {
+                alert('الرجاء إدخال رقم المحفظة بشكل صحيح');
+                return;
+            }
+        }
+
         providerData = {
             provider_id: selectedProviderRadio.value,
             country: country,
