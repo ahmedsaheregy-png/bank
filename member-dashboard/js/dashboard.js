@@ -1254,7 +1254,7 @@ function closeTransactionModal() {
 }
 
 // دالة اختيار طريقة الدفع
-function selectPaymentMethod(method) {
+window.selectPaymentMethod = function (method) {
     alert('Debug: Running new code v1.2 - Method: ' + method); // For verification
     console.log('🔄 selectPaymentMethod triggered with:', method);
 
@@ -2884,3 +2884,6 @@ window.addEventListener('sawyan:payment:ready', () => {
     console.log('🎉 Payment system ready in member dashboard');
     // يمكن تفعيل ميزات إضافية هنا
 });
+
+// Debug: Confirm file load
+alert('Dashboard.js v1.2 Loaded Successfully!');
