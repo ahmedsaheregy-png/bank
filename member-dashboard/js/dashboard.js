@@ -1498,7 +1498,7 @@ async function submitMemberTransaction(e) {
     let providerData = null;
 
     if (selectedPaymentMethod === 'provider') {
-        const selectedProviderRadio = document.querySelector('input[name="paymentProvider"]:checked');
+        const selectedProviderRadio = document.querySelector('input[name="selectedProvider"]:checked');
         const country = document.getElementById('providerCountry').value;
 
         if (!selectedProviderRadio) {
@@ -1508,7 +1508,8 @@ async function submitMemberTransaction(e) {
 
         providerData = {
             provider_id: selectedProviderRadio.value,
-            country: country
+            country: country,
+            type: type
         };
 
         // في السيناريو الحقيقي، هنا يتم توجيه المستخدم لصفحة الدفع
