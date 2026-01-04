@@ -1403,9 +1403,11 @@ const paymentProviders = {
 function loadPaymentProviders() {
     const country = document.getElementById('providerCountry').value;
     const providersList = document.getElementById('paymentProvidersList');
+    const detailsContainer = document.getElementById('paymentDetailsInputs');
 
     if (!country) {
         providersList.style.display = 'none';
+        detailsContainer.style.display = 'none';
         return;
     }
 
@@ -1418,8 +1420,8 @@ function loadPaymentProviders() {
     }
 
     providersList.innerHTML = providers.map(p => `
-        <label class="provider-option">
-            <input type="radio" name="selectedProvider" value="${p.id}">
+        <label class="provider-option" onclick="renderPaymentInputs('${p.type}')">
+            <input type="radio" name="selectedProvider" value="${p.id}" data-type="${p.type}">
             <div class="provider-content">
                 <span class="provider-icon">${p.icon}</span>
                 <div class="provider-info">
@@ -1431,6 +1433,27 @@ function loadPaymentProviders() {
     `).join('');
 
     providersList.style.display = 'block';
+    detailsContainer.innerHTML = ''; // Reset details
+    detailsContainer.style.display = 'none';
+}
+
+// دالة عرض حقول الإدخال حسب النوع
+window.renderPaymentInputs = function (type) {
+    const container = document.getElementById('paymentDetailsInputs');
+    let templateId = '';
+
+    if (type === 'card') templateId = 'tpl-card-inputs';
+    else if (type === 'wallet') templateId = 'tpl-wallet-inputs';
+    else if (type === 'offline') templateId = 'tpl-offline-inputs';
+
+    const template = document.getElementById(templateId);
+    if (template) {
+        container.innerHTML = template.innerHTML;
+        container.style.display = 'block';
+
+        // Scroll to inputs smoothly
+        container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
 }
 
 function closeTransactionModal() {
