@@ -221,6 +221,42 @@ function handleNavigation(e) {
     showPage(page);
 }
 
+// دالة مساعدة لعرض اسم طريقة الدفع بوضوح
+function getPaymentLabel(t) {
+    if (t.payment_method === 'outside') {
+        return '<span class="badge badge-warning">تحويل خارجي (إرسال فاتورة)</span>';
+    }
+
+    if (t.payment_method === 'provider' && t.metadata && t.metadata.provider_info) {
+        const info = t.metadata.provider_info;
+        const providerNames = {
+            'card': 'بطاقة بنكية',
+            'wallet': 'محفظة إلكترونية',
+            'fawry': 'فوري',
+            'aman': 'أمان',
+            'vf_cash': 'فودافون كاش',
+            'insta': 'انستا باي',
+            'bank_misr': 'بنك مصر',
+            'cbe': 'البنك المركزي',
+            'ziraat': 'زراعات بنك',
+            'kuwait_turk': 'كويت ترك',
+            'stc': 'STC Pay',
+            'urpay': 'UrPay',
+            'alrajhi': 'الراجحي'
+        };
+
+        let label = providerNames[info.provider_id] || info.provider_id || 'دفع إلكتروني';
+
+        // إضافة تفاصيل إضافية إذا وجدت
+        if (info.type === 'card') label += ' 💳';
+        if (info.type === 'wallet') label += ' 📱';
+
+        return `<span class="badge badge-success">${label}</span>`;
+    }
+
+    return '<span class="badge badge-secondary">غير محدد</span>';
+}
+
 function showPage(page) {
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
@@ -289,6 +325,7 @@ async function loadPendingTransactions() {
                 <p><strong>المبلغ:</strong> ${parseFloat(t.total_amount).toFixed(2)} ج.م</p>
                 <p><strong>نسبة العمولة:</strong> ${t.commission_percentage}%</p>
                 <p><strong>مبلغ العمولة:</strong> ${parseFloat(t.commission_amount).toFixed(2)} ج.م</p>
+                <p><strong>طريقة الدفع:</strong> ${getPaymentLabel(t)}</p>
                 <p><strong>التوقيت:</strong> ${new Date(t.created_at).toLocaleString('ar-EG')}</p>
                 ${t.notes ? `<p><strong>ملاحظات:</strong> ${t.notes}</p>` : ''}
                 ${t.invoice_image_url ? `<p><a href="${t.invoice_image_url}" target="_blank">📄 عرض الفاتورة</a></p>` : ''}
@@ -471,6 +508,7 @@ async function loadAllTransactions() {
         html += '<div><strong>العضو:</strong> ' + (t.members ? t.members.full_name : '-') + ' (' + (t.members ? t.members.member_code : '-') + ')</div>';
         html += '<div><strong>المبلغ:</strong> ' + parseFloat(t.total_amount).toFixed(2) + ' ج.م</div>';
         html += '<div><strong>العمولة:</strong> ' + parseFloat(t.commission_amount).toFixed(2) + ' ج.م</div>';
+        html += '<div><strong>طريقة الدفع:</strong> ' + getPaymentLabel(t) + '</div>';
         html += '<div><strong>حصة الشركة:</strong> ' + parseFloat(t.company_share).toFixed(2) + ' ج.م</div>';
         html += '<div><strong>التاريخ:</strong> ' + new Date(t.transaction_date).toLocaleDateString('ar-EG') + '</div>';
         html += '</div>';
