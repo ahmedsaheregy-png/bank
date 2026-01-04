@@ -790,7 +790,7 @@ async function loadNearbyMerchants() {
         <div id="transactionModal" class="modal" style="display: none;">
             <div class="modal-content">
                 <span class="close-btn" onclick="closeTransactionModal()">&times;</span>
-                <h3>إنشاء عملية توثيق</h3>
+                <h3>إنشاء عملية دفع</h3>
                 
                 <div id="selectedMerchantInfo" class="merchant-info-box"></div>
                 
@@ -1344,7 +1344,7 @@ window.selectPaymentMethod = function (method) {
         if (alertText) alertText.innerHTML = '⏳ العملية ستكون <strong>معلقة</strong> حتى يوافق عليها التاجر بعد مراجعة الفاتورة.';
 
         if (submitBtn) {
-            submitBtn.textContent = 'إرسال طلب التوثيق';
+            submitBtn.textContent = 'طلب موافقة من التاجر';
             submitBtn.classList.remove('btn-success');
             submitBtn.classList.add('btn-primary');
         }
@@ -1591,7 +1591,7 @@ async function submitMemberTransaction(e) {
         if (selectedPaymentMethod === 'provider') {
             alert(`✅ تم الدفع وتوثيق العملية بنجاح!\n\nكود العملية: ${transactionCode}\nالمبلغ: ${amount.toFixed(2)} ج.م`);
         } else {
-            alert(`✅ تم إرسال طلب التوثيق بنجاح!\n\nكود العملية: ${transactionCode}\nالمبلغ: ${amount.toFixed(2)} ج.م\n\n⏳ في انتظار مراجعة التاجر`);
+            alert(`✅ تم إرسال طلب الموافقة بنجاح!\n\nكود العملية: ${transactionCode}\nالمبلغ: ${amount.toFixed(2)} ج.م\n\n⏳ في انتظار مراجعة التاجر`);
         }
 
         // تحديث القوائم
