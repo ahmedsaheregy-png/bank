@@ -243,6 +243,7 @@ function showPage(page) {
     if (page === 'transactions') loadAllTransactions();
     if (page === 'financial') loadFinancialReport();
     if (page === 'settings') loadSettings();
+    if (page === 'qrScanner') loadQRScannerPage();
 }
 
 // ===== العمليات المعلقة (طلبات من الأعضاء) =====
@@ -695,6 +696,35 @@ async function loadSettings() {
                     </div>
                 </div>
 
+                <!-- مشاركة الواي فاي -->
+                <div class="settings-section-card">
+                    <div class="section-header" onclick="toggleSection('wifiSection')">
+                        <span>📶 مشاركة الـ Wi-Fi للعملاء</span>
+                        <span class="toggle-icon" id="wifiSectionIcon">▼</span>
+                    </div>
+                    <div class="section-content collapsed" id="wifiSection">
+                        <p style="color: var(--text-secondary, #666); margin-bottom: 15px; font-size: 0.9rem;">
+                            ساعد عملائك على الاتصال بالإنترنت لإتمام عملياتهم عبر التطبيق
+                        </p>
+                        <div class="form-group">
+                            <label>اسم الشبكة (SSID)</label>
+                            <input type="text" id="settingsWifiSSID" class="form-control" value="${m.wifi_ssid || ''}" placeholder="اسم شبكة الواي فاي">
+                        </div>
+                        <div class="form-group">
+                            <label>كلمة مرور الواي فاي</label>
+                            <input type="text" id="settingsWifiPassword" class="form-control" value="${m.wifi_password || ''}" placeholder="كلمة مرور الواي فاي">
+                        </div>
+                        <button type="button" onclick="generateMerchantWifiQR()" class="btn btn-secondary btn-block" style="margin-top: 10px;">
+                            📱 إنشاء QR للواي فاي
+                        </button>
+                        <div id="wifiQRContainer" style="margin-top: 15px; text-align: center; display: none;">
+                            <p style="font-weight: 600; margin-bottom: 10px;">امسح الكود لتوصيل العميل:</p>
+                            <div id="wifiQRCode" style="background: white; padding: 15px; border-radius: 12px; display: inline-block;"></div>
+                            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 10px;">يمكن للعميل مسح هذا الكود بكاميرا الهاتف</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- تغيير كلمة المرور -->
                 <div class="settings-section-card">
                     <div class="section-header" onclick="toggleSection('passwordSection')">
@@ -989,3 +1019,608 @@ function goToPage(pageName) {
     if (pageName === 'financial') loadFinancialReport();
     if (pageName === 'settings') loadSettings();
 }
+
+// ===== توليد QR للواي فاي =====
+function generateMerchantWifiQR() {
+    const ssid = document.getElementById('settingsWifiSSID')?.value;
+    const password = document.getElementById('settingsWifiPassword')?.value;
+
+    if (!ssid) {
+        alert('الرجاء إدخال اسم الشبكة (SSID)');
+        return;
+    }
+
+    // تهرب الأحرف الخاصة للصيغة القياسية
+    const escape = (str) => str.replace(/[\\;,:\"]/g, '\\$&');
+
+    // صيغة QR للواي فاي القياسية
+    const wifiString = `WIFI:T:WPA;S:${escape(ssid)};P:${escape(password || '')};;`;
+
+    // عرض الحاوية
+    const container = document.getElementById('wifiQRContainer');
+    const qrCodeDiv = document.getElementById('wifiQRCode');
+
+    container.style.display = 'block';
+
+    // استخدام مكتبة qrcode.js إذا كانت متاحة
+    if (typeof QRCode !== 'undefined') {
+        qrCodeDiv.innerHTML = '';
+        new QRCode(qrCodeDiv, {
+            text: wifiString,
+            width: 180,
+            height: 180,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.M
+        });
+    } else {
+        // Fallback: عرض النص فقط
+        qrCodeDiv.innerHTML = `
+            <div style="padding: 20px; background: #f5f5f5; border-radius: 8px;">
+                <p style="font-size: 0.85rem; margin-bottom: 10px;">نص QR للواي فاي:</p>
+                <code style="word-break: break-all; font-size: 0.75rem;">${wifiString}</code>
+                <p style="font-size: 0.8rem; margin-top: 10px; color: #666;">
+                    💡 لإنشاء QR مرئي، أضف مكتبة qrcode.js للمشروع
+                </p>
+            </div>
+        `;
+    }
+
+    // حفظ البيانات في قاعدة البيانات
+    saveWifiSettings(ssid, password);
+}
+
+// حفظ إعدادات الواي فاي
+async function saveWifiSettings(ssid, password) {
+    try {
+        await window.SAWYAN.supabase
+            .from('merchants')
+            .update({
+                wifi_ssid: ssid,
+                wifi_password: password
+            })
+            .eq('id', currentMerchant.id);
+
+        // تحديث البيانات المحلية
+        merchantData.wifi_ssid = ssid;
+        merchantData.wifi_password = password;
+        localStorage.setItem('sawyan_merchant', JSON.stringify(merchantData));
+
+        console.log('✅ تم حفظ إعدادات الواي فاي');
+    } catch (error) {
+        console.error('خطأ في حفظ إعدادات الواي فاي:', error);
+    }
+}
+
+// ============================================
+// نظام مسح QR ودفع العميل غير المتصل (Scenario D)
+// ============================================
+
+let html5QRScanner = null;
+let scannedMemberData = null;
+
+/**
+ * تحميل صفحة ماسح QR
+ */
+function loadQRScannerPage() {
+    const page = document.getElementById('qrScannerPage');
+    if (!page) {
+        console.error('QR Scanner page element not found');
+        return;
+    }
+
+    page.innerHTML = `
+        <div class="qr-scanner-page">
+            <h2>📱 مسح QR للدفع</h2>
+            <p class="page-description">امسح QR كود العميل لخصم المبلغ من بطاقته المحفوظة</p>
+            
+            <!-- قسم مشاركة الواي فاي -->
+            <div class="wifi-share-banner" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 2rem;">📶</span>
+                    <div style="flex: 1;">
+                        <p style="font-weight: 600; margin: 0;">العميل ليس لديه إنترنت؟</p>
+                        <small>شارك الواي فاي الخاص بمتجرك ليتمكن من الدفع</small>
+                    </div>
+                    <button onclick="showWifiSharingModal()" class="btn" style="background: rgba(255,255,255,0.2); color: white; border: 2px solid white; padding: 8px 16px;">
+                        📱 شارك الواي فاي
+                    </button>
+                </div>
+            </div>
+            
+            <!-- منطقة المسح -->
+            <div class="scanner-container" style="background: var(--bg-card, #fff); border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+                <div id="qr-reader" style="width: 100%; max-width: 350px; margin: 0 auto;"></div>
+                
+                <div id="scannerStatus" style="text-align: center; margin-top: 15px;">
+                    <p style="color: var(--text-secondary, #666);">📷 اضغط لبدء المسح</p>
+                </div>
+                
+                <div style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
+                    <button onclick="startQRScanner()" class="btn btn-primary" id="startScanBtn">
+                        📷 بدء المسح
+                    </button>
+                    <button onclick="stopQRScanner()" class="btn btn-secondary" id="stopScanBtn" style="display: none;">
+                        ⏹️ إيقاف
+                    </button>
+                </div>
+                
+                <!-- إدخال يدوي كبديل -->
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color, #eee);">
+                    <p style="font-size: 0.9rem; color: var(--text-secondary, #666); margin-bottom: 10px;">أو أدخل كود العميل يدوياً:</p>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="manualQRInput" class="form-control" placeholder="الصق نص QR هنا أو أدخل كود العضو">
+                        <button onclick="processManualQRInput()" class="btn btn-primary">✓</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- نتيجة المسح -->
+            <div id="scanResult" style="display: none; margin-top: 20px;">
+                <div class="scanned-member-card" style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white; border-radius: 16px; padding: 20px;">
+                    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                        <span style="font-size: 3rem;">👤</span>
+                        <div>
+                            <h3 id="scannedMemberName" style="margin: 0;">-</h3>
+                            <p id="scannedMemberCode" style="margin: 5px 0 0 0; opacity: 0.9;">-</p>
+                        </div>
+                    </div>
+                    
+                    <div style="background: rgba(255,255,255,0.15); border-radius: 12px; padding: 15px;">
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <label style="display: block; margin-bottom: 5px; font-size: 0.9rem;">💰 المبلغ</label>
+                            <input type="number" id="offlinePaymentAmount" class="form-control" step="0.01" min="1" placeholder="أدخل المبلغ" 
+                                style="background: white; color: #333; font-size: 1.2rem; font-weight: 600; text-align: center;">
+                        </div>
+                        
+                        <div id="offlineCommissionPreview" style="display: none; background: rgba(0,0,0,0.1); border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                <span>نسبة العمولة:</span>
+                                <span id="offlineCommissionRate">0%</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-weight: 600;">
+                                <span>مبلغ العمولة:</span>
+                                <span id="offlineCommissionAmount">0 ج.م</span>
+                            </div>
+                        </div>
+                        
+                        <button onclick="processOfflineCustomerPayment()" class="btn btn-block" 
+                            style="background: white; color: #059669; font-weight: 600; padding: 12px;">
+                            💳 خصم من بطاقة العميل
+                        </button>
+                    </div>
+                </div>
+                
+                <button onclick="resetScanner()" class="btn btn-secondary btn-block" style="margin-top: 10px;">
+                    🔄 مسح عميل آخر
+                </button>
+            </div>
+        </div>
+        
+        <!-- Modal مشاركة الواي فاي -->
+        <div id="wifiSharingModal" class="modal" style="display: none;">
+            <div class="modal-content" style="max-width: 400px;">
+                <button onclick="closeWifiSharingModal()" class="close-btn">&times;</button>
+                <h3 style="text-align: center;">📶 شارك الواي فاي</h3>
+                
+                <div id="wifiQRDisplay" style="text-align: center; margin: 20px 0;">
+                    <!-- سيتم إنشاء QR هنا -->
+                </div>
+                
+                <p style="text-align: center; color: var(--text-secondary); font-size: 0.9rem;">
+                    اجعل العميل يمسح هذا الكود بكاميرا هاتفه للاتصال بالواي فاي
+                </p>
+                
+                <div style="background: var(--bg-secondary, #f5f5f5); border-radius: 8px; padding: 12px; margin-top: 15px;">
+                    <p style="margin: 0; font-size: 0.85rem;"><strong>اسم الشبكة:</strong> <span id="displayWifiSSID">-</span></p>
+                    <p style="margin: 5px 0 0 0; font-size: 0.85rem;"><strong>كلمة المرور:</strong> <span id="displayWifiPassword">-</span></p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // إضافة listener لحساب العمولة
+    setTimeout(() => {
+        const amountInput = document.getElementById('offlinePaymentAmount');
+        if (amountInput) {
+            amountInput.addEventListener('input', calculateOfflineCommission);
+        }
+    }, 100);
+}
+
+/**
+ * بدء ماسح QR بالكاميرا
+ */
+async function startQRScanner() {
+    const scannerDiv = document.getElementById('qr-reader');
+    const statusDiv = document.getElementById('scannerStatus');
+    const startBtn = document.getElementById('startScanBtn');
+    const stopBtn = document.getElementById('stopScanBtn');
+
+    // التحقق من وجود مكتبة html5-qrcode
+    if (typeof Html5Qrcode === 'undefined') {
+        // تحميل المكتبة ديناميكياً
+        statusDiv.innerHTML = '<p style="color: #f59e0b;">⏳ جاري تحميل ماسح QR...</p>';
+
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+        script.onload = () => {
+            console.log('✅ html5-qrcode loaded');
+            initializeScanner();
+        };
+        script.onerror = () => {
+            statusDiv.innerHTML = '<p style="color: #ef4444;">❌ فشل تحميل ماسح QR. استخدم الإدخال اليدوي.</p>';
+        };
+        document.head.appendChild(script);
+        return;
+    }
+
+    initializeScanner();
+
+    function initializeScanner() {
+        html5QRScanner = new Html5Qrcode("qr-reader");
+
+        html5QRScanner.start(
+            { facingMode: "environment" }, // الكاميرا الخلفية
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            onScanSuccess,
+            onScanError
+        ).then(() => {
+            statusDiv.innerHTML = '<p style="color: #10B981;">📷 جاري المسح... وجّه الكاميرا نحو QR</p>';
+            startBtn.style.display = 'none';
+            stopBtn.style.display = 'inline-block';
+        }).catch(err => {
+            console.error('Camera error:', err);
+            statusDiv.innerHTML = '<p style="color: #ef4444;">❌ تعذر الوصول للكاميرا. استخدم الإدخال اليدوي.</p>';
+        });
+    }
+}
+
+/**
+ * إيقاف ماسح QR
+ */
+function stopQRScanner() {
+    if (html5QRScanner) {
+        html5QRScanner.stop().then(() => {
+            html5QRScanner.clear();
+            html5QRScanner = null;
+
+            document.getElementById('scannerStatus').innerHTML = '<p style="color: var(--text-secondary, #666);">📷 اضغط لبدء المسح</p>';
+            document.getElementById('startScanBtn').style.display = 'inline-block';
+            document.getElementById('stopScanBtn').style.display = 'none';
+        });
+    }
+}
+
+/**
+ * معالجة نجاح المسح
+ */
+function onScanSuccess(decodedText, decodedResult) {
+    console.log('QR Scanned:', decodedText);
+    stopQRScanner();
+    processQRData(decodedText);
+}
+
+/**
+ * معالجة خطأ المسح (يُستدعى مع كل frame فاشل)
+ */
+function onScanError(errorMessage) {
+    // لا نعرض شيء - طبيعي أثناء المسح
+}
+
+/**
+ * معالجة الإدخال اليدوي
+ */
+function processManualQRInput() {
+    const input = document.getElementById('manualQRInput');
+    const qrData = input.value.trim();
+
+    if (!qrData) {
+        alert('الرجاء إدخال نص QR أو كود العضو');
+        return;
+    }
+
+    processQRData(qrData);
+}
+
+/**
+ * معالجة بيانات QR
+ */
+async function processQRData(qrData) {
+    console.log('Processing QR data:', qrData);
+
+    // التحقق من نظام الدفع
+    if (!window.SAWYAN || !window.SAWYAN.PaymentService) {
+        alert('❌ نظام الدفع غير جاهز، الرجاء تحديث الصفحة');
+        return;
+    }
+
+    // محاولة فك QR المشفر أولاً
+    if (qrData.startsWith('SAWYAN:OFFLINE:')) {
+        const decrypted = window.SAWYAN.PaymentService.decryptOfflineQR(qrData);
+
+        if (!decrypted.valid) {
+            alert('❌ ' + decrypted.error);
+            return;
+        }
+
+        // عرض بيانات العضو
+        await displayScannedMember(decrypted.memberId, decrypted.memberCode);
+
+    } else {
+        // افتراض أنه كود عضو عادي
+        await searchAndDisplayMember(qrData);
+    }
+}
+
+/**
+ * البحث عن عضو بالكود
+ */
+async function searchAndDisplayMember(memberCode) {
+    try {
+        const { data: member, error } = await window.SAWYAN.supabase
+            .from('members')
+            .select('id, member_code, full_name')
+            .eq('member_code', memberCode)
+            .single();
+
+        if (error || !member) {
+            alert('❌ لم يتم العثور على عضو بهذا الكود');
+            return;
+        }
+
+        await displayScannedMember(member.id, member.member_code, member.full_name);
+
+    } catch (error) {
+        console.error('Search error:', error);
+        alert('❌ حدث خطأ في البحث');
+    }
+}
+
+/**
+ * عرض بيانات العضو الممسوح
+ */
+async function displayScannedMember(memberId, memberCode, memberName = null) {
+    // إذا لم يكن الاسم متوفراً، نجلبه من قاعدة البيانات
+    if (!memberName) {
+        const { data: member } = await window.SAWYAN.supabase
+            .from('members')
+            .select('full_name')
+            .eq('id', memberId)
+            .single();
+        memberName = member?.full_name || 'عضو';
+    }
+
+    scannedMemberData = {
+        id: memberId,
+        code: memberCode,
+        name: memberName
+    };
+
+    document.getElementById('scannedMemberName').textContent = memberName;
+    document.getElementById('scannedMemberCode').textContent = 'كود: ' + memberCode;
+    document.getElementById('scanResult').style.display = 'block';
+
+    // إخفاء منطقة المسح
+    document.querySelector('.scanner-container').style.display = 'none';
+}
+
+/**
+ * حساب عمولة الدفع بدون اتصال
+ */
+function calculateOfflineCommission() {
+    const amount = parseFloat(document.getElementById('offlinePaymentAmount').value) || 0;
+    const preview = document.getElementById('offlineCommissionPreview');
+
+    if (amount > 0) {
+        const rate = merchantData.commission_percentage || 10;
+        const commission = amount * (rate / 100);
+
+        document.getElementById('offlineCommissionRate').textContent = rate + '%';
+        document.getElementById('offlineCommissionAmount').textContent = commission.toFixed(2) + ' ج.م';
+        preview.style.display = 'block';
+    } else {
+        preview.style.display = 'none';
+    }
+}
+
+/**
+ * معالجة دفع العميل غير المتصل (Scenario D)
+ */
+async function processOfflineCustomerPayment() {
+    if (!scannedMemberData) {
+        alert('❌ لم يتم تحديد عضو');
+        return;
+    }
+
+    const amount = parseFloat(document.getElementById('offlinePaymentAmount').value);
+    if (!amount || amount <= 0) {
+        alert('الرجاء إدخال مبلغ صحيح');
+        return;
+    }
+
+    const btn = document.querySelector('#scanResult button[onclick*="processOfflineCustomerPayment"]');
+    const originalText = btn?.innerHTML;
+    if (btn) {
+        btn.innerHTML = '⏳ جاري معالجة الدفع...';
+        btn.disabled = true;
+    }
+
+    try {
+        // التحقق من نظام الدفع
+        if (!window.SAWYAN || !window.SAWYAN.PaymentService) {
+            throw new Error('نظام الدفع غير جاهز');
+        }
+
+        const commissionPercentage = merchantData.commission_percentage || 10;
+
+        // توليد QR للعضو (محاكاة - في الواقع سيكون من QR المسحوب)
+        const qrData = window.SAWYAN.PaymentService.generateOfflineQR(
+            scannedMemberData.id,
+            scannedMemberData.code
+        );
+
+        console.log('💳 [Merchant] Processing offline customer payment...');
+
+        // معالجة الدفع
+        const paymentResult = await window.SAWYAN.PaymentService.processOfflineCustomerPayment({
+            merchantId: currentMerchant.id,
+            qrData: qrData,
+            amount: amount,
+            currency: 'EGP',
+            commissionPercentage: commissionPercentage
+        });
+
+        if (!paymentResult.success) {
+            throw new Error(paymentResult.error || 'فشل في معالجة الدفع');
+        }
+
+        console.log('✅ [Merchant] Offline payment successful:', paymentResult);
+
+        // حفظ في قاعدة البيانات
+        const transactionCode = 'TMO' + Date.now(); // TMO = Transaction Merchant Offline
+
+        const { data: newTransaction, error } = await window.SAWYAN.supabase
+            .from('transactions')
+            .insert([{
+                transaction_code: transactionCode,
+                member_id: scannedMemberData.id,
+                merchant_id: currentMerchant.id,
+                total_amount: amount,
+                commission_percentage: commissionPercentage,
+                commission_amount: paymentResult.split.commissionAmount,
+                company_share: paymentResult.split.platformShare,
+                plan_share: paymentResult.split.memberShare,
+                payment_method: 'in_app',
+                payment_type: 'online',
+                initiator: 'merchant',
+                payment_provider: paymentResult.paymentProvider,
+                payment_reference: paymentResult.transactionId,
+                status: 'completed'
+            }])
+            .select()
+            .single();
+
+        if (error) {
+            console.error('DB Error:', error);
+        }
+
+        // تحديث محفظة العضو
+        try {
+            const { data: wallet } = await window.SAWYAN.supabase
+                .from('wallets')
+                .select('id, balance, total_earned')
+                .eq('member_id', scannedMemberData.id)
+                .single();
+
+            if (wallet) {
+                await window.SAWYAN.supabase
+                    .from('wallets')
+                    .update({
+                        balance: wallet.balance + paymentResult.split.memberShare,
+                        total_earned: (wallet.total_earned || 0) + paymentResult.split.memberShare,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', wallet.id);
+
+                await window.SAWYAN.supabase
+                    .from('wallet_transactions')
+                    .insert([{
+                        wallet_id: wallet.id,
+                        transaction_type: 'commission',
+                        amount: paymentResult.split.memberShare,
+                        description: 'عمولة من عملية دفع أوفلاين لدى ' + merchantData.business_name,
+                        reference_id: newTransaction?.id,
+                        status: 'completed'
+                    }]);
+            }
+        } catch (walletError) {
+            console.error('Wallet update error:', walletError);
+        }
+
+        alert(`✅ تم الدفع بنجاح!
+
+💳 المبلغ: ${amount.toFixed(2)} ج.م
+👤 العميل: ${scannedMemberData.name}
+💰 العمولة: ${paymentResult.split.commissionAmount.toFixed(2)} ج.م
+
+كود العملية: ${transactionCode}`);
+
+        // إعادة تعيين
+        resetScanner();
+        loadStats();
+
+    } catch (error) {
+        console.error('❌ Payment error:', error);
+        alert('❌ فشل في الدفع: ' + error.message);
+    } finally {
+        if (btn) {
+            btn.innerHTML = originalText || '💳 خصم من بطاقة العميل';
+            btn.disabled = false;
+        }
+    }
+}
+
+/**
+ * إعادة تعيين الماسح
+ */
+function resetScanner() {
+    scannedMemberData = null;
+    document.getElementById('scanResult').style.display = 'none';
+    document.getElementById('offlinePaymentAmount').value = '';
+    document.getElementById('offlineCommissionPreview').style.display = 'none';
+    document.getElementById('manualQRInput').value = '';
+    document.querySelector('.scanner-container').style.display = 'block';
+}
+
+/**
+ * عرض modal مشاركة الواي فاي
+ */
+function showWifiSharingModal() {
+    const ssid = merchantData.wifi_ssid;
+    const password = merchantData.wifi_password;
+
+    if (!ssid || !password) {
+        alert('⚠️ لم تقم بإعداد الواي فاي بعد.\n\nاذهب إلى الإعدادات > مشاركة الواي فاي لإعداد بيانات الشبكة.');
+        return;
+    }
+
+    document.getElementById('displayWifiSSID').textContent = ssid;
+    document.getElementById('displayWifiPassword').textContent = password;
+
+    // إنشاء QR
+    const wifiString = `WIFI:T:WPA;S:${ssid};P:${password};;`;
+    const qrDisplay = document.getElementById('wifiQRDisplay');
+
+    if (typeof QRCode !== 'undefined') {
+        qrDisplay.innerHTML = '<div id="wifiModalQR"></div>';
+        new QRCode(document.getElementById('wifiModalQR'), {
+            text: wifiString,
+            width: 200,
+            height: 200,
+            colorDark: '#000000',
+            colorLight: '#ffffff'
+        });
+    } else {
+        qrDisplay.innerHTML = `
+            <div style="padding: 20px; background: #f5f5f5; border-radius: 8px;">
+                <p style="font-size: 0.85rem; margin-bottom: 10px;">اسم الشبكة: <strong>${ssid}</strong></p>
+                <p style="font-size: 0.85rem;">كلمة المرور: <strong>${password}</strong></p>
+            </div>
+        `;
+    }
+
+    document.getElementById('wifiSharingModal').style.display = 'flex';
+}
+
+/**
+ * إغلاق modal مشاركة الواي فاي
+ */
+function closeWifiSharingModal() {
+    document.getElementById('wifiSharingModal').style.display = 'none';
+}
+
+// تفعيل عند جاهزية نظام الدفع
+window.addEventListener('sawyan:payment:ready', () => {
+    console.log('🎉 Payment system ready in merchant dashboard');
+});

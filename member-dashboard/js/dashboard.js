@@ -1196,11 +1196,61 @@ function openTransactionModal(merchantId, merchantName, commissionPercentage, ca
     document.getElementById('selectedMerchantInfo').innerHTML = `
         <h4>${merchantName}</h4>
         <p>📁 ${category} | نسبة العمولة: <strong>${commissionPercentage}%</strong></p>
+        
+        <!-- اختيار طريقة الدفع -->
+        <div class="payment-method-selector" style="margin-top: 15px; padding: 15px; background: var(--bg-secondary, #f5f5f5); border-radius: 12px;">
+            <label style="display: block; margin-bottom: 10px; font-weight: 600; color: var(--text-primary, #333);">💳 طريقة الدفع:</label>
+            <div class="payment-options" style="display: flex; flex-direction: column; gap: 10px;">
+                <label class="payment-option" style="display: flex; align-items: flex-start; gap: 10px; padding: 12px; background: var(--bg-card, #fff); border-radius: 8px; border: 2px solid var(--border-color, #ddd); cursor: pointer; transition: all 0.3s;" onclick="selectPaymentMethod('external')">
+                    <input type="radio" name="paymentMethod" value="external" checked style="margin-top: 3px;">
+                    <div>
+                        <span style="font-weight: 600;">💵 الدفع خارج التطبيق</span>
+                        <small style="display: block; color: var(--text-secondary, #666); margin-top: 4px;">توثيق فقط - الدفع يتم بينك وبين التاجر مباشرة (يحتاج موافقة التاجر)</small>
+                    </div>
+                </label>
+                <label class="payment-option" style="display: flex; align-items: flex-start; gap: 10px; padding: 12px; background: var(--bg-card, #fff); border-radius: 8px; border: 2px solid var(--border-color, #ddd); cursor: pointer; transition: all 0.3s;" onclick="selectPaymentMethod('in_app')">
+                    <input type="radio" name="paymentMethod" value="in_app" style="margin-top: 3px;">
+                    <div>
+                        <span style="font-weight: 600;">💳 الدفع عبر التطبيق</span>
+                        <small style="display: block; color: var(--text-secondary, #666); margin-top: 4px;">دفع آمن فوري - يتم خصم المبلغ من بطاقتك</small>
+                    </div>
+                </label>
+            </div>
+            
+            <!-- نموذج بيانات البطاقة (يظهر عند اختيار الدفع عبر التطبيق) -->
+            <div id="inAppPaymentSection" style="display: none; margin-top: 15px; padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px;">
+                <p style="color: white; font-weight: 600; margin-bottom: 12px;">💳 أدخل بيانات البطاقة:</p>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <input type="text" id="cardNumber" placeholder="رقم البطاقة (16 رقم)" maxlength="19" 
+                        style="padding: 12px; border: none; border-radius: 8px; font-size: 16px; direction: ltr; text-align: left;" 
+                        oninput="formatCardNumber(this)">
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="cardExpiry" placeholder="MM/YY" maxlength="5" 
+                            style="flex: 1; padding: 12px; border: none; border-radius: 8px; font-size: 16px; direction: ltr; text-align: center;"
+                            oninput="formatExpiry(this)">
+                        <input type="text" id="cardCVV" placeholder="CVV" maxlength="4" 
+                            style="flex: 1; padding: 12px; border: none; border-radius: 8px; font-size: 16px; direction: ltr; text-align: center;">
+                    </div>
+                    <input type="text" id="cardHolder" placeholder="اسم حامل البطاقة" 
+                        style="padding: 12px; border: none; border-radius: 8px; font-size: 16px;">
+                </div>
+                <p style="color: rgba(255,255,255,0.8); font-size: 0.8rem; margin-top: 10px; text-align: center;">🔒 بياناتك مشفرة وآمنة</p>
+            </div>
+        </div>
     `;
 
     // إعادة تعيين الفورم
     document.getElementById('createTransactionForm').reset();
     document.getElementById('commissionPreview').style.display = 'none';
+
+    // إضافة event listeners
+    setTimeout(() => {
+        document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
+            radio.addEventListener('change', function () {
+                toggleInAppPaymentSection(this.value);
+            });
+        });
+    }, 100);
 
     document.getElementById('transactionModal').style.display = 'flex';
 }
@@ -1231,14 +1281,24 @@ async function submitMemberTransaction(e) {
     e.preventDefault();
 
     const amount = parseFloat(document.getElementById('transAmount').value);
-    const invoiceUrl = document.getElementById('transInvoiceUrl').value;
-    const notes = document.getElementById('transNotes').value;
+    const notes = document.getElementById('transNotes')?.value || '';
+
+    // الحصول على طريقة الدفع المختارة
+    const paymentMethodRadio = document.querySelector('input[name="paymentMethod"]:checked');
+    const selectedPaymentMethod = paymentMethodRadio ? paymentMethodRadio.value : 'external';
 
     if (!amount || amount <= 0) {
         alert('الرجاء إدخال مبلغ صحيح');
         return;
     }
 
+    // ======= معالجة الدفع عبر التطبيق (Scenario C) =======
+    if (selectedPaymentMethod === 'in_app') {
+        await processInAppMemberPayment(amount, notes);
+        return;
+    }
+
+    // ======= معالجة التوثيق (السيناريو القديم) =======
     try {
         // حساب العمولات
         const commissionAmount = amount * (selectedCommissionPercentage / 100);
@@ -1251,6 +1311,7 @@ async function submitMemberTransaction(e) {
             member_id: memberData.id,
             merchant_id: selectedMerchantId,
             amount: amount,
+            payment_method: selectedPaymentMethod,
             status: 'pending'
         });
 
@@ -1266,6 +1327,7 @@ async function submitMemberTransaction(e) {
                 commission_amount: commissionAmount,
                 company_share: companyShare,
                 plan_share: planShare,
+                payment_method: selectedPaymentMethod, // external أو in_app
                 status: 'pending' // معلقة حتى يوافق التاجر
             }])
             .select()
@@ -1300,7 +1362,7 @@ async function submitMemberTransaction(e) {
 
         closeTransactionModal();
 
-        alert(`✅ تم إرسال طلب التوثيق بنجاح!\n\nكود العملية: ${transactionCode}\nالمبلغ: ${amount.toFixed(2)} ج.م\nالعمولة المتوقعة: ${commissionAmount.toFixed(2)} ج.م\n\n⏳ في انتظار موافقة التاجر`);
+        alert(`✅ تم إرسال طلب التوثيق بنجاح!\n\nكود العملية: ${transactionCode}\nالمبلغ: ${amount.toFixed(2)} ج.م\nالعمولة المتوقعة: ${commissionAmount.toFixed(2)} ج.م\nطريقة الدفع: ${selectedPaymentMethod === 'external' ? 'خارج التطبيق' : 'عبر التطبيق'}\n\n⏳ في انتظار موافقة التاجر`);
 
     } catch (error) {
         console.error('Error:', error);
@@ -2419,4 +2481,264 @@ window.addEventListener('beforeunload', () => {
 // بدء التحقق من الإشعارات بعد الدخول
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(startNotificationPolling, 5000);
+});
+
+// ============================================
+// دوال نظام الدفع الجديد (Scenario C)
+// ============================================
+
+/**
+ * تبديل عرض قسم الدفع عبر التطبيق
+ */
+function toggleInAppPaymentSection(paymentMethod) {
+    const section = document.getElementById('inAppPaymentSection');
+    if (section) {
+        section.style.display = paymentMethod === 'in_app' ? 'block' : 'none';
+    }
+}
+
+/**
+ * اختيار طريقة الدفع (للـ onclick)
+ */
+function selectPaymentMethod(method) {
+    const radio = document.querySelector(`input[name="paymentMethod"][value="${method}"]`);
+    if (radio) {
+        radio.checked = true;
+        toggleInAppPaymentSection(method);
+    }
+}
+
+/**
+ * تنسيق رقم البطاقة (إضافة مسافات كل 4 أرقام)
+ */
+function formatCardNumber(input) {
+    let value = input.value.replace(/\s/g, '').replace(/\D/g, '');
+    value = value.substring(0, 16);
+    const parts = [];
+    for (let i = 0; i < value.length; i += 4) {
+        parts.push(value.substring(i, i + 4));
+    }
+    input.value = parts.join(' ');
+}
+
+/**
+ * تنسيق تاريخ الانتهاء (MM/YY)
+ */
+function formatExpiry(input) {
+    let value = input.value.replace(/\D/g, '');
+    if (value.length >= 2) {
+        value = value.substring(0, 2) + '/' + value.substring(2, 4);
+    }
+    input.value = value;
+}
+
+/**
+ * معالجة الدفع عبر التطبيق (Scenario C)
+ */
+async function processInAppMemberPayment(amount, notes) {
+    // التحقق من بيانات البطاقة
+    const cardNumber = document.getElementById('cardNumber')?.value.replace(/\s/g, '');
+    const cardExpiry = document.getElementById('cardExpiry')?.value;
+    const cardCVV = document.getElementById('cardCVV')?.value;
+    const cardHolder = document.getElementById('cardHolder')?.value;
+
+    if (!cardNumber || cardNumber.length < 13) {
+        alert('الرجاء إدخال رقم بطاقة صحيح');
+        return;
+    }
+
+    if (!cardExpiry || !cardExpiry.includes('/')) {
+        alert('الرجاء إدخال تاريخ انتهاء صحيح (MM/YY)');
+        return;
+    }
+
+    if (!cardCVV || cardCVV.length < 3) {
+        alert('الرجاء إدخال رمز CVV صحيح');
+        return;
+    }
+
+    // عرض رسالة الانتظار
+    const submitBtn = document.querySelector('#createTransactionForm button[type="submit"]');
+    const originalBtnText = submitBtn?.innerHTML;
+    if (submitBtn) {
+        submitBtn.innerHTML = '⏳ جاري معالجة الدفع...';
+        submitBtn.disabled = true;
+    }
+
+    try {
+        // التحقق من جاهزية نظام الدفع
+        if (!window.SAWYAN || !window.SAWYAN.PaymentService) {
+            throw new Error('نظام الدفع غير جاهز، الرجاء تحديث الصفحة');
+        }
+
+        // توكين البطاقة أولاً
+        const [expMonth, expYear] = cardExpiry.split('/');
+        const provider = window.SAWYAN.PaymentService.getProvider();
+
+        console.log('💳 [Member] Tokenizing card...');
+        const tokenResult = await provider.tokenizeCard({
+            number: cardNumber,
+            expMonth: expMonth,
+            expYear: '20' + expYear,
+            cvv: cardCVV,
+            holderName: cardHolder || 'Card Holder'
+        });
+
+        if (!tokenResult.success) {
+            throw new Error(tokenResult.error || 'فشل في توكين البطاقة');
+        }
+
+        console.log('✅ [Member] Card tokenized:', tokenResult.cardBrand, '****' + tokenResult.lastFour);
+
+        // معالجة الدفع
+        console.log('💰 [Member] Processing payment...');
+        const paymentResult = await window.SAWYAN.PaymentService.processMemberPayment({
+            memberId: memberData.id,
+            merchantId: selectedMerchantId,
+            amount: amount,
+            currency: 'EGP', // يمكن تغييرها حسب الدولة
+            paymentToken: tokenResult.token,
+            commissionPercentage: selectedCommissionPercentage
+        });
+
+        if (!paymentResult.success) {
+            throw new Error(paymentResult.error || 'فشل في معالجة الدفع');
+        }
+
+        console.log('✅ [Member] Payment successful:', paymentResult);
+
+        // حفظ في قاعدة البيانات
+        const transactionCode = 'TMP' + Date.now(); // TMP = Transaction Member Payment
+
+        const { data: newTransaction, error } = await window.SAWYAN.supabase
+            .from('transactions')
+            .insert([{
+                transaction_code: transactionCode,
+                member_id: memberData.id,
+                merchant_id: selectedMerchantId,
+                total_amount: amount,
+                commission_percentage: selectedCommissionPercentage,
+                commission_amount: paymentResult.split.commissionAmount,
+                company_share: paymentResult.split.platformShare,
+                plan_share: paymentResult.split.memberShare,
+                payment_method: 'in_app',
+                payment_type: 'online',
+                initiator: 'customer',
+                payment_provider: paymentResult.paymentProvider,
+                payment_reference: paymentResult.transactionId,
+                status: 'completed', // مكتملة فوراً لأن الدفع تم
+                notes: notes
+            }])
+            .select()
+            .single();
+
+        if (error) {
+            console.error('DB Error:', error);
+            // الدفع تم ولكن الحفظ فشل - نعرض التفاصيل للمستخدم
+            alert(`⚠️ تم الدفع بنجاح ولكن حدث خطأ في الحفظ.\n\nرقم العملية: ${paymentResult.transactionId}\nالرجاء التواصل مع الدعم`);
+        } else {
+            // تحديث محفظة العضو مباشرة
+            try {
+                const { data: wallet } = await window.SAWYAN.supabase
+                    .from('wallets')
+                    .select('id, balance, total_earned')
+                    .eq('member_id', memberData.id)
+                    .single();
+
+                if (wallet) {
+                    await window.SAWYAN.supabase
+                        .from('wallets')
+                        .update({
+                            balance: wallet.balance + paymentResult.split.memberShare,
+                            total_earned: (wallet.total_earned || 0) + paymentResult.split.memberShare,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', wallet.id);
+
+                    await window.SAWYAN.supabase
+                        .from('wallet_transactions')
+                        .insert([{
+                            wallet_id: wallet.id,
+                            transaction_type: 'commission',
+                            amount: paymentResult.split.memberShare,
+                            description: 'عمولة من عملية دفع أونلاين لدى ' + selectedMerchantName,
+                            reference_id: newTransaction.id,
+                            status: 'completed'
+                        }]);
+                }
+            } catch (walletError) {
+                console.error('Wallet update error:', walletError);
+            }
+
+            closeTransactionModal();
+
+            alert(`✅ تم الدفع بنجاح!\n\n💳 المبلغ: ${amount.toFixed(2)} ج.م\n💰 العمولة: ${paymentResult.split.commissionAmount.toFixed(2)} ج.م\n🎁 تمت إضافة ${paymentResult.split.memberShare.toFixed(2)} ج.م لمحفظتك\n\nكود العملية: ${transactionCode}`);
+        }
+
+    } catch (error) {
+        console.error('❌ Payment error:', error);
+        alert('❌ فشل في الدفع: ' + error.message);
+    } finally {
+        if (submitBtn) {
+            submitBtn.innerHTML = originalBtnText || 'إرسال طلب التوثيق';
+            submitBtn.disabled = false;
+        }
+    }
+}
+
+/**
+ * عرض QR كود الدفع بدون اتصال في الصفحة الرئيسية
+ */
+async function displayOfflinePaymentQR() {
+    try {
+        if (!window.SAWYAN || !window.SAWYAN.PaymentService) {
+            console.log('Payment service not ready for QR generation');
+            return;
+        }
+
+        const qrContainer = document.getElementById('offlinePaymentQR');
+        if (!qrContainer) return;
+
+        // توليد QR للدفع بدون اتصال
+        const qrData = window.SAWYAN.PaymentService.generateOfflineQR(
+            memberData.id,
+            memberData.member_code
+        );
+
+        // عرض QR
+        if (window.QRCode) {
+            qrContainer.innerHTML = '';
+            new QRCode(qrContainer, {
+                text: qrData,
+                width: 180,
+                height: 180,
+                colorDark: '#764ba2',
+                colorLight: '#ffffff'
+            });
+        }
+
+        // عرض معلومات الصلاحية
+        const expiryInfo = document.getElementById('qrExpiryInfo');
+        if (expiryInfo) {
+            const expiryDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            expiryInfo.textContent = 'صالح حتى: ' + expiryDate.toLocaleString('ar-EG');
+        }
+
+    } catch (error) {
+        console.error('QR generation error:', error);
+    }
+}
+
+/**
+ * تحديث QR الدفع بدون اتصال
+ */
+function refreshOfflineQR() {
+    displayOfflinePaymentQR();
+    alert('✅ تم تحديث QR Code بنجاح');
+}
+
+// تفعيل عند جاهزية نظام الدفع
+window.addEventListener('sawyan:payment:ready', () => {
+    console.log('🎉 Payment system ready in member dashboard');
+    // يمكن تفعيل ميزات إضافية هنا
 });

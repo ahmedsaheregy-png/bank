@@ -40,6 +40,10 @@
                     <span class="icon">📷</span>
                     <span>تسجيل عملية</span>
                 </a>
+                <a href="#" class="nav-item" data-page="qrScanner">
+                    <span class="icon">📱</span>
+                    <span>دفع أونلاين</span>
+                </a>
                 <a href="#" class="nav-item" data-page="transactions">
                     <span class="icon">💳</span>
                     <span>العمليات المكتملة</span>
@@ -154,6 +158,7 @@
                 <div id="pendingPage" class="page"></div>
                 <div id="transactionsPage" class="page"></div>
                 <div id="financialPage" class="page"></div>
+                <div id="qrScannerPage" class="page"></div>
                 <div id="settingsPage" class="page"></div>
             </div>
         </main>
@@ -202,10 +207,15 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     <script src="../shared/config/supabase.js"></script>
     <script src="../shared/components/logo.js"></script>
     <script src="../shared/components/notifications.js"></script>
     <script src="../shared/components/image-upload.js"></script>
+    <script src="../shared/payments/payment-provider.js"></script>
+    <script src="../shared/payments/payment-service.js"></script>
+    <script src="../shared/payments/mock-provider.js"></script>
+    <script src="../shared/payments/payment-init.js"></script>
     <script src="js/dashboard.js"></script>
     <script>
         // تهيئة الإشعارات بعد تحميل البيانات
