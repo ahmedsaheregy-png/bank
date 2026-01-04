@@ -2548,3 +2548,164 @@ body {
     font-size: 0.75rem;
     font-weight: 600;
 }
+
+/* ===== New Payment Method Options ===== */
+.payment-method-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.payment-option {
+    display: block;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.payment-option input[type="radio"] {
+    display: none;
+}
+
+.payment-option-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 15px;
+    background: #f8fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.payment-option:hover .payment-option-content {
+    border-color: #10B981;
+    background: #f0fdf4;
+}
+
+.payment-option input[type="radio"]:checked + .payment-option-content {
+    border-color: #10B981;
+    background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.payment-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.payment-details {
+    flex: 1;
+}
+
+.payment-title {
+    display: block;
+    font-weight: 600;
+    color: #1f2937;
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+}
+
+.payment-desc {
+    display: block;
+    font-size: 0.8rem;
+    color: #6b7280;
+    line-height: 1.4;
+}
+
+/* Disabled payment option */
+.payment-option.disabled-option {
+    cursor: not-allowed;
+}
+
+.payment-option.disabled-option .payment-option-content {
+    opacity: 0.6;
+    background: #f1f5f9;
+}
+
+.payment-option.disabled-option:hover .payment-option-content {
+    border-color: #e2e8f0;
+    background: #f1f5f9;
+}
+
+.payment-option.disabled-option .coming-soon-badge {
+    margin-right: auto;
+}
+
+/* ===== Payment Provider Section ===== */
+.payment-providers-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.provider-option {
+    display: block;
+    cursor: pointer;
+}
+
+.provider-option input[type="radio"] {
+    display: none;
+}
+
+.provider-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 15px;
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+.provider-option:hover .provider-content {
+    border-color: #10B981;
+    background: #f0fdf4;
+}
+
+.provider-option input[type="radio"]:checked + .provider-content {
+    border-color: #10B981;
+    background: #dcfce7;
+}
+
+.provider-icon {
+    font-size: 1.3rem;
+}
+
+.provider-info {
+    flex: 1;
+}
+
+.provider-name {
+    display: block;
+    font-weight: 600;
+    color: #1f2937;
+    font-size: 0.9rem;
+}
+
+.provider-desc {
+    display: block;
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+/* ===== Dynamic Form Note (Alert) ===== */
+.form-note.success {
+    background: #f0fdf4;
+    border-color: #86efac;
+}
+
+.form-note.success p {
+    color: #166534;
+}
+
+.form-note.warning {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+}
+
+.form-note.warning p {
+    color: #1d4ed8;
+}

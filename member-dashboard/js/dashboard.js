@@ -795,8 +795,64 @@ async function loadNearbyMerchants() {
                 <div id="selectedMerchantInfo" class="merchant-info-box"></div>
                 
                 <form id="createTransactionForm">
+                    <!-- طريقة الدفع - 3 خيارات -->
                     <div class="form-group">
-                        <label>المبلغ (ج.م) *</label>
+                        <label>🏷️ طريقة الدفع</label>
+                        <div class="payment-method-options">
+                            <label class="payment-option" onclick="selectPaymentMethod('outside')">
+                                <input type="radio" name="paymentMethod" value="outside" checked>
+                                <div class="payment-option-content">
+                                    <span class="payment-icon">🔶</span>
+                                    <div class="payment-details">
+                                        <span class="payment-title">الدفع خارج التطبيق</span>
+                                        <span class="payment-desc">توثيق فقط - الدفع يتم بينك وبين التاجر مباشرة</span>
+                                    </div>
+                                </div>
+                            </label>
+                            
+                            <label class="payment-option" onclick="selectPaymentMethod('provider')">
+                                <input type="radio" name="paymentMethod" value="provider">
+                                <div class="payment-option-content">
+                                    <span class="payment-icon">🟢</span>
+                                    <div class="payment-details">
+                                        <span class="payment-title">الدفع عبر التطبيق</span>
+                                        <span class="payment-desc">دفع آمن عبر مزودي خدمات الدفع (فوري، إيزيكو...)</span>
+                                    </div>
+                                </div>
+                            </label>
+                            
+                            <label class="payment-option disabled-option">
+                                <input type="radio" name="paymentMethod" value="wallet" disabled>
+                                <div class="payment-option-content">
+                                    <span class="payment-icon">💰</span>
+                                    <div class="payment-details">
+                                        <span class="payment-title">الدفع من المحفظة</span>
+                                        <span class="payment-desc">دفع فوري من رصيد محفظتك</span>
+                                    </div>
+                                    <span class="coming-soon-badge">قريباً</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- قسم مزودي خدمات الدفع - يظهر فقط عند اختيار "الدفع عبر التطبيق" -->
+                    <div id="paymentProviderSection" class="form-group" style="display: none;">
+                        <label>🌍 اختر الدولة</label>
+                        <select id="providerCountry" class="form-control" onchange="loadPaymentProviders()">
+                            <option value="">اختر الدولة...</option>
+                            <option value="EG">🇪🇬 مصر</option>
+                            <option value="TR">🇹🇷 تركيا</option>
+                            <option value="SA">🇸🇦 السعودية</option>
+                            <option value="AE">🇦🇪 الإمارات</option>
+                        </select>
+                        
+                        <div id="paymentProvidersList" class="payment-providers-list" style="display: none;">
+                            <!-- سيتم تحميل مزودي الخدمة هنا -->
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>💵 المبلغ (ج.م) *</label>
                         <input type="number" id="transAmount" required class="form-control" 
                             step="0.01" min="1" placeholder="أدخل مبلغ الشراء" oninput="calculateCommission()">
                     </div>
@@ -817,7 +873,13 @@ async function loadNearbyMerchants() {
                     </div>
                     
                     <div class="form-group">
-                        <label>صورة الفاتورة (اختياري)</label>
+                        <label>📝 ملاحظات (اختياري)</label>
+                        <textarea id="transNotes" class="form-control" rows="2" 
+                            placeholder="وصف المشتريات..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>📷 صورة الفاتورة (اختياري)</label>
                         <div class="invoice-upload-wrapper">
                             <input type="file" id="transInvoiceFile" accept="image/*" 
                                 class="form-control" onchange="previewInvoiceImage(this)">
@@ -828,33 +890,12 @@ async function loadNearbyMerchants() {
                         </div>
                     </div>
                     
-                    <div class="form-group">
-                        <label>ملاحظات (اختياري)</label>
-                        <textarea id="transNotes" class="form-control" rows="2" 
-                            placeholder="وصف المشتريات..."></textarea>
+                    <!-- تنبيه ديناميكي -->
+                    <div id="paymentAlert" class="form-note">
+                        <p id="paymentAlertText">⏳ العملية ستكون <strong>معلقة</strong> حتى يوافق عليها التاجر</p>
                     </div>
                     
-                    <div class="form-note">
-                        <p>⏳ العملية ستكون <strong>معلقة</strong> حتى يوافق عليها التاجر</p>
-                    </div>
-                    
-                    <!-- نوع العملية -->
-                    <div class="form-group">
-                        <label>نوع العملية</label>
-                        <div class="transaction-type-options">
-                            <label class="radio-option">
-                                <input type="radio" name="memberTransactionType" value="documentation" checked>
-                                <span class="radio-label">توثيق فقط</span>
-                            </label>
-                            <label class="radio-option disabled-option">
-                                <input type="radio" name="memberTransactionType" value="wallet_payment" disabled>
-                                <span class="radio-label">توثيق + دفع من المحفظة</span>
-                                <span class="coming-soon-badge">قريباً بإذن الله</span>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-primary btn-block">إرسال طلب التوثيق</button>
+                    <button type="submit" class="btn btn-primary btn-block" id="submitTransactionBtn">إرسال طلب التوثيق</button>
                 </form>
             </div>
         </div>
@@ -1196,63 +1237,130 @@ function openTransactionModal(merchantId, merchantName, commissionPercentage, ca
     document.getElementById('selectedMerchantInfo').innerHTML = `
         <h4>${merchantName}</h4>
         <p>📁 ${category} | نسبة العمولة: <strong>${commissionPercentage}%</strong></p>
-        
-        <!-- اختيار طريقة الدفع -->
-        <div class="payment-method-selector" style="margin-top: 15px; padding: 15px; background: var(--bg-secondary, #f5f5f5); border-radius: 12px;">
-            <label style="display: block; margin-bottom: 10px; font-weight: 600; color: var(--text-primary, #333);">💳 طريقة الدفع:</label>
-            <div class="payment-options" style="display: flex; flex-direction: column; gap: 10px;">
-                <label class="payment-option" style="display: flex; align-items: flex-start; gap: 10px; padding: 12px; background: var(--bg-card, #fff); border-radius: 8px; border: 2px solid var(--border-color, #ddd); cursor: pointer; transition: all 0.3s;" onclick="selectPaymentMethod('external')">
-                    <input type="radio" name="paymentMethod" value="external" checked style="margin-top: 3px;">
-                    <div>
-                        <span style="font-weight: 600;">💵 الدفع خارج التطبيق</span>
-                        <small style="display: block; color: var(--text-secondary, #666); margin-top: 4px;">توثيق فقط - الدفع يتم بينك وبين التاجر مباشرة (يحتاج موافقة التاجر)</small>
-                    </div>
-                </label>
-                <label class="payment-option" style="display: flex; align-items: flex-start; gap: 10px; padding: 12px; background: var(--bg-card, #fff); border-radius: 8px; border: 2px solid var(--border-color, #ddd); cursor: pointer; transition: all 0.3s;" onclick="selectPaymentMethod('in_app')">
-                    <input type="radio" name="paymentMethod" value="in_app" style="margin-top: 3px;">
-                    <div>
-                        <span style="font-weight: 600;">💳 الدفع عبر التطبيق</span>
-                        <small style="display: block; color: var(--text-secondary, #666); margin-top: 4px;">دفع آمن فوري - يتم خصم المبلغ من بطاقتك</small>
-                    </div>
-                </label>
-            </div>
-            
-            <!-- نموذج بيانات البطاقة (يظهر عند اختيار الدفع عبر التطبيق) -->
-            <div id="inAppPaymentSection" style="display: none; margin-top: 15px; padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px;">
-                <p style="color: white; font-weight: 600; margin-bottom: 12px;">💳 أدخل بيانات البطاقة:</p>
-                <div style="display: flex; flex-direction: column; gap: 10px;">
-                    <input type="text" id="cardNumber" placeholder="رقم البطاقة (16 رقم)" maxlength="19" 
-                        style="padding: 12px; border: none; border-radius: 8px; font-size: 16px; direction: ltr; text-align: left;" 
-                        oninput="formatCardNumber(this)">
-                    <div style="display: flex; gap: 10px;">
-                        <input type="text" id="cardExpiry" placeholder="MM/YY" maxlength="5" 
-                            style="flex: 1; padding: 12px; border: none; border-radius: 8px; font-size: 16px; direction: ltr; text-align: center;"
-                            oninput="formatExpiry(this)">
-                        <input type="text" id="cardCVV" placeholder="CVV" maxlength="4" 
-                            style="flex: 1; padding: 12px; border: none; border-radius: 8px; font-size: 16px; direction: ltr; text-align: center;">
-                    </div>
-                    <input type="text" id="cardHolder" placeholder="اسم حامل البطاقة" 
-                        style="padding: 12px; border: none; border-radius: 8px; font-size: 16px;">
-                </div>
-                <p style="color: rgba(255,255,255,0.8); font-size: 0.8rem; margin-top: 10px; text-align: center;">🔒 بياناتك مشفرة وآمنة</p>
-            </div>
-        </div>
     `;
 
     // إعادة تعيين الفورم
     document.getElementById('createTransactionForm').reset();
     document.getElementById('commissionPreview').style.display = 'none';
 
-    // إضافة event listeners
-    setTimeout(() => {
-        document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
-            radio.addEventListener('change', function () {
-                toggleInAppPaymentSection(this.value);
-            });
-        });
-    }, 100);
+    // إعادة تعيين قسم مزودي الخدمة
+    const providerSection = document.getElementById('paymentProviderSection');
+    if (providerSection) {
+        providerSection.style.display = 'none';
+    }
+
+    // التأكد من اختيار الخيار الأول (خارج التطبيق)
+    const outsideRadio = document.querySelector('input[name="paymentMethod"][value="outside"]');
+    if (outsideRadio) {
+        outsideRadio.checked = true;
+    }
+
+    // إعادة تعيين التنبيه
+    updatePaymentAlert('outside');
 
     document.getElementById('transactionModal').style.display = 'flex';
+}
+
+// دالة اختيار طريقة الدفع
+function selectPaymentMethod(method) {
+    const providerSection = document.getElementById('paymentProviderSection');
+    const submitBtn = document.getElementById('submitTransactionBtn');
+    const paymentAlert = document.getElementById('paymentAlert');
+
+    if (method === 'provider') {
+        // إظهار قسم مزودي الخدمة
+        if (providerSection) {
+            providerSection.style.display = 'block';
+        }
+        if (submitBtn) {
+            submitBtn.textContent = 'ادفع الآن';
+        }
+        if (paymentAlert) {
+            paymentAlert.className = 'form-note success';
+        }
+        updatePaymentAlert('provider');
+    } else if (method === 'outside') {
+        // إخفاء قسم مزودي الخدمة
+        if (providerSection) {
+            providerSection.style.display = 'none';
+        }
+        if (submitBtn) {
+            submitBtn.textContent = 'إرسال طلب التوثيق';
+        }
+        if (paymentAlert) {
+            paymentAlert.className = 'form-note warning';
+        }
+        updatePaymentAlert('outside');
+    }
+    // خيار المحفظة معطل - لا يفعل شيء
+}
+
+// تحديث التنبيه حسب طريقة الدفع
+function updatePaymentAlert(method) {
+    const alertText = document.getElementById('paymentAlertText');
+    if (!alertText) return;
+
+    if (method === 'outside') {
+        alertText.innerHTML = '⏳ العملية ستكون <strong>معلقة</strong> حتى يوافق عليها التاجر';
+    } else if (method === 'provider') {
+        alertText.innerHTML = '✅ سيتم معالجة الدفع <strong>فوراً</strong> عبر مزود الخدمة المختار';
+    }
+}
+
+// بيانات مزودي خدمات الدفع
+const paymentProviders = {
+    'EG': [
+        { id: 'fawry', name: 'فوري', icon: '📱', description: 'ادفع عبر أي منفذ فوري' },
+        { id: 'vodafone_cash', name: 'فودافون كاش', icon: '📲', description: 'ادفع من محفظتك' },
+        { id: 'orange_cash', name: 'أورانج كاش', icon: '📲', description: 'ادفع من محفظتك' },
+        { id: 'instapay', name: 'انستاباي', icon: '🏦', description: 'تحويل بنكي فوري' }
+    ],
+    'TR': [
+        { id: 'easypay', name: 'إيزيكو', icon: '🏦', description: 'الدفع عبر البنوك التركية' },
+        { id: 'papara', name: 'بابارا', icon: '💳', description: 'محفظة إلكترونية تركية' }
+    ],
+    'SA': [
+        { id: 'stc_pay', name: 'STC Pay', icon: '📱', description: 'محفظة STC الرقمية' },
+        { id: 'mada', name: 'مدى', icon: '💳', description: 'بطاقة مدى' }
+    ],
+    'AE': [
+        { id: 'apple_pay', name: 'Apple Pay', icon: '🍎', description: 'الدفع عبر Apple' },
+        { id: 'samsung_pay', name: 'Samsung Pay', icon: '📱', description: 'الدفع عبر Samsung' }
+    ]
+};
+
+// تحميل مزودي الخدمة حسب الدولة
+function loadPaymentProviders() {
+    const country = document.getElementById('providerCountry').value;
+    const providersList = document.getElementById('paymentProvidersList');
+
+    if (!country) {
+        providersList.style.display = 'none';
+        return;
+    }
+
+    const providers = paymentProviders[country] || [];
+
+    if (providers.length === 0) {
+        providersList.innerHTML = '<p class="empty-state">لا توجد مزودي خدمة متاحين لهذه الدولة حالياً</p>';
+        providersList.style.display = 'block';
+        return;
+    }
+
+    providersList.innerHTML = providers.map(p => `
+        <label class="provider-option">
+            <input type="radio" name="selectedProvider" value="${p.id}">
+            <div class="provider-content">
+                <span class="provider-icon">${p.icon}</span>
+                <div class="provider-info">
+                    <span class="provider-name">${p.name}</span>
+                    <span class="provider-desc">${p.description}</span>
+                </div>
+            </div>
+        </label>
+    `).join('');
+
+    providersList.style.display = 'block';
 }
 
 function closeTransactionModal() {
