@@ -2885,5 +2885,4 @@ window.addEventListener('sawyan:payment:ready', () => {
     // يمكن تفعيل ميزات إضافية هنا
 });
 
-// Debug: Confirm file load
-alert('Dashboard.js v1.2 Loaded Successfully!');
+});
