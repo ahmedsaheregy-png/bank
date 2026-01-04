@@ -1380,22 +1380,22 @@ function updatePaymentAlert(method) {
 // بيانات مزودي خدمات الدفع
 const paymentProviders = {
     'EG': [
-        { id: 'card', name: 'بطاقة بنكية', icon: '💳', description: 'فيزا / ماستركارد' },
-        { id: 'fawry', name: 'فوري', icon: '📱', description: 'ادفع عبر أي منفذ فوري' },
-        { id: 'vodafone_cash', name: 'فودافون كاش', icon: '📲', description: 'ادفع من محفظتك' },
-        { id: 'instapay', name: 'انستاباي', icon: '🏦', description: 'تحويل بنكي فوري' }
+        { id: 'card', name: 'بطاقة بنكية', icon: '💳', description: 'فيزا / ماستركارد', type: 'card' },
+        { id: 'fawry', name: 'فوري', icon: '📱', description: 'ادفع عبر أي منفذ فوري', type: 'offline' },
+        { id: 'vodafone_cash', name: 'فودافون كاش', icon: '📲', description: 'ادفع من محفظتك', type: 'wallet' },
+        { id: 'instapay', name: 'انستاباي', icon: '🏦', description: 'تحويل بنكي فوري', type: 'wallet' }
     ],
     'TR': [
-        { id: 'card', name: 'بطاقة بنكية', icon: '💳', description: 'زراعات، كويت ترك، وغيرها...' },
-        { id: 'papara', name: 'بابارا', icon: '👛', description: 'محفظة إلكترونية تركية' }
+        { id: 'card', name: 'بطاقة بنكية', icon: '💳', description: 'زراعات، كويت ترك، وغيرها...', type: 'card' },
+        { id: 'papara', name: 'بابارا', icon: '👛', description: 'محفظة إلكترونية تركية', type: 'wallet' }
     ],
     'SA': [
-        { id: 'mada', name: 'مدى (Mada)', icon: '💳', description: 'بطاقة بنكية / مدى' },
-        { id: 'stc_pay', name: 'STC Pay', icon: '📱', description: 'محفظة STC الرقمية' }
+        { id: 'mada', name: 'مدى (Mada)', icon: '💳', description: 'بطاقة بنكية / مدى', type: 'card' },
+        { id: 'stc_pay', name: 'STC Pay', icon: '📱', description: 'محفظة STC الرقمية', type: 'wallet' }
     ],
     'AE': [
-        { id: 'card', name: 'بطاقة بنكية', icon: '💳', description: 'Visa / Mastercard' },
-        { id: 'apple_pay', name: 'Apple Pay', icon: '🍎', description: 'الدفع عبر Apple' }
+        { id: 'card', name: 'بطاقة بنكية', icon: '💳', description: 'Visa / Mastercard', type: 'card' },
+        { id: 'apple_pay', name: 'Apple Pay', icon: '🍎', description: 'الدفع عبر Apple', type: 'wallet' }
     ]
 };
 
