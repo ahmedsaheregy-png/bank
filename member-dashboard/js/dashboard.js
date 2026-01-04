@@ -1318,22 +1318,22 @@ function updatePaymentAlert(method) {
 // بيانات مزودي خدمات الدفع
 const paymentProviders = {
     'EG': [
+        { id: 'card', name: 'بطاقة بنكية', icon: '💳', description: 'فيزا / ماستركارد' },
         { id: 'fawry', name: 'فوري', icon: '📱', description: 'ادفع عبر أي منفذ فوري' },
         { id: 'vodafone_cash', name: 'فودافون كاش', icon: '📲', description: 'ادفع من محفظتك' },
-        { id: 'orange_cash', name: 'أورانج كاش', icon: '📲', description: 'ادفع من محفظتك' },
         { id: 'instapay', name: 'انستاباي', icon: '🏦', description: 'تحويل بنكي فوري' }
     ],
     'TR': [
-        { id: 'easypay', name: 'إيزيكو', icon: '🏦', description: 'الدفع عبر البنوك التركية' },
-        { id: 'papara', name: 'بابارا', icon: '💳', description: 'محفظة إلكترونية تركية' }
+        { id: 'card', name: 'بطاقة بنكية', icon: '💳', description: 'زراعات، كويت ترك، وغيرها...' },
+        { id: 'papara', name: 'بابارا', icon: '👛', description: 'محفظة إلكترونية تركية' }
     ],
     'SA': [
-        { id: 'stc_pay', name: 'STC Pay', icon: '📱', description: 'محفظة STC الرقمية' },
-        { id: 'mada', name: 'مدى', icon: '💳', description: 'بطاقة مدى' }
+        { id: 'mada', name: 'مدى (Mada)', icon: '💳', description: 'بطاقة بنكية / مدى' },
+        { id: 'stc_pay', name: 'STC Pay', icon: '📱', description: 'محفظة STC الرقمية' }
     ],
     'AE': [
-        { id: 'apple_pay', name: 'Apple Pay', icon: '🍎', description: 'الدفع عبر Apple' },
-        { id: 'samsung_pay', name: 'Samsung Pay', icon: '📱', description: 'الدفع عبر Samsung' }
+        { id: 'card', name: 'بطاقة بنكية', icon: '💳', description: 'Visa / Mastercard' },
+        { id: 'apple_pay', name: 'Apple Pay', icon: '🍎', description: 'الدفع عبر Apple' }
     ]
 };
 
