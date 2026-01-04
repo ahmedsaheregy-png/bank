@@ -1255,22 +1255,12 @@ function closeTransactionModal() {
 
 // دالة اختيار طريقة الدفع
 window.selectPaymentMethod = function (method) {
-    alert('Debug: Running new code v1.2 - Method: ' + method); // For verification
-    console.log('🔄 selectPaymentMethod triggered with:', method);
-
     // محاولة العثور على العناصر بأمان
     const invoiceInput = document.getElementById('transInvoiceFile');
     const invoiceGroup = invoiceInput ? invoiceInput.closest('.form-group') : null;
     const providerSection = document.getElementById('paymentProviderSection');
     const alertText = document.getElementById('paymentAlertText');
     const submitBtn = document.getElementById('submitTransactionBtn');
-
-    console.log(' Debug Elements:', {
-        hasInvoiceGroup: !!invoiceGroup,
-        hasProviderSection: !!providerSection,
-        hasAlert: !!alertText,
-        hasBtn: !!submitBtn
-    });
 
     // إزالة التحديد السابق
     document.querySelectorAll('.payment-option').forEach(el => el.classList.remove('selected'));
@@ -2885,4 +2875,4 @@ window.addEventListener('sawyan:payment:ready', () => {
     // يمكن تفعيل ميزات إضافية هنا
 });
 
-});
+
