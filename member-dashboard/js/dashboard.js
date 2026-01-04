@@ -849,6 +849,68 @@ async function loadNearbyMerchants() {
                         <div id="paymentProvidersList" class="payment-providers-list" style="display: none;">
                             <!-- سيتم تحميل مزودي الخدمة هنا -->
                         </div>
+                        
+                        <!-- حاوية الحقول الديناميكية -->
+                        <div id="paymentDetailsInputs" class="payment-details-box" style="display: none; margin-top: 15px;">
+                            <!-- سيتم حقن الحقول هنا حسب الاختيار -->
+                        </div>
+
+                        <!-- قوالب الحقول المخفية -->
+                        <div id="tpl-card-inputs" style="display:none;">
+                            <div class="dynamic-form fade-in">
+                                <div class="form-group">
+                                    <label>اسم صاحب البطاقة</label>
+                                    <input type="text" class="form-control" placeholder="كما يظهر على البطاقة">
+                                </div>
+                                <div class="form-group">
+                                    <label>رقم البطاقة</label>
+                                    <div style="position: relative;">
+                                        <input type="text" class="form-control" placeholder="0000 0000 0000 0000" maxlength="19">
+                                        <span style="position: absolute; left: 10px; top: 10px;">💳</span>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="form-group">
+                                            <label>تاريخ الانتهاء</label>
+                                            <input type="text" class="form-control" placeholder="MM/YY" maxlength="5">
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="form-group">
+                                            <label>CVC</label>
+                                            <div style="position: relative;">
+                                                <input type="text" class="form-control" placeholder="123" maxlength="3">
+                                                <span style="position: absolute; left: 10px; top: 10px;">🔒</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="tpl-wallet-inputs" style="display:none;">
+                            <div class="dynamic-form fade-in">
+                                <div class="form-group">
+                                    <label>رقم الموبايل للمحفظة</label>
+                                    <div style="position: relative;">
+                                        <input type="tel" class="form-control" placeholder="أدخل رقم المحفظة">
+                                        <span style="position: absolute; left: 10px; top: 10px;">📱</span>
+                                    </div>
+                                    <small class="text-muted">سيصلك إشعار للدفع على هذا الرقم</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="tpl-offline-inputs" style="display:none;">
+                            <div class="dynamic-form fade-in text-center">
+                                <div class="alert alert-info">
+                                    <strong>تعليمات الدفع:</strong><br>
+                                    سيتم إصدار "كود مرجعي" فوراً بعد الضغط على زر "تابع للدفع الآمن".<br>
+                                    استخدم الكود للدفع في أقرب منفذ.
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="form-group">
