@@ -32,15 +32,242 @@ document.addEventListener('DOMContentLoaded', async function () {
         transactionForm.addEventListener('submit', handleTransaction);
     }
 
+    // البحث عند الضغط Enter في حقل الكود أو الموبايل
     const memberCodeInput = document.getElementById('memberCodeInput');
     if (memberCodeInput) {
-        memberCodeInput.addEventListener('input', function () {
-            if (this.value.length > 0) {
-                document.getElementById('transactionForm').style.display = 'block';
-            }
+        memberCodeInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); lookupMemberByCode(); }
         });
     }
+    const memberPhoneInput = document.getElementById('memberPhoneInput');
+    if (memberPhoneInput) {
+        memberPhoneInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); lookupMemberByPhone(); }
+        });
+    }
+
+    // معاينة العمولة عند إدخال المبلغ
+    const amountInput = document.getElementById('amount');
+    if (amountInput) {
+        amountInput.addEventListener('input', updateCommissionPreview);
+    }
 });
+
+// ===== متغيرات عامة للتبويبات والاسكانر =====
+let selectedMember = null;       // العضو المُكتشف (محفوظ مؤقتاً)
+let html5QrCodeInstance = null;  // كائن QR Scanner النشط
+let currentScanMethod = 'qr';    // الطريقة النشطة حالياً
+
+// ===== تبديل طريقة الإدخال (QR / كود / موبايل) =====
+function switchScanMethod(method) {
+    currentScanMethod = method;
+    // إيقاف الكاميرا إذا كنا في QR والتبديل لطريقة أخرى
+    if (method !== 'qr') { stopQRScanner(); }
+
+    // تحديث التبويبات
+    document.querySelectorAll('.scan-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.method === method);
+    });
+    // إظهار القسم المناسب
+    document.querySelectorAll('.scan-method').forEach(sec => {
+        sec.classList.remove('active');
+    });
+    const target = document.getElementById('scanMethod' + method.charAt(0).toUpperCase() + method.slice(1));
+    if (target) target.classList.add('active');
+}
+
+// ===== بدء QR Scanner =====
+async function startQRScanner() {
+    const statusEl = document.getElementById('scanStatus');
+    const startBtn = document.getElementById('startScanBtn');
+    const stopBtn = document.getElementById('stopScanBtn');
+    const readerEl = document.getElementById('qrReader');
+
+    // التحقق من توفر المكتبة
+    if (typeof Html5Qrcode === 'undefined') {
+        if (statusEl) statusEl.innerHTML = '<div class="alert alert-error">⚠️ مكتبة QR غير متاحة. استخدم الإدخال اليدوي.</div>';
+        return;
+    }
+
+    try {
+        if (startBtn) startBtn.disabled = true;
+        if (statusEl) statusEl.innerHTML = '<div class="alert alert-info">📷 جاري تشغيل الكاميرا...</div>';
+
+        html5QrCodeInstance = new Html5Qrcode('qrReader');
+        const config = {
+            fps: 10,
+            qrbox: { width: 220, height: 220 },
+            aspectRatio: 1.0
+        };
+
+        await html5QrCodeInstance.start(
+            { facingMode: 'environment' },
+            config,
+            onQRScanSuccess,
+            onQRScanFailure
+        );
+
+        if (startBtn) startBtn.style.display = 'none';
+        if (stopBtn) stopBtn.style.display = 'block';
+        if (statusEl) statusEl.innerHTML = '<div class="alert alert-info">📷 الكاميرا تعمل — وجّهها نحو QR Code</div>';
+    } catch (err) {
+        console.error('QR Scanner error:', err);
+        if (statusEl) statusEl.innerHTML =
+            '<div class="alert alert-error">⚠️ تعذّر تشغيل الكاميرا. تأكد من منح الإذن ثم حاول مرة أخرى.<br>' +
+            '<small>يمكنك استخدام الإدخال اليدوي بدلاً من ذلك.</small></div>';
+        if (startBtn) startBtn.disabled = false;
+    }
+}
+
+function onQRScanSuccess(decodedText) {
+    // تم مسح QR بنجاح
+    stopQRScanner();
+    const statusEl = document.getElementById('scanStatus');
+    if (statusEl) statusEl.innerHTML = '<div class="alert alert-success">✅ تم مسح الكود: ' + decodedText + '</div>';
+    // استخدم النص ككود عضو
+    document.getElementById('memberCodeInput').value = decodedText;
+    lookupMemberByCode(decodedText);
+}
+
+function onQRScanFailure(error) {
+    // تجاهل — يُستدعى باستمرار أثناء المسح
+}
+
+async function stopQRScanner() {
+    if (html5QrCodeInstance) {
+        try {
+            await html5QrCodeInstance.stop();
+            await html5QrCodeInstance.clear();
+        } catch (err) {
+            console.warn('Error stopping scanner:', err);
+        }
+        html5QrCodeInstance = null;
+    }
+    const startBtn = document.getElementById('startScanBtn');
+    const stopBtn = document.getElementById('stopScanBtn');
+    if (startBtn) { startBtn.style.display = 'block'; startBtn.disabled = false; }
+    if (stopBtn) stopBtn.style.display = 'none';
+}
+
+// ===== البحث عن عضو بالكود =====
+async function lookupMemberByCode(overrideCode) {
+    const code = (overrideCode || document.getElementById('memberCodeInput').value || '').trim();
+    if (!code) {
+        alert('الرجاء إدخال كود العضو');
+        return;
+    }
+    await findAndShowMember({ column: 'member_code', value: code });
+}
+
+// ===== البحث عن عضو بالموبايل =====
+async function lookupMemberByPhone() {
+    let phone = (document.getElementById('memberPhoneInput').value || '').trim();
+    if (!phone) {
+        alert('الرجاء إدخال رقم الموبايل');
+        return;
+    }
+    // تنظيف الرقم من المسافات والشرطات
+    phone = phone.replace(/[\s\-+]/g, '');
+    // البحث بأكثر من صيغة (مثلاً: 01012345678 أو 10012345678)
+    await findAndShowMember({ column: 'phone', value: phone, isPhone: true });
+}
+
+// ===== دالة موحدة لجلب بيانات العضو وعرضها =====
+async function findAndShowMember({ column, value, isPhone = false }) {
+    const statusEl = document.getElementById('scanStatus');
+    try {
+        if (statusEl) statusEl.innerHTML = '<div class="alert alert-info">🔍 جاري البحث...</div>';
+
+        let query = window.SAWYAN.supabase
+            .from('members')
+            .select('id, member_code, full_name, phone, email');
+
+        if (isPhone) {
+            // البحث بالرقم كما هو أو مع/bدون مفتاح الدولة
+            query = query.or(`phone.eq.${value},phone.eq.+${value}`);
+        } else {
+            query = query.eq(column, value);
+        }
+
+        const { data: members, error } = await query.limit(5);
+
+        if (error) throw error;
+
+        if (!members || members.length === 0) {
+            if (statusEl) statusEl.innerHTML = '<div class="alert alert-error">❌ لم يتم العثور على عضو بهذا ' + (isPhone ? 'الموبايل' : 'الكود') + '</div>';
+            clearSelectedMember();
+            return;
+        }
+
+        if (members.length > 1) {
+            // نتائج متعددة — اعرضها للاختيار
+            showMultipleMembers(members);
+            return;
+        }
+
+        setSelectedMember(members[0]);
+        if (statusEl) statusEl.innerHTML = '';
+    } catch (err) {
+        console.error('Lookup error:', err);
+        if (statusEl) statusEl.innerHTML = '<div class="alert alert-error">⚠️ خطأ: ' + err.message + '</div>';
+    }
+}
+
+function showMultipleMembers(members) {
+    const statusEl = document.getElementById('scanStatus');
+    if (!statusEl) return;
+    statusEl.innerHTML =
+        '<div class="alert alert-info">تم العثور على ' + members.length + ' نتائج. اختر واحداً:</div>' +
+        '<div class="multi-members-list">' +
+        members.map(m =>
+            '<button type="button" class="member-pick-btn" onclick=\'setSelectedMember(' + JSON.stringify(m) + ')\'>' +
+            '<strong>' + (m.full_name || 'بدون اسم') + '</strong>' +
+            '<small>كود: ' + m.member_code + (m.phone ? ' | 📱 ' + m.phone : '') + '</small>' +
+            '</button>'
+        ).join('') +
+        '</div>';
+}
+
+function setSelectedMember(member) {
+    selectedMember = member;
+    document.getElementById('memberFoundCard').style.display = 'block';
+    document.getElementById('foundMemberName').textContent = member.full_name || 'بدون اسم';
+    document.getElementById('foundMemberCode').textContent = member.member_code || '-';
+    document.getElementById('foundMemberPhone').textContent = member.phone || '-';
+    document.getElementById('transactionForm').style.display = 'block';
+    // مسح أي حالة خطأ سابقة
+    const statusEl = document.getElementById('scanStatus');
+    if (statusEl) statusEl.innerHTML = '';
+    // تمرير لأسفل للوصول لنموذج المبلغ
+    document.getElementById('transactionForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function clearSelectedMember() {
+    selectedMember = null;
+    document.getElementById('memberFoundCard').style.display = 'none';
+    document.getElementById('transactionForm').style.display = 'none';
+    document.getElementById('memberCodeInput').value = '';
+    document.getElementById('memberPhoneInput').value = '';
+    document.getElementById('amount').value = '';
+    document.getElementById('commissionPreview').style.display = 'none';
+}
+
+// ===== معاينة العمولة قبل التأكيد =====
+function updateCommissionPreview() {
+    const amount = parseFloat(document.getElementById('amount').value) || 0;
+    if (amount <= 0 || !merchantData) {
+        document.getElementById('commissionPreview').style.display = 'none';
+        return;
+    }
+    const pct = parseFloat(merchantData.commission_percentage) || 0;
+    const total = amount * (pct / 100);
+    const memberShare = total * 0.75;
+    const companyShare = total * 0.25;
+    document.getElementById('previewTotalCommission').textContent = total.toFixed(2) + ' ج.م';
+    document.getElementById('previewMemberShare').textContent = memberShare.toFixed(2) + ' ج.م';
+    document.getElementById('previewCompanyShare').textContent = companyShare.toFixed(2) + ' ج.م';
+    document.getElementById('commissionPreview').style.display = 'block';
+}
 
 async function checkAuth() {
     // التحقق من localStorage
@@ -117,26 +344,21 @@ async function loadStats() {
 async function handleTransaction(e) {
     e.preventDefault();
 
-    const memberCode = document.getElementById('memberCodeInput').value;
     const amount = parseFloat(document.getElementById('amount').value);
 
-    if (!memberCode || !amount) {
-        alert('الرجاء إدخال كود العضو والمبلغ');
+    // استخدام العضو المُكتشف من أي طريقة (QR/كود/موبايل)
+    if (!selectedMember) {
+        alert('الرجاء تحديد العضو أولاً (مسح QR أو إدخال كود/موبايل)');
+        return;
+    }
+    if (!amount || amount <= 0) {
+        alert('الرجاء إدخال مبلغ صحيح');
         return;
     }
 
     try {
-        // البحث عن العضو
-        const { data: member, error: memberError } = await window.SAWYAN.supabase
-            .from('members')
-            .select('id')
-            .eq('member_code', memberCode)
-            .single();
-
-        if (memberError || !member) {
-            alert('كود العضو غير صحيح');
-            return;
-        }
+        // التأكد من العضو موجود (إعادة فحص سريع)
+        const member = selectedMember;
 
         // حساب العمولات
         const commissionPercentage = merchantData.commission_percentage;
@@ -204,9 +426,7 @@ async function handleTransaction(e) {
         }
 
         alert('✅ تم تسجيل العملية بنجاح!\\n\\nكود العملية: ' + transactionCode + '\\nالعمولة للعضو: ' + planShare.toFixed(2) + ' ج.م');
-        document.getElementById('transactionForm').reset();
-        document.getElementById('memberCodeInput').value = '';
-        document.getElementById('transactionForm').style.display = 'none';
+        clearSelectedMember();
         await loadStats();
 
     } catch (error) {
@@ -280,6 +500,11 @@ function showPage(page) {
     if (page === 'financial') loadFinancialReport();
     if (page === 'settings') loadSettings();
     if (page === 'qrScanner') loadQRScannerPage();
+
+    // إيقاف الكاميرا عند مغادرة صفحة المسح
+    if (page !== 'scan') {
+        stopQRScanner();
+    }
 }
 
 // ===== العمليات المعلقة (طلبات من الأعضاء) =====
@@ -995,7 +1220,9 @@ async function saveSettings() {
 }
 
 function openScanner() {
-    alert('ميزة مسح QR Code ستكون متاحة قريباً. استخدم الإدخال اليدوي حالياً.');
+    // للتوافق مع القديم — نوجّه المستخدم للـ Tab الخاص بالـ QR
+    switchScanMethod('qr');
+    startQRScanner();
 }
 
 async function logout() {

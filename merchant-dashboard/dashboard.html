@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="../shared/css/notifications.css">
     <link rel="stylesheet" href="../shared/css/image-upload.css">
     <link rel="stylesheet" href="../member-dashboard/css/dashboard.css">
+    <link rel="stylesheet" href="css/scan-page.css">
 </head>
 
 <body>
@@ -119,19 +120,100 @@
                 <!-- Scan Page -->
                 <div id="scanPage" class="page">
                     <h2>تسجيل عملية جديدة</h2>
-                    <div class="scan-section">
-                        <button onclick="openScanner()" class="btn btn-primary btn-lg">📷 مسح QR Code</button>
-                        <p class="or-divider">أو</p>
-                        <div class="manual-input">
-                            <input type="text" id="memberCodeInput" class="form-control"
-                                placeholder="أدخل كود العضو يدوياً">
+                    <p class="page-description" style="margin-bottom: 20px; color: #666;">
+                        اختر طريقة تحديد العميل — التاجر ينشئ العملية نيابة عن العميل وتتم فوراً
+                    </p>
+
+                    <!-- تبويبات اختيار طريقة الإدخال -->
+                    <div class="scan-tabs">
+                        <button type="button" class="scan-tab active" data-method="qr" onclick="switchScanMethod('qr')">
+                            <span class="scan-tab-icon">📷</span>
+                            <span class="scan-tab-label">مسح QR</span>
+                        </button>
+                        <button type="button" class="scan-tab" data-method="code" onclick="switchScanMethod('code')">
+                            <span class="scan-tab-icon">⌨️</span>
+                            <span class="scan-tab-label">كود العضو</span>
+                        </button>
+                        <button type="button" class="scan-tab" data-method="phone" onclick="switchScanMethod('phone')">
+                            <span class="scan-tab-icon">📱</span>
+                            <span class="scan-tab-label">موبايل العضو</span>
+                        </button>
+                    </div>
+
+                    <!-- طريقة 1: QR Scanner -->
+                    <div id="scanMethodQr" class="scan-method active">
+                        <div class="qr-scanner-container">
+                            <div id="qrReader" class="qr-reader"></div>
+                            <div class="scanner-controls">
+                                <button type="button" id="startScanBtn" onclick="startQRScanner()" class="btn btn-primary btn-lg btn-block">
+                                    📷 ابدأ المسح
+                                </button>
+                                <button type="button" id="stopScanBtn" onclick="stopQRScanner()" class="btn btn-outline btn-block" style="display: none;">
+                                    ⏹ إيقاف الكاميرا
+                                </button>
+                            </div>
+                            <p class="scanner-hint" style="text-align: center; color: #666; font-size: 0.85rem; margin-top: 10px;">
+                                وجّه الكاميرا نحو QR Code الخاص بالعميل
+                            </p>
+                            <div id="scanStatus" class="scan-status"></div>
                         </div>
                     </div>
 
+                    <!-- طريقة 2: إدخال كود العضو -->
+                    <div id="scanMethodCode" class="scan-method">
+                        <div class="manual-input-form">
+                            <div class="form-group">
+                                <label>كود العضو *</label>
+                                <input type="text" id="memberCodeInput" class="form-control"
+                                    placeholder="مثال: SAW-0001" autocomplete="off">
+                                <button type="button" onclick="lookupMemberByCode()" class="btn btn-primary btn-block" style="margin-top: 10px;">
+                                    🔍 بحث عن العضو
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- طريقة 3: إدخال موبايل العضو -->
+                    <div id="scanMethodPhone" class="scan-method">
+                        <div class="manual-input-form">
+                            <div class="form-group">
+                                <label>رقم موبايل العضو *</label>
+                                <input type="tel" id="memberPhoneInput" class="form-control"
+                                    placeholder="مثال: 01012345678" autocomplete="off" dir="ltr">
+                                <button type="button" onclick="lookupMemberByPhone()" class="btn btn-primary btn-block" style="margin-top: 10px;">
+                                    🔍 بحث عن العضو
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- بطاقة معلومات العضو المُكتشف -->
+                    <div id="memberFoundCard" class="member-found-card" style="display: none;">
+                        <div class="member-found-header">
+                            <span class="member-found-icon">✅</span>
+                            <span>تم العثور على العضو</span>
+                        </div>
+                        <div class="member-found-body">
+                            <div class="member-found-row">
+                                <strong>الاسم:</strong> <span id="foundMemberName">-</span>
+                            </div>
+                            <div class="member-found-row">
+                                <strong>الكود:</strong> <span id="foundMemberCode">-</span>
+                            </div>
+                            <div class="member-found-row">
+                                <strong>الموبايل:</strong> <span id="foundMemberPhone">-</span>
+                            </div>
+                            <button type="button" onclick="clearSelectedMember()" class="btn btn-outline btn-sm" style="margin-top: 8px;">
+                                ↺ تغيير العضو
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- نموذج إدخال المبلغ -->
                     <form id="transactionForm" class="transaction-form" style="display: none;">
                         <div class="form-group">
                             <label>المبلغ الإجمالي *</label>
-                            <input type="number" id="amount" required class="form-control" step="0.01" min="0">
+                            <input type="number" id="amount" required class="form-control" step="0.01" min="0" placeholder="0.00">
                         </div>
 
                         <!-- نوع العملية -->
@@ -150,7 +232,23 @@
                             </div>
                         </div>
 
-                        <button type="submit" class="btn btn-primary btn-block">تسجيل العملية</button>
+                        <div class="commission-preview" id="commissionPreview" style="display: none;">
+                            <h4>تفاصيل العمولة</h4>
+                            <div class="commission-row">
+                                <span>إجمالي العمولة:</span>
+                                <span id="previewTotalCommission">0.00 ج.م</span>
+                            </div>
+                            <div class="commission-row">
+                                <span>حصة العضو (75%):</span>
+                                <span id="previewMemberShare">0.00 ج.م</span>
+                            </div>
+                            <div class="commission-row">
+                                <span>حصة الشركة (25%):</span>
+                                <span id="previewCompanyShare">0.00 ج.م</span>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-block">✅ تأكيد العملية</button>
                     </form>
                 </div>
 
@@ -208,6 +306,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="../shared/config/supabase.js"></script>
     <script src="../shared/components/logo.js"></script>
@@ -217,7 +316,7 @@
     <script src="../shared/payments/payment-service.js"></script>
     <script src="../shared/payments/mock-provider.js"></script>
     <script src="../shared/payments/payment-init.js"></script>
-    <script src="js/dashboard.js?v=1.1"></script>
+    <script src="js/dashboard.js?v=1.2"></script>
     <script src="../shared/js/features-upgrade.js"></script>
     <script>
         // تهيئة الإشعارات بعد تحميل البيانات
