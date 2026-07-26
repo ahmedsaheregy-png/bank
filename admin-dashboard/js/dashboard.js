@@ -264,9 +264,11 @@ function exportTransactions() {
 }
 
 async function logout() {
+    if (!confirm('هل أنت متأكد من تسجيل الخروج؟')) return;
     localStorage.removeItem('sawyan_admin');
     localStorage.removeItem('sawyan_user_type');
-    window.location.href = '../landing-page/index.html';
+    localStorage.removeItem('sawyan_login_at');
+    window.location.href = '../index.html';
 }
 
 

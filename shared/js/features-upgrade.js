@@ -1,37 +1,51 @@
 // ============================================
-// SAWYAN BANK - Features Upgrade
+// SAWYAN BANK - Features Upgrade (Universal)
 // ============================================
-// هذا الملف يضيف كل الميزات الجديدة للوحة التحكم:
-// 1. زر تسجيل خروج يعمل بشكل صحيح
-// 2. صفحة تفاصيل المعاملات + فلترة بالتاريخ
-// 3. خاصية البحث في الأعضاء
-// 4. تصدير CSV لجدول المعاملات
-// 5. تقارير شهرية برسم بياني (Chart.js)
-// 6. تحسين صفحة الإعدادات
-// 7. توحيد العملة: ج.م
-// 8. إصلاح الأخطاء الإملائية
+// هذا الملف يضيف كل الميزات الجديدة لكل لوحات التحكم:
+// • على لوحة الأدمن (admin-dashboard):
+//   1. زر تسجيل خروج يعمل بشكل صحيح
+//   2. صفحة تفاصيل المعاملات + فلترة بالتاريخ
+//   3. خاصية البحث في الأعضاء
+//   4. تصدير CSV لجدول المعاملات/الأعضاء/التجار
+//   5. تقارير شهرية برسم بياني (Chart.js)
+//   6. تحسين صفحة الإعدادات (حفظ في localStorage)
+// • على كل اللوحات (admin/member/merchant):
+//   7. توحيد العملة: ج.م (إصلاح م.ج → ج.م)
+//   8. إصلاح الأخطاء الإملائية (الموزوعات → المدفوعات)
+//   9. Toast notifications مجانية
+//  10. زر تسجيل خروج موحد
 // ============================================
 
 (function () {
     'use strict';
 
-    console.log('🚀 SAWYAN Features Upgrade loaded');
+    // ============================================
+    // اكتشاف نوع اللوحة الحالية من المسار
+    // ============================================
+    const PATH = window.location.pathname.toLowerCase();
+    const IS_ADMIN = PATH.includes('/admin-dashboard/');
+    const IS_MEMBER = PATH.includes('/member-dashboard/');
+    const IS_MERCHANT = PATH.includes('/merchant-dashboard/');
+    const DASHBOARD_TYPE = IS_ADMIN ? 'admin' : IS_MEMBER ? 'member' : IS_MERCHANT ? 'merchant' : 'unknown';
+
+    console.log(`🚀 SAWYAN Features Upgrade loaded [${DASHBOARD_TYPE}]`);
 
     // ============================================
-    // 1. إصلاح زر تسجيل الخروج
+    // 1. زر تسجيل الخروج الموحّد — يعمل على كل اللوحات
     // ============================================
     window.logout = function () {
         if (confirm('هل أنت متأكد من تسجيل الخروج؟')) {
-            localStorage.removeItem('sawyan_admin');
-            localStorage.removeItem('sawyan_user_type');
-            localStorage.removeItem('sawyan_login_at');
-            // التوجيه الصحيح لصفحة الدخول
-            window.location.href = 'login.html';
+            // تنظيف كل مفاتيح الجلسة بصرف النظر عن نوع اللوحة
+            ['sawyan_admin', 'sawyan_member', 'sawyan_member_id',
+             'sawyan_merchant', 'sawyan_merchant_id',
+             'sawyan_user_type', 'sawyan_login_at'].forEach(k => localStorage.removeItem(k));
+            // التوجيه لصفحة الدخول الرئيسية للموقع
+            window.location.href = '../index.html';
         }
     };
 
     // ============================================
-    // 2. تصدير CSV (Universal)
+    // 2. أداة تصدير CSV عامة (Universal)
     // ============================================
     window.exportToCSV = function (data, filename, columns) {
         if (!data || data.length === 0) {
@@ -39,22 +53,15 @@
             return;
         }
 
-        // تحديد الأعمدة
         const cols = columns || Object.keys(data[0]);
-
-        // إنشاء صف الـ headers
         const headers = cols.join(',');
-
-        // إنشاء الصفوف
         const rows = data.map(row => {
             return cols.map(col => {
                 let value = row[col];
                 if (value === null || value === undefined) value = '';
-                // تنسيق التواريخ
                 if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}T/)) {
                     value = new Date(value).toLocaleString('ar-EG');
                 }
-                // escape للفواصل وعلامات الاقتباس
                 value = String(value).replace(/"/g, '""');
                 if (value.includes(',') || value.includes('"') || value.includes('\n')) {
                     value = `"${value}"`;
@@ -63,7 +70,6 @@
             }).join(',');
         }).join('\n');
 
-        // إنشاء الملف
         const csv = '\uFEFF' + headers + '\n' + rows;  // BOM لدعم العربية
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
@@ -77,7 +83,82 @@
     };
 
     // ============================================
-    // 3. تصدير المعاملات كـ CSV
+    // 3. Toast Notifications — تعمل على كل اللوحات
+    // ============================================
+    window.SAWYANToast = function (type, title, detail = '', duration = 4000) {
+        let container = document.getElementById('dashboardToastContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'dashboardToastContainer';
+            container.style.cssText = 'position:fixed;top:20px;left:20px;z-index:10000;display:flex;flex-direction:column;gap:10px;max-width:380px;';
+            document.body.appendChild(container);
+        }
+
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            padding:14px 18px;border-radius:10px;color:#fff;
+            font-family:'Tajawal',sans-serif;font-size:14px;
+            box-shadow:0 8px 24px rgba(0,0,0,0.15);cursor:pointer;
+            line-height:1.6;
+        `;
+        const bgColors = {
+            success: 'linear-gradient(135deg,#27ae60,#229954)',
+            error:   'linear-gradient(135deg,#e74c3c,#c0392b)',
+            warn:    'linear-gradient(135deg,#f39c12,#d68910)',
+            info:    'linear-gradient(135deg,#3498db,#2874a6)'
+        };
+        toast.style.background = bgColors[type] || bgColors.info;
+        toast.innerHTML = `
+            <span style="font-weight:700;display:block;margin-bottom:4px;">${title}</span>
+            ${detail ? `<span style="font-size:13px;opacity:0.95;">${detail}</span>` : ''}
+        `;
+        toast.addEventListener('click', () => toast.remove());
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s';
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    };
+
+    // بديل محلي لنستخدمه داخل هذا الـ IIFE
+    function showToast(type, title, detail = '', duration = 4000) {
+        window.SAWYANToast(type, title, detail, duration);
+    }
+    window.showToast = showToast;
+
+    // ============================================
+    // 4. إصلاح الأخطاء الإملائية + توحيد العملة — يعمل على كل اللوحات
+    // ============================================
+    document.addEventListener('DOMContentLoaded', function () {
+        const walker = document.createTreeWalker(
+            document.body,
+            NodeFilter.SHOW_TEXT,
+            null,
+            false
+        );
+        let node;
+        while (node = walker.nextNode()) {
+            // إصلاح خطأ "الموزوعات" → "المدفوعات"
+            if (node.textContent.includes('الموزوعات')) {
+                node.textContent = node.textContent.replace(/الموزوعات/g, 'المدفوعات');
+            }
+            // توحيد العملة من "م.ج" إلى "ج.م"
+            if (node.textContent.includes('م.ج') && !node.textContent.includes('ج.م')) {
+                node.textContent = node.textContent.replace(/م\.ج/g, 'ج.م');
+            }
+        }
+    });
+
+    // ============================================================
+    // الميزات التالية مخصصة للوحة الأدمن فقط
+    // ============================================================
+    if (!IS_ADMIN) {
+        return; // إنهاء مبكر — الباقي للأدمن فقط
+    }
+
+    // ============================================
+    // 5. تصدير المعاملات كـ CSV (admin)
     // ============================================
     window.exportTransactions = async function () {
         try {
@@ -117,7 +198,7 @@
     };
 
     // ============================================
-    // 4. تصدير الأعضاء كـ CSV
+    // 6. تصدير الأعضاء كـ CSV (admin)
     // ============================================
     window.exportMembers = async function () {
         try {
@@ -143,7 +224,7 @@
     };
 
     // ============================================
-    // 5. تصدير التجار كـ CSV
+    // 7. تصدير التجار كـ CSV (admin)
     // ============================================
     window.exportMerchants = async function () {
         try {
@@ -170,14 +251,111 @@
     };
 
     // ============================================
-    // 6. خاصية البحث في الأعضاء
+    // 8. تصدير العمولات والشكاوى والدعم (admin)
+    // ============================================
+    window.exportCommissions = async function () {
+        try {
+            const { data: transactions } = await window.SAWYAN.supabase
+                .from('transactions')
+                .select(`
+                    commission_amount, total_amount, status, transaction_date,
+                    merchants(business_name, merchant_code, commission_percentage)
+                `)
+                .eq('status', 'completed');
+
+            const byMerchant = {};
+            (transactions || []).forEach(t => {
+                const id = t.merchants?.merchant_code || 'unknown';
+                if (!byMerchant[id]) {
+                    byMerchant[id] = {
+                        'التاجر': t.merchants?.business_name || '-',
+                        'كود التاجر': t.merchants?.merchant_code || '-',
+                        'النسبة %': t.merchants?.commission_percentage || 0,
+                        'عدد العمليات': 0,
+                        'إجمالي المبيعات (ج.م)': 0,
+                        'إجمالي العمولات (ج.م)': 0
+                    };
+                }
+                byMerchant[id]['عدد العمليات']++;
+                byMerchant[id]['إجمالي المبيعات (ج.م)'] += parseFloat(t.total_amount || 0);
+                byMerchant[id]['إجمالي العمولات (ج.م)'] += parseFloat(t.commission_amount || 0);
+            });
+
+            const exportData = Object.values(byMerchant).map(r => ({
+                ...r,
+                'إجمالي المبيعات (ج.م)': r['إجمالي المبيعات (ج.م)'].toFixed(2),
+                'إجمالي العمولات (ج.م)': r['إجمالي العمولات (ج.م)'].toFixed(2)
+            }));
+
+            window.exportToCSV(exportData, `commissions_${Date.now()}.csv`, Object.keys(exportData[0] || { 'a': 1 }));
+            showToast('success', '✅ تم التصدير', `${exportData.length} تاجر في التقرير`);
+        } catch (err) {
+            showToast('error', 'فشل التصدير', err.message);
+        }
+    };
+
+    window.exportDisputes = async function () {
+        try {
+            const { data: disputes } = await window.SAWYAN.supabase
+                .from('disputes')
+                .select(`
+                    id, reason, status, created_at,
+                    transactions(transaction_code),
+                    members(full_name, member_code),
+                    merchants(business_name, merchant_code)
+                `)
+                .order('created_at', { ascending: false });
+
+            const exportData = (disputes || []).map(d => ({
+                'كود الشكوى': d.id,
+                'كود العملية': d.transactions?.transaction_code || '-',
+                'العضو': d.members?.full_name || '-',
+                'كود العضو': d.members?.member_code || '-',
+                'التاجر': d.merchants?.business_name || '-',
+                'السبب': d.reason || '-',
+                'الحالة': d.status || '-',
+                'التاريخ': new Date(d.created_at).toLocaleString('ar-EG')
+            }));
+
+            window.exportToCSV(exportData, `disputes_${Date.now()}.csv`, Object.keys(exportData[0] || { 'a': 1 }));
+            showToast('success', '✅ تم التصدير', `${exportData.length} شكوى`);
+        } catch (err) {
+            showToast('error', 'فشل التصدير', err.message);
+        }
+    };
+
+    window.exportSupport = async function () {
+        try {
+            const { data: tickets } = await window.SAWYAN.supabase
+                .from('support_tickets')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            const exportData = (tickets || []).map(t => ({
+                'كود التذكرة': t.ticket_code || t.id,
+                'المستخدم': t.user_name || '-',
+                'النوع': t.user_type === 'member' ? 'عضو' : 'تاجر',
+                'الموضوع': t.subject || '-',
+                'الأولوية': t.priority === 'high' ? 'عالية' : t.priority === 'medium' ? 'متوسطة' : 'منخفضة',
+                'الحالة': t.status === 'closed' ? 'مغلقة' : t.status === 'in_progress' ? 'قيد المعالجة' : 'جديدة',
+                'التاريخ': new Date(t.created_at).toLocaleString('ar-EG')
+            }));
+
+            window.exportToCSV(exportData, `support_tickets_${Date.now()}.csv`, Object.keys(exportData[0] || { 'a': 1 }));
+            showToast('success', '✅ تم التصدير', `${exportData.length} تذكرة`);
+        } catch (err) {
+            showToast('error', 'فشل التصدير', err.message);
+        }
+    };
+
+    // ============================================
+    // 9. خاصية البحث في الأعضاء (admin)
     // ============================================
     window.searchMembers = async function (query) {
         const tbody = document.getElementById('membersTableBody');
         if (!tbody) return;
 
         if (!query || query.trim() === '') {
-            // لو البحث فارغ، حمّل الكل
             if (typeof loadMembers === 'function') loadMembers();
             return;
         }
@@ -213,7 +391,6 @@
         }
     };
 
-    // إبراز كلمة البحث في النتائج
     function highlightSearch(text, query) {
         if (!text || !query) return text || '-';
         const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
@@ -221,10 +398,8 @@
     }
 
     // ============================================
-    // 7. فلترة المعاملات بالتاريخ
+    // 10. فلترة المعاملات بالتاريخ (admin)
     // ============================================
-    let allTransactionsCache = [];
-
     window.loadTransactionsFiltered = async function (startDate, endDate, statusFilter) {
         const tbody = document.getElementById('transactionsTableBody');
         if (!tbody) return;
@@ -244,17 +419,16 @@
             if (statusFilter && statusFilter !== 'all') query = query.eq('status', statusFilter);
 
             const { data: transactions, error } = await query;
-
             if (error) throw error;
 
-            allTransactionsCache = transactions || [];
-
-            if (allTransactionsCache.length === 0) {
+            if (!transactions || transactions.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" class="empty-state">لا توجد عمليات مطابقة</td></tr>';
+                const counter = document.getElementById('transactionsCount');
+                if (counter) counter.textContent = '0 عملية';
                 return;
             }
 
-            tbody.innerHTML = allTransactionsCache.map(t => `
+            tbody.innerHTML = transactions.map(t => `
                 <tr>
                     <td data-label="كود العملية">${t.transaction_code || '-'}</td>
                     <td data-label="العضو">${t.members?.full_name || '-'} (${t.members?.member_code || '-'})</td>
@@ -266,10 +440,8 @@
                 </tr>
             `).join('');
 
-            // تحديث عداد النتائج
             const counter = document.getElementById('transactionsCount');
-            if (counter) counter.textContent = `${allTransactionsCache.length} عملية`;
-
+            if (counter) counter.textContent = `${transactions.length} عملية`;
         } catch (err) {
             console.error('Filter error:', err);
             tbody.innerHTML = `<tr><td colspan="7" class="empty-state">خطأ: ${err.message}</td></tr>`;
@@ -277,7 +449,7 @@
     };
 
     // ============================================
-    // 8. التقارير الشهرية برسم بياني
+    // 11. التقارير الشهرية برسم بياني (admin)
     // ============================================
     window.generateReport = async function () {
         const startDate = document.getElementById('reportStartDate')?.value;
@@ -295,7 +467,6 @@
         resultsDiv.innerHTML = '<div class="empty-state">⏳ جاري إنشاء التقرير...</div>';
 
         try {
-            // جلب المعاملات في الفترة
             const { data: transactions } = await window.SAWYAN.supabase
                 .from('transactions')
                 .select(`
@@ -315,7 +486,6 @@
                 return;
             }
 
-            // حساب الإحصائيات
             const totalAmount = transactions.reduce((s, t) => s + parseFloat(t.total_amount || 0), 0);
             const totalCommission = transactions.reduce((s, t) => s + parseFloat(t.commission_amount || 0), 0);
             const completedCount = transactions.filter(t => t.status === 'completed').length;
@@ -335,7 +505,45 @@
             const amounts = months.map(m => monthlyData[m].amount);
             const commissions = months.map(m => monthlyData[m].commission);
 
-            // عرض التقرير
+            const monthNames = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+            const labels = months.map(m => {
+                const [y, mo] = m.split('-');
+                return monthNames[parseInt(mo) - 1] + ' ' + y;
+            });
+
+            // إحصائيات الأعضاء والتجار الجدد (إذا كان مطلوباً)
+            let extraStatsHTML = '';
+            if (reportType === 'all' || reportType === 'members') {
+                const { count: membersCount } = await window.SAWYAN.supabase
+                    .from('members')
+                    .select('*', { count: 'exact', head: true })
+                    .gte('created_at', startDate)
+                    .lte('created_at', endDate + 'T23:59:59');
+                extraStatsHTML += `
+                    <div class="stat-card stat-info">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-info">
+                            <div class="stat-label">أعضاء جدد</div>
+                            <div class="stat-value">${membersCount || 0}</div>
+                        </div>
+                    </div>`;
+            }
+            if (reportType === 'all' || reportType === 'merchants') {
+                const { count: merchantsCount } = await window.SAWYAN.supabase
+                    .from('merchants')
+                    .select('*', { count: 'exact', head: true })
+                    .gte('created_at', startDate)
+                    .lte('created_at', endDate + 'T23:59:59');
+                extraStatsHTML += `
+                    <div class="stat-card stat-success">
+                        <div class="stat-icon">🏪</div>
+                        <div class="stat-info">
+                            <div class="stat-label">تجار جدد</div>
+                            <div class="stat-value">${merchantsCount || 0}</div>
+                        </div>
+                    </div>`;
+            }
+
             resultsDiv.innerHTML = `
                 <div class="report-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:2rem;">
                     <div class="stat-card stat-primary">
@@ -352,20 +560,21 @@
                             <div class="stat-value">${totalAmount.toFixed(2)} ج.م</div>
                         </div>
                     </div>
-                    <div class="stat-card stat-info">
+                    <div class="stat-card stat-warning">
                         <div class="stat-icon">💎</div>
                         <div class="stat-info">
                             <div class="stat-label">إجمالي العمولات</div>
                             <div class="stat-value">${totalCommission.toFixed(2)} ج.م</div>
                         </div>
                     </div>
-                    <div class="stat-card stat-warning">
+                    <div class="stat-card stat-info">
                         <div class="stat-icon">✅</div>
                         <div class="stat-info">
                             <div class="stat-label">عمليات مكتملة</div>
                             <div class="stat-value">${completedCount}/${transactions.length}</div>
                         </div>
                     </div>
+                    ${extraStatsHTML}
                 </div>
 
                 <div class="chart-card" style="background:#fff;padding:1.5rem;border-radius:12px;margin-bottom:1rem;">
@@ -377,18 +586,19 @@
                     <h3>💰 المبالغ والعمولات الشهرية</h3>
                     <canvas id="amountsChart" height="100"></canvas>
                 </div>
+
+                <div style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    <button onclick="exportReportCSV('${startDate}','${endDate}')" style="padding:10px 18px; background:var(--color-primary); color:#fff; border:none; border-radius:6px; cursor:pointer; font-family:inherit;">
+                        📥 تصدير التقرير CSV
+                    </button>
+                </div>
             `;
 
-            // رسم المخططات بـ Chart.js
             if (window.Chart) {
                 new Chart(document.getElementById('monthlyChart'), {
                     type: 'bar',
                     data: {
-                        labels: months.map(m => {
-                            const [y, mo] = m.split('-');
-                            const monthNames = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-                            return monthNames[parseInt(mo) - 1] + ' ' + y;
-                        }),
+                        labels: labels,
                         datasets: [{
                             label: 'عدد المعاملات',
                             data: counts,
@@ -406,11 +616,7 @@
                 new Chart(document.getElementById('amountsChart'), {
                     type: 'line',
                     data: {
-                        labels: months.map(m => {
-                            const [y, mo] = m.split('-');
-                            const monthNames = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-                            return monthNames[parseInt(mo) - 1] + ' ' + y;
-                        }),
+                        labels: labels,
                         datasets: [
                             {
                                 label: 'المبلغ (ج.م)',
@@ -437,53 +643,46 @@
                     }
                 });
             }
-
         } catch (err) {
             resultsDiv.innerHTML = `<p class="empty-state">خطأ: ${err.message}</p>`;
         }
     };
 
-    // ============================================
-    // 9. Toast Notifications (مخصص للـ dashboard)
-    // ============================================
-    function showToast(type, title, detail = '', duration = 4000) {
-        let container = document.getElementById('dashboardToastContainer');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'dashboardToastContainer';
-            container.style.cssText = 'position:fixed;top:20px;left:20px;z-index:10000;display:flex;flex-direction:column;gap:10px;max-width:380px;';
-            document.body.appendChild(container);
+    // تصدير تقرير المعاملات في فترة معينة
+    window.exportReportCSV = async function (startDate, endDate) {
+        try {
+            const { data: transactions } = await window.SAWYAN.supabase
+                .from('transactions')
+                .select(`
+                    transaction_code, total_amount, commission_amount, status, transaction_date,
+                    members(full_name, member_code),
+                    merchants(business_name, merchant_code)
+                `)
+                .gte('transaction_date', startDate)
+                .lte('transaction_date', endDate + 'T23:59:59')
+                .order('transaction_date', { ascending: true });
+
+            const exportData = (transactions || []).map(t => ({
+                'كود العملية': t.transaction_code || '',
+                'العضو': t.members?.full_name || '-',
+                'كود العضو': t.members?.member_code || '-',
+                'التاجر': t.merchants?.business_name || '-',
+                'كود التاجر': t.merchants?.merchant_code || '-',
+                'المبلغ (ج.م)': parseFloat(t.total_amount || 0).toFixed(2),
+                'العمولة (ج.م)': parseFloat(t.commission_amount || 0).toFixed(2),
+                'الحالة': t.status || '',
+                'التاريخ': new Date(t.transaction_date).toLocaleString('ar-EG')
+            }));
+
+            window.exportToCSV(exportData, `report_${startDate}_to_${endDate}.csv`, Object.keys(exportData[0] || { 'a': 1 }));
+            showToast('success', '✅ تم التصدير', `${exportData.length} عملية في التقرير`);
+        } catch (err) {
+            showToast('error', 'فشل التصدير', err.message);
         }
-
-        const toast = document.createElement('div');
-        toast.style.cssText = `
-            padding:14px 18px;border-radius:10px;color:#fff;
-            font-family:'Tajawal',sans-serif;font-size:14px;
-            box-shadow:0 8px 24px rgba(0,0,0,0.15);cursor:pointer;
-            animation:slideIn 0.3s ease-out;line-height:1.6;
-        `;
-        const bgColors = {
-            success: 'linear-gradient(135deg,#27ae60,#229954)',
-            error:   'linear-gradient(135deg,#e74c3c,#c0392b)',
-            warn:    'linear-gradient(135deg,#f39c12,#d68910)',
-            info:    'linear-gradient(135deg,#3498db,#2874a6)'
-        };
-        toast.style.background = bgColors[type] || bgColors.info;
-        toast.innerHTML = `
-            <span style="font-weight:700;display:block;margin-bottom:4px;">${title}</span>
-            ${detail ? `<span style="font-size:13px;opacity:0.95;">${detail}</span>` : ''}
-        `;
-        toast.addEventListener('click', () => toast.remove());
-        container.appendChild(toast);
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transition = 'opacity 0.3s';
-            setTimeout(() => toast.remove(), 300);
-        }, duration);
-    }
+    };
 
     // ============================================
-    // 10. حفظ الإعدادات في localStorage
+    // 12. حفظ الإعدادات في localStorage (admin)
     // ============================================
     window.saveSettings = function () {
         const settings = {
@@ -533,10 +732,9 @@
     };
 
     // ============================================
-    // 11. التحميل عند جاهزية الصفحة
+    // 13. حقن عناصر الواجهة تلقائياً عند تحميل الصفحة (admin)
     // ============================================
     document.addEventListener('DOMContentLoaded', function () {
-        // إضافة حقول البحث والفلترة تلقائياً
         setTimeout(() => {
             // إضافة حقل بحث للأعضاء
             const membersHeader = document.querySelector('#membersPage .page-header');
@@ -594,7 +792,6 @@
                 `;
                 txHeader.after(filterBox);
 
-                // دالة مسح الفلاتر
                 window.clearTxFilters = function () {
                     document.getElementById('txStartDate').value = '';
                     document.getElementById('txEndDate').value = '';
@@ -606,28 +803,6 @@
             // تحميل الإعدادات المحفوظة
             window.loadSettingsFromStorage?.();
         }, 500);
-    });
-
-    // ============================================
-    // 12. إصلاح الأخطاء الإملائية (الموزوعات → المدفوعات)
-    // ============================================
-    document.addEventListener('DOMContentLoaded', function () {
-        // البحث عن أي نص فيه "الموزوعات" وإصلاحه
-        const walker = document.createTreeWalker(
-            document.body,
-            NodeFilter.SHOW_TEXT,
-            null,
-            false
-        );
-        let node;
-        while (node = walker.nextNode()) {
-            if (node.textContent.includes('الموزوعات')) {
-                node.textContent = node.textContent.replace(/الموزوعات/g, 'المدفوعات');
-            }
-            if (node.textContent.includes('م.ج') && !node.textContent.includes('ج.م')) {
-                node.textContent = node.textContent.replace(/م\.ج/g, 'ج.م');
-            }
-        }
     });
 
 })();

@@ -999,9 +999,12 @@ function openScanner() {
 }
 
 async function logout() {
+    if (!confirm('هل أنت متأكد من تسجيل الخروج؟')) return;
     localStorage.removeItem('sawyan_merchant');
     localStorage.removeItem('sawyan_merchant_id');
-    window.location.href = '../landing-page/index.html';
+    localStorage.removeItem('sawyan_user_type');
+    localStorage.removeItem('sawyan_login_at');
+    window.location.href = '../index.html';
 }
 
 // ===== قائمة المزيد (More Menu) =====
