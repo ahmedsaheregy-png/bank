@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>فحص Supabase - SAWYAN BANK</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../shared/css/variables.css">
+    <link rel="stylesheet" href="../shared/css/logo.css">
+</head>
+
+<body style="background:#f4f6f8;margin:0;padding:20px;font-family:'Tajawal',sans-serif;">
+
+    <div style="max-width:900px;margin:0 auto;">
+        <div id="logoContainer" style="text-align:center;margin-bottom:20px;"></div>
+
+        <div style="background:#fff;padding:24px;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.08);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+                <h1 style="margin:0;color:var(--color-primary);font-size:24px;">🔧 صفحة فحص Supabase</h1>
+                <button onclick="location.reload()"
+                    style="background:var(--color-primary);color:#fff;border:none;padding:10px 18px;border-radius:6px;cursor:pointer;font-family:inherit;">
+                    🔄 إعادة الفحص
+                </button>
+            </div>
+
+            <p style="color:#666;font-size:14px;line-height:1.7;background:#f8f9fa;padding:12px;border-radius:8px;border-right:4px solid var(--color-primary);">
+                هذه الصفحة تفحص اتصال الموقع بقاعدة بيانات Supabase وتعرض حالة كل جدول.
+                إذا ظهرت مشاكل، اتبع الخطوات المعروضة في قسم "الحل".
+            </p>
+
+            <div id="report" style="margin-top:20px;">
+                <div style="text-align:center;padding:40px;color:#666;">⏳ جارٍ التحضير...</div>
+            </div>
+        </div>
+
+        <div style="text-align:center;margin-top:20px;">
+            <a href="login.html" style="color:var(--color-primary);text-decoration:none;font-size:14px;">
+                ← العودة لتسجيل الدخول
+            </a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../shared/config/supabase.js"></script>
+    <script src="../shared/components/logo.js"></script>
+    <script src="../shared/js/supabase-health.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.SAWYAN && window.SAWYAN.Logo) {
+                document.getElementById('logoContainer').innerHTML = window.SAWYAN.Logo.full();
+            }
+            // تشغيل الفحص الشامل عند فتح الصفحة
+            window.SAWYANHealth.renderReport('report');
+        });
+    </script>
+</body>
+
+</html>

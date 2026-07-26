@@ -14,38 +14,96 @@
     <style>
         .loading-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0, 0, 0, 0.5);
             display: none;
             align-items: center;
             justify-content: center;
             z-index: 9999;
         }
-
-        .loading-overlay.active {
-            display: flex;
-        }
-
+        .loading-overlay.active { display: flex; }
         .loading-spinner {
-            width: 50px;
-            height: 50px;
+            width: 50px; height: 50px;
             border: 5px solid #f3f3f3;
             border-top: 5px solid var(--color-primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
-
         @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
 
-            100% {
-                transform: rotate(360deg);
-            }
+        /* صندوق رسائل أنيق بديل عن alert() */
+        .toast-container {
+            position: fixed;
+            top: 20px; right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 380px;
+        }
+        .toast {
+            padding: 14px 18px;
+            border-radius: 10px;
+            color: #fff;
+            font-family: 'Tajawal', sans-serif;
+            font-size: 14px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            animation: slideIn 0.3s ease-out;
+            cursor: pointer;
+            line-height: 1.6;
+        }
+        .toast.error   { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .toast.success { background: linear-gradient(135deg, #27ae60, #229954); }
+        .toast.warn    { background: linear-gradient(135deg, #f39c12, #d68910); }
+        .toast.info    { background: linear-gradient(135deg, #3498db, #2874a6); }
+        .toast .title  { font-weight: 700; display: block; margin-bottom: 4px; }
+        .toast .detail { font-size: 13px; opacity: 0.95; white-space: pre-line; }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to   { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            to { transform: translateX(100%); opacity: 0; }
+        }
+        .toast.hiding { animation: slideOut 0.3s ease-in forwards; }
+
+        /* زر التشخيص */
+        .diagnostic-btn {
+            display: block;
+            margin: 12px auto 0;
+            background: transparent;
+            color: var(--color-primary);
+            border: 1px dashed var(--color-primary);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .diagnostic-btn:hover {
+            background: var(--color-primary);
+            color: #fff;
+        }
+
+        /* مؤشر حالة الاتصال */
+        .conn-status {
+            display: inline-block;
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: #95a5a6;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+        .conn-status.ok    { background: #27ae60; }
+        .conn-status.error { background: #e74c3c; }
+        .conn-status.checking { background: #f39c12; animation: pulse 1s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
         }
     </style>
 </head>
@@ -56,12 +114,18 @@
         <div class="loading-spinner"></div>
     </div>
 
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
     <div class="auth-container">
         <div class="auth-card">
             <div id="logoContainer" class="logo-section"></div>
 
             <h1>تسجيل دخول الأدمن</h1>
-            <p class="subtitle">لوحة التحكم الإدارية</p>
+            <p class="subtitle">
+                لوحة التحكم الإدارية
+                <span id="connStatus" class="conn-status" title="حالة الاتصال"></span>
+            </p>
 
             <div class="form-note" style="margin-bottom: 20px;">
                 <p><strong>📋 البيانات الافتراضية:</strong></p>
@@ -84,6 +148,10 @@
 
                 <button type="submit" class="btn btn-primary btn-block">دخول</button>
 
+                <button type="button" class="diagnostic-btn" id="diagnosticBtn">
+                    🔍 فحص اتصال Supabase
+                </button>
+
                 <div class="auth-footer">
                     <p style="margin-top: 1rem;"><a href="../index.html">← العودة للرئيسية</a></p>
                 </div>
@@ -94,33 +162,127 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../shared/config/supabase.js"></script>
     <script src="../shared/components/logo.js"></script>
+    <script src="../shared/js/supabase-health.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        // ============================================
+        // نظام Toast بدلاً من alert()
+        // ============================================
+        function showToast(type, title, detail = '', duration = 6000) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <span class="title">${title}</span>
+                ${detail ? `<span class="detail">${detail}</span>` : ''}
+            `;
+            toast.addEventListener('click', () => hideToast(toast));
+            container.appendChild(toast);
+            setTimeout(() => hideToast(toast), duration);
+        }
+        function hideToast(toast) {
+            if (toast.classList.contains('hiding')) return;
+            toast.classList.add('hiding');
+            setTimeout(() => toast.remove(), 300);
+        }
+
+        // ============================================
+        // مؤشر حالة الاتصال
+        // ============================================
+        function setConnStatus(state) {
+            const el = document.getElementById('connStatus');
+            el.classList.remove('ok', 'error', 'checking');
+            if (state) el.classList.add(state);
+        }
+
+        // ============================================
+        // التهيئة عند تحميل الصفحة
+        // ============================================
+        document.addEventListener('DOMContentLoaded', async function () {
+            // عرض اللوجو
             if (window.SAWYAN && window.SAWYAN.Logo) {
                 document.getElementById('logoContainer').innerHTML = window.SAWYAN.Logo.full();
             }
 
             const loadingOverlay = document.getElementById('loadingOverlay');
 
+            // فحص تلقائي سريع لحالة Supabase عند فتح الصفحة
+            if (window.SAWYANHealth) {
+                setConnStatus('checking');
+                try {
+                    const result = await window.SAWYANHealth.quickCheck();
+                    setConnStatus(result.ok ? 'ok' : 'error');
+                    if (!result.ok) {
+                        showToast('warn', 'تحذير: اتصال Supabase',
+                            result.message + '\nاضغط "فحص اتصال Supabase" للتفاصيل', 8000);
+                    }
+                } catch (e) {
+                    setConnStatus('error');
+                }
+            }
+
+            // ============================================
+            // زر التشخيص
+            // ============================================
+            document.getElementById('diagnosticBtn').addEventListener('click', async () => {
+                loadingOverlay.classList.add('active');
+                setConnStatus('checking');
+                try {
+                    const result = await window.SAWYANHealth.fullDiagnostic();
+                    setConnStatus(result.ok ? 'ok' : 'error');
+
+                    if (result.ok) {
+                        showToast('success', '✅ الاتصال سليم',
+                            `جدول admins: ${result.adminsCount} سجل\nجدول members: ${result.membersCount} سجل\nجدول merchants: ${result.merchantsCount} سجل`,
+                            10000);
+                    } else {
+                        showToast('error', '❌ مشكلة في الاتصال',
+                            result.message + (result.hint ? '\n\n💡 ' + result.hint : ''), 15000);
+                    }
+                } catch (e) {
+                    showToast('error', 'خطأ في التشخيص', e.message, 8000);
+                } finally {
+                    loadingOverlay.classList.remove('active');
+                }
+            });
+
+            // ============================================
+            // إرسال نموذج تسجيل الدخول
+            // ============================================
             document.getElementById('loginForm').addEventListener('submit', async function (e) {
                 e.preventDefault();
 
                 const email = document.getElementById('email').value.trim();
                 const password = document.getElementById('password').value;
 
-                // إظهار loading
+                if (!email || !password) {
+                    showToast('warn', 'بيانات ناقصة', 'يرجى إدخال البريد وكلمة المرور');
+                    return;
+                }
+
                 loadingOverlay.classList.add('active');
 
                 try {
+                    // فحص سريع للاتصال أولاً
+                    if (window.SAWYANHealth) {
+                        const conn = await window.SAWYANHealth.quickCheck();
+                        if (!conn.ok) {
+                            throw new Error('تعذّر الاتصال بقاعدة البيانات. اضغط "فحص اتصال Supabase" للتشخيص.');
+                        }
+                    }
+
                     // البحث عن الأدمن في جدول admins
                     const { data: admin, error: queryError } = await window.SAWYAN.supabase
                         .from('admins')
                         .select('*')
                         .eq('email', email)
-                        .single();
+                        .maybeSingle();  // بدلاً من .single() لتجنّب الخطأ عند عدم وجود السجل
 
-                    if (queryError || !admin) {
-                        throw new Error('البريد الإلكتروني غير موجود');
+                    if (queryError) {
+                        throw new Error('خطأ في الاستعلام: ' + queryError.message);
+                    }
+
+                    if (!admin) {
+                        throw new Error(`البريد "${email}" غير موجود في جدول admins.\nنفّذ schema.sql لإضافة admin@sawyan.com`);
                     }
 
                     // التحقق من كلمة المرور
@@ -130,25 +292,45 @@
 
                     // التحقق من حالة الحساب
                     if (!admin.is_active) {
-                        throw new Error('الحساب غير مفعل');
+                        throw new Error('الحساب غير مفعل. تواصل مع المدير الرئيسي.');
                     }
 
-                    // حفظ بيانات الأدمن في localStorage
+                    // حفظ بيانات الأدمن
                     localStorage.setItem('sawyan_admin', JSON.stringify(admin));
                     localStorage.setItem('sawyan_user_type', 'admin');
+                    localStorage.setItem('sawyan_login_at', new Date().toISOString());
 
-                    // إخفاء loading
+                    // تحديث last_login_at
+                    try {
+                        await window.SAWYAN.supabase
+                            .from('admins')
+                            .update({ last_login_at: new Date().toISOString() })
+                            .eq('id', admin.id);
+                    } catch (updateErr) {
+                        console.warn('Could not update last_login_at:', updateErr);
+                    }
+
                     loadingOverlay.classList.remove('active');
+                    showToast('success', '✅ تم تسجيل الدخول', 'جارٍ التحويل للوحة التحكم...', 2000);
 
-                    // نجح الدخول
-                    window.location.href = 'dashboard.html';
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 800);
 
                 } catch (error) {
-                    // إخفاء loading
                     loadingOverlay.classList.remove('active');
-
                     console.error('Login Error:', error);
-                    alert('❌ خطأ في تسجيل الدخول:\n\n' + error.message + '\n\nتأكد من:\n✓ تنفيذ schema.sql في Supabase');
+
+                    // رسالة مفصّلة حسب نوع الخطأ
+                    let hint = '';
+                    if (error.message.includes('schema') || error.message.includes('admins')) {
+                        hint = 'الحل:\n1. افتح Supabase Dashboard\n2. SQL Editor → New Query\n3. الصق محتوى schema.sql\n4. اضغط Run';
+                    } else if (error.message.includes('الاتصال') || error.message.includes('network')) {
+                        hint = 'تحقق من:\n• اتصال الإنترنت\n• صحة URL في supabase.js\n• أن المشروع لم يتم إيقافه على Supabase';
+                    }
+
+                    showToast('error', '❌ فشل تسجيل الدخول',
+                        error.message + (hint ? '\n\n💡 ' + hint : ''), 15000);
                 }
             });
         });
