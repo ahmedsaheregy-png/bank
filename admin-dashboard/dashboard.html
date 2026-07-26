@@ -66,7 +66,9 @@
             </nav>
 
             <div class="sidebar-footer">
-                <button class="btn btn-outline btn-block" onclick="logout()">تسجيل الخروج</button>
+                <button class="btn btn-outline btn-block" onclick="logout()" title="تسجيل الخروج من لوحة التحكم">
+                    🚪 تسجيل الخروج
+                </button>
             </div>
         </aside>
 
@@ -471,10 +473,12 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="../shared/config/supabase.js"></script>
     <script src="../shared/components/logo.js"></script>
     <script src="js/dashboard.js"></script>
     <script src="js/dashboard-extended.js"></script>
+    <script src="../shared/js/features-upgrade.js"></script>
 </body>
 
 </html>
