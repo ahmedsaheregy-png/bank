@@ -425,13 +425,227 @@ async function handleTransaction(e) {
             console.log('Notifications table may not exist:', notifError);
         }
 
-        alert('✅ تم تسجيل العملية بنجاح!\\n\\nكود العملية: ' + transactionCode + '\\nالعمولة للعضو: ' + planShare.toFixed(2) + ' ج.م');
+        // alert قديم — استبدلناه بشاشة الإيصال
+        // alert('✅ تم تسجيل العملية بنجاح!\n\nكود العملية: ' + transactionCode + '\nالعمولة للعضو: ' + planShare.toFixed(2) + ' ج.م');
+
+        // عرض شاشة التأكيد النهائية (Receipt Modal)
+        showReceipt({
+            transactionCode: transactionCode,
+            amount: amount,
+            commissionPercentage: commissionPercentage,
+            commissionAmount: commissionAmount,
+            memberShare: planShare,
+            companyShare: companyShare,
+            member: selectedMember,
+            merchant: merchantData,
+            timestamp: new Date()
+        });
+
         clearSelectedMember();
         await loadStats();
 
     } catch (error) {
         console.error('Error:', error);
         alert('حدث خطأ: ' + error.message);
+    }
+}
+
+// ===== شاشة التأكيد النهائية (Receipt Modal) =====
+let lastReceiptData = null; // لحفظ بيانات آخر إيصال (للطباعة/النسخ/المشاركة)
+
+function showReceipt(data) {
+    lastReceiptData = data;
+    const body = document.getElementById('receiptBody');
+    if (!body) return;
+
+    const dateStr = data.timestamp.toLocaleString('ar-EG', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    });
+
+    // بناء رابط التحقق (verify.html) — يفتحه العميل لاحقاً لما يلاقي نت
+    const verifyUrl = window.location.origin + '/verify.html?code=' + data.transactionCode;
+
+    body.innerHTML = `
+        <div class="receipt-section">
+            <div class="receipt-section-label">كود العملية</div>
+            <div style="text-align: center;">
+                <span class="receipt-row-value code">${data.transactionCode}</span>
+            </div>
+        </div>
+
+        <div class="receipt-section">
+            <div class="receipt-section-label">التاريخ والوقت</div>
+            <div class="receipt-row">
+                <span class="receipt-row-label">📅</span>
+                <span class="receipt-row-value">${dateStr}</span>
+            </div>
+        </div>
+
+        <div class="receipt-section">
+            <div class="receipt-section-label">التاجر</div>
+            <div class="receipt-row">
+                <span class="receipt-row-label">🏪 الاسم:</span>
+                <span class="receipt-row-value">${data.merchant?.business_name || '-'}</span>
+            </div>
+            <div class="receipt-row">
+                <span class="receipt-row-label">🔑 الكود:</span>
+                <span class="receipt-row-value">${data.merchant?.merchant_code || '-'}</span>
+            </div>
+        </div>
+
+        <div class="receipt-section">
+            <div class="receipt-section-label">العميل</div>
+            <div class="receipt-row">
+                <span class="receipt-row-label">👤 الاسم:</span>
+                <span class="receipt-row-value">${data.member?.full_name || '-'}</span>
+            </div>
+            <div class="receipt-row">
+                <span class="receipt-row-label">🔑 الكود:</span>
+                <span class="receipt-row-value">${data.member?.member_code || '-'}</span>
+            </div>
+            ${data.member?.phone ? `
+            <div class="receipt-row">
+                <span class="receipt-row-label">📱 الموبايل:</span>
+                <span class="receipt-row-value" style="direction: ltr;">${data.member.phone}</span>
+            </div>` : ''}
+        </div>
+
+        <div class="receipt-section">
+            <div class="receipt-section-label">تفاصيل العملية</div>
+            <div class="receipt-amount-block">
+                <div class="receipt-amount-label">المبلغ الإجمالي</div>
+                <div class="receipt-amount-value">
+                    <span class="receipt-amount-currency">ج.م</span>${data.amount.toFixed(2)}
+                </div>
+            </div>
+            <div class="receipt-row">
+                <span class="receipt-row-label">نسبة العمولة:</span>
+                <span class="receipt-row-value">${data.commissionPercentage}%</span>
+            </div>
+            <div class="receipt-row">
+                <span class="receipt-row-label">إجمالي العمولة:</span>
+                <span class="receipt-row-value">${data.commissionAmount.toFixed(2)} ج.م</span>
+            </div>
+            <div class="receipt-row">
+                <span class="receipt-row-label">نصيب العميل:</span>
+                <span class="receipt-row-value highlight">${data.memberShare.toFixed(2)} ج.م</span>
+            </div>
+            <div class="receipt-row">
+                <span class="receipt-row-label">حصة الإدارة:</span>
+                <span class="receipt-row-value">${data.companyShare.toFixed(2)} ج.م</span>
+            </div>
+        </div>
+
+        <div class="receipt-qr-block">
+            <div id="receiptQrCode"></div>
+            <p class="receipt-qr-hint">
+                🔍 امسح هذا الكود للتحقق من تفاصيل العملية
+            </p>
+        </div>
+    `;
+
+    // توليد QR Code لرابط التحقق
+    setTimeout(() => {
+        const qrEl = document.getElementById('receiptQrCode');
+        if (qrEl && window.QRCode) {
+            qrEl.innerHTML = '';
+            new QRCode(qrEl, {
+                text: verifyUrl,
+                width: 160,
+                height: 160,
+                colorDark: '#10B981',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        }
+    }, 50);
+
+    // عرض الـ Modal
+    document.getElementById('receiptOverlay').classList.add('show');
+}
+
+function closeReceipt() {
+    document.getElementById('receiptOverlay').classList.remove('show');
+}
+
+function printReceipt() {
+    window.print();
+}
+
+function copyReceiptDetails() {
+    if (!lastReceiptData) return;
+    const d = lastReceiptData;
+    const dateStr = d.timestamp.toLocaleString('ar-EG');
+    const text =
+        '=== SAWYAN BANK ===\n' +
+        '✅ تمت العملية بنجاح\n' +
+        'كود العملية: ' + d.transactionCode + '\n' +
+        'التاريخ: ' + dateStr + '\n' +
+        'التاجر: ' + (d.merchant?.business_name || '-') + ' (' + (d.merchant?.merchant_code || '-') + ')\n' +
+        'العميل: ' + (d.member?.full_name || '-') + ' (' + (d.member?.member_code || '-') + ')\n' +
+        'المبلغ: ' + d.amount.toFixed(2) + ' ج.م\n' +
+        'العمولة الإجمالية: ' + d.commissionAmount.toFixed(2) + ' ج.م\n' +
+        'نصيب العميل: ' + d.memberShare.toFixed(2) + ' ج.م\n' +
+        'التحقق: ' + window.location.origin + '/verify.html?code=' + d.transactionCode;
+
+    // محاولة استخدام Clipboard API
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert('✅ تم نسخ تفاصيل العملية');
+        }).catch(() => {
+            fallbackCopy(text);
+        });
+    } else {
+        fallbackCopy(text);
+    }
+}
+
+function fallbackCopy(text) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+        document.execCommand('copy');
+        alert('✅ تم نسخ تفاصيل العملية');
+    } catch (err) {
+        alert('تعذّر النسخ — انسخ يدوياً:\n\n' + text);
+    }
+    document.body.removeChild(textarea);
+}
+
+async function shareReceipt() {
+    if (!lastReceiptData) return;
+    const d = lastReceiptData;
+    const dateStr = d.timestamp.toLocaleString('ar-EG');
+    const shareData = {
+        title: 'إيصال عملية - SAWYAN BANK',
+        text:
+            '✅ تمت العملية بنجاح\n' +
+            'كود العملية: ' + d.transactionCode + '\n' +
+            'التاريخ: ' + dateStr + '\n' +
+            'التاجر: ' + (d.merchant?.business_name || '-') + '\n' +
+            'المبلغ: ' + d.amount.toFixed(2) + ' ج.م\n' +
+            'نصيب العميل: ' + d.memberShare.toFixed(2) + ' ج.م',
+        url: window.location.origin + '/verify.html?code=' + d.transactionCode
+    };
+
+    if (navigator.share) {
+        try {
+            await navigator.share(shareData);
+        } catch (err) {
+            console.log('Share cancelled');
+        }
+    } else {
+        // fallback → نسخ الرابط
+        copyReceiptDetails();
     }
 }
 

@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="../shared/css/image-upload.css">
     <link rel="stylesheet" href="../member-dashboard/css/dashboard.css">
     <link rel="stylesheet" href="css/scan-page.css">
+    <link rel="stylesheet" href="css/receipt-modal.css">
 </head>
 
 <body>
@@ -301,6 +302,40 @@
             <a href="#" class="more-menu-item logout" onclick="logout()">
                 <span>🚪</span> تسجيل الخروج
             </a>
+        </div>
+    </div>
+
+    <!-- Receipt Modal (شاشة التأكيد النهائية) -->
+    <div id="receiptOverlay" class="receipt-overlay">
+        <div class="receipt-modal" id="receiptModal">
+            <button class="receipt-close-btn" onclick="closeReceipt()">×</button>
+
+            <div class="receipt-header">
+                <div class="receipt-check-icon">✓</div>
+                <h2 class="receipt-title">تمت العملية بنجاح</h2>
+                <p class="receipt-subtitle">اعرض هذا الإيصال للعميل</p>
+            </div>
+
+            <div class="receipt-body" id="receiptBody">
+                <!-- يُملأ ديناميكياً -->
+            </div>
+
+            <div class="receipt-actions">
+                <button class="receipt-action-btn" onclick="printReceipt()">
+                    <span class="icon">🖨️</span>
+                    <span>طباعة</span>
+                </button>
+                <button class="receipt-action-btn" onclick="copyReceiptDetails()">
+                    <span class="icon">📋</span>
+                    <span>نسخ</span>
+                </button>
+                <button class="receipt-action-btn" onclick="shareReceipt()">
+                    <span class="icon">📤</span>
+                    <span>مشاركة</span>
+                </button>
+            </div>
+
+            <button class="receipt-done-btn" onclick="closeReceipt()">تم</button>
         </div>
     </div>
 

@@ -1,0 +1,328 @@
+/* ===== شاشة التأكيد النهائية للتاجر (Receipt Modal) ===== */
+
+/* الـ Overlay */
+.receipt-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 16px;
+    overflow-y: auto;
+}
+
+.receipt-overlay.show {
+    display: flex;
+}
+
+/* الإيصال نفسه */
+.receipt-modal {
+    background: #fff;
+    border-radius: 16px;
+    max-width: 420px;
+    width: 100%;
+    margin: auto;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+    animation: receiptPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+}
+
+@keyframes receiptPop {
+    from {
+        opacity: 0;
+        transform: scale(0.85) translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* رأس الإيصال */
+.receipt-header {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    color: #fff;
+    padding: 24px 20px;
+    text-align: center;
+    position: relative;
+}
+
+.receipt-check-icon {
+    width: 64px;
+    height: 64px;
+    background: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+    font-size: 2.2rem;
+    color: #10B981;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    animation: checkBounce 0.6s ease 0.2s both;
+}
+
+@keyframes checkBounce {
+    0% { transform: scale(0); }
+    60% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.receipt-title {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin: 0;
+}
+
+.receipt-subtitle {
+    font-size: 0.85rem;
+    opacity: 0.9;
+    margin-top: 4px;
+}
+
+/* جسم الإيصال */
+.receipt-body {
+    padding: 20px;
+}
+
+.receipt-section {
+    padding: 12px 0;
+    border-bottom: 1px dashed #e5e7eb;
+}
+
+.receipt-section:last-child {
+    border-bottom: none;
+}
+
+.receipt-section-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.receipt-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    font-size: 0.95rem;
+}
+
+.receipt-row-label {
+    color: #6b7280;
+}
+
+.receipt-row-value {
+    color: #111827;
+    font-weight: 600;
+    text-align: left;
+    direction: ltr;
+}
+
+.receipt-row-value.highlight {
+    color: #10B981;
+    font-size: 1.05rem;
+}
+
+.receipt-row-value.code {
+    font-family: 'Courier New', monospace;
+    background: #f3f4f6;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+/* صنف المبلغ الكبير */
+.receipt-amount-block {
+    background: #f9fafb;
+    border-radius: 10px;
+    padding: 14px;
+    margin: 8px 0;
+    text-align: center;
+}
+
+.receipt-amount-label {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+
+.receipt-amount-value {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #111827;
+}
+
+.receipt-amount-currency {
+    font-size: 1rem;
+    color: #6b7280;
+    font-weight: 600;
+    margin-right: 4px;
+}
+
+/* QR Code في الإيصال */
+.receipt-qr-block {
+    text-align: center;
+    padding: 12px 0;
+}
+
+.receipt-qr-block canvas,
+.receipt-qr-block img {
+    margin: 0 auto;
+    border: 8px solid #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    display: block;
+}
+
+.receipt-qr-hint {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-top: 8px;
+}
+
+/* أزرار الإيصال */
+.receipt-actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 16px 20px;
+    background: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+}
+
+.receipt-action-btn {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 10px 4px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    color: #374151;
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.receipt-action-btn:hover {
+    border-color: #10B981;
+    background: #f0fdf4;
+    color: #10B981;
+    transform: translateY(-1px);
+}
+
+.receipt-action-btn:active {
+    transform: translateY(0);
+}
+
+.receipt-action-btn .icon {
+    font-size: 1.3rem;
+}
+
+/* زر الإغلاق */
+.receipt-close-btn {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: #fff;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    transition: background 0.2s;
+}
+
+.receipt-close-btn:hover {
+    background: rgba(255, 255, 255, 0.35);
+}
+
+/* زر تم */
+.receipt-done-btn {
+    display: block;
+    width: 100%;
+    background: #10B981;
+    color: #fff;
+    border: none;
+    padding: 14px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.2s;
+}
+
+.receipt-done-btn:hover {
+    background: #059669;
+}
+
+/* الفئة للطباعة */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    .receipt-modal,
+    .receipt-modal * {
+        visibility: visible;
+    }
+    .receipt-modal {
+        position: absolute;
+        top: 0;
+        left: 0;
+        box-shadow: none;
+        max-width: 100%;
+    }
+    .receipt-overlay {
+        background: #fff;
+        position: static;
+        display: block !important;
+        padding: 0;
+    }
+    .receipt-actions,
+    .receipt-close-btn,
+    .receipt-done-btn {
+        display: none !important;
+    }
+}
+
+/* تنسيق الموبايل */
+@media (max-width: 480px) {
+    .receipt-modal {
+        max-width: 100%;
+        border-radius: 12px;
+    }
+    .receipt-header {
+        padding: 18px 16px;
+    }
+    .receipt-check-icon {
+        width: 56px;
+        height: 56px;
+        font-size: 1.9rem;
+    }
+    .receipt-title {
+        font-size: 1.2rem;
+    }
+    .receipt-body {
+        padding: 16px;
+    }
+    .receipt-amount-value {
+        font-size: 1.5rem;
+    }
+}
