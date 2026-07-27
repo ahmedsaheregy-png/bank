@@ -147,25 +147,109 @@ async function loadSupport() {
 }
 
 // صفحة الإعدادات
+// خريطة المفاتيح في جدول settings (key/value table) <-> عناصر الإدخال
+const SETTINGS_MAP = {
+    // إعدادات العمولات
+    'default_commission_percentage': { key: 'commission_settings', path: 'default_percentage', input: 'defaultCommission', type: 'float' },
+    'min_commission_amount':         { key: 'commission_settings', path: 'min_amount',         input: 'minCommission',     type: 'float' },
+    // Pool settings
+    'company_percent':               { key: 'pool_config', path: 'company_percent',     input: 'companyPercent',     type: 'float' },
+    'generations_count':             { key: 'pool_config', path: 'generations_count',   input: 'generationsCount',   type: 'int'   },
+    'cap_amount':                     { key: 'pool_config', path: 'cap_amount',           input: 'capAmount',          type: 'float' },
+    'cap_auto_calc':                  { key: 'pool_config', path: 'cap_auto_calc',        input: 'capAutoCalc',        type: 'bool'  },
+    // System
+    'system_name':                    { key: 'system_info', path: 'name',                input: 'systemName',         type: 'str'   },
+    'support_email':                  { key: 'system_info', path: 'support_email',       input: 'supportEmail',       type: 'str'   },
+    'support_phone':                  { key: 'system_info', path: 'support_phone',       input: 'supportPhone',       type: 'str'   }
+};
+
+// القيم الافتراضية
+const SETTINGS_DEFAULTS = {
+    commission_settings: { default_percentage: 10, min_amount: 5 },
+    pool_config: { company_percent: 25, generations_count: 11, cap_amount: 4605, cap_auto_calc: true },
+    system_info: { name: 'SAWYAN BANK', support_email: '', support_phone: '' }
+};
+
 async function loadSettings() {
     try {
-        const { data: settings } = await window.SAWYAN.supabase
+        // اقرا كل صفوف الـ settings (key/value)
+        const { data: rows, error } = await window.SAWYAN.supabase
             .from('settings')
-            .select('*')
-            .single();
+            .select('key, value');
 
-        if (settings) {
-            document.getElementById('defaultCommission').value = settings.default_commission_percentage || 0;
-            document.getElementById('minCommission').value = settings.min_commission_amount || 0;
-            document.getElementById('systemName').value = settings.system_name || 'SAWYAN BANK';
-            document.getElementById('supportEmail').value = settings.support_email || '';
-            document.getElementById('supportPhone').value = settings.support_phone || '';
-        }
+        if (error) throw error;
+
+        // امزج القيم الافتراضية مع اللي في الـ DB
+        const settingsByKey = { ...SETTINGS_DEFAULTS };
+        (rows || []).forEach(row => {
+            if (row.key && row.value) {
+                settingsByKey[row.key] = { ...(settingsByKey[row.key] || {}), ...row.value };
+            }
+        });
+
+        // املأ الـ inputs
+        Object.entries(SETTINGS_MAP).forEach(([_, spec]) => {
+            const input = document.getElementById(spec.input);
+            if (!input) return;
+            const block = settingsByKey[spec.key] || {};
+            const val = block[spec.path];
+            if (val === undefined || val === null) return;
+            if (spec.type === 'bool') input.checked = !!val;
+            else input.value = val;
+        });
+
+        // ربط الـ live preview
+        ['companyPercent', 'generationsCount', 'capAmount', 'capAutoCalc', 'defaultCommission'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', updatePoolPreview);
+                el.addEventListener('change', updatePoolPreview);
+            }
+        });
+
+        // عرض المعاينة المبدئية
+        updatePoolPreview();
 
         await loadAdmins();
 
     } catch (error) {
         console.error('Error loading settings:', error);
+        alert('تعذر تحميل الإعدادات: ' + (error.message || error));
+    }
+}
+
+// 🌳 معاينة حسابات الـ Pool بشكل حي
+function updatePoolPreview() {
+    const companyPercent = parseFloat(document.getElementById('companyPercent')?.value) || 25;
+    const generationsCount = parseInt(document.getElementById('generationsCount')?.value) || 11;
+    const defaultDeduction = parseFloat(document.getElementById('defaultCommission')?.value) || 10;
+    const capAutoCalc = document.getElementById('capAutoCalc')?.checked !== false;
+
+    const productPrice = 330; // مثال افتراضي
+    const deductedAmount = productPrice * (defaultDeduction / 100);
+    const companyShare = deductedAmount * (companyPercent / 100);
+    const membersShare = deductedAmount - companyShare;
+    const membersPercent = 100 - companyPercent;
+    const sharePerMember = membersShare / generationsCount;
+    const totalMembers = Math.pow(2, generationsCount) - 1;
+    const capValue = capAutoCalc ? Math.floor(totalMembers * sharePerMember) : (parseFloat(document.getElementById('capAmount')?.value) || 0);
+    const finalSharePerMember = Math.min(sharePerMember, capValue);
+
+    const content = document.getElementById('poolPreviewContent');
+    if (!content) return;
+
+    content.innerHTML = `
+        <div>price = 330 · D% = ${defaultDeduction}% · C% = ${companyPercent}% · N = ${generationsCount}</div>
+        <div>→ deducted = ${deductedAmount.toFixed(2)} · company = ${companyShare.toFixed(2)} · pool = <strong style="color:#047857;">${membersShare.toFixed(2)}</strong> (${membersPercent}%)</div>
+        <div>→ share_per_member = ${finalSharePerMember.toFixed(4)} ${finalSharePerMember >= capValue ? '(cap applied)' : ''}</div>
+        <div>→ tree_max = ${totalMembers.toLocaleString()} · cap = ${capValue.toLocaleString()}</div>
+        <div>→ لو عضو في الجيل ${generationsCount} اشترى: ${Math.min(generationsCount, generationsCount)} × ${finalSharePerMember.toFixed(4)} = ${(Math.min(generationsCount, generationsCount) * finalSharePerMember).toFixed(2)} (surplus = ${(membersShare - Math.min(generationsCount, generationsCount) * finalSharePerMember).toFixed(2)})</div>
+    `;
+
+    // حدّث الـ capAmount تلقائياً لو cap_auto_calc = true
+    if (capAutoCalc) {
+        const capInput = document.getElementById('capAmount');
+        if (capInput) capInput.value = capValue;
     }
 }
 
@@ -204,25 +288,52 @@ async function loadAdmins() {
 
 async function saveSettings() {
     try {
-        const settings = {
-            default_commission_percentage: parseFloat(document.getElementById('defaultCommission').value),
-            min_commission_amount: parseFloat(document.getElementById('minCommission').value),
-            system_name: document.getElementById('systemName').value,
-            support_email: document.getElementById('supportEmail').value,
-            support_phone: document.getElementById('supportPhone').value
+        // جمّع القيم من الـ inputs في 3 blocks
+        const blocks = {
+            commission_settings: {
+                default_percentage: parseFloat(document.getElementById('defaultCommission')?.value || '0'),
+                min_amount: parseFloat(document.getElementById('minCommission')?.value || '0')
+            },
+            pool_config: {
+                company_percent: parseFloat(document.getElementById('companyPercent')?.value || '25'),
+                generations_count: parseInt(document.getElementById('generationsCount')?.value || '11'),
+                cap_amount: parseFloat(document.getElementById('capAmount')?.value || '0'),
+                cap_auto_calc: document.getElementById('capAutoCalc')?.checked !== false
+            },
+            system_info: {
+                name: document.getElementById('systemName')?.value || 'SAWYAN BANK',
+                support_email: document.getElementById('supportEmail')?.value || '',
+                support_phone: document.getElementById('supportPhone')?.value || ''
+            }
         };
 
-        const { error } = await window.SAWYAN.supabase
-            .from('settings')
-            .upsert(settings);
+        // upsert كل block على حدة
+        // schema الـ settings: (id UUID, key TEXT, value JSONB, description TEXT, created_at, updated_at)
+        const upserts = Object.entries(blocks).map(([key, value]) =>
+            window.SAWYAN.supabase
+                .from('settings')
+                .upsert(
+                    { key, value, description: descriptionFor(key) },
+                    { onConflict: 'key' }
+                )
+        );
+        const results = await Promise.all(upserts);
+        const firstError = results.find(r => r.error);
+        if (firstError && firstError.error) throw firstError.error;
 
-        if (error) throw error;
-
-        alert('تم حفظ الإعدادات بنجاح');
+        alert('✅ تم حفظ الإعدادات بنجاح!\n\n🌳 إعدادات الـ Pool حتأثر على المعاملات الجديدة بس.');
     } catch (error) {
         console.error('Error saving settings:', error);
-        alert('حدث خطأ أثناء حفظ الإعدادات');
+        alert('حدث خطأ أثناء حفظ الإعدادات: ' + (error.message || error));
     }
+}
+
+function descriptionFor(key) {
+    return {
+        commission_settings: 'إعدادات العمولات (النسبة الافتراضية + الحد الأدنى)',
+        pool_config: 'إعدادات نظام الـ Pool (الشركة + الأجيال + الـ Cap)',
+        system_info: 'معلومات النظام (الاسم + بيانات الدعم)'
+    }[key] || '';
 }
 
 function resetSettings() {
