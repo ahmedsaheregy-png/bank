@@ -1018,12 +1018,8 @@ async function submitWithdrawRequest(e) {
                 transaction_type: 'withdrawal',
                 amount: amount,
                 status: 'pending',
-                description: `طلب سحب - ${getMethodLabel(method)} - ${account}`,
-                metadata: {
-                    method: method,
-                    account: account,
-                    notes: notes
-                }
+                description: `طلب سحب - ${getMethodLabel(method)} - ${account}${notes ? ' | ' + notes : ''}`,
+                reference_id: null
             }])
             .select()
             .single();
@@ -3663,12 +3659,10 @@ async function processInAppMemberPayment(amount, notes) {
                 company_share: paymentResult.split.platformShare,
                 plan_share: paymentResult.split.memberShare,
                 payment_method: 'in_app',
-                payment_type: 'online',
-                initiator: 'customer',
                 payment_provider: paymentResult.paymentProvider,
                 payment_reference: paymentResult.transactionId,
                 status: 'completed', // مكتملة فوراً لأن الدفع تم
-                notes: notes
+                metadata: notes ? { notes } : {}
             }])
             .select()
             .single();

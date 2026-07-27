@@ -759,7 +759,7 @@ async function loadPendingTransactions() {
                 <p><strong>مبلغ العمولة:</strong> ${parseFloat(t.commission_amount).toFixed(2)} ج.م</p>
                 <p><strong>طريقة الدفع:</strong> ${getPaymentLabel(t)}</p>
                 <p><strong>التوقيت:</strong> ${new Date(t.created_at).toLocaleString('ar-EG')}</p>
-                ${t.notes ? `<p><strong>ملاحظات:</strong> ${t.notes}</p>` : ''}
+                ${(t.metadata?.notes || t.notes) ? `<p><strong>ملاحظات:</strong> ${t.metadata?.notes || t.notes}</p>` : ''}
                 ${t.invoice_image_url ? `<p><a href="${t.invoice_image_url}" target="_blank">📄 عرض الفاتورة</a></p>` : ''}
             </div>
             <div class="pending-actions">
@@ -1932,8 +1932,6 @@ async function processOfflineCustomerPayment() {
                 company_share: paymentResult.split.platformShare,
                 plan_share: paymentResult.split.memberShare,
                 payment_method: 'in_app',
-                payment_type: 'online',
-                initiator: 'merchant',
                 payment_provider: paymentResult.paymentProvider,
                 payment_reference: paymentResult.transactionId,
                 status: 'completed'

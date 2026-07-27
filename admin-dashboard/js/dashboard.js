@@ -517,7 +517,19 @@ async function loadWithdrawals() {
                 <div class="withdrawals-list" id="withdrawalsList">
                     ${withdrawals && withdrawals.length > 0 ? withdrawals.map(w => {
             let metadata = {};
+            // نقرأ من metadata (لو موجود) أو نحلل من الوصف
             try { metadata = JSON.parse(w.metadata || '{}'); } catch (e) { }
+            if (!metadata.method && w.description) {
+                // الوصف بالشكل: "طلب سحب - {method_label} - {account} | {notes}"
+                const parts = w.description.split(' | ');
+                const mainPart = parts[0].replace('طلب سحب - ', '');
+                const dashIdx = mainPart.indexOf(' - ');
+                if (dashIdx > 0) {
+                    metadata.method = mainPart.substring(0, dashIdx).trim();
+                    metadata.account = mainPart.substring(dashIdx + 3).trim();
+                }
+                if (parts.length > 1) metadata.notes = parts.slice(1).join(' | ');
+            }
             const member = w.wallets?.members || {};
 
             return `
@@ -529,7 +541,7 @@ async function loadWithdrawals() {
                                 <div class="withdrawal-details">
                                     <p><strong>العضو:</strong> ${member.full_name || '-'} (${member.member_code || '-'})</p>
                                     <p><strong>الهاتف:</strong> ${member.phone || '-'}</p>
-                                    <p><strong>طريقة السحب:</strong> ${getMethodLabel(metadata.method)}</p>
+                                    <p><strong>طريقة السحب:</strong> ${metadata.method || '-'}</p>
                                     <p><strong>الحساب:</strong> ${metadata.account || '-'}</p>
                                     <p><strong>التاريخ:</strong> ${new Date(w.created_at).toLocaleDateString('ar-EG')}</p>
                                     ${metadata.notes ? `<p><strong>ملاحظات:</strong> ${metadata.notes}</p>` : ''}

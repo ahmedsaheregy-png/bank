@@ -479,8 +479,6 @@ async function handleRegister(e) {
 
         const memberCode = newMember.member_code; // الحصول على الكود من قاعدة البيانات
 
-        if (memberError) throw memberError;
-
         // إنشاء محفظة
         await window.SAWYAN.supabase
             .from('wallets')
