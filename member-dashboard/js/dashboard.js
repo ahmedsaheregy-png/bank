@@ -2,6 +2,72 @@
 let currentUser = null;
 let memberData = null;
 
+// ===== شجرة SVG — متغيرات globals للـ zoom + popup =====
+let _treePopupEl = null; // عنصر الـ popup الواحد
+let _lastTreeId = null;  // آخر treeId اتعمل
+
+function treeZoom(delta) {
+    const svg = document.querySelector('#' + _lastTreeId + '_svg');
+    const container = document.getElementById(_lastTreeId);
+    if (!svg || !container) return;
+    container._treeScale = Math.max(0.3, Math.min(2.5, (container._treeScale || 1) + delta));
+    svg.style.transform = 'scale(' + container._treeScale + ')';
+    svg.style.transformOrigin = 'top center';
+}
+function treeZoomReset() {
+    const svg = document.querySelector('#' + _lastTreeId + '_svg');
+    const container = document.getElementById(_lastTreeId);
+    if (!svg || !container) return;
+    container._treeScale = 1;
+    svg.style.transform = 'scale(1)';
+}
+
+function initTreeInteractions(treeId, membersData) {
+    const container = document.getElementById(treeId);
+    const svg = document.querySelector('#' + treeId + '_svg');
+    if (!container || !svg) return;
+    _lastTreeId = treeId;
+
+    // إنشاء popup لو مش موجود
+    if (!_treePopupEl) {
+        _treePopupEl = document.createElement('div');
+        _treePopupEl.className = 'tree-popup';
+        _treePopupEl.innerHTML = '';
+        document.body.appendChild(_treePopupEl);
+    }
+
+    // Wheel zoom
+    container.addEventListener('wheel', function(e) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.08 : 0.08;
+        treeZoom(delta);
+    }, { passive: false });
+
+    // Hover popup على كل النودات
+    const allNodes = container.querySelectorAll('.tree-node-g[data-member-id]');
+    allNodes.forEach(function(nodeG) {
+        nodeG.addEventListener('mouseenter', function(e) {
+            const mid = this.getAttribute('data-member-id');
+            const member = membersData.find(function(m) { return String(m.id) === mid; });
+            if (!member) return;
+            _treePopupEl.innerHTML =
+                '<h4>' + member.name + '</h4>' +
+                '<div class="row"><span class="label">الكود</span><span class="value">#' + member.code + '</span></div>' +
+                '<div class="row"><span class="label">الجيل</span><span class="value">' + member.level + '</span></div>' +
+                '<div class="row"><span class="label">العمق</span><span class="value">' + member.depth + '</span></div>' +
+                '<div class="row"><span class="label">الجهة</span><span class="value">' + (member.pos === 'left' ? 'يسار ⬅️' : member.pos === 'right' ? 'يمين ➡️' : '—') + '</span></div>';
+            _treePopupEl.classList.add('show');
+        });
+        nodeG.addEventListener('mousemove', function(e) {
+            _treePopupEl.style.left = (e.clientX + 16) + 'px';
+            _treePopupEl.style.top = (e.clientY - 10) + 'px';
+        });
+        nodeG.addEventListener('mouseleave', function() {
+            _treePopupEl.classList.remove('show');
+        });
+    });
+}
+
 document.addEventListener('DOMContentLoaded', async function () {
     if (window.SAWYAN && window.SAWYAN.Logo) {
         document.getElementById('logoContainer').innerHTML = window.SAWYAN.Logo.icon();
@@ -514,6 +580,11 @@ async function loadTree() {
             </div>
         `;
 
+        // تنشيط Zoom + Popup بعد الـ innerHTML (scripts جوة innerHTML مااتنفّذش)
+        if (window._treeRenderData) {
+            initTreeInteractions(window._treeRenderData.treeId, window._treeRenderData.membersData);
+        }
+
     } catch (err) {
         console.error('loadTree error:', err);
         content.innerHTML = `<p class="empty-state">❌ حصل خطأ: ${err.message}</p>`;
@@ -666,7 +737,7 @@ function renderTreeView(me, downline) {
         }
     });
 
-    // CSS + Popup + Zoom
+    // CSS للشجرة — direction:ltr عشان اليسار يكون فعلاً على الشمال
     const treeId = 'svgTree_' + Date.now();
     const treeCSS = `
     <style>
@@ -727,6 +798,15 @@ function renderTreeView(me, downline) {
         .tree-legend-dot { width: 14px; height: 14px; border-radius: 50%; }
     </style>`;
 
+    // حفظ treeId + membersData في global عشان initTreeInteractions ياخدهم
+    window._treeRenderData = {
+        treeId: treeId,
+        membersData: allMembers.filter(m => m.id).map(m => ({
+            id: String(m.id), name: m.full_name, code: m.member_code,
+            level: m.tree_level, depth: m.depth, pos: m.pos || m.position
+        }))
+    };
+
     return `
     ${treeCSS}
     <div class="tree-legend">
@@ -737,9 +817,9 @@ function renderTreeView(me, downline) {
     </div>
     <div class="tree-svg-container" id="${treeId}" style="max-height:600px;">
         <div class="tree-zoom-controls">
-            <button class="tree-zoom-btn" onclick="treeZoom('${treeId}', 0.15)">+</button>
-            <button class="tree-zoom-btn" onclick="treeZoom('${treeId}', -0.15)">−</button>
-            <button class="tree-zoom-btn" style="font-size:14px;" onclick="treeZoomReset('${treeId}')">↺</button>
+            <button class="tree-zoom-btn" onclick="treeZoom(0.15)">+</button>
+            <button class="tree-zoom-btn" onclick="treeZoom(-0.15)">−</button>
+            <button class="tree-zoom-btn" style="font-size:14px;" onclick="treeZoomReset()">↺</button>
         </div>
         <svg id="${treeId}_svg" width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}" xmlns="http://www.w3.org/2000/svg">
             <defs>
@@ -751,63 +831,9 @@ function renderTreeView(me, downline) {
             ${svgNodes}
         </svg>
     </div>
-    <div class="tree-popup" id="${treeId}_popup"></div>
     <p style="text-align:center; color:#9ca3af; font-size:12px; margin-top:8px;">
         📊 ${actualMaxDepth + 1} مستوى — وقف على أي دائرة عشان تشوف بيانات العضو — scroll + zoom للتصفح
-    </p>
-    <script>
-    (function(){
-        const container = document.getElementById('${treeId}');
-        const svg = document.getElementById('${treeId}_svg');
-        const popup = document.getElementById('${treeId}_popup');
-        let currentScale = 1;
-        container._treeScale = 1;
-
-        // Zoom
-        window['treeZoom'] = function(id, delta) {
-            const c = document.getElementById(id);
-            c._treeScale = Math.max(0.3, Math.min(2, c._treeScale + delta));
-            svg.style.transform = 'scale(' + c._treeScale + ')';
-            svg.style.transformOrigin = 'top center';
-        };
-        window['treeZoomReset'] = function(id) {
-            const c = document.getElementById(id);
-            c._treeScale = 1;
-            svg.style.transform = 'scale(1)';
-        };
-
-        // Mouse wheel zoom
-        container.addEventListener('wheel', function(e) {
-            e.preventDefault();
-            const delta = e.deltaY > 0 ? -0.08 : 0.08;
-            treeZoom('${treeId}', delta);
-        }, { passive: false });
-
-        // Hover popup
-        const allNodes = container.querySelectorAll('.tree-node-g[data-member-id]');
-        allNodes.forEach(function(nodeG) {
-            nodeG.addEventListener('mouseenter', function(e) {
-                const mid = this.getAttribute('data-member-id');
-                // نبحث في downline
-                const member = ${JSON.stringify(allMembers.filter(m => m.id).map(m => ({id: String(m.id), name: m.full_name, code: m.member_code, level: m.tree_level, depth: m.depth, pos: m.pos || m.position, parent: String(m.parent_id)})))}.find(function(m){ return m.id === mid; });
-                if (!member) return;
-                popup.innerHTML = '<h4>' + member.name + '</h4>' +
-                    '<div class="row"><span class="label">الكود</span><span class="value">#' + member.code + '</span></div>' +
-                    '<div class="row"><span class="label">الجيل</span><span class="value">' + member.level + '</span></div>' +
-                    '<div class="row"><span class="label">العمق</span><span class="value">' + member.depth + '</span></div>' +
-                    '<div class="row"><span class="label">الجهة</span><span class="value">' + (member.pos === 'left' ? 'يسار ⬅️' : member.pos === 'right' ? 'يمين ➡️' : '—') + '</span></div>';
-                popup.classList.add('show');
-            });
-            nodeG.addEventListener('mousemove', function(e) {
-                popup.style.left = (e.clientX + 16) + 'px';
-                popup.style.top = (e.clientY - 10) + 'px';
-            });
-            nodeG.addEventListener('mouseleave', function() {
-                popup.classList.remove('show');
-            });
-        });
-    })();
-    </script>`;
+    </p>`;
 }
 
 // ============================================================================
