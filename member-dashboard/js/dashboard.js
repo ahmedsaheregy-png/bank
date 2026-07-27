@@ -401,9 +401,9 @@ async function loadTree() {
         const teamSize = downline.length; // get_downline بيشمل العضو نفسه (depth: 0)
         const directReferrals = myReferrals?.length || 0;
 
-        // أحجام الفروع
-        const leftCount = downline.filter(d => d.position === 'left').length;
-        const rightCount = downline.filter(d => d.position === 'right').length;
+        // أحجام الفروع (pos مش position — RPC بيرجع pos)
+        const leftCount = downline.filter(d => d.pos === 'left').length;
+        const rightCount = downline.filter(d => d.pos === 'right').length;
 
         content.innerHTML = `
             <!-- إحصائيات سريعة -->
@@ -504,7 +504,7 @@ async function loadTree() {
                                         <td style="padding:8px;">${d.full_name}</td>
                                         <td style="padding:8px; text-align:center;">${d.tree_level}</td>
                                         <td style="padding:8px; text-align:center;">${d.depth}</td>
-                                        <td style="padding:8px; text-align:center;">${d.position === 'left' ? '⬅️ يسار' : '➡️ يمين'}</td>
+                                        <td style="padding:8px; text-align:center;">${d.pos === 'left' ? '⬅️ يسار' : d.pos === 'right' ? '➡️ يمين' : '—'}</td>
                                     </tr>
                                 `).join('')}
                             </tbody>
@@ -520,87 +520,85 @@ async function loadTree() {
     }
 }
 
-// Helper: عرض الشجرة بشكل بصري بسيط
+// Helper: عرض الشجرة بشكل بصري — متعدد المستويات
 function renderTreeView(me, downline) {
-    // نعرض أول 3 مستويات من الشجرة (me + first 2 generations)
-    const myChildren = downline.filter(d => d.parent_id === me.id);
-    const leftChild = myChildren.find(c => c.position === 'left');
-    const rightChild = myChildren.find(c => c.position === 'right');
+    // pos مش position — RPC بيرجع pos
+    const allMembers = downline; // يشملني أنا (depth: 0) + كل الـ downline
+    const maxDisplayDepth = 4; // نعرض لحد 4 مستويات
 
-    const leftSubtree = leftChild ? downline.filter(d =>
-        d.parent_id === leftChild.id ||
-        isDescendantOf(d, leftChild, downline, 2)
-    ) : [];
-    const rightSubtree = rightChild ? downline.filter(d =>
-        d.parent_id === rightChild.id ||
-        isDescendantOf(d, rightChild, downline, 2)
-    ) : [];
+    // بناء خريطة parent → children
+    const childrenMap = {};
+    allMembers.forEach(m => {
+        const pid = m.parent_id;
+        if (pid && pid !== me.id) {
+            if (!childrenMap[pid]) childrenMap[pid] = { left: null, right: null };
+            const side = m.pos || m.position || 'left';
+            if (!childrenMap[pid][side]) childrenMap[pid][side] = m;
+        }
+    });
+
+    // أبنائي المباشرين
+    const myChildren = allMembers.filter(d => d.parent_id === me.id);
+    const leftChild = myChildren.find(c => (c.pos || c.position) === 'left');
+    const rightChild = myChildren.find(c => (c.pos || c.position) === 'right');
+
+    function countDescendants(memberId) {
+        const ch = childrenMap[memberId];
+        let count = 0;
+        if (ch) {
+            if (ch.left) count += 1 + countDescendants(ch.left.id);
+            if (ch.right) count += 1 + countDescendants(ch.right.id);
+        }
+        return count;
+    }
+
+    function renderNode(member, depth, side) {
+        if (!member) {
+            return `<div class="tree-node-empty" style="background:#f9fafb; padding:8px 14px; border-radius:10px; border:2px dashed #d1d5db; color:#9ca3af; text-align:center; min-width:90px; font-size:12px;">
+                <div>فاضي</div><div style="font-size:16px;">+</div>
+            </div>`;
+        }
+        const isMe = member.id === me.id;
+        const name = member.full_name || 'بدون اسم';
+        const code = member.member_code || '?';
+        const memberChildren = childrenMap[member.id];
+        const hasChildren = memberChildren && (memberChildren.left || memberChildren.right);
+        const descCount = countDescendants(member.id);
+        const sideColor = side === 'left' ? '#3b82f6' : side === 'right' ? '#f59e0b' : '#10b981';
+        const sideIcon = side === 'left' ? '⬅️' : side === 'right' ? '➡️' : '';
+        const bgStyle = isMe
+            ? 'background:linear-gradient(135deg, #10b981, #059669); color:white; box-shadow:0 4px 12px rgba(16,185,129,0.3);'
+            : `background:#fff; border:2px solid ${sideColor};`;
+
+        let html = `<div style="display:flex; flex-direction:column; align-items:center;">
+            <div style="padding:8px 14px; border-radius:12px; text-align:center; min-width:90px; ${bgStyle}">
+                <div style="font-size:10px; ${isMe ? 'opacity:0.9' : 'color:#9ca3af'};">${isMe ? 'أنت' : ''}</div>
+                <div style="font-weight:bold; font-size:12px;">${name.length > 15 ? name.substring(0,15)+'...' : name}</div>
+                <div style="font-size:10px; ${isMe ? 'opacity:0.9' : 'color:#6b7280'};">#${code}</div>
+                ${sideIcon ? `<div style="font-size:10px;">${sideIcon}</div>` : ''}
+                ${descCount > 0 ? `<div style="font-size:9px; ${isMe ? 'opacity:0.8' : 'color:#9ca3af'}; margin-top:2px;">+${descCount} تحتهم</div>` : ''}
+            </div>`;
+
+        // الأبناء لو مستوى أقل من maxDisplayDepth
+        if (depth < maxDisplayDepth && hasChildren) {
+            html += `<div style="display:flex; gap:${depth === 0 ? 40 : 20}px; margin-top:15px; position:relative;">`;
+            html += renderNode(memberChildren.left, depth + 1, 'left');
+            html += renderNode(memberChildren.right, depth + 1, 'right');
+            html += '</div>';
+        }
+
+        html += '</div>';
+        return html;
+    }
 
     return `
         <div style="overflow-x:auto; padding:20px 0;">
-            <div style="display:flex; flex-direction:column; align-items:center; min-width:600px;">
-                <!-- أنا -->
-                <div style="background:linear-gradient(135deg, #10b981, #059669); color:white; padding:12px 20px; border-radius:50%; min-width:120px; text-align:center; box-shadow:0 4px 12px rgba(16,185,129,0.3);">
-                    <div style="font-size:11px; opacity:0.9;">أنت</div>
-                    <div style="font-weight:bold;">${me.full_name}</div>
-                    <div style="font-size:11px; opacity:0.9;">#${me.member_code}</div>
-                </div>
-
-                <!-- مستوى الأبناء -->
-                <div style="display:flex; gap:60px; margin-top:30px; position:relative;">
-                    <!-- الخطوط -->
-                    <div style="position:absolute; top:-30px; left:50%; width:1px; height:30px; background:#d1d5db;"></div>
-                    <div style="position:absolute; top:-15px; left:25%; right:25%; height:1px; background:#d1d5db;"></div>
-
-                    <!-- اليسار -->
-                    <div style="display:flex; flex-direction:column; align-items:center;">
-                        ${leftChild ? `
-                            <div style="position:absolute; top:-15px; left:25%; width:1px; height:15px; background:#d1d5db;"></div>
-                            <div style="background:#fff; padding:10px 16px; border-radius:10px; border:2px solid #3b82f6; text-align:center; min-width:100px;">
-                                <div style="font-weight:bold; font-size:13px;">${leftChild.full_name}</div>
-                                <div style="font-size:11px; color:#6b7280;">#${leftChild.member_code}</div>
-                                <div style="font-size:10px; color:#3b82f6;">⬅️ يسار</div>
-                            </div>
-                            <div style="font-size:11px; color:#9ca3af; margin-top:4px;">+${leftSubtree.length} تحته</div>
-                        ` : `
-                            <div style="background:#f9fafb; padding:10px 16px; border-radius:10px; border:2px dashed #d1d5db; color:#9ca3af; text-align:center; min-width:100px;">
-                                <div style="font-size:11px;">فاضي</div>
-                                <div style="font-size:18px;">+</div>
-                            </div>
-                        `}
-                    </div>
-
-                    <!-- اليمين -->
-                    <div style="display:flex; flex-direction:column; align-items:center;">
-                        ${rightChild ? `
-                            <div style="position:absolute; top:-15px; right:25%; width:1px; height:15px; background:#d1d5db;"></div>
-                            <div style="background:#fff; padding:10px 16px; border-radius:10px; border:2px solid #f59e0b; text-align:center; min-width:100px;">
-                                <div style="font-weight:bold; font-size:13px;">${rightChild.full_name}</div>
-                                <div style="font-size:11px; color:#6b7280;">#${rightChild.member_code}</div>
-                                <div style="font-size:10px; color:#f59e0b;">➡️ يمين</div>
-                            </div>
-                            <div style="font-size:11px; color:#9ca3af; margin-top:4px;">+${rightSubtree.length} تحته</div>
-                        ` : `
-                            <div style="background:#f9fafb; padding:10px 16px; border-radius:10px; border:2px dashed #d1d5db; color:#9ca3af; text-align:center; min-width:100px;">
-                                <div style="font-size:11px;">فاضي</div>
-                                <div style="font-size:18px;">+</div>
-                            </div>
-                        `}
-                    </div>
-                </div>
+            <div style="display:flex; flex-direction:column; align-items:center; min-width:700px;">
+                ${renderNode(me, 0, null)}
             </div>
         </div>
-        ${downline.length > 7 ? '<p style="text-align:center; color:#9ca3af; font-size:12px; margin-top:12px;">📊 الشجرة بتعرض أول مستويين. شوف القائمة تحت للقائمة الكاملة.</p>' : ''}
+        ${downline.length > 15 ? '<p style="text-align:center; color:#9ca3af; font-size:12px; margin-top:12px;">📊 الشجرة بتعرض أول 4 مستويات. شوف القائمة تحت للقائمة الكاملة.</p>' : ''}
     `;
-}
-
-function isDescendantOf(member, ancestor, allMembers, maxDepth = 3) {
-    if (!member.parent_id) return false;
-    if (member.parent_id === ancestor.id) return true;
-    if (maxDepth <= 0) return false;
-    const parent = allMembers.find(m => m.id === member.parent_id);
-    if (!parent) return false;
-    return isDescendantOf(parent, ancestor, allMembers, maxDepth - 1);
 }
 
 // ============================================================================
