@@ -367,34 +367,54 @@ ALTER TABLE sawyan.surplus_distributions   ENABLE ROW LEVEL SECURITY;
 
 -- للتبسيط في وضع التطوير: نسمح بـ anon SELECT على most tables
 DROP POLICY IF EXISTS "Dev: anon read members" ON sawyan.members;
-CREATE POLICY "Dev: anon read members" ON sawyan.members FOR SELECT USING (true);
+CREATE POLICY "Dev: anon read members" ON sawyan.members
+    FOR SELECT
+    USING (true);
 
-DROP POLICY IF EXISTS "Dev: anon read merchants" ON sawyan.merchants FOR SELECT USING (true);
-CREATE POLICY "Dev: anon read merchants" ON sawyan.merchants FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Dev: anon read merchants" ON sawyan.merchants;
+CREATE POLICY "Dev: anon read merchants" ON sawyan.merchants
+    FOR SELECT
+    USING (true);
 
-DROP POLICY IF EXISTS "Dev: anon read transactions" ON sawyan.transactions FOR SELECT USING (true);
-CREATE POLICY "Dev: anon read transactions" ON sawyan.transactions FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Dev: anon read transactions" ON sawyan.transactions;
+CREATE POLICY "Dev: anon read transactions" ON sawyan.transactions
+    FOR SELECT
+    USING (true);
 
-DROP POLICY IF EXISTS "Dev: anon read settings" ON sawyan.settings FOR SELECT USING (true);
-CREATE POLICY "Dev: anon read settings" ON sawyan.settings FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Dev: anon read settings" ON sawyan.settings;
+CREATE POLICY "Dev: anon read settings" ON sawyan.settings
+    FOR SELECT
+    USING (true);
 
-DROP POLICY IF EXISTS "Dev: anon read wallets" ON sawyan.wallets FOR SELECT USING (true);
-CREATE POLICY "Dev: anon read wallets" ON sawyan.wallets FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Dev: anon read wallets" ON sawyan.wallets;
+CREATE POLICY "Dev: anon read wallets" ON sawyan.wallets
+    FOR SELECT
+    USING (true);
 
-DROP POLICY IF EXISTS "Dev: anon read wallet_transactions" ON sawyan.wallet_transactions FOR SELECT USING (true);
-CREATE POLICY "Dev: anon read wallet_transactions" ON sawyan.wallet_transactions FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Dev: anon read wallet_transactions" ON sawyan.wallet_transactions;
+CREATE POLICY "Dev: anon read wallet_transactions" ON sawyan.wallet_transactions
+    FOR SELECT
+    USING (true);
 
-DROP POLICY IF EXISTS "Dev: anon read payment_methods" ON sawyan.payment_methods FOR SELECT USING (true);
-CREATE POLICY "Dev: anon read payment_methods" ON sawyan.payment_methods FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Dev: anon read payment_methods" ON sawyan.payment_methods;
+CREATE POLICY "Dev: anon read payment_methods" ON sawyan.payment_methods
+    FOR SELECT
+    USING (true);
 
-DROP POLICY IF EXISTS "Dev: anon read payment_logs" ON sawyan.payment_logs FOR SELECT USING (true);
-CREATE POLICY "Dev: anon read payment_logs" ON sawyan.payment_logs FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Dev: anon read payment_logs" ON sawyan.payment_logs;
+CREATE POLICY "Dev: anon read payment_logs" ON sawyan.payment_logs
+    FOR SELECT
+    USING (true);
 
-DROP POLICY IF EXISTS "Dev: anon read complaints" ON sawyan.complaints FOR SELECT USING (true);
-CREATE POLICY "Dev: anon read complaints" ON sawyan.complaints FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Dev: anon read complaints" ON sawyan.complaints;
+CREATE POLICY "Dev: anon read complaints" ON sawyan.complaints
+    FOR SELECT
+    USING (true);
 
-DROP POLICY IF EXISTS "Dev: anon read support_tickets" ON sawyan.support_tickets FOR SELECT USING (true);
-CREATE POLICY "Dev: anon read support_tickets" ON sawyan.support_tickets FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Dev: anon read support_tickets" ON sawyan.support_tickets;
+CREATE POLICY "Dev: anon read support_tickets" ON sawyan.support_tickets
+    FOR SELECT
+    USING (true);
 
 -- أعضاء يقدروا يشوفوا عملياتهم في البول وعمولاتهم بس
 DROP POLICY IF EXISTS "members_view_own_pool_transactions" ON sawyan.pool_transactions;
