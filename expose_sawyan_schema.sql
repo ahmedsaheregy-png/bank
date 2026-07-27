@@ -29,12 +29,7 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA sawyan TO authenticated;
 -- Supabase بيوفر function جاهزة لإعادة تحميل الـ schema cache
 NOTIFY pgrst, 'reload schema';
 
--- 6) بديل: نضيف sawyan للـ db_schemas في الـ config
--- ده بيتعمل عبر Supabase Dashboard → Project Settings → API
--- أو عبر:
-ALTER ROLE "authenticator" SET db_schemas = 'public, sawyan';
-
--- 7) إعادة تحميل الـ schema cache مرة تانية بعد تغيير الـ config
+-- 6) إعادة تحميل الـ schema cache
 NOTIFY pgrst, 'reload schema';
 
 -- ✅ تحقق
