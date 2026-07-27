@@ -200,7 +200,7 @@ WITH RECURSIVE downline AS (
     WHERE d.depth < max_depth
 )
 SELECT * FROM downline;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE sql STABLE;
 
 -- ============================================================================
 -- 10) Function: get_uplines (كل الـ uplines لعضو معين حتى root)
@@ -235,7 +235,7 @@ WITH RECURSIVE uplines AS (
     WHERE u.depth < max_depth
 )
 SELECT * FROM uplines;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE sql STABLE;
 
 -- ============================================================================
 -- 11) Function: auto_set_member_placement (تعيين مكان العضو الجديد تلقائياً)
