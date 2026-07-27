@@ -520,30 +520,32 @@ async function loadTree() {
     }
 }
 
-// Helper: عرض الشجرة بشكل بصري — متعدد المستويات
+// Helper: عرض الشجرة بشكل بصري — غير محدود المستويات مع layout ذكي
 function renderTreeView(me, downline) {
-    // pos مش position — RPC بيرجع pos
     const allMembers = downline; // يشملني أنا (depth: 0) + كل الـ downline
-    const maxDisplayDepth = 4; // نعرض لحد 4 مستويات
 
-    // بناء خريطة parent → children
+    // حساب أقصى عمق فعلي في البيانات
+    let actualMaxDepth = 0;
+    allMembers.forEach(m => {
+        if (m.depth !== undefined && m.depth > actualMaxDepth) actualMaxDepth = m.depth;
+    });
+
+    // بناء خريطة parent → children (نستخدم مفتاح string عشان ID ممكن يكون UUID)
     const childrenMap = {};
     allMembers.forEach(m => {
-        const pid = m.parent_id;
-        if (pid && pid !== me.id) {
-            if (!childrenMap[pid]) childrenMap[pid] = { left: null, right: null };
-            const side = m.pos || m.position || 'left';
-            if (!childrenMap[pid][side]) childrenMap[pid][side] = m;
-        }
+        const pid = String(m.parent_id);
+        if (!childrenMap[pid]) childrenMap[pid] = { left: null, right: null };
+        const side = m.pos || m.position || 'left';
+        if (!childrenMap[pid][side]) childrenMap[pid][side] = m;
     });
 
     // أبنائي المباشرين
-    const myChildren = allMembers.filter(d => d.parent_id === me.id);
+    const myChildren = allMembers.filter(d => String(d.parent_id) === String(me.id));
     const leftChild = myChildren.find(c => (c.pos || c.position) === 'left');
     const rightChild = myChildren.find(c => (c.pos || c.position) === 'right');
 
     function countDescendants(memberId) {
-        const ch = childrenMap[memberId];
+        const ch = childrenMap[String(memberId)];
         let count = 0;
         if (ch) {
             if (ch.left) count += 1 + countDescendants(ch.left.id);
@@ -552,16 +554,22 @@ function renderTreeView(me, downline) {
         return count;
     }
 
+    // حساب min-width مناسب بناءً على العمق
+    // كل مستوى بيتضاعف العرض (2^depth عقد في أسوأ حال) — نستخدم عامل تصغير
+    const treeMinWidth = Math.max(700, Math.pow(2, Math.min(actualMaxDepth, 10)) * 110);
+
     function renderNode(member, depth, side) {
         if (!member) {
-            return `<div class="tree-node-empty" style="background:#f9fafb; padding:8px 14px; border-radius:10px; border:2px dashed #d1d5db; color:#9ca3af; text-align:center; min-width:90px; font-size:12px;">
-                <div>فاضي</div><div style="font-size:16px;">+</div>
+            return `<div style="display:flex; flex-direction:column; align-items:center;">
+                <div class="tree-node-empty" style="background:#f9fafb; padding:8px 14px; border-radius:10px; border:2px dashed #d1d5db; color:#9ca3af; text-align:center; min-width:80px; max-width:100px; font-size:11px;">
+                    <div>فاضي</div><div style="font-size:14px;">+</div>
+                </div>
             </div>`;
         }
         const isMe = member.id === me.id;
         const name = member.full_name || 'بدون اسم';
         const code = member.member_code || '?';
-        const memberChildren = childrenMap[member.id];
+        const memberChildren = childrenMap[String(member.id)];
         const hasChildren = memberChildren && (memberChildren.left || memberChildren.right);
         const descCount = countDescendants(member.id);
         const sideColor = side === 'left' ? '#3b82f6' : side === 'right' ? '#f59e0b' : '#10b981';
@@ -570,18 +578,23 @@ function renderTreeView(me, downline) {
             ? 'background:linear-gradient(135deg, #10b981, #059669); color:white; box-shadow:0 4px 12px rgba(16,185,129,0.3);'
             : `background:#fff; border:2px solid ${sideColor};`;
 
+        // المسافة بين النودات بتقل مع كل مستوى عشان تتسع
+        const gapSize = Math.max(8, 50 - depth * 6);
+
         let html = `<div style="display:flex; flex-direction:column; align-items:center;">
-            <div style="padding:8px 14px; border-radius:12px; text-align:center; min-width:90px; ${bgStyle}">
-                <div style="font-size:10px; ${isMe ? 'opacity:0.9' : 'color:#9ca3af'};">${isMe ? 'أنت' : ''}</div>
-                <div style="font-weight:bold; font-size:12px;">${name.length > 15 ? name.substring(0,15)+'...' : name}</div>
-                <div style="font-size:10px; ${isMe ? 'opacity:0.9' : 'color:#6b7280'};">#${code}</div>
-                ${sideIcon ? `<div style="font-size:10px;">${sideIcon}</div>` : ''}
-                ${descCount > 0 ? `<div style="font-size:9px; ${isMe ? 'opacity:0.8' : 'color:#9ca3af'}; margin-top:2px;">+${descCount} تحتهم</div>` : ''}
+            <div style="padding:${depth > 4 ? '4px 8px' : '6px 12px'}; border-radius:10px; text-align:center; min-width:${depth > 6 ? '60px' : '80px'}; max-width:100px; ${bgStyle}">
+                <div style="font-size:${depth > 5 ? '8px' : '10px'}; ${isMe ? 'opacity:0.9' : 'color:#9ca3af'};">${isMe ? 'أنت' : ''}</div>
+                <div style="font-weight:bold; font-size:${depth > 5 ? '9px' : '11px'};">${name.length > 12 ? name.substring(0,12)+'...' : name}</div>
+                <div style="font-size:${depth > 5 ? '7px' : '9px'}; ${isMe ? 'opacity:0.9' : 'color:#6b7280'};">#${code}</div>
+                ${depth <= 3 && sideIcon ? `<div style="font-size:9px;">${sideIcon}</div>` : ''}
+                ${depth <= 4 && descCount > 0 ? `<div style="font-size:8px; ${isMe ? 'opacity:0.8' : 'color:#9ca3af'}; margin-top:1px;">+${descCount}</div>` : ''}
             </div>`;
 
-        // الأبناء لو مستوى أقل من maxDisplayDepth
-        if (depth < maxDisplayDepth && hasChildren) {
-            html += `<div style="display:flex; gap:${depth === 0 ? 40 : 20}px; margin-top:15px; position:relative;">`;
+        // أظهر كل المستويات بدون حد
+        if (hasChildren) {
+            // خط vertical يوصّل الأب بالأبناء
+            html += `<div style="width:2px; height:12px; background:#d1d5db;"></div>`;
+            html += `<div style="display:flex; gap:${gapSize}px;">`;
             html += renderNode(memberChildren.left, depth + 1, 'left');
             html += renderNode(memberChildren.right, depth + 1, 'right');
             html += '</div>';
@@ -592,12 +605,14 @@ function renderTreeView(me, downline) {
     }
 
     return `
-        <div style="overflow-x:auto; padding:20px 0;">
-            <div style="display:flex; flex-direction:column; align-items:center; min-width:700px;">
+        <div id="treeViewContainer" style="overflow:auto; padding:20px 0; max-height:600px; border:1px solid #e5e7eb; border-radius:12px; position:relative;">
+            <div style="display:flex; flex-direction:column; align-items:center; min-width:${treeMinWidth}px; padding:10px;">
                 ${renderNode(me, 0, null)}
             </div>
         </div>
-        ${downline.length > 15 ? '<p style="text-align:center; color:#9ca3af; font-size:12px; margin-top:12px;">📊 الشجرة بتعرض أول 4 مستويات. شوف القائمة تحت للقائمة الكاملة.</p>' : ''}
+        <p style="text-align:center; color:#9ca3af; font-size:11px; margin-top:8px;">
+            📊 الشجرة بتعرض كل المستويات (${actualMaxDepth + 1} مستوى) — scroll يمين/شمال لرؤية كل الفروع
+        </p>
     `;
 }
 
