@@ -1,19 +1,25 @@
 // تسجيل عضو - الكود يُعطى بعد التسجيل الناجح (لتجنب الفجوات)
 document.addEventListener('DOMContentLoaded', async function () {
-    if (window.SAWYAN && window.SAWYAN.Logo) {
-        document.getElementById('logoContainer').innerHTML = window.SAWYAN.Logo.full();
+    // ⚡ نسجّل الـ form submit listener الأول (قبل أي initialization ممكن ي fail)
+    const form = document.getElementById('registerForm');
+    if (form) {
+        form.addEventListener('submit', handleRegister);
+        console.log('✅ Register form listener attached');
+    } else {
+        console.error('❌ registerForm not found!');
     }
 
-    // تهيئة قوائم الدول
-    initCountryDropdowns();
-
-    // تهيئة محدد مفتاح الهاتف
-    initPhoneCodeSelector();
-
-    // تهيئة البحث التلقائي عن الراعي
-    initSponsorLookup();
-
-    document.getElementById('registerForm').addEventListener('submit', handleRegister);
+    // تهيئة باقي المكونات (مع try/catch عشان ما نوقفش باقي الكود)
+    try {
+        if (window.SAWYAN && window.SAWYAN.Logo) {
+            document.getElementById('logoContainer').innerHTML = window.SAWYAN.Logo.full();
+        }
+        initCountryDropdowns();
+        initPhoneCodeSelector();
+        initSponsorLookup();
+    } catch (initError) {
+        console.error('⚠️ Init error (non-critical):', initError);
+    }
 });
 
 // متغير لتخزين مؤقت debounce
@@ -438,11 +444,13 @@ async function handleRegister(e) {
         const fullPhone = phoneDialCode + phone.replace(/\s/g, '');
 
         // إنشاء سجل العضو - بدون member_code (سيتم توليده تلقائياً)
+        // ⚠️ email و phone NOT NULL في الـ DB، لازم نبعت قيمة
+        const tempEmail = email || `pending_${Date.now()}@sawyan.local`;
         const memberData = {
             full_name: fullName,
-            email: email || undefined, // سيتم توليده لاحقاً إذا كان فارغاً لكن نحتاج ID أولاً
+            email: tempEmail,
             password_hash: '123456',
-            phone: fullPhone,
+            phone: fullPhone || '+200000000000',
             is_active: true
         };
 
@@ -465,16 +473,16 @@ async function handleRegister(e) {
             placement.side            // placement_side ('left' or 'right')
         );
 
-        // تحديث البريد الإلكتروني إذا كان فارغاً (يعتمد على الكود المولد)
+        // تحديث البريد الإلكتروني إذا كان مؤقتاً
         let finalEmail = newMember.email;
         if (!email) {
             finalEmail = `member${newMember.member_code}@sawyan.local`;
-            await window.SAWYAN.supabase
+            const { error: emailErr } = await window.SAWYAN.supabase
                 .from('members')
                 .update({ email: finalEmail })
                 .eq('id', newMember.id);
-
-            newMember.email = finalEmail; // تحديث الكائن المحلي
+            if (emailErr) console.warn('Email update failed:', emailErr);
+            else newMember.email = finalEmail;
         }
 
         const memberCode = newMember.member_code; // الحصول على الكود من قاعدة البيانات
