@@ -19,10 +19,11 @@ window.SAWYAN.Notifications = {
         this.userId = userId;
         this.renderBell();
         this.loadNotifications();
+        this.markExistingAsRead(); // عشان الإشعارات القديمة متتبرزش
         this.subscribeToRealtime();
 
-        // تحديث كل 30 ثانية كـ fallback
-        setInterval(() => this.loadNotifications(), 30000);
+        // تحديث كل 60 ثانية كـ fallback (بدل 30)
+        this._pollInterval = setInterval(() => this.loadNotifications(), 60000);
     },
 
     // الاشتراك في Real-time
@@ -52,13 +53,45 @@ window.SAWYAN.Notifications = {
         }
     },
 
-    // معالجة إشعار جديد
+    // عمل الإشعارات القديمة كمقروءة عشان متظهرش كجديدة
+    markExistingAsRead: async function () {
+        try {
+            const { data: unread } = await window.SAWYAN.supabase
+                .from('notifications')
+                .select('id')
+                .eq('user_type', this.userType)
+                .eq('user_id', this.userId)
+                .eq('is_read', false);
+
+            if (unread && unread.length > 0) {
+                const ids = unread.map(n => n.id);
+                this._knownIds = new Set(ids);
+                await window.SAWYAN.supabase
+                    .from('notifications')
+                    .update({ is_read: true })
+                    .in('id', ids);
+                console.log(`Marked ${ids.length} existing notifications as read`);
+            }
+        } catch (err) {
+            console.log('markExistingAsRead error:', err);
+        }
+    },
+
+    // معالجة إشعار جديد (من Real-time بس)
     handleNewNotification: function (notification) {
         this.notifications.unshift(notification);
         this.unreadCount++;
         this.updateBadge();
         this.renderList();
         this.showToast(notification.title, notification.message);
+
+        // نعمله read فوراً عشان polling ماتعملش loop
+        if (notification.id) {
+            window.SAWYAN.supabase
+                .from('notifications')
+                .update({ is_read: true })
+                .eq('id', notification.id);
+        }
 
         const bell = document.getElementById('notificationBell');
         if (bell) {

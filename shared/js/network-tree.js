@@ -288,12 +288,14 @@ window.SAWYAN_TREE = {
     },
 
     // ------------------------------------------------------------------------
-    // 9) حساب حجم الفريق لعضو معيّن
+    // 9) حساب حجم الفريق لعضو معيّن (الشجرة الثنائية الكاملة)
     // ------------------------------------------------------------------------
     async getTeamSize(memberId, maxDepth = 11) {
         try {
             const downline = await this.getDownline(memberId, maxDepth);
-            return downline.length + 1; // +1 للعضو نفسه
+            // get_downline بيرجع العضو نفسه (depth: 0) + كل الـ downline
+            // فلما نعمل downline.length هيكون العدد الكامل بما فيهم العضو نفسه
+            return downline.length || 1;
         } catch (err) {
             console.error('getTeamSize error:', err);
             return 1;

@@ -66,13 +66,18 @@ async function loadStats() {
 
         document.getElementById('totalTransactions').textContent = transCount || 0;
 
-        // حجم الفريق
-        const { count: teamCount } = await window.SAWYAN.supabase
-            .from('members')
-            .select('*', { count: 'exact', head: true })
-            .eq('sponsor_id', currentUser.id);
-
-        document.getElementById('teamSize').textContent = teamCount || 0;
+        // حجم الفريق (الشجرة الثنائية الكاملة — مش بس المباشرين)
+        try {
+            const teamSizeValue = await window.SAWYAN_TREE.getTeamSize(currentUser.id, 20);
+            document.getElementById('teamSize').textContent = teamSizeValue || 1;
+        } catch (teamErr) {
+            console.warn('getTeamSize RPC failed, fallback to sponsor_id count:', teamErr);
+            const { count: teamCount } = await window.SAWYAN.supabase
+                .from('members')
+                .select('*', { count: 'exact', head: true })
+                .eq('sponsor_id', currentUser.id);
+            document.getElementById('teamSize').textContent = (teamCount || 0) + 1;
+        }
 
     } catch (error) {
         console.error('Error:', error);
@@ -393,7 +398,7 @@ async function loadTree() {
             .eq('sponsor_id', currentUser.id);
 
         // إحصائيات
-        const teamSize = downline.length + 1; // +1 ليّا
+        const teamSize = downline.length; // get_downline بيشمل العضو نفسه (depth: 0)
         const directReferrals = myReferrals?.length || 0;
 
         // أحجام الفروع
@@ -3419,106 +3424,8 @@ function getDisputeButton(transaction) {
 }
 
 // ===== تحسينات الإشعارات =====
-
-// طلب إذن الإشعارات
-async function requestNotificationPermission() {
-    if (!('Notification' in window)) {
-        console.log('This browser does not support notifications');
-        return false;
-    }
-
-    if (Notification.permission === 'granted') {
-        return true;
-    }
-
-    if (Notification.permission !== 'denied') {
-        const permission = await Notification.requestPermission();
-        return permission === 'granted';
-    }
-
-    return false;
-}
-
-// إرسال إشعار محلي
-function sendLocalNotification(title, body, icon = '🔔') {
-    if (Notification.permission === 'granted') {
-        new Notification(title, {
-            body: body,
-            icon: icon,
-            badge: '/shared/icons/badge.png',
-            tag: 'sawyan-notification',
-            renotify: true
-        });
-    }
-}
-
-// التحقق من إشعارات جديدة كل 30 ثانية
-let notificationCheckInterval = null;
-
-function startNotificationPolling() {
-    if (!currentUser) return;
-
-    // طلب إذن الإشعارات
-    requestNotificationPermission();
-
-    // التحقق كل 30 ثانية
-    notificationCheckInterval = setInterval(checkNewNotifications, 30000);
-}
-
-async function checkNewNotifications() {
-    try {
-        const { data: notifications, error } = await window.SAWYAN.supabase
-            .from('notifications')
-            .select('*')
-            .eq('user_id', currentUser.id)
-            .eq('user_type', 'member')
-            .eq('is_read', false)
-            .order('created_at', { ascending: false })
-            .limit(5);
-
-        if (!error && notifications && notifications.length > 0) {
-            // إظهار إشعار للإشعار الأخير
-            const latest = notifications[0];
-            sendLocalNotification(latest.title, latest.message);
-
-            // تحديث العداد
-            updateNotificationBadge(notifications.length);
-        }
-    } catch (err) {
-        console.log('Notification check error:', err);
-    }
-}
-
-function updateNotificationBadge(count) {
-    let badge = document.getElementById('notificationBadge');
-    if (!badge) {
-        // إنشاء العداد إذا لم يكن موجوداً
-        const bellIcon = document.querySelector('.notification-bell');
-        if (bellIcon) {
-            badge = document.createElement('span');
-            badge.id = 'notificationBadge';
-            badge.className = 'notification-badge';
-            bellIcon.appendChild(badge);
-        }
-    }
-
-    if (badge) {
-        badge.textContent = count > 9 ? '9+' : count;
-        badge.style.display = count > 0 ? 'flex' : 'none';
-    }
-}
-
-// إيقاف التحقق عند مغادرة الصفحة
-window.addEventListener('beforeunload', () => {
-    if (notificationCheckInterval) {
-        clearInterval(notificationCheckInterval);
-    }
-});
-
-// بدء التحقق من الإشعارات بعد الدخول
-document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(startNotificationPolling, 5000);
-});
+// ⚠️ الإشعارات بتتحمل من shared/components/notifications.js
+// فيه Real-time + polling fallback — مش محتاج polling تاني هنا
 
 // ============================================
 // دوال نظام الدفع الجديد (Scenario C)
