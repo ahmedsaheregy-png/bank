@@ -5,7 +5,7 @@
 const SUPABASE_CONFIG = {
     url: 'https://dssspiossqgroefmvnql.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzc3NwaW9zc3Fncm9lZm12bnFsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMzUxMDAsImV4cCI6MjA4MDcxMTEwMH0.6c6q77dBnQE49_sC1FxH-0ajP0Q8_RBlxw64fAR4ATQ',
-    schema: 'sawyan', // Schema منفصل
+    schema: 'public', // Schema منفصل
 
     // إعدادات الأمان والبيئة (Smart Security Foundation)
     ENVIRONMENT: 'development', // 'development' or 'production'
