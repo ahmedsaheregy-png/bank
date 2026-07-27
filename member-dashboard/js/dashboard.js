@@ -520,7 +520,7 @@ async function loadTree() {
     }
 }
 
-// Helper: عرض الشجرة بشكل بصري — مرسومة بخطوط ربط + LTR ثابت
+// Helper: شجرة SVG بدوائر + خطوط + popup + zoom — مثل السيميوليشن
 function renderTreeView(me, downline) {
     const allMembers = downline;
 
@@ -530,7 +530,7 @@ function renderTreeView(me, downline) {
         if (m.depth !== undefined && m.depth > actualMaxDepth) actualMaxDepth = m.depth;
     });
 
-    // بناء خريطة parent → children (مفتاح string للـ UUID)
+    // بناء خريطة parent → children
     const childrenMap = {};
     allMembers.forEach(m => {
         const pid = String(m.parent_id);
@@ -549,119 +549,265 @@ function renderTreeView(me, downline) {
         return count;
     }
 
-    // عرض مناسب
-    const treeMinWidth = Math.max(700, Math.pow(2, Math.min(actualMaxDepth, 10)) * 120);
+    // ===== حساب الـ positions لكل نود =====
+    const nodeRadius = 38;
+    const levelGap = 110;
+    const baseSpacing = 120;
+    const positions = {}; // id → { x, y }
+    const nodesData = []; // for SVG rendering
 
-    // CSS للشجرة — direction:ltr عشان اليسار يكون فعلاً على الشمال
-    const treeCSS = `
-        <style>
-            .tree-wrap { direction: ltr; text-align: center; }
-            .tree-node-col { display: flex; flex-direction: column; align-items: center; position: relative; }
-            .tree-card {
-                padding: 8px 12px; border-radius: 10px; text-align: center;
-                min-width: 90px; max-width: 110px; position: relative; z-index: 2;
-                background: #fff; border: 2px solid #10b981;
-            }
-            .tree-card.is-me {
-                background: linear-gradient(135deg, #10b981, #059669); color: white;
-                box-shadow: 0 4px 12px rgba(16,185,129,0.3);
-            }
-            .tree-card.is-left { border-color: #3b82f6; }
-            .tree-card.is-right { border-color: #f59e0b; }
-            .tree-card-empty {
-                padding: 8px 14px; border-radius: 10px; border: 2px dashed #d1d5db;
-                color: #9ca3af; text-align: center; min-width: 80px; max-width: 100px;
-                font-size: 11px; background: #f9fafb;
-            }
-            .tree-children {
-                display: flex; justify-content: center; position: relative;
-                padding-top: 20px;
-            }
-            .tree-children::before {
-                content: ''; position: absolute; top: 0; left: 50%;
-                width: 2px; height: 20px; background: #d1d5db;
-                transform: translateX(-50%);
-            }
-            .tree-child-wrap {
-                display: flex; flex-direction: column; align-items: center; position: relative;
-            }
-            .tree-child-wrap::before {
-                content: ''; position: absolute; top: -20px; left: 50%;
-                width: 2px; height: 20px; background: #d1d5db;
-                transform: translateX(-50%);
-            }
-            .tree-children > .tree-child-wrap:first-child::after {
-                content: ''; position: absolute; top: -20px; left: 50%;
-                width: 50%; height: 2px; background: #d1d5db;
-            }
-            .tree-children > .tree-child-wrap:last-child::after {
-                content: ''; position: absolute; top: -20px; right: 50%;
-                width: 50%; height: 2px; background: #d1d5db;
-            }
-            .tree-children > .tree-child-wrap:only-child::before {
-                display: none;
-            }
-            .tree-children > .tree-child-wrap:only-child::after {
-                display: none;
-            }
-            .tree-children > .tree-child-wrap:not(:first-child):not(:last-child)::after {
-                content: ''; position: absolute; top: -20px; left: 0;
-                width: 100%; height: 2px; background: #d1d5db;
-            }
-        </style>
-    `;
-
-    function renderNode(member, depth, side) {
-        const memberChildren = member ? childrenMap[String(member.id)] : null;
-        const hasLeft = memberChildren && memberChildren.left;
-        const hasRight = memberChildren && memberChildren.right;
-        const hasChildren = hasLeft || hasRight;
-
-        // بطاقة النود
-        let cardHtml;
-        if (!member) {
-            cardHtml = `<div class="tree-card-empty"><div>فاضي</div><div style="font-size:16px;">+</div></div>`;
-        } else {
-            const isMe = member.id === me.id;
-            const name = member.full_name || 'بدون اسم';
-            const code = member.member_code || '?';
-            const descCount = countDescendants(member.id);
-            const sideClass = side === 'left' ? 'is-left' : side === 'right' ? 'is-right' : (isMe ? 'is-me' : '');
-            const cardClass = isMe ? 'tree-card is-me' : `tree-card ${sideClass}`;
-
-            cardHtml = `<div class="${cardClass}">
-                <div style="font-size:10px; ${isMe ? 'opacity:0.9' : 'color:#9ca3af'};">${isMe ? '⭐ أنت' : ''}</div>
-                <div style="font-weight:bold; font-size:11px;">${name.length > 12 ? name.substring(0,12)+'...' : name}</div>
-                <div style="font-size:9px; ${isMe ? 'opacity:0.9' : 'color:#6b7280'};">#${code}</div>
-                ${hasChildren ? `<div style="font-size:8px; ${isMe ? 'opacity:0.8' : 'color:#9ca3af'}; margin-top:2px;">+${descCount} تحت</div>` : ''}
-            </div>`;
-        }
-
-        let html = `<div class="tree-node-col">${cardHtml}`;
-
-        if (hasChildren) {
-            html += `<div class="tree-children">`;
-            // LTR: left child أول شئ على الشمال، right child على اليمين
-            html += `<div class="tree-child-wrap">${renderNode(memberChildren.left, depth + 1, 'left')}</div>`;
-            html += `<div class="tree-child-wrap">${renderNode(memberChildren.right, depth + 1, 'right')}</div>`;
-            html += `</div>`;
-        }
-
-        html += `</div>`;
-        return html;
+    // أول حساب العرض المطلوب لكل subtree
+    function subtreeWidth(memberId, depth) {
+        const ch = childrenMap[String(memberId)];
+        if (!ch || (!ch.left && !ch.right)) return baseSpacing;
+        const lw = ch.left ? subtreeWidth(ch.left.id, depth + 1) : baseSpacing;
+        const rw = ch.right ? subtreeWidth(ch.right.id, depth + 1) : baseSpacing;
+        return lw + rw;
     }
 
+    function assignPositions(member, x, y, depth, side) {
+        const id = member ? String(member.id) : 'empty_' + x + '_' + y;
+        positions[id] = { x, y };
+
+        if (member) {
+            nodesData.push({
+                id: member.id, x, y, member, depth, side,
+                isMe: member.id === me.id,
+                name: member.full_name || 'بدون اسم',
+                code: member.member_code || '?',
+                treeLevel: member.tree_level || '-',
+                pos: member.pos || member.position || '-',
+                descCount: countDescendants(member.id)
+            });
+        } else {
+            nodesData.push({ id, x, y, member: null, depth, side, isEmpty: true });
+        }
+
+        if (!member) return;
+        const ch = childrenMap[String(member.id)];
+        if (!ch) return;
+
+        const totalW = subtreeWidth(member.id, depth);
+        const lw = ch.left ? subtreeWidth(ch.left.id, depth + 1) : baseSpacing;
+        const rw = ch.right ? subtreeWidth(ch.right.id, depth + 1) : baseSpacing;
+        const startX = x - totalW / 2;
+
+        if (ch.left) {
+            assignPositions(ch.left, startX + lw / 2, y + levelGap, depth + 1, 'left');
+        } else {
+            const emptyX = startX + baseSpacing / 2;
+            nodesData.push({ id: 'empty_L_' + member.id, x: emptyX, y: y + levelGap, member: null, depth: depth + 1, side: 'left', isEmpty: true });
+        }
+        if (ch.right) {
+            assignPositions(ch.right, startX + lw + rw / 2, y + levelGap, depth + 1, 'right');
+        } else {
+            const emptyX = startX + lw + baseSpacing / 2;
+            nodesData.push({ id: 'empty_R_' + member.id, x: emptyX, y: y + levelGap, member: null, depth: depth + 1, side: 'right', isEmpty: true });
+        }
+    }
+
+    const treeWidth = subtreeWidth(me.id, 0);
+    assignPositions(me, treeWidth / 2, 60, 0, null);
+
+    const svgWidth = treeWidth + 100;
+    const svgHeight = (actualMaxDepth + 1) * levelGap + 120;
+
+    // ===== بناء SVG =====
+    let svgLines = '';
+    let svgNodes = '';
+
+    // الخطوط بين الأب والأبناء
+    allMembers.forEach(m => {
+        const ch = childrenMap[String(m.id)];
+        if (!ch) return;
+        const parentPos = positions[String(m.id)];
+        if (!parentPos) return;
+        [ch.left, ch.right].forEach(child => {
+            if (!child) return;
+            const childPos = positions[String(child.id)];
+            if (!childPos) return;
+            // خط من أسفل الدائرة للأب لفوق الدائرة للابن
+            const x1 = parentPos.x, y1 = parentPos.y + nodeRadius;
+            const x2 = childPos.x, y2 = childPos.y - nodeRadius;
+            const sideColor = (ch.left && ch.left.id === child.id) ? '#3b82f6' : '#f59e0b';
+            svgLines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${sideColor}" stroke-width="2.5" stroke-opacity="0.5"/>`;
+        });
+    });
+
+    // النودات
+    nodesData.forEach(nd => {
+        if (nd.isEmpty) {
+            // دائرة فاضية
+            svgNodes += `
+                <g>
+                    <circle cx="${nd.x}" cy="${nd.y}" r="${nodeRadius - 6}" fill="#f9fafb" stroke="#d1d5db" stroke-width="2" stroke-dasharray="6,4"/>
+                    <text x="${nd.x}" y="${nd.y - 4}" text-anchor="middle" fill="#9ca3af" font-size="11" font-family="Tajawal, sans-serif">+</text>
+                    <text x="${nd.x}" y="${nd.y + 12}" text-anchor="middle" fill="#9ca3af" font-size="10" font-family="Tajawal, sans-serif">${nd.side === 'left' ? 'يسار' : 'يمين'}</text>
+                </g>`;
+        } else {
+            const fillColor = nd.isMe ? '#10b981' : (nd.side === 'left' ? '#3b82f6' : nd.side === 'right' ? '#f59e0b' : '#6b7280');
+            const strokeColor = nd.isMe ? '#059669' : fillColor;
+            const textColor = nd.isMe ? '#fff' : '#fff';
+            const nameShort = nd.name.length > 14 ? nd.name.substring(0, 14) + '..' : nd.name;
+
+            svgNodes += `
+                <g class="tree-node-g" data-member-id="${nd.id}" style="cursor:pointer;">
+                    <!-- ظل -->
+                    <circle cx="${nd.x}" cy="${nd.y}" r="${nodeRadius + 2}" fill="${fillColor}" fill-opacity="0.15"/>
+                    <!-- الدائرة -->
+                    <circle cx="${nd.x}" cy="${nd.y}" r="${nodeRadius}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="${nd.isMe ? 3 : 2}" class="tree-circle"/>
+                    <!-- الاسم -->
+                    <text x="${nd.x}" y="${nd.y - 6}" text-anchor="middle" fill="${textColor}" font-size="13" font-weight="bold" font-family="Tajawal, sans-serif">${nameShort}</text>
+                    <!-- الكود -->
+                    <text x="${nd.x}" y="${nd.y + 10}" text-anchor="middle" fill="${textColor}" fill-opacity="0.85" font-size="11" font-family="Tajawal, sans-serif">#${nd.code}</text>
+                    ${nd.descCount > 0 ? `<text x="${nd.x}" y="${nd.y + 24}" text-anchor="middle" fill="${textColor}" fill-opacity="0.7" font-size="10" font-family="Tajawal, sans-serif">+${nd.descCount}</text>` : ''}
+                    ${nd.isMe ? `<text x="${nd.x}" y="${nd.y - 22}" text-anchor="middle" fill="#10b981" font-size="12" font-weight="bold" font-family="Tajawal, sans-serif">⭐</text>` : ''}
+                </g>`;
+        }
+    });
+
+    // CSS + Popup + Zoom
+    const treeId = 'svgTree_' + Date.now();
+    const treeCSS = `
+    <style>
+        .tree-svg-container {
+            direction: ltr;
+            overflow: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            background: #fafbfc;
+            position: relative;
+        }
+        .tree-svg-container svg { display: block; margin: 0 auto; }
+        .tree-node-g:hover .tree-circle {
+            filter: drop-shadow(0 0 8px rgba(16,185,129,0.5));
+            stroke-width: 3.5;
+            transition: all 0.2s;
+        }
+        .tree-node-g:hover { cursor: pointer; }
+        .tree-popup {
+            position: fixed;
+            z-index: 10000;
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 16px 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            font-family: Tajawal, sans-serif;
+            font-size: 14px;
+            direction: rtl;
+            min-width: 200px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            border: 1px solid rgba(148,163,184,0.2);
+        }
+        .tree-popup.show { opacity: 1; }
+        .tree-popup h4 { color: #10b981; margin-bottom: 8px; font-size: 16px; }
+        .tree-popup .row { display: flex; justify-content: space-between; gap: 16px; padding: 4px 0; border-bottom: 1px solid rgba(148,163,184,0.1); }
+        .tree-popup .row:last-child { border-bottom: none; }
+        .tree-popup .label { color: #94a3b8; }
+        .tree-popup .value { color: #f1f5f9; font-weight: bold; }
+        .tree-zoom-controls {
+            position: absolute; top: 12px; left: 12px; z-index: 100;
+            display: flex; flex-direction: column; gap: 4px;
+        }
+        .tree-zoom-btn {
+            width: 36px; height: 36px; border-radius: 8px; border: 1px solid #d1d5db;
+            background: #fff; color: #374151; font-size: 20px; font-weight: bold;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s;
+        }
+        .tree-zoom-btn:hover { background: #f3f4f6; border-color: #9ca3af; }
+        .tree-legend {
+            display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+            padding: 10px 0; font-size: 13px; color: #6b7280;
+        }
+        .tree-legend-item { display: flex; align-items: center; gap: 6px; }
+        .tree-legend-dot { width: 14px; height: 14px; border-radius: 50%; }
+    </style>`;
+
     return `
-        ${treeCSS}
-        <div id="treeViewContainer" class="tree-wrap" style="overflow:auto; padding:20px 10px; max-height:600px; border:1px solid #e5e7eb; border-radius:12px;">
-            <div style="display:flex; flex-direction:column; align-items:center; min-width:${treeMinWidth}px; padding:10px;">
-                ${renderNode(me, 0, null)}
-            </div>
+    ${treeCSS}
+    <div class="tree-legend">
+        <div class="tree-legend-item"><div class="tree-legend-dot" style="background:#10b981;"></div> أنت</div>
+        <div class="tree-legend-item"><div class="tree-legend-dot" style="background:#3b82f6;"></div> فرع يسار</div>
+        <div class="tree-legend-item"><div class="tree-legend-dot" style="background:#f59e0b;"></div> فرع يمين</div>
+        <div class="tree-legend-item"><div class="tree-legend-dot" style="background:#f9fafb; border:2px dashed #d1d5db;"></div> مكان فاضي</div>
+    </div>
+    <div class="tree-svg-container" id="${treeId}" style="max-height:600px;">
+        <div class="tree-zoom-controls">
+            <button class="tree-zoom-btn" onclick="treeZoom('${treeId}', 0.15)">+</button>
+            <button class="tree-zoom-btn" onclick="treeZoom('${treeId}', -0.15)">−</button>
+            <button class="tree-zoom-btn" style="font-size:14px;" onclick="treeZoomReset('${treeId}')">↺</button>
         </div>
-        <p style="text-align:center; color:#9ca3af; font-size:11px; margin-top:8px;">
-            📊 الشجرة بتعرض كل المستويات (${actualMaxDepth + 1} مستوى) — scroll يمين/شمال لرؤية كل الفروع
-        </p>
-    `;
+        <svg id="${treeId}_svg" width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.15"/>
+                </filter>
+            </defs>
+            ${svgLines}
+            ${svgNodes}
+        </svg>
+    </div>
+    <div class="tree-popup" id="${treeId}_popup"></div>
+    <p style="text-align:center; color:#9ca3af; font-size:12px; margin-top:8px;">
+        📊 ${actualMaxDepth + 1} مستوى — وقف على أي دائرة عشان تشوف بيانات العضو — scroll + zoom للتصفح
+    </p>
+    <script>
+    (function(){
+        const container = document.getElementById('${treeId}');
+        const svg = document.getElementById('${treeId}_svg');
+        const popup = document.getElementById('${treeId}_popup');
+        let currentScale = 1;
+        container._treeScale = 1;
+
+        // Zoom
+        window['treeZoom'] = function(id, delta) {
+            const c = document.getElementById(id);
+            c._treeScale = Math.max(0.3, Math.min(2, c._treeScale + delta));
+            svg.style.transform = 'scale(' + c._treeScale + ')';
+            svg.style.transformOrigin = 'top center';
+        };
+        window['treeZoomReset'] = function(id) {
+            const c = document.getElementById(id);
+            c._treeScale = 1;
+            svg.style.transform = 'scale(1)';
+        };
+
+        // Mouse wheel zoom
+        container.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -0.08 : 0.08;
+            treeZoom('${treeId}', delta);
+        }, { passive: false });
+
+        // Hover popup
+        const allNodes = container.querySelectorAll('.tree-node-g[data-member-id]');
+        allNodes.forEach(function(nodeG) {
+            nodeG.addEventListener('mouseenter', function(e) {
+                const mid = this.getAttribute('data-member-id');
+                // نبحث في downline
+                const member = ${JSON.stringify(allMembers.filter(m => m.id).map(m => ({id: String(m.id), name: m.full_name, code: m.member_code, level: m.tree_level, depth: m.depth, pos: m.pos || m.position, parent: String(m.parent_id)})))}.find(function(m){ return m.id === mid; });
+                if (!member) return;
+                popup.innerHTML = '<h4>' + member.name + '</h4>' +
+                    '<div class="row"><span class="label">الكود</span><span class="value">#' + member.code + '</span></div>' +
+                    '<div class="row"><span class="label">الجيل</span><span class="value">' + member.level + '</span></div>' +
+                    '<div class="row"><span class="label">العمق</span><span class="value">' + member.depth + '</span></div>' +
+                    '<div class="row"><span class="label">الجهة</span><span class="value">' + (member.pos === 'left' ? 'يسار ⬅️' : member.pos === 'right' ? 'يمين ➡️' : '—') + '</span></div>';
+                popup.classList.add('show');
+            });
+            nodeG.addEventListener('mousemove', function(e) {
+                popup.style.left = (e.clientX + 16) + 'px';
+                popup.style.top = (e.clientY - 10) + 'px';
+            });
+            nodeG.addEventListener('mouseleave', function() {
+                popup.classList.remove('show');
+            });
+        });
+    })();
+    </script>`;
 }
 
 // ============================================================================
