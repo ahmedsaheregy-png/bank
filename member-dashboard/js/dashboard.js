@@ -161,6 +161,7 @@ function handleNavigation(e) {
     if (page === 'transactions') loadAllTransactions();
     if (page === 'tree') loadTree();
     if (page === 'wallet') loadWalletDetails();
+    if (page === 'commissionReports') loadCommissionReports();
     if (page === 'academy') loadAcademy();
     if (page === 'merchants') loadNearbyMerchants();
     if (page === 'favorites') loadFavorites();
@@ -363,33 +364,420 @@ async function loadAllTransactions() {
 
 async function loadTree() {
     const page = document.getElementById('treePage');
-    page.innerHTML = '<h2>شجرتي</h2><div id="treeView"><p>جاري تحميل الشجرة...</p></div>';
+    page.innerHTML = `
+        <h2 class="page-title-mobile">🌳 شجرتي في الشبكة</h2>
+        <div id="treeContent"><p style="text-align:center; padding:40px; color:#9ca3af;">⏳ بتحميل الشجرة...</p></div>
+    `;
 
-    const { data: team } = await window.SAWYAN.supabase
-        .from('members')
-        .select('member_code, full_name, created_at')
-        .eq('sponsor_id', currentUser.id);
+    const content = document.getElementById('treeContent');
 
-    const treeView = document.getElementById('treeView');
-    if (!team || team.length === 0) {
-        treeView.innerHTML = '<p class="empty-state">لا يوجد أعضاء في فريقك بعد</p>';
-        return;
-    }
+    try {
+        // جلب بياناتي الكاملة (مع parent + children)
+        const me = await window.SAWYAN_TREE.getMemberWithSlots(currentUser.id);
 
-    treeView.innerHTML = `
-        <div class="tree-stats">
-            <p><strong>إجمالي الفريق:</strong> ${team.length} عضو</p>
-        </div>
-        <div class="team-list">
-            ${team.map(m => `
-                <div class="team-member">
-                    <div><strong>الكود:</strong> ${m.member_code}</div>
-                    <div><strong>الاسم:</strong> ${m.full_name || '-'}</div>
-                    <div><strong>تاريخ الانضمام:</strong> ${new Date(m.created_at).toLocaleDateString('ar-EG')}</div>
+        if (!me) {
+            content.innerHTML = '<p class="empty-state">❌ ما ينفعش نحمّل بياناتك. حاول تاني.</p>';
+            return;
+        }
+
+        // جلب downline كامل (لحد 20 جيل)
+        const downline = await window.SAWYAN_TREE.getDownline(currentUser.id, 20);
+
+        // جلب uplines (للعرض)
+        const uplines = await window.SAWYAN_TREE.getUplines(currentUser.id, 11);
+
+        // جلب اللي جبتهم أنا (real downline = sponsor_id = me)
+        const { data: myReferrals } = await window.SAWYAN.supabase
+            .from('members')
+            .select('id, member_code, full_name')
+            .eq('sponsor_id', currentUser.id);
+
+        // إحصائيات
+        const teamSize = downline.length + 1; // +1 ليّا
+        const directReferrals = myReferrals?.length || 0;
+
+        // أحجام الفروع
+        const leftCount = downline.filter(d => d.position === 'left').length;
+        const rightCount = downline.filter(d => d.position === 'right').length;
+
+        content.innerHTML = `
+            <!-- إحصائيات سريعة -->
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:20px;">
+                <div style="background:linear-gradient(135deg, #10b981, #059669); color:white; padding:16px; border-radius:12px;">
+                    <div style="font-size:13px; opacity:0.9;">موقعك في الشبكة</div>
+                    <div style="font-size:20px; font-weight:bold; margin-top:4px;">الجيل ${me.tree_level}</div>
+                    <div style="font-size:11px; opacity:0.8; margin-top:4px;">${me.parent_id ? 'محطوط ' + (me.position === 'left' ? 'يسار' : 'يمين') : '🏆 الجذر'}</div>
                 </div>
-            `).join('')}
+                <div style="background:#fff; padding:16px; border-radius:12px; border:1px solid #e5e7eb;">
+                    <div style="font-size:13px; color:#6b7280;">حجم فريقك</div>
+                    <div style="font-size:24px; font-weight:bold; color:#047857; margin-top:4px;">${teamSize}</div>
+                    <div style="font-size:11px; color:#9ca3af; margin-top:4px;">(شاملك)</div>
+                </div>
+                <div style="background:#fff; padding:16px; border-radius:12px; border:1px solid #e5e7eb;">
+                    <div style="font-size:13px; color:#6b7280;">اللي جبتهم بنفسك</div>
+                    <div style="font-size:24px; font-weight:bold; color:#7c3aed; margin-top:4px;">${directReferrals}</div>
+                    <div style="font-size:11px; color:#9ca3af; margin-top:4px;">Real Downline</div>
+                </div>
+                <div style="background:#fff; padding:16px; border-radius:12px; border:1px solid #e5e7eb;">
+                    <div style="font-size:13px; color:#6b7280;">أبلاينز فوقك</div>
+                    <div style="font-size:24px; font-weight:bold; color:#0891b2; margin-top:4px;">${uplines.length}</div>
+                    <div style="font-size:11px; color:#9ca3af; margin-top:4px;">في نطاق الستوبر</div>
+                </div>
+            </div>
+
+            <!-- أحجام الفروع -->
+            <div style="background:#fff; padding:16px; border-radius:12px; border:1px solid #e5e7eb; margin-bottom:20px;">
+                <h3 style="font-size:15px; margin-bottom:12px;">⚖️ توزيع الفروع</h3>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <div style="text-align:center; padding:16px; background:#eff6ff; border-radius:10px; border:1px solid #bfdbfe;">
+                        <div style="font-size:28px;">⬅️</div>
+                        <div style="font-size:24px; font-weight:bold; color:#1e40af; margin-top:4px;">${leftCount}</div>
+                        <div style="font-size:12px; color:#1e3a8a;">الفرع الأيسر</div>
+                    </div>
+                    <div style="text-align:center; padding:16px; background:#fef3c7; border-radius:10px; border:1px solid #fde68a;">
+                        <div style="font-size:28px;">➡️</div>
+                        <div style="font-size:24px; font-weight:bold; color:#92400e; margin-top:4px;">${rightCount}</div>
+                        <div style="font-size:12px; color:#78350f;">الفرع الأيمن</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- الأبلاينز (مين فوقك) -->
+            ${uplines.length > 0 ? `
+                <div style="background:#fff; padding:16px; border-radius:12px; border:1px solid #e5e7eb; margin-bottom:20px;">
+                    <h3 style="font-size:15px; margin-bottom:12px;">⬆️ الأبلاينز (مين فوقك)</h3>
+                    <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                        <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; background:#f0fdf4; border-radius:8px; font-size:13px;">
+                            <span style="background:#10b981; color:white; padding:2px 8px; border-radius:6px; font-weight:bold;">أنت</span>
+                            <strong>${me.full_name}</strong>
+                            <span style="color:#6b7280;">#${me.member_code}</span>
+                        </div>
+                        ${uplines.map((u, idx) => `
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="color:#9ca3af;">↑</span>
+                                <div style="padding:8px 12px; background:#f9fafb; border-radius:8px; font-size:13px; border:1px solid #e5e7eb;">
+                                    <strong>${u.full_name}</strong>
+                                    <span style="color:#6b7280;">#${u.member_code}</span>
+                                    <span style="color:#9ca3af; font-size:11px; margin-right:4px;">(جيل ${u.generation})</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+
+            <!-- الشجرة المرئية -->
+            <div style="background:#fff; padding:16px; border-radius:12px; border:1px solid #e5e7eb; margin-bottom:20px;">
+                <h3 style="font-size:15px; margin-bottom:12px;">🌳 الشجرة (مع نتائجك)</h3>
+                ${renderTreeView(me, downline)}
+            </div>
+
+            <!-- قائمة كل الفريق -->
+            <div style="background:#fff; padding:16px; border-radius:12px; border:1px solid #e5e7eb;">
+                <h3 style="font-size:15px; margin-bottom:12px;">👥 كل أعضاء فريقك (${downline.length})</h3>
+                ${downline.length === 0 ? `
+                    <div style="text-align:center; padding:30px; color:#9ca3af;">
+                        <div style="font-size:48px; margin-bottom:10px;">🌱</div>
+                        <p>لسه مفيش أعضاء في فريقك. ابدأ بإضافة عضو جديد من صفحة الإحالات.</p>
+                    </div>
+                ` : `
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                            <thead>
+                                <tr style="background:#f9fafb; text-align:right;">
+                                    <th style="padding:8px; border-bottom:2px solid #e5e7eb;">الكود</th>
+                                    <th style="padding:8px; border-bottom:2px solid #e5e7eb;">الاسم</th>
+                                    <th style="padding:8px; border-bottom:2px solid #e5e7eb;">الجيل</th>
+                                    <th style="padding:8px; border-bottom:2px solid #e5e7eb;">العمق</th>
+                                    <th style="padding:8px; border-bottom:2px solid #e5e7eb;">الجهة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${downline.map(d => `
+                                    <tr style="border-bottom:1px solid #f3f4f6;">
+                                        <td style="padding:8px; font-weight:bold;">#${d.member_code}</td>
+                                        <td style="padding:8px;">${d.full_name}</td>
+                                        <td style="padding:8px; text-align:center;">${d.tree_level}</td>
+                                        <td style="padding:8px; text-align:center;">${d.depth}</td>
+                                        <td style="padding:8px; text-align:center;">${d.position === 'left' ? '⬅️ يسار' : '➡️ يمين'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `}
+            </div>
+        `;
+
+    } catch (err) {
+        console.error('loadTree error:', err);
+        content.innerHTML = `<p class="empty-state">❌ حصل خطأ: ${err.message}</p>`;
+    }
+}
+
+// Helper: عرض الشجرة بشكل بصري بسيط
+function renderTreeView(me, downline) {
+    // نعرض أول 3 مستويات من الشجرة (me + first 2 generations)
+    const myChildren = downline.filter(d => d.parent_id === me.id);
+    const leftChild = myChildren.find(c => c.position === 'left');
+    const rightChild = myChildren.find(c => c.position === 'right');
+
+    const leftSubtree = leftChild ? downline.filter(d =>
+        d.parent_id === leftChild.id ||
+        isDescendantOf(d, leftChild, downline, 2)
+    ) : [];
+    const rightSubtree = rightChild ? downline.filter(d =>
+        d.parent_id === rightChild.id ||
+        isDescendantOf(d, rightChild, downline, 2)
+    ) : [];
+
+    return `
+        <div style="overflow-x:auto; padding:20px 0;">
+            <div style="display:flex; flex-direction:column; align-items:center; min-width:600px;">
+                <!-- أنا -->
+                <div style="background:linear-gradient(135deg, #10b981, #059669); color:white; padding:12px 20px; border-radius:50%; min-width:120px; text-align:center; box-shadow:0 4px 12px rgba(16,185,129,0.3);">
+                    <div style="font-size:11px; opacity:0.9;">أنت</div>
+                    <div style="font-weight:bold;">${me.full_name}</div>
+                    <div style="font-size:11px; opacity:0.9;">#${me.member_code}</div>
+                </div>
+
+                <!-- مستوى الأبناء -->
+                <div style="display:flex; gap:60px; margin-top:30px; position:relative;">
+                    <!-- الخطوط -->
+                    <div style="position:absolute; top:-30px; left:50%; width:1px; height:30px; background:#d1d5db;"></div>
+                    <div style="position:absolute; top:-15px; left:25%; right:25%; height:1px; background:#d1d5db;"></div>
+
+                    <!-- اليسار -->
+                    <div style="display:flex; flex-direction:column; align-items:center;">
+                        ${leftChild ? `
+                            <div style="position:absolute; top:-15px; left:25%; width:1px; height:15px; background:#d1d5db;"></div>
+                            <div style="background:#fff; padding:10px 16px; border-radius:10px; border:2px solid #3b82f6; text-align:center; min-width:100px;">
+                                <div style="font-weight:bold; font-size:13px;">${leftChild.full_name}</div>
+                                <div style="font-size:11px; color:#6b7280;">#${leftChild.member_code}</div>
+                                <div style="font-size:10px; color:#3b82f6;">⬅️ يسار</div>
+                            </div>
+                            <div style="font-size:11px; color:#9ca3af; margin-top:4px;">+${leftSubtree.length} تحته</div>
+                        ` : `
+                            <div style="background:#f9fafb; padding:10px 16px; border-radius:10px; border:2px dashed #d1d5db; color:#9ca3af; text-align:center; min-width:100px;">
+                                <div style="font-size:11px;">فاضي</div>
+                                <div style="font-size:18px;">+</div>
+                            </div>
+                        `}
+                    </div>
+
+                    <!-- اليمين -->
+                    <div style="display:flex; flex-direction:column; align-items:center;">
+                        ${rightChild ? `
+                            <div style="position:absolute; top:-15px; right:25%; width:1px; height:15px; background:#d1d5db;"></div>
+                            <div style="background:#fff; padding:10px 16px; border-radius:10px; border:2px solid #f59e0b; text-align:center; min-width:100px;">
+                                <div style="font-weight:bold; font-size:13px;">${rightChild.full_name}</div>
+                                <div style="font-size:11px; color:#6b7280;">#${rightChild.member_code}</div>
+                                <div style="font-size:10px; color:#f59e0b;">➡️ يمين</div>
+                            </div>
+                            <div style="font-size:11px; color:#9ca3af; margin-top:4px;">+${rightSubtree.length} تحته</div>
+                        ` : `
+                            <div style="background:#f9fafb; padding:10px 16px; border-radius:10px; border:2px dashed #d1d5db; color:#9ca3af; text-align:center; min-width:100px;">
+                                <div style="font-size:11px;">فاضي</div>
+                                <div style="font-size:18px;">+</div>
+                            </div>
+                        `}
+                    </div>
+                </div>
+            </div>
+        </div>
+        ${downline.length > 7 ? '<p style="text-align:center; color:#9ca3af; font-size:12px; margin-top:12px;">📊 الشجرة بتعرض أول مستويين. شوف القائمة تحت للقائمة الكاملة.</p>' : ''}
+    `;
+}
+
+function isDescendantOf(member, ancestor, allMembers, maxDepth = 3) {
+    if (!member.parent_id) return false;
+    if (member.parent_id === ancestor.id) return true;
+    if (maxDepth <= 0) return false;
+    const parent = allMembers.find(m => m.id === member.parent_id);
+    if (!parent) return false;
+    return isDescendantOf(parent, ancestor, allMembers, maxDepth - 1);
+}
+
+// ============================================================================
+// 📊 تقارير عمولاتي (Commission Reports)
+// ============================================================================
+
+async function loadCommissionReports() {
+    const page = document.getElementById('commissionReportsPage');
+    page.innerHTML = `
+        <h2 class="page-title-mobile">📊 تقارير عمولاتي</h2>
+        <div id="commissionReportsContent">
+            <p style="text-align:center; padding:40px; color:#9ca3af;">⏳ بتحميل التقارير...</p>
         </div>
     `;
+
+    const content = document.getElementById('commissionReportsContent');
+
+    try {
+        // جلب كل توزيعات العمولات اللي أنا مستفيد فيها
+        const { data: commissions, error } = await window.SAWYAN.supabase
+            .from('commission_distributions')
+            .select(`
+                id, amount, level, percentage, is_stopper,
+                created_at,
+                pool_transactions!inner(
+                    id, member_id, amount, pool_amount,
+                    created_at,
+                    members!inner(member_code, full_name)
+                )
+            `)
+            .eq('beneficiary_id', currentUser.id)
+            .order('created_at', { ascending: false })
+            .limit(200);
+
+        if (error) throw error;
+
+        // إحصائيات
+        const totalCommissions = commissions?.length || 0;
+        const totalAmount = commissions?.reduce((sum, c) => sum + parseFloat(c.amount), 0) || 0;
+        const asBuyer = commissions?.filter(c => c.level === 0).length || 0;
+        const asUpline = commissions?.filter(c => c.level > 0).length || 0;
+
+        // عمولات آخر 7 أيام
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const last7days = commissions?.filter(c => c.created_at >= sevenDaysAgo) || [];
+        const last7daysAmount = last7days.reduce((sum, c) => sum + parseFloat(c.amount), 0);
+
+        // إجمالي الفائض اللي ساهمت فيه (عبر كل المعاملات اللي اشتريتها أو في فريقك)
+        let totalSurplusContributed = 0;
+        const processedPoolTxIds = new Set();
+        if (commissions) {
+            for (const c of commissions) {
+                if (!processedPoolTxIds.has(c.pool_transactions.id)) {
+                    // surplus stored separately in surplus_distributions table
+                    processedPoolTxIds.add(c.pool_transactions.id);
+                }
+            }
+        }
+
+        content.innerHTML = `
+            <!-- بطاقات الإحصائيات -->
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:20px;">
+                <div style="background:linear-gradient(135deg, #10b981, #059669); color:white; padding:16px; border-radius:12px;">
+                    <div style="font-size:13px; opacity:0.9;">إجمالي العمولات</div>
+                    <div style="font-size:24px; font-weight:bold; margin-top:4px;">${totalAmount.toFixed(2)}</div>
+                    <div style="font-size:11px; opacity:0.8; margin-top:4px;">ج.م (${totalCommissions} عملية توزيع)</div>
+                </div>
+                <div style="background:#fff; padding:16px; border-radius:12px; border:1px solid #e5e7eb;">
+                    <div style="font-size:13px; color:#6b7280;">آخر 7 أيام</div>
+                    <div style="font-size:24px; font-weight:bold; color:#047857; margin-top:4px;">${last7daysAmount.toFixed(2)}</div>
+                    <div style="font-size:11px; color:#9ca3af; margin-top:4px;">ج.م (${last7days.length} عملية)</div>
+                </div>
+                <div style="background:#fff; padding:16px; border-radius:12px; border:1px solid #e5e7eb;">
+                    <div style="font-size:13px; color:#6b7280;">كمشتري</div>
+                    <div style="font-size:24px; font-weight:bold; color:#0891b2; margin-top:4px;">${asBuyer}</div>
+                    <div style="font-size:11px; color:#9ca3af; margin-top:4px;">عملية شراء</div>
+                </div>
+                <div style="background:#fff; padding:16px; border-radius:12px; border:1px solid #e5e7eb;">
+                    <div style="font-size:13px; color:#6b7280;">كأبلاين</div>
+                    <div style="font-size:24px; font-weight:bold; color:#7c3aed; margin-top:4px;">${asUpline}</div>
+                    <div style="font-size:11px; color:#9ca3af; margin-top:4px;">من فريقي</div>
+                </div>
+            </div>
+
+            <!-- فائض ساهمت فيه -->
+            <div style="background:#fef3c7; padding:16px; border-radius:12px; border:1px solid #fde68a; margin-bottom:20px;">
+                <h3 style="font-size:15px; margin-bottom:8px; color:#92400e;">💡 الفائض اللي ساهمت فيه</h3>
+                <p style="font-size:13px; color:#78350f; margin-bottom:8px; line-height:1.6;">
+                    لما بتشتري أو حد في فريقك يشتري، العمولة بتدخل البول وبيتوزّع جزء منها على المستفيدين.
+                    باقي المبلغ = <strong>فائض</strong> بيتم تجميعه، وحيتوزّع على الأعضاء لاحقاً (الآلية قيد التحديد).
+                </p>
+                <div style="font-size:20px; font-weight:bold; color:#92400e;">
+                    ${totalSurplusContributed.toFixed(2)} ج.م
+                </div>
+                <div style="font-size:11px; color:#a16207; margin-top:4px;">
+                    من ${processedPoolTxIds.size} معاملة مختلفة
+                </div>
+            </div>
+
+            <!-- جدول العمولات التفصيلي -->
+            <div style="background:#fff; padding:16px; border-radius:12px; border:1px solid #e5e7eb;">
+                <h3 style="font-size:15px; margin-bottom:12px;">📋 سجل العمولات التفصيلي</h3>
+                ${(!commissions || commissions.length === 0) ? `
+                    <div style="text-align:center; padding:40px; color:#9ca3af;">
+                        <div style="font-size:48px; margin-bottom:10px;">📭</div>
+                        <p>مفيش عمولات لحد دلوقتي. لما تشتري أو حد في فريقك يشتري، حتظهر العمولات هنا.</p>
+                    </div>
+                ` : `
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                            <thead>
+                                <tr style="background:#f9fafb; text-align:right;">
+                                    <th style="padding:10px; border-bottom:2px solid #e5e7eb;">التاريخ</th>
+                                    <th style="padding:10px; border-bottom:2px solid #e5e7eb;">المشتري</th>
+                                    <th style="padding:10px; border-bottom:2px solid #e5e7eb;">دورك</th>
+                                    <th style="padding:10px; border-bottom:2px solid #e5e7eb;">حصتك</th>
+                                    <th style="padding:10px; border-bottom:2px solid #e5e7eb;">إجمالي البول</th>
+                                    <th style="padding:10px; border-bottom:2px solid #e5e7eb;">عدد المستفيدين</th>
+                                    <th style="padding:10px; border-bottom:2px solid #e5e7eb;">الفائض</th>
+                                    <th style="padding:10px; border-bottom:2px solid #e5e7eb;">الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${commissions.map(c => {
+                                    const pt = c.pool_transactions;
+                                    const buyer = pt.members;
+                                    const isMe = c.level === 0;
+                                    return `
+                                        <tr style="border-bottom:1px solid #f3f4f6;">
+                                            <td style="padding:10px; font-size:12px; color:#6b7280;">
+                                                ${new Date(c.created_at).toLocaleDateString('ar-EG')}
+                                                <div style="font-size:11px;">${new Date(c.created_at).toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'})}</div>
+                                            </td>
+                                            <td style="padding:10px;">
+                                                ${isMe ? '<span style="color:#0891b2; font-weight:bold;">أنت</span>' : `#${buyer.member_code} - ${buyer.full_name}`}
+                                            </td>
+                                            <td style="padding:10px; text-align:center;">
+                                                ${isMe
+                                                    ? '<span style="background:#dbeafe; color:#1e40af; padding:2px 8px; border-radius:6px; font-size:11px;">🛒 مشتري</span>'
+                                                    : `<span style="background:#f3e8ff; color:#6b21a8; padding:2px 8px; border-radius:6px; font-size:11px;">⭐ أبلاين #${c.level}</span>`
+                                                }
+                                            </td>
+                                            <td style="padding:10px; text-align:center; font-weight:bold; color:#047857;">
+                                                ${parseFloat(c.amount).toFixed(2)}
+                                            </td>
+                                            <td style="padding:10px; text-align:center; color:#6b7280;">
+                                                ${parseFloat(pt.pool_amount).toFixed(2)}
+                                            </td>
+                                            <td style="padding:10px; text-align:center;">
+                                                ${c.level + 1}
+                                            </td>
+                                            <td style="padding:10px; text-align:center; color:#92400e;">
+                                                ${"—".toFixed(2)}
+                                            </td>
+                                            <td style="padding:10px; text-align:center;">
+                                                ${true
+                                                    ? '<span style="background:#d1fae5; color:#065f46; padding:2px 8px; border-radius:6px; font-size:11px;">✓ في المحفظة</span>'
+                                                    : '<span style="background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:6px; font-size:11px;">⏳ معلّق</span>'
+                                                }
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                            <tfoot>
+                                <tr style="background:#f0fdf4; font-weight:bold;">
+                                    <td colspan="3" style="padding:12px; text-align:right;">الإجمالي:</td>
+                                    <td style="padding:12px; text-align:center; color:#047857;">${totalAmount.toFixed(2)}</td>
+                                    <td colspan="4"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    ${commissions.length === 200 ? '<p style="text-align:center; color:#9ca3af; font-size:12px; margin-top:12px;">📊 بتعرض آخر 200 عملية. للقائمة الكاملة استعلم من قاعدة البيانات مباشرة.</p>' : ''}
+                `}
+            </div>
+        `;
+
+    } catch (err) {
+        console.error('loadCommissionReports error:', err);
+        content.innerHTML = `<p class="empty-state">❌ حصل خطأ: ${err.message}</p>`;
+    }
 }
 
 async function loadWalletDetails() {
@@ -1616,20 +2004,434 @@ async function loadCRM() {
 
 async function loadReferrals() {
     const page = document.getElementById('referralsPage');
+    const myCode = memberData?.member_code || '—';
+    const myName = memberData?.full_name || '—';
+    const myGeneration = memberData?.tree_level || 1;
+
     page.innerHTML = `
-        <h2>رابط الإحالة الخاص بك</h2>
-        <div class="referral-link">
-            <input type="text" value="${window.location.origin}/member-dashboard/register.html?ref=${memberData?.member_code}" readonly>
-            <button onclick="copyReferralLink()">نسخ</button>
+        <h2 class="page-title-mobile">🌟 الإحالات وإضافة أعضاء</h2>
+
+        <!-- بطاقة معلوماتي -->
+        <div class="referral-info-card" style="background:linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(168, 85, 247, 0.08)); border:1px solid rgba(16, 185, 129, 0.2); padding:16px 20px; border-radius:12px; margin-bottom:20px;">
+            <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+                <div style="flex:1; min-width:200px;">
+                    <div style="font-size:13px; color:#6b7280;">أنت (الأبلاين الحقيقي)</div>
+                    <div style="font-size:18px; font-weight:bold; color:#047857;">${myName}</div>
+                    <div style="font-size:13px; color:#6b7280;">كود: <strong>${myCode}</strong> · جيل ${myGeneration}</div>
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button class="btn btn-primary" onclick="openAddMemberModal()">➕ أضف عضو جديد</button>
+                    <button class="btn btn-outline" onclick="copyReferralLink()">📋 نسخ رابط الإحالة</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- رابط الإحالة -->
+        <div class="referral-link-card" style="background:#fff; padding:16px; border-radius:12px; border:1px solid #e5e7eb; margin-bottom:20px;">
+            <h3 style="font-size:16px; margin-bottom:10px;">🔗 رابط الإحالة (للشارين على بره)</h3>
+            <p style="font-size:13px; color:#6b7280; margin-bottom:10px;">
+                شارك الرابط ده مع حد عايز يدعوه للشبكة. لما يدخل ويسجل، حيختار فين يحط نفسه في شجرتك.
+            </p>
+            <div class="referral-link" style="display:flex; gap:8px;">
+                <input type="text" value="${window.location.origin}/member-dashboard/register.html?ref=${myCode}" readonly
+                       style="flex:1; padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; font-family:monospace; font-size:13px; background:#f9fafb;">
+                <button onclick="copyReferralLink()" class="btn btn-primary">📋 نسخ</button>
+            </div>
+        </div>
+
+        <!-- قائمة الأعضاء اللي جبتهم -->
+        <div class="my-referrals-card" style="background:#fff; padding:16px; border-radius:12px; border:1px solid #e5e7eb;">
+            <h3 style="font-size:16px; margin-bottom:10px;">👥 الأعضاء اللي جبتهم (Real Downline)</h3>
+            <div id="myReferralsList" style="margin-top:12px;">
+                <div style="text-align:center; padding:30px; color:#9ca3af;">⏳ بتحميل...</div>
+            </div>
         </div>
     `;
+
+    // حمّل قائمة الأعضاء اللي جبتهم (sponsor_id = me)
+    await loadMyReferrals();
+}
+
+async function loadMyReferrals() {
+    const container = document.getElementById('myReferralsList');
+    if (!container) return;
+
+    try {
+        const { data: referrals, error } = await window.SAWYAN.supabase
+            .from('members')
+            .select('id, member_code, full_name, tree_level, parent_id, position, is_active, created_at')
+            .eq('sponsor_id', currentUser.id)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (!referrals || referrals.length === 0) {
+            container.innerHTML = `
+                <div style="text-align:center; padding:30px; color:#9ca3af;">
+                    <div style="font-size:48px; margin-bottom:10px;">🌱</div>
+                    <p>لسه ما جبتش أي أعضاء. ابدأ بدعوة حد للشبكة!</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = `
+            <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                    <thead>
+                        <tr style="background:#f9fafb; text-align:right;">
+                            <th style="padding:10px; border-bottom:2px solid #e5e7eb;">الكود</th>
+                            <th style="padding:10px; border-bottom:2px solid #e5e7eb;">الاسم</th>
+                            <th style="padding:10px; border-bottom:2px solid #e5e7eb;">الجيل</th>
+                            <th style="padding:10px; border-bottom:2px solid #e5e7eb;">محطوط تحت</th>
+                            <th style="padding:10px; border-bottom:2px solid #e5e7eb;">الجهة</th>
+                            <th style="padding:10px; border-bottom:2px solid #e5e7eb;">الحالة</th>
+                            <th style="padding:10px; border-bottom:2px solid #e5e7eb;">تاريخ التسجيل</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${referrals.map(r => `
+                            <tr style="border-bottom:1px solid #f3f4f6;">
+                                <td style="padding:10px; font-weight:bold;">#${r.member_code}</td>
+                                <td style="padding:10px;">${r.full_name}</td>
+                                <td style="padding:10px; text-align:center;">${r.tree_level || '-'}</td>
+                                <td style="padding:10px; text-align:center; font-size:12px;">
+                                    ${r.parent_id === currentUser.id
+                                        ? '<span style="color:#10b981; font-weight:bold;">⭐ تحتك مباشرة</span>'
+                                        : '<span style="color:#6b7280;">تحت عضو تاني</span>'}
+                                </td>
+                                <td style="padding:10px; text-align:center;">
+                                    ${r.position === 'left' ? '⬅️ يسار' :
+                                      r.position === 'right' ? '➡️ يمين' : '-'}
+                                </td>
+                                <td style="padding:10px; text-align:center;">
+                                    <span style="padding:2px 8px; border-radius:8px; font-size:11px;
+                                        background:${r.is_active ? '#d1fae5' : '#fee2e2'};
+                                        color:${r.is_active ? '#065f46' : '#991b1b'};">
+                                        ${r.is_active ? '✓ نشط' : '✗ متوقف'}
+                                    </span>
+                                </td>
+                                <td style="padding:10px; font-size:12px; color:#6b7280;">
+                                    ${new Date(r.created_at).toLocaleDateString('ar-EG')}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top:12px; padding:10px; background:#f0fdf4; border-radius:8px; font-size:12px; color:#166534;">
+                💡 إجمالي اللي جبتهم: <strong>${referrals.length}</strong> عضو
+            </div>
+        `;
+    } catch (err) {
+        console.error('loadMyReferrals error:', err);
+        container.innerHTML = `<div style="padding:20px; color:#dc2626; text-align:center;">❌ حصل خطأ في تحميل القائمة</div>`;
+    }
+}
+
+// ============================================================================
+// 🌳 Modal: إضافة عضو جديد (Add Member)
+// ============================================================================
+
+function openAddMemberModal() {
+    // إنشاء الـ modal
+    let modal = document.getElementById('addMemberModal');
+    if (modal) modal.remove();
+
+    modal = document.createElement('div');
+    modal.id = 'addMemberModal';
+    modal.style.cssText = `
+        position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999;
+        display:flex; align-items:center; justify-content:center; padding:20px;
+        backdrop-filter:blur(4px);
+    `;
+
+    modal.innerHTML = `
+        <div style="background:#fff; border-radius:16px; max-width:600px; width:100%; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+            <!-- Header -->
+            <div style="padding:20px 24px; border-bottom:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center; background:linear-gradient(135deg, #10b981, #059669); color:white; border-radius:16px 16px 0 0;">
+                <h3 style="margin:0; font-size:18px;">➕ إضافة عضو جديد لشبكتك</h3>
+                <button onclick="closeAddMemberModal()" style="background:rgba(255,255,255,0.2); border:none; color:white; width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:18px;">×</button>
+            </div>
+
+            <!-- Body -->
+            <div style="padding:24px;">
+                <!-- بطاقة أنت الراعي -->
+                <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:12px 16px; border-radius:10px; margin-bottom:20px; font-size:13px; color:#166534;">
+                    ✅ <strong>أنت الراعي (الأبلاين الحقيقي):</strong> ${memberData?.full_name} · كود ${memberData?.member_code}
+                    <br>
+                    <small>العضو الجديد حيتسجل إنك إنت اللي جبته، وبتختار فين يحطه في شجرتك.</small>
+                </div>
+
+                <!-- بيانات العضو الجديد -->
+                <h4 style="font-size:15px; margin-bottom:12px; color:#374151;">📋 بيانات العضو الجديد</h4>
+                <div style="display:grid; gap:12px; margin-bottom:24px;">
+                    <div>
+                        <label style="display:block; font-size:13px; margin-bottom:4px; font-weight:600;">الاسم الكامل *</label>
+                        <input type="text" id="newMemberName" style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:8px;" placeholder="اسم العضو الجديد">
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                        <div>
+                            <label style="display:block; font-size:13px; margin-bottom:4px; font-weight:600;">الهاتف</label>
+                            <input type="text" id="newMemberPhone" style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:8px;" placeholder="+20...">
+                        </div>
+                        <div>
+                            <label style="display:block; font-size:13px; margin-bottom:4px; font-weight:600;">البريد (اختياري)</label>
+                            <input type="email" id="newMemberEmail" style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:8px;" placeholder="email@example.com">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 🌳 قسم الـ Placement -->
+                <h4 style="font-size:15px; margin-bottom:8px; color:#10b981;">🌳 فين تحطه في شجرتك؟</h4>
+                <p style="font-size:12px; color:#6b7280; margin-bottom:12px;">
+                    اختار العضو اللي تحط العضو الجديد تحته مباشرة، وبعدين اختار يمين ولا شمال.
+                </p>
+
+                <div style="margin-bottom:12px;">
+                    <label style="display:block; font-size:13px; margin-bottom:4px; font-weight:600;">1) تحته مباشر لمين؟ *</label>
+                    <select id="addMemberPlacementParent" style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:8px;" disabled>
+                        <option value="">⏳ بتحميل قائمة فريقك...</option>
+                    </select>
+                    <input type="hidden" id="addMemberPlacementParentId" value="">
+                </div>
+
+                <div style="margin-bottom:16px;">
+                    <label style="display:block; font-size:13px; margin-bottom:8px; font-weight:600;">2) يمين ولا شمال؟ *</label>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                        <label style="cursor:pointer; display:block;">
+                            <input type="radio" name="addMemberSide" value="left" style="display:none;">
+                            <div class="add-member-side-btn" data-side="left" style="display:flex; flex-direction:column; align-items:center; gap:4px; padding:14px; border:2px solid #e5e7eb; border-radius:10px; background:#fff; font-weight:600; color:#6b7280; transition:all 0.2s;">
+                                <span style="font-size:22px;">⬅️</span>
+                                <span>يسار</span>
+                                <small class="side-status" style="font-size:11px; color:#9ca3af;">—</small>
+                            </div>
+                        </label>
+                        <label style="cursor:pointer; display:block;">
+                            <input type="radio" name="addMemberSide" value="right" style="display:none;">
+                            <div class="add-member-side-btn" data-side="right" style="display:flex; flex-direction:column; align-items:center; gap:4px; padding:14px; border:2px solid #e5e7eb; border-radius:10px; background:#fff; font-weight:600; color:#6b7280; transition:all 0.2s;">
+                                <span style="font-size:22px;">➡️</span>
+                                <span>يمين</span>
+                                <small class="side-status" style="font-size:11px; color:#9ca3af;">—</small>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="addMemberError" style="display:none; background:#fef2f2; color:#991b1b; padding:10px 14px; border-radius:8px; font-size:13px; border:1px solid #fecaca; margin-bottom:16px;"></div>
+                <div id="addMemberSuccess" style="display:none;"></div>
+
+                <!-- Footer -->
+                <div style="display:flex; gap:8px; justify-content:flex-end; padding-top:16px; border-top:1px solid #e5e7eb;">
+                    <button onclick="closeAddMemberModal()" style="padding:10px 20px; border:1px solid #d1d5db; background:#fff; border-radius:8px; cursor:pointer; font-weight:600;">إلغاء</button>
+                    <button id="submitAddMemberBtn" onclick="submitAddMember()" style="padding:10px 24px; background:#10b981; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:600;">➕ أضف العضو</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // إغلاق عند الضغط خارج الـ modal
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeAddMemberModal();
+    });
+
+    // حمّل الـ placement options (sponsor = المستخدم الحالي)
+    loadAddMemberPlacementOptions(currentUser.id);
+
+    // ربط الـ side buttons
+    document.querySelectorAll('.add-member-side-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const side = btn.dataset.side;
+            document.querySelector(`input[name="addMemberSide"][value="${side}"]`).checked = true;
+            document.querySelectorAll('.add-member-side-btn').forEach(b => {
+                b.style.borderColor = '#e5e7eb';
+                b.style.background = '#fff';
+                b.style.color = '#6b7280';
+            });
+            btn.style.borderColor = '#10b981';
+            btn.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(16, 185, 129, 0.05))';
+            btn.style.color = '#047857';
+        });
+    });
+}
+
+function closeAddMemberModal() {
+    const modal = document.getElementById('addMemberModal');
+    if (modal) modal.remove();
+}
+
+async function loadAddMemberPlacementOptions(sponsorId) {
+    const select = document.getElementById('addMemberPlacementParent');
+    if (!select) return;
+
+    try {
+        const options = await window.SAWYAN_TREE.getPlacementOptions(sponsorId, 20);
+
+        if (options.length === 0) {
+            select.innerHTML = '<option value="">— مفيش أماكن فاضية في شجرتك —</option>';
+            const errDiv = document.getElementById('addMemberError');
+            if (errDiv) {
+                errDiv.style.display = 'block';
+                errDiv.textContent = '⚠️ شجرتك ممتلية! مفيش أماكن فاضية. حاول تكبر الشجرة بإضافة أعضاء في أماكن تانية.';
+            }
+            return;
+        }
+
+        select.innerHTML = '<option value="">— اختار فين تحط العضو —</option>';
+        options.forEach(opt => {
+            const o = document.createElement('option');
+            o.value = opt.member_id;
+            const slots = [];
+            if (opt.left_available) slots.push('يسار ✓');
+            if (opt.right_available) slots.push('يمين ✓');
+            const sponsorMark = opt.is_sponsor ? '⭐ ' : '';
+            o.textContent = `${sponsorMark}#${opt.member_code} — ${opt.full_name} (جيل ${opt.generation}) — ${slots.join(' + ')}`;
+            select.appendChild(o);
+        });
+        select.disabled = false;
+
+        select.onchange = () => {
+            const parentId = select.value;
+            document.getElementById('addMemberPlacementParentId').value = parentId;
+
+            // reset side selection
+            document.querySelectorAll('input[name="addMemberSide"]').forEach(r => r.checked = false);
+            document.querySelectorAll('.add-member-side-btn').forEach(b => {
+                b.style.borderColor = '#e5e7eb';
+                b.style.background = '#fff';
+                b.style.color = '#6b7280';
+                b.classList.remove('unavailable');
+                b.querySelector('.side-status').textContent = '—';
+            });
+
+            if (!parentId) return;
+
+            const selectedOpt = options.find(o => o.member_id === parentId);
+            if (!selectedOpt) return;
+
+            // حدّث الـ side buttons status
+            ['left', 'right'].forEach(side => {
+                const btn = document.querySelector(`.add-member-side-btn[data-side="${side}"]`);
+                if (!btn) return;
+                const available = side === 'left' ? selectedOpt.left_available : selectedOpt.right_available;
+                const status = btn.querySelector('.side-status');
+                if (available) {
+                    btn.classList.remove('unavailable');
+                    btn.style.opacity = '1';
+                    btn.style.cursor = 'pointer';
+                    status.textContent = '✓ متاح';
+                    status.style.color = '#10b981';
+                } else {
+                    btn.classList.add('unavailable');
+                    btn.style.opacity = '0.4';
+                    btn.style.cursor = 'not-allowed';
+                    status.textContent = '✗ مأخوذ';
+                    status.style.color = '#dc2626';
+                }
+            });
+        };
+    } catch (err) {
+        console.error('loadAddMemberPlacementOptions error:', err);
+        select.innerHTML = '<option value="">— حصل خطأ —</option>';
+    }
+}
+
+async function submitAddMember() {
+    const name = document.getElementById('newMemberName').value.trim();
+    const phone = document.getElementById('newMemberPhone').value.trim();
+    const email = document.getElementById('newMemberEmail').value.trim();
+    const parentId = document.getElementById('addMemberPlacementParentId').value;
+    const sideInput = document.querySelector('input[name="addMemberSide"]:checked');
+    const side = sideInput ? sideInput.value : null;
+
+    const errorDiv = document.getElementById('addMemberError');
+    const successDiv = document.getElementById('addMemberSuccess');
+    const submitBtn = document.getElementById('submitAddMemberBtn');
+
+    errorDiv.style.display = 'none';
+    successDiv.style.display = 'none';
+
+    // validation
+    if (!name) {
+        errorDiv.style.display = 'block';
+        errorDiv.textContent = 'لازم تدخل اسم العضو الجديد';
+        return;
+    }
+    if (!parentId) {
+        errorDiv.style.display = 'block';
+        errorDiv.textContent = 'لازم تختار فين تحط العضو في شجرتك';
+        return;
+    }
+    if (!side) {
+        errorDiv.style.display = 'block';
+        errorDiv.textContent = 'لازم تختار الجهة: يمين ولا شمال';
+        return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = '⏳ جاري الإضافة...';
+
+    try {
+        const memberData = {
+            full_name: name,
+            email: email || undefined,
+            phone: phone || undefined,
+            password_hash: '123456',
+            is_active: true
+        };
+
+        const newMember = await window.SAWYAN_TREE.createMemberWithPlacement(
+            memberData,
+            currentUser.id,    // sponsor_id (الأبلاين الحقيقي = العضو الحالي)
+            parentId,          // parent_id (الأبلاين المحظوط)
+            side               // position
+        );
+
+        // إنشاء محفظة للعضو الجديد
+        try {
+            await window.SAWYAN.supabase
+                .from('wallets')
+                .insert([{ member_id: newMember.id, balance: 0 }]);
+        } catch (e) {
+            console.log('Wallet creation skipped:', e);
+        }
+
+        // عرض رسالة نجاح
+        successDiv.style.display = 'block';
+        successDiv.style.cssText = 'background:#f0fdf4; color:#166534; padding:16px; border-radius:10px; border:1px solid #bbf7d0; font-size:14px;';
+        successDiv.innerHTML = `
+            <div style="font-size:18px; margin-bottom:8px;">🎉 تم إضافة العضو بنجاح!</div>
+            <div style="margin-bottom:6px;">الاسم: <strong>${newMember.full_name}</strong></div>
+            <div style="margin-bottom:6px;">كود العضوية: <strong style="color:#047857;">${newMember.member_code}</strong></div>
+            <div style="margin-bottom:6px;">كلمة المرور الافتراضية: <strong>123456</strong></div>
+            <div style="margin-bottom:10px; font-size:12px; color:#6b7280;">
+                محطوط: ${side === 'left' ? 'يسار' : 'يمين'} · الجيل ${newMember.tree_level}
+            </div>
+            <button onclick="closeAddMemberModal(); loadReferrals();" style="padding:8px 16px; background:#10b981; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:600;">
+                ✓ تمام
+            </button>
+        `;
+
+        // أخفِ زر الإضافة
+        submitBtn.style.display = 'none';
+
+    } catch (err) {
+        console.error('submitAddMember error:', err);
+        errorDiv.style.display = 'block';
+        errorDiv.textContent = '❌ ' + (err.message || 'حصل خطأ في الإضافة');
+        submitBtn.disabled = false;
+        submitBtn.textContent = '➕ أضف العضو';
+    }
 }
 
 function copyReferralLink() {
     const input = document.querySelector('.referral-link input');
+    if (!input) return;
     input.select();
     document.execCommand('copy');
-    alert('تم نسخ الرابط!');
+    alert('✅ تم نسخ رابط الإحالة!');
 }
 
 async function loadSettings() {

@@ -116,8 +116,8 @@ $$ LANGUAGE plpgsql;
 -- 7) Function: is_in_downline (هل العضو في downline عضو آخر)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION sawyan.is_in_downline(
-    ancestor_id UUID,
-    descendant_id UUID
+    p_ancestor_id UUID,
+    p_descendant_id UUID
 )
 RETURNS BOOLEAN AS $$
 DECLARE
@@ -125,20 +125,20 @@ DECLARE
     depth INT := 0;
     max_depth INT := 50;
 BEGIN
-    IF ancestor_id IS NULL OR descendant_id IS NULL THEN
+    IF p_ancestor_id IS NULL OR p_descendant_id IS NULL THEN
         RETURN FALSE;
     END IF;
     
-    IF ancestor_id = descendant_id THEN
+    IF p_ancestor_id = p_descendant_id THEN
         RETURN TRUE;
     END IF;
     
-    current_id := descendant_id;
+    current_id := p_descendant_id;
     
     WHILE current_id IS NOT NULL AND depth < max_depth LOOP
         SELECT parent_id INTO current_id FROM sawyan.members WHERE id = current_id;
         
-        IF current_id = ancestor_id THEN
+        IF current_id = p_ancestor_id THEN
             RETURN TRUE;
         END IF;
         
@@ -153,8 +153,8 @@ $$ LANGUAGE plpgsql;
 -- 8) Function: is_placement_available (هل المكان متاح)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION sawyan.is_placement_available(
-    parent_member_id UUID,
-    desired_position TEXT  -- 'left' or 'right'
+    p_parent_member_id UUID,
+    p_desired_position TEXT  -- 'left' or 'right'
 )
 RETURNS BOOLEAN AS $$
 DECLARE
@@ -162,8 +162,8 @@ DECLARE
 BEGIN
     SELECT COUNT(*) INTO existing_count
     FROM sawyan.members
-    WHERE parent_id = parent_member_id
-      AND position = desired_position;
+    WHERE parent_id = p_parent_member_id
+      AND position = p_desired_position;
     
     RETURN existing_count = 0;
 END;
@@ -173,8 +173,8 @@ $$ LANGUAGE plpgsql;
 -- 9) Function: get_downline (كل الـ downline لعضو معين)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION sawyan.get_downline(
-    member_id UUID,
-    max_depth INT DEFAULT 20
+    p_member_id UUID,
+    p_max_depth INT DEFAULT 20
 )
 RETURNS TABLE (
     id UUID,
@@ -189,7 +189,7 @@ WITH RECURSIVE downline AS (
     SELECT 
         m.id, m.member_code, m.full_name, m.parent_id, m.position AS pos, m.tree_level, 0 AS depth
     FROM sawyan.members m
-    WHERE m.id = member_id
+    WHERE m.id = p_member_id
     
     UNION ALL
     
@@ -197,7 +197,7 @@ WITH RECURSIVE downline AS (
         m.id, m.member_code, m.full_name, m.parent_id, m.position AS pos, m.tree_level, d.depth + 1
     FROM sawyan.members m
     JOIN downline d ON m.parent_id = d.id
-    WHERE d.depth < max_depth
+    WHERE d.depth < p_max_depth
 )
 SELECT * FROM downline;
 $$ LANGUAGE sql STABLE;
@@ -206,8 +206,8 @@ $$ LANGUAGE sql STABLE;
 -- 10) Function: get_uplines (كل الـ uplines لعضو معين حتى root)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION sawyan.get_uplines(
-    member_id UUID,
-    max_depth INT DEFAULT 50
+    p_member_id UUID,
+    p_max_depth INT DEFAULT 50
 )
 RETURNS TABLE (
     id UUID,
@@ -223,7 +223,7 @@ WITH RECURSIVE uplines AS (
     SELECT 
         m.id, m.member_code, m.full_name, m.parent_id, m.position AS pos, m.tree_level, 0 AS depth, FALSE AS is_stopper
     FROM sawyan.members m
-    WHERE m.id = member_id
+    WHERE m.id = p_member_id
     
     UNION ALL
     
@@ -232,7 +232,7 @@ WITH RECURSIVE uplines AS (
         CASE WHEN u.depth + 1 >= 10 THEN TRUE ELSE FALSE END AS is_stopper
     FROM sawyan.members m
     JOIN uplines u ON m.id = u.parent_id
-    WHERE u.depth < max_depth
+    WHERE u.depth < p_max_depth
 )
 SELECT * FROM uplines;
 $$ LANGUAGE sql STABLE;

@@ -181,20 +181,20 @@ RETURNS TABLE (
     member_code TEXT,
     full_name TEXT,
     parent_id UUID,
-    position TEXT,
+    pos TEXT,
     tree_level INT,
     depth INT
 ) AS $$
 WITH RECURSIVE downline AS (
     SELECT 
-        m.id, m.member_code, m.full_name, m.parent_id, m.position, m.tree_level, 0 AS depth
+        m.id, m.member_code, m.full_name, m.parent_id, m.position AS pos, m.tree_level, 0 AS depth
     FROM sawyan.members m
     WHERE m.id = member_id
     
     UNION ALL
     
     SELECT 
-        m.id, m.member_code, m.full_name, m.parent_id, m.position, m.tree_level, d.depth + 1
+        m.id, m.member_code, m.full_name, m.parent_id, m.position AS pos, m.tree_level, d.depth + 1
     FROM sawyan.members m
     JOIN downline d ON m.parent_id = d.id
     WHERE d.depth < max_depth
@@ -214,21 +214,21 @@ RETURNS TABLE (
     member_code TEXT,
     full_name TEXT,
     parent_id UUID,
-    position TEXT,
+    pos TEXT,
     tree_level INT,
     depth INT,
     is_stopper BOOLEAN
 ) AS $$
 WITH RECURSIVE uplines AS (
     SELECT 
-        m.id, m.member_code, m.full_name, m.parent_id, m.position, m.tree_level, 0 AS depth, FALSE AS is_stopper
+        m.id, m.member_code, m.full_name, m.parent_id, m.position AS pos, m.tree_level, 0 AS depth, FALSE AS is_stopper
     FROM sawyan.members m
     WHERE m.id = member_id
     
     UNION ALL
     
     SELECT 
-        m.id, m.member_code, m.full_name, m.parent_id, m.position, m.tree_level, u.depth + 1 AS depth,
+        m.id, m.member_code, m.full_name, m.parent_id, m.position AS pos, m.tree_level, u.depth + 1 AS depth,
         CASE WHEN u.depth + 1 >= 10 THEN TRUE ELSE FALSE END AS is_stopper
     FROM sawyan.members m
     JOIN uplines u ON m.id = u.parent_id
@@ -455,7 +455,7 @@ SELECT
     m.member_code,
     m.full_name,
     m.parent_id,
-    m.position,
+    m.position AS pos,
     m.tree_level,
     m.sponsor_id,
     (SELECT COUNT(*) FROM sawyan.members c WHERE c.parent_id = m.id) AS children_count,

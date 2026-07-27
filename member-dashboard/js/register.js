@@ -80,7 +80,7 @@ async function lookupSponsor(code) {
     try {
         const { data: sponsor, error } = await window.SAWYAN.supabase
             .from('members')
-            .select('id, full_name, member_code')
+            .select('id, full_name, member_code, tree_level, parent_id, position')
             .eq('member_code', code)
             .single();
 
@@ -90,12 +90,18 @@ async function lookupSponsor(code) {
             text.textContent = 'كود الراعي غير صحيح ❌';
             icon.textContent = '❌';
             sponsorIdInput.value = '';
+
+            // أخفِ قسم الـ placement
+            hidePlacementSection();
         } else {
             // الراعي موجود
             display.className = 'sponsor-name-display valid';
             text.textContent = sponsor.full_name;
             icon.textContent = '✅';
             sponsorIdInput.value = sponsor.id;
+
+            // اعرض قسم الـ placement وحمّل الـ options
+            await showPlacementSection(sponsor.id);
         }
     } catch (err) {
         console.error('Sponsor lookup error:', err);
@@ -103,7 +109,138 @@ async function lookupSponsor(code) {
         text.textContent = 'حدث خطأ في البحث';
         icon.textContent = '⚠️';
         sponsorIdInput.value = '';
+        hidePlacementSection();
     }
+}
+
+// ============================================================================
+// 🌳 دوال الـ Placement (الموضع في الشجرة)
+// ============================================================================
+
+function hidePlacementSection() {
+    const section = document.getElementById('placementSection');
+    if (section) section.style.display = 'none';
+
+    const select = document.getElementById('placementParentSelect');
+    if (select) {
+        select.innerHTML = '<option value="">— اختار الراعي الأول عشان يشوف قائمة الفريق —</option>';
+        select.disabled = true;
+    }
+
+    const parentIdInput = document.getElementById('placementParentId');
+    if (parentIdInput) parentIdInput.value = '';
+
+    document.querySelectorAll('input[name="placementSide"]').forEach(r => r.checked = false);
+    updatePlacementSideStatus(null, null);
+}
+
+async function showPlacementSection(sponsorId) {
+    const section = document.getElementById('placementSection');
+    const select = document.getElementById('placementParentSelect');
+    const errorDiv = document.getElementById('placementError');
+
+    if (!section || !select) return;
+
+    section.style.display = 'block';
+    select.disabled = true;
+    select.innerHTML = '<option value="">⏳ بتحميل قائمة فريق الراعي...</option>';
+    if (errorDiv) errorDiv.style.display = 'none';
+
+    try {
+        const options = await window.SAWYAN_TREE.getPlacementOptions(sponsorId, 20);
+
+        if (options.length === 0) {
+            select.innerHTML = '<option value="">— مفيش أماكن فاضية في شجرة الراعي —</option>';
+            if (errorDiv) {
+                errorDiv.style.display = 'block';
+                errorDiv.textContent = '⚠️ شجرة الراعي ممتلئة! مفيش أماكن فاضية على أي جهة. كلم الراعي أو الأدمن.';
+            }
+            return;
+        }
+
+        select.innerHTML = '<option value="">— اختار فين تحط العضو الجديد —</option>';
+        options.forEach(opt => {
+            const o = document.createElement('option');
+            o.value = opt.member_id;
+            const slots = [];
+            if (opt.left_available) slots.push('يسار متاح');
+            if (opt.right_available) slots.push('يمين متاح');
+            const sponsorMark = opt.is_sponsor ? '⭐ ' : '';
+            o.textContent = `${sponsorMark}#${opt.member_code} — ${opt.full_name} (جيل ${opt.generation}) — ${slots.join(' + ')}`;
+            select.appendChild(o);
+        });
+        select.disabled = false;
+
+        // لما يختار parent، حدّث الـ hidden input + حالة الجهات
+        select.onchange = async () => {
+            const parentId = select.value;
+            document.getElementById('placementParentId').value = parentId;
+
+            // أعد ضبط الاختيارات
+            document.querySelectorAll('input[name="placementSide"]').forEach(r => r.checked = false);
+
+            if (!parentId) {
+                updatePlacementSideStatus(null, null);
+                return;
+            }
+
+            // لقّي الـ option المختار عشان نعرف توفر الجهات
+            const selectedOpt = options.find(o => o.member_id === parentId);
+            if (selectedOpt) {
+                updatePlacementSideStatus(selectedOpt.left_available, selectedOpt.right_available);
+            }
+        };
+
+    } catch (err) {
+        console.error('loadPlacementOptions error:', err);
+        select.innerHTML = '<option value="">— حصل خطأ في التحميل —</option>';
+        if (errorDiv) {
+            errorDiv.style.display = 'block';
+            errorDiv.textContent = 'حصل خطأ في تحميل قائمة الفريق. حاول تاني لو سمحت.';
+        }
+    }
+}
+
+function updatePlacementSideStatus(leftAvailable, rightAvailable) {
+    const leftBtn = document.querySelector('input[name="placementSide"][value="left"]')?.closest('.placement-side-option').querySelector('.placement-side-btn');
+    const rightBtn = document.querySelector('input[name="placementSide"][value="right"]')?.closest('.placement-side-option').querySelector('.placement-side-btn');
+    const leftStatus = document.getElementById('leftStatus');
+    const rightStatus = document.getElementById('rightStatus');
+
+    if (leftAvailable === null) {
+        // ما فيه parent مختار
+        if (leftBtn) leftBtn.classList.remove('unavailable');
+        if (rightBtn) rightBtn.classList.remove('unavailable');
+        if (leftStatus) leftStatus.textContent = '—';
+        if (rightStatus) rightStatus.textContent = '—';
+        return;
+    }
+
+    if (leftBtn) {
+        if (leftAvailable) {
+            leftBtn.classList.remove('unavailable');
+            if (leftStatus) leftStatus.textContent = '✓ متاح';
+        } else {
+            leftBtn.classList.add('unavailable');
+            if (leftStatus) leftStatus.textContent = '✗ مأخوذ';
+        }
+    }
+    if (rightBtn) {
+        if (rightAvailable) {
+            rightBtn.classList.remove('unavailable');
+            if (rightStatus) rightStatus.textContent = '✓ متاح';
+        } else {
+            rightBtn.classList.add('unavailable');
+            if (rightStatus) rightStatus.textContent = '✗ مأخوذ';
+        }
+    }
+}
+
+function getSelectedPlacement() {
+    const parentId = document.getElementById('placementParentId').value;
+    const sideInput = document.querySelector('input[name="placementSide"]:checked');
+    const side = sideInput ? sideInput.value : null;
+    return { parentId, side };
 }
 
 
@@ -267,6 +404,23 @@ async function handleRegister(e) {
         }
     }
 
+    // 🌳 التحقق من الـ placement (الموضع في الشجرة)
+    const placement = getSelectedPlacement();
+    if (!placement.parentId) {
+        alert('لازم تختار فين تحط العضو الجديد في شجرة الراعي\n\n→ القسم الأخضر تحت اسم الراعي');
+        // اعرض القسم لو مخفي
+        const section = document.getElementById('placementSection');
+        if (section) {
+            section.style.display = 'block';
+            section.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        return;
+    }
+    if (!placement.side) {
+        alert('لازم تختار الجهة: يمين ولا شمال؟');
+        return;
+    }
+
     // تفعيل حالة التحميل
     submitBtn.classList.add('btn-loading');
     submitBtn.textContent = 'جاري التسجيل...';
@@ -289,9 +443,6 @@ async function handleRegister(e) {
             email: email || undefined, // سيتم توليده لاحقاً إذا كان فارغاً لكن نحتاج ID أولاً
             password_hash: '123456',
             phone: fullPhone,
-            sponsor_id: verifiedSponsorId,
-            parent_id: verifiedSponsorId,
-            position: 'left',
             is_active: true
         };
 
@@ -306,13 +457,13 @@ async function handleRegister(e) {
         if (address) memberData.address = address;
         if (phoneCountryCode) memberData.phone_country_code = phoneCountryCode;
 
-        const { data: newMember, error: memberError } = await window.SAWYAN.supabase
-            .from('members')
-            .insert([memberData])
-            .select() // مهم جداً: هذا يعيد السجل بما فيه member_code المولد
-            .single();
-
-        if (memberError) throw memberError;
+        // 🌳 استخدم createMemberWithPlacement (بيعمل validation + insert + trigger تحديث الشجرة)
+        const newMember = await window.SAWYAN_TREE.createMemberWithPlacement(
+            memberData,
+            verifiedSponsorId,        // sponsor_id (الأبلاين الحقيقي)
+            placement.parentId,       // parent_member_id (الأبلاين المحظوط)
+            placement.side            // placement_side ('left' or 'right')
+        );
 
         // تحديث البريد الإلكتروني إذا كان فارغاً (يعتمد على الكود المولد)
         let finalEmail = newMember.email;

@@ -360,16 +360,16 @@ async function handleTransaction(e) {
         // التأكد من العضو موجود (إعادة فحص سريع)
         const member = selectedMember;
 
-        // حساب العمولات
-        const commissionPercentage = merchantData.commission_percentage;
+        // حساب العمولات (نظام قديم - للعرض في الإيصال)
+        const commissionPercentage = merchantData.commission_percentage || merchantData.deduction_percent || 10;
         const commissionAmount = amount * (commissionPercentage / 100);
         const companyShare = commissionAmount * 0.25;
         const planShare = commissionAmount * 0.75;
 
         const transactionCode = 'T' + Date.now();
 
-        // تسجيل العملية
-        const { error: transError } = await window.SAWYAN.supabase
+        // تسجيل العملية (بدون ما نظيف عمولة للمحفظة هنا — حنوزعها بعدين)
+        const { data: newTransaction, error: transError } = await window.SAWYAN.supabase
             .from('transactions')
             .insert([{
                 transaction_code: transactionCode,
@@ -381,43 +381,38 @@ async function handleTransaction(e) {
                 company_share: companyShare,
                 plan_share: planShare,
                 status: 'completed'
-            }]);
+            }])
+            .select()
+            .single();
 
         if (transError) throw transError;
 
-        // تحديث محفظة العضو
-        const { data: wallet } = await window.SAWYAN.supabase
-            .from('wallets')
-            .select('balance')
-            .eq('member_id', member.id)
-            .single();
+        // 🌳 توزيع العمولة على البول + الأبلاينز (النظام الجديد)
+        let distributionResult = null;
+        try {
+            distributionResult = await window.SAWYAN_TREE.distributeTransactionCommission(newTransaction.id);
+            console.log('🌳 Distribution result:', distributionResult);
 
-        if (wallet) {
-            await window.SAWYAN.supabase
-                .from('wallets')
-                .update({ balance: wallet.balance + planShare })
-                .eq('member_id', member.id);
-
-            // تسجيل في wallet_transactions
-            await window.SAWYAN.supabase
-                .from('wallet_transactions')
-                .insert([{
-                    wallet_id: wallet.id,
-                    transaction_type: 'credit',
-                    amount: planShare,
-                    description: 'عمولة من ' + merchantData.business_name
-                }]);
+            // أضف العمولات لمحافظ المستفيدين
+            await creditBeneficiariesWallets(distributionResult.pool_transaction_id, merchantData.business_name);
+        } catch (distErr) {
+            console.error('Distribution failed (continuing):', distErr);
+            // لو التوزيع فشل، العملية اتعملت بس العمولات ما اتوزعتش
+            // الأدمن يقدر يوزعها بعدين يدوياً
         }
 
         // إرسال إشعار للعضو
         try {
+            const sharePerMember = distributionResult ? ((distributionResult.member_share || 0)) : 0;
+            const beneficiaries = distributionResult ? (distributionResult.upline_count + 1) : 0;
             await window.SAWYAN.supabase
                 .from('notifications')
                 .insert([{
                     user_type: 'member',
                     user_id: member.id,
                     title: '💰 تم إضافة عمولة جديدة!',
-                    message: 'تم تسجيل عملية شراء بمبلغ ' + amount.toFixed(2) + ' ج.م لدى ' + merchantData.business_name + ' وإضافة ' + planShare.toFixed(2) + ' ج.م لمحفظتك',
+                    message: 'تم تسجيل عملية شراء بمبلغ ' + amount.toFixed(2) + ' ج.م لدى ' + merchantData.business_name +
+                             '. حصتك: ' + sharePerMember.toFixed(2) + ' ج.م (من إجمالي ' + beneficiaries + ' مستفيد).',
                     notification_type: 'commission'
                 }]);
             console.log('Notification sent to member');
@@ -425,20 +420,18 @@ async function handleTransaction(e) {
             console.log('Notifications table may not exist:', notifError);
         }
 
-        // alert قديم — استبدلناه بشاشة الإيصال
-        // alert('✅ تم تسجيل العملية بنجاح!\n\nكود العملية: ' + transactionCode + '\nالعمولة للعضو: ' + planShare.toFixed(2) + ' ج.م');
-
         // عرض شاشة التأكيد النهائية (Receipt Modal)
         showReceipt({
             transactionCode: transactionCode,
             amount: amount,
             commissionPercentage: commissionPercentage,
             commissionAmount: commissionAmount,
-            memberShare: planShare,
+            memberShare: distributionResult ? ((distributionResult.member_share || 0)) : planShare,
             companyShare: companyShare,
             member: selectedMember,
             merchant: merchantData,
-            timestamp: new Date()
+            timestamp: new Date(),
+            distributionInfo: distributionResult
         });
 
         clearSelectedMember();
@@ -796,64 +789,29 @@ async function approveTransaction(transactionId) {
 
         if (error) throw error;
 
-        // تحديث محفظة العضو بطريقة آمنة
-        const planShareAmount = parseFloat(transaction.plan_share);
+        // 🌳 توزيع العمولة على البول + الأبلاينز (النظام الجديد)
+        let distributionResult = null;
+        try {
+            distributionResult = await window.SAWYAN_TREE.distributeTransactionCommission(transactionId);
+            console.log('🌳 Distribution result:', distributionResult);
 
-        // محاولة استخدام RPC function الآمنة
-        const { data: rpcResult, error: rpcError } = await window.SAWYAN.supabase
-            .rpc('add_wallet_balance', {
-                p_member_id: transaction.member_id,
-                p_amount: planShareAmount,
-                p_description: 'عمولة من ' + merchantData.business_name,
-                p_transaction_type: 'commission',
-                p_reference_id: transactionId
-            });
-
-        if (!rpcError && rpcResult && rpcResult.success) {
-            console.log('Wallet updated via RPC:', rpcResult);
-        } else {
-            // Fallback إذا لم تكن RPC موجودة
-            console.log('RPC not available, using fallback');
-
-            const { data: wallet } = await window.SAWYAN.supabase
-                .from('wallets')
-                .select('id, balance, total_earned')
-                .eq('member_id', transaction.member_id)
-                .single();
-
-            if (wallet) {
-                await window.SAWYAN.supabase
-                    .from('wallets')
-                    .update({
-                        balance: wallet.balance + planShareAmount,
-                        total_earned: (wallet.total_earned || 0) + planShareAmount,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', wallet.id);
-
-                // تسجيل في wallet_transactions
-                await window.SAWYAN.supabase
-                    .from('wallet_transactions')
-                    .insert([{
-                        wallet_id: wallet.id,
-                        transaction_type: 'commission',
-                        amount: planShareAmount,
-                        description: 'عمولة من ' + merchantData.business_name,
-                        reference_id: transactionId,
-                        status: 'completed'
-                    }]);
-            }
+            // أضف العمولات لمحافظ المستفيدين
+            await creditBeneficiariesWallets(distributionResult.pool_transaction_id, merchantData.business_name);
+        } catch (distErr) {
+            console.error('Distribution failed (continuing):', distErr);
         }
 
         // إرسال إشعار للعضو
         try {
+            const sharePerMember = distributionResult ? (distributionResult.member_share || 0) : 0;
+            const beneficiaries = distributionResult ? (distributionResult.upline_count + 1) : 0;
             await window.SAWYAN.supabase
                 .from('notifications')
                 .insert([{
                     user_type: 'member',
                     user_id: transaction.member_id,
                     title: 'تم توثيق عمليتك ✅',
-                    message: 'تمت الموافقة على عمليتك مع ' + merchantData.business_name + ' بقيمة ' + parseFloat(transaction.total_amount).toFixed(2) + ' ج.م وإضافة العمولة لمحفظتك',
+                    message: 'تمت الموافقة على عمليتك مع ' + merchantData.business_name + ' بقيمة ' + parseFloat(transaction.total_amount).toFixed(2) + ' ج.م. حصتك من البول: ' + sharePerMember.toFixed(2) + ' ج.م (' + beneficiaries + ' مستفيد).',
                     notification_type: 'transaction_approved'
                 }]);
             console.log('Notification sent to member');
@@ -2106,3 +2064,120 @@ function closeWifiSharingModal() {
 window.addEventListener('sawyan:payment:ready', () => {
     console.log('🎉 Payment system ready in merchant dashboard');
 });
+
+
+// ============================================================================
+// 🌳 Pool Distribution Helpers (Phase 2.3)
+// ============================================================================
+
+/**
+ * إضافة العمولات لمحافظ المستفيدين بعد التوزيع
+ * @param {number} poolTxId - ID من pool_transactions
+ * @param {string} merchantName - اسم التاجر (للوصف)
+ */
+async function creditBeneficiariesWallets(poolTxId, merchantName) {
+    try {
+        // جلب كل الـ distributions اللي لسه ما اتضافتش للمحفظة
+        const { data: distributions, error } = await window.SAWYAN.supabase
+            .from('commission_distributions')
+            .select(`
+                id, beneficiary_id, amount, level, percentage,
+                pool_transaction_id,
+                pool_transactions!inner(member_id)
+            `)
+            .eq('pool_transaction_id', poolTxId)
+            .order('level', { ascending: true });
+
+        if (error) throw error;
+        if (!distributions || distributions.length === 0) {
+            console.log('No distributions to credit');
+            return;
+        }
+
+        console.log(`💳 Crediting ${distributions.length} beneficiaries...`);
+
+        for (const dist of distributions) {
+            try {
+                const buyerId = dist.pool_transactions.member_id;
+                const isBuyer = dist.beneficiary_id === buyerId;
+                const description = isBuyer
+                    ? `عمولتك من عملية شرائك لدى ${merchantName}`
+                    : `عمولة من ${merchantName} (عضو في فريقك - مستوى ${dist.level})`;
+
+                // محاولة استخدام RPC function الآمنة
+                const { data: rpcResult, error: rpcError } = await window.SAWYAN.supabase
+                    .rpc('add_wallet_balance', {
+                        p_member_id: dist.beneficiary_id,
+                        p_amount: dist.amount,
+                        p_description: description,
+                        p_transaction_type: 'commission',
+                        p_reference_id: dist.pool_transaction_id.toString()
+                    });
+
+                let walletUpdated = false;
+
+                if (!rpcError && rpcResult && rpcResult.success) {
+                    walletUpdated = true;
+                    console.log(`✓ Wallet updated via RPC for beneficiary at level ${dist.level}`);
+                } else {
+                    // Fallback: تحديث مباشر
+                    const { data: wallet } = await window.SAWYAN.supabase
+                        .from('wallets')
+                        .select('id, balance, total_earned')
+                        .eq('member_id', dist.beneficiary_id)
+                        .single();
+
+                    if (wallet) {
+                        await window.SAWYAN.supabase
+                            .from('wallets')
+                            .update({
+                                balance: wallet.balance + dist.amount,
+                                total_earned: (wallet.total_earned || 0) + dist.amount,
+                                updated_at: new Date().toISOString()
+                            })
+                            .eq('id', wallet.id);
+
+                        await window.SAWYAN.supabase
+                            .from('wallet_transactions')
+                            .insert([{
+                                wallet_id: wallet.id,
+                                transaction_type: 'commission',
+                                amount: dist.amount,
+                                description: description,
+                                reference_id: dist.pool_transaction_id.toString(),
+                                status: 'completed'
+                            }]);
+
+                        walletUpdated = true;
+                        console.log(`✓ Wallet updated (fallback) for beneficiary at level ${dist.level}`);
+                    }
+                }
+
+                // أرسل إشعار لكل مستفيد (ما عدا المشتري — اتبعتله إشعار تاني فوق)
+                if (!isBuyer) {
+                    try {
+                        await window.SAWYAN.supabase
+                            .from('notifications')
+                            .insert([{
+                                user_type: 'member',
+                                user_id: dist.beneficiary_id,
+                                title: '🌟 وصلتك عمولة من فريقك!',
+                                message: `وصلتك عمولة ${dist.amount.toFixed(2)} ج.م من عملية شراء عضو في فريقك لدى ${merchantName}.`,
+                                notification_type: 'team_commission'
+                            }]);
+                    } catch (e) {
+                        console.log('Notification failed (non-critical)');
+                    }
+                }
+
+            } catch (benefErr) {
+                console.error(`Failed to credit beneficiary at level ${dist.level}:`, benefErr);
+                // نكمّل للباقي حتى لو واحد فشل
+            }
+        }
+
+        console.log(`✅ Distribution crediting complete for pool_tx #${poolTxId}`);
+    } catch (err) {
+        console.error('creditBeneficiariesWallets error:', err);
+    }
+}
