@@ -63,6 +63,13 @@
                     <span class="icon">⚙️</span>
                     <span>الإعدادات</span>
                 </a>
+                <a href="simulation.html"
+                   class="nav-item nav-item-external"
+                   title="فتح صفحة محاكاة العمولات">
+                    <span class="icon">🧪</span>
+                    <span>محاكاة العمولات</span>
+                    <span class="external-indicator">↗</span>
+                </a>
             </nav>
 
             <div class="sidebar-footer">
@@ -371,6 +378,51 @@
                             </div>
                         </div>
 
+                        <!-- 🌳 إعدادات نظام الـ Pool والتسويق الشبكي -->
+                        <div class="settings-section" style="border:2px solid #10b981; background:linear-gradient(135deg, rgba(16,185,129,0.04), rgba(168,85,247,0.04));">
+                            <h3 style="color:#047857;">🌳 إعدادات نظام الـ Pool (التسويق الشبكي)</h3>
+                            <p style="font-size:13px; color:#6b7280; margin-bottom:12px;">
+                                التحكم في المعادلات الكاملة لتوزيع العمولات. التغييرات بتأثر على المعاملات الجديدة بس (مش بتأثر على القديمة).
+                            </p>
+
+                            <div class="form-group">
+                                <label>نسبة الشركة من المبلغ المقتطع (%)</label>
+                                <input type="number" id="companyPercent" class="form-control" step="0.1" min="0" max="100" placeholder="25">
+                                <small style="color:#6b7280; font-size:11px;">
+                                    نسبة الشركة من الـ deducted_amount. الباقي (100 - هذه النسبة) = حصة الأعضاء (members_share) اللي بتدخل البول.
+                                </small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>عدد الأجيال (الستوبر)</label>
+                                <input type="number" id="generationsCount" class="form-control" step="1" min="1" max="50" placeholder="11">
+                                <small style="color:#6b7280; font-size:11px;">
+                                    عدد الأجيال اللي بتتوزّع عليها العمولة. ثابت لكل الأعضاء. لما عضو يشتري، بيتوزّع على نفسه + الأبلاينز لحد الستوبر ده.
+                                </small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>الحد الأقصى لحصة العضو الواحد في العملية (Cap)</label>
+                                <div style="display:flex; gap:8px; align-items:center;">
+                                    <input type="number" id="capAmount" class="form-control" step="0.01" min="0" placeholder="4605">
+                                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; white-space:nowrap;">
+                                        <input type="checkbox" id="capAutoCalc" checked>
+                                        حساب تلقائي
+                                    </label>
+                                </div>
+                                <small style="color:#6b7280; font-size:11px;">
+                                    لو "حساب تلقائي" مفعّل: Cap = (2^N - 1) × (members_share / N). بتتحدث أوتوماتيك لما تغيّر النسب أو الأجيال.
+                                </small>
+                            </div>
+
+                            <!-- معاينة الحسابات -->
+                            <div id="poolPreview" style="background:#f0fdf4; padding:12px; border-radius:8px; border:1px solid #bbf7d0; margin-top:12px; font-size:13px; color:#166534;">
+                                <strong>📊 معاينة الحسابات (بسعر 330 ج.م وخصم 10%):</strong>
+                                <div id="poolPreviewContent" style="margin-top:8px; font-family:monospace;">⏳ اكتب القيم وشوف المعاينة...</div>
+                            </div>
+                        </div>
+                        <!-- 🌳 نهاية إعدادات الـ Pool -->
+
                         <div class="settings-section">
                             <h3>إعدادات النظام</h3>
                             <div class="form-group">
@@ -476,6 +528,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="../shared/config/supabase.js"></script>
     <script src="../shared/components/logo.js"></script>
+    <script src="../shared/js/network-tree.js"></script>
     <script src="js/dashboard.js"></script>
     <script src="js/dashboard-extended.js"></script>
     <script src="../shared/js/features-upgrade.js"></script>
