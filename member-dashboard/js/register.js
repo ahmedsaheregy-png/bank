@@ -368,6 +368,7 @@ async function generateMemberCodeAfterRegistration() {
 
 async function handleRegister(e) {
     e.preventDefault();
+    console.log('🔥 handleRegister called');
 
     const submitBtn = document.getElementById('submitBtn');
     const fullName = document.getElementById('fullName').value.trim();
@@ -388,6 +389,7 @@ async function handleRegister(e) {
     const address = document.getElementById('address').value.trim();
 
     // التحقق من الحقول الإجبارية
+    console.log('fullName:', fullName, 'sponsorCode:', sponsorCode);
     if (!fullName) {
         alert('الاسم الكامل إجباري');
         return;
@@ -433,8 +435,10 @@ async function handleRegister(e) {
     submitBtn.disabled = true;
 
     try {
+        console.log('✅ Starting registration process...');
         // استخدام sponsorId المحفوظ من البحث التلقائي
         const verifiedSponsorId = document.getElementById('sponsorId').value;
+        console.log('verifiedSponsorId:', verifiedSponsorId);
 
         if (!verifiedSponsorId) {
             throw new Error('كود الراعي غير صحيح. تأكد من إدخال كود راعي موجود.\n\nملاحظة: للتسجيل تحت العضو المؤسس، استخدم الكود: 1');
@@ -443,7 +447,10 @@ async function handleRegister(e) {
         // تكوين رقم الهاتف الكامل
         const fullPhone = phoneDialCode + phone.replace(/\s/g, '');
 
-        // إنشاء سجل العضو - بدون member_code (سيتم توليده تلقائياً)
+        // توليد member_code قبل الـ insert (العمود NOT NULL بدون DEFAULT في الـ DB)
+        const memberCode = await generateMemberCodeAfterRegistration();
+        console.log('Generated member_code:', memberCode);
+
         // ⚠️ email و phone NOT NULL في الـ DB، لازم نبعت قيمة
         const tempEmail = email || `pending_${Date.now()}@sawyan.local`;
         const memberData = {
@@ -451,27 +458,38 @@ async function handleRegister(e) {
             email: tempEmail,
             password_hash: '123456',
             phone: fullPhone || '+200000000000',
+            member_code: memberCode,
             is_active: true
         };
 
-        // إضافة البيانات الاختيارية إذا تم تقديمها
-        if (dateOfBirth) memberData.date_of_birth = dateOfBirth;
-        if (gender) memberData.gender = gender;
-        if (maritalStatus) memberData.marital_status = maritalStatus;
-        if (nationalId) memberData.national_id = nationalId;
-        if (nationality) memberData.nationality = nationality;
-        if (countryOfResidence) memberData.country_of_residence = countryOfResidence;
-        if (city) memberData.city = city;
-        if (address) memberData.address = address;
-        if (phoneCountryCode) memberData.phone_country_code = phoneCountryCode;
+        // إضافة البيانات الاختيارية في metadata (لأنها مش موجودة كأعمدة في الـ DB)
+        const optionalMeta = {};
+        if (dateOfBirth) optionalMeta.date_of_birth = dateOfBirth;
+        if (gender) optionalMeta.gender = gender;
+        if (maritalStatus) optionalMeta.marital_status = maritalStatus;
+        if (nationalId) optionalMeta.national_id = nationalId;
+        if (nationality) optionalMeta.nationality = nationality;
+        if (countryOfResidence) optionalMeta.country_of_residence = countryOfResidence;
+        if (city) optionalMeta.city = city;
+        if (address) optionalMeta.address = address;
+        if (phoneCountryCode) optionalMeta.phone_country_code = phoneCountryCode;
+        if (Object.keys(optionalMeta).length > 0) {
+            memberData.metadata = optionalMeta;
+        }
 
         // 🌳 استخدم createMemberWithPlacement (بيعمل validation + insert + trigger تحديث الشجرة)
+        console.log('Calling createMemberWithPlacement with:', {
+            sponsorId: verifiedSponsorId,
+            parentId: placement.parentId,
+            side: placement.side
+        });
         const newMember = await window.SAWYAN_TREE.createMemberWithPlacement(
             memberData,
             verifiedSponsorId,        // sponsor_id (الأبلاين الحقيقي)
             placement.parentId,       // parent_member_id (الأبلاين المحظوط)
             placement.side            // placement_side ('left' or 'right')
         );
+        console.log('✅ Member created:', newMember);
 
         // تحديث البريد الإلكتروني إذا كان مؤقتاً
         let finalEmail = newMember.email;
@@ -485,7 +503,8 @@ async function handleRegister(e) {
             else newMember.email = finalEmail;
         }
 
-        const memberCode = newMember.member_code; // الحصول على الكود من قاعدة البيانات
+        // memberCode متولّد فعلاً فوق (line ~451) — نفس القيمة من الـ DB
+        console.log('✅ Member registered with code:', memberCode, 'id:', newMember.id);
 
         // إنشاء محفظة
         await window.SAWYAN.supabase
@@ -555,8 +574,16 @@ async function handleRegister(e) {
                 احتفظ بكود عضويتك! ستحتاجه للدخول ومشاركته مع الآخرين.
             </p>
             <a href="dashboard.html" class="btn btn-primary btn-block">دخول لوحة التحكم</a>
+            <p style="margin-top: 12px; font-size: 12px; color: #9ca3af;">⏳ هيتحوّل تلقائياً لوحة التحكم بعد 5 ثواني...</p>
         `;
         document.querySelector('.auth-card').appendChild(successMessage);
+        console.log('✅ Registration complete! Redirecting in 5 seconds...');
+
+        // تحويل تلقائي للوحة التحكم بعد 5 ثواني
+        setTimeout(() => {
+            console.log('⏰ Redirecting to dashboard now...');
+            window.location.href = 'dashboard.html';
+        }, 5000);
 
     } catch (error) {
         console.error('Error:', error);
