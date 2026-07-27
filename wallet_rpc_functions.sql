@@ -135,13 +135,13 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================================================
--- 3) approve_withdrawal(p_wallet_transaction_id)
+-- 3) approve_withdrawal(p_transaction_id)
 -- ============================================================================
 -- لما الأدمن يوافق على طلب السحب: ينقل المبلغ من pending_balance لـ total_withdrawn
 -- Returns: JSONB { success, new_balance, new_pending_balance }
 -- ============================================================================
 CREATE OR REPLACE FUNCTION sawyan.approve_withdrawal(
-    p_wallet_transaction_id UUID
+    p_transaction_id UUID
 )
 RETURNS JSONB AS $$
 DECLARE
@@ -151,7 +151,7 @@ BEGIN
     -- جلب طلب السحب
     SELECT id, wallet_id, amount, status INTO v_wtx
     FROM sawyan.wallet_transactions
-    WHERE id = p_wallet_transaction_id
+    WHERE id = p_transaction_id
     FOR UPDATE;
 
     IF NOT FOUND THEN
@@ -194,13 +194,13 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================================================
--- 4) reject_withdrawal(p_wallet_transaction_id, p_reason)
+-- 4) reject_withdrawal(p_transaction_id, p_reason)
 -- ============================================================================
 -- لما الأدمن يرفض طلب السحب: يرجّع المبلغ من pending_balance لـ balance
 -- Returns: JSONB { success, new_balance, new_pending_balance }
 -- ============================================================================
 CREATE OR REPLACE FUNCTION sawyan.reject_withdrawal(
-    p_wallet_transaction_id UUID,
+    p_transaction_id UUID,
     p_reason TEXT DEFAULT NULL
 )
 RETURNS JSONB AS $$
@@ -211,7 +211,7 @@ BEGIN
     -- جلب طلب السحب
     SELECT id, wallet_id, amount, status INTO v_wtx
     FROM sawyan.wallet_transactions
-    WHERE id = p_wallet_transaction_id
+    WHERE id = p_transaction_id
     FOR UPDATE;
 
     IF NOT FOUND THEN
@@ -256,10 +256,10 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ============================================================================
 -- GRANTs
 -- ============================================================================
-GRANT EXECUTE ON FUNCTION sawyan.add_wallet_balance(UUID, NUMERIC, TEXT, VARCHAR, TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION sawyan.deduct_wallet_balance(UUID, NUMERIC, TEXT, JSONB) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION sawyan.approve_withdrawal(UUID) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION sawyan.reject_withdrawal(UUID, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION sawyan.add_wallet_balance(UUID, NUMERIC, TEXT, VARCHAR, TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION sawyan.deduct_wallet_balance(UUID, NUMERIC, TEXT, JSONB) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION sawyan.approve_withdrawal(UUID) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION sawyan.reject_withdrawal(UUID, TEXT) TO anon, authenticated, service_role;
 
 -- إعادة تحميل schema cache لـ PostgREST
 NOTIFY pgrst, 'reload schema';
