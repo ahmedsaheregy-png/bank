@@ -520,17 +520,17 @@ async function loadTree() {
     }
 }
 
-// Helper: عرض الشجرة بشكل بصري — غير محدود المستويات مع layout ذكي
+// Helper: عرض الشجرة بشكل بصري — مرسومة بخطوط ربط + LTR ثابت
 function renderTreeView(me, downline) {
-    const allMembers = downline; // يشملني أنا (depth: 0) + كل الـ downline
+    const allMembers = downline;
 
-    // حساب أقصى عمق فعلي في البيانات
+    // حساب أقصى عمق فعلي
     let actualMaxDepth = 0;
     allMembers.forEach(m => {
         if (m.depth !== undefined && m.depth > actualMaxDepth) actualMaxDepth = m.depth;
     });
 
-    // بناء خريطة parent → children (نستخدم مفتاح string عشان ID ممكن يكون UUID)
+    // بناء خريطة parent → children (مفتاح string للـ UUID)
     const childrenMap = {};
     allMembers.forEach(m => {
         const pid = String(m.parent_id);
@@ -538,11 +538,6 @@ function renderTreeView(me, downline) {
         const side = m.pos || m.position || 'left';
         if (!childrenMap[pid][side]) childrenMap[pid][side] = m;
     });
-
-    // أبنائي المباشرين
-    const myChildren = allMembers.filter(d => String(d.parent_id) === String(me.id));
-    const leftChild = myChildren.find(c => (c.pos || c.position) === 'left');
-    const rightChild = myChildren.find(c => (c.pos || c.position) === 'right');
 
     function countDescendants(memberId) {
         const ch = childrenMap[String(memberId)];
@@ -554,58 +549,111 @@ function renderTreeView(me, downline) {
         return count;
     }
 
-    // حساب min-width مناسب بناءً على العمق
-    // كل مستوى بيتضاعف العرض (2^depth عقد في أسوأ حال) — نستخدم عامل تصغير
-    const treeMinWidth = Math.max(700, Math.pow(2, Math.min(actualMaxDepth, 10)) * 110);
+    // عرض مناسب
+    const treeMinWidth = Math.max(700, Math.pow(2, Math.min(actualMaxDepth, 10)) * 120);
+
+    // CSS للشجرة — direction:ltr عشان اليسار يكون فعلاً على الشمال
+    const treeCSS = `
+        <style>
+            .tree-wrap { direction: ltr; text-align: center; }
+            .tree-node-col { display: flex; flex-direction: column; align-items: center; position: relative; }
+            .tree-card {
+                padding: 8px 12px; border-radius: 10px; text-align: center;
+                min-width: 90px; max-width: 110px; position: relative; z-index: 2;
+                background: #fff; border: 2px solid #10b981;
+            }
+            .tree-card.is-me {
+                background: linear-gradient(135deg, #10b981, #059669); color: white;
+                box-shadow: 0 4px 12px rgba(16,185,129,0.3);
+            }
+            .tree-card.is-left { border-color: #3b82f6; }
+            .tree-card.is-right { border-color: #f59e0b; }
+            .tree-card-empty {
+                padding: 8px 14px; border-radius: 10px; border: 2px dashed #d1d5db;
+                color: #9ca3af; text-align: center; min-width: 80px; max-width: 100px;
+                font-size: 11px; background: #f9fafb;
+            }
+            .tree-children {
+                display: flex; justify-content: center; position: relative;
+                padding-top: 20px;
+            }
+            .tree-children::before {
+                content: ''; position: absolute; top: 0; left: 50%;
+                width: 2px; height: 20px; background: #d1d5db;
+                transform: translateX(-50%);
+            }
+            .tree-child-wrap {
+                display: flex; flex-direction: column; align-items: center; position: relative;
+            }
+            .tree-child-wrap::before {
+                content: ''; position: absolute; top: -20px; left: 50%;
+                width: 2px; height: 20px; background: #d1d5db;
+                transform: translateX(-50%);
+            }
+            .tree-children > .tree-child-wrap:first-child::after {
+                content: ''; position: absolute; top: -20px; left: 50%;
+                width: 50%; height: 2px; background: #d1d5db;
+            }
+            .tree-children > .tree-child-wrap:last-child::after {
+                content: ''; position: absolute; top: -20px; right: 50%;
+                width: 50%; height: 2px; background: #d1d5db;
+            }
+            .tree-children > .tree-child-wrap:only-child::before {
+                display: none;
+            }
+            .tree-children > .tree-child-wrap:only-child::after {
+                display: none;
+            }
+            .tree-children > .tree-child-wrap:not(:first-child):not(:last-child)::after {
+                content: ''; position: absolute; top: -20px; left: 0;
+                width: 100%; height: 2px; background: #d1d5db;
+            }
+        </style>
+    `;
 
     function renderNode(member, depth, side) {
+        const memberChildren = member ? childrenMap[String(member.id)] : null;
+        const hasLeft = memberChildren && memberChildren.left;
+        const hasRight = memberChildren && memberChildren.right;
+        const hasChildren = hasLeft || hasRight;
+
+        // بطاقة النود
+        let cardHtml;
         if (!member) {
-            return `<div style="display:flex; flex-direction:column; align-items:center;">
-                <div class="tree-node-empty" style="background:#f9fafb; padding:8px 14px; border-radius:10px; border:2px dashed #d1d5db; color:#9ca3af; text-align:center; min-width:80px; max-width:100px; font-size:11px;">
-                    <div>فاضي</div><div style="font-size:14px;">+</div>
-                </div>
+            cardHtml = `<div class="tree-card-empty"><div>فاضي</div><div style="font-size:16px;">+</div></div>`;
+        } else {
+            const isMe = member.id === me.id;
+            const name = member.full_name || 'بدون اسم';
+            const code = member.member_code || '?';
+            const descCount = countDescendants(member.id);
+            const sideClass = side === 'left' ? 'is-left' : side === 'right' ? 'is-right' : (isMe ? 'is-me' : '');
+            const cardClass = isMe ? 'tree-card is-me' : `tree-card ${sideClass}`;
+
+            cardHtml = `<div class="${cardClass}">
+                <div style="font-size:10px; ${isMe ? 'opacity:0.9' : 'color:#9ca3af'};">${isMe ? '⭐ أنت' : ''}</div>
+                <div style="font-weight:bold; font-size:11px;">${name.length > 12 ? name.substring(0,12)+'...' : name}</div>
+                <div style="font-size:9px; ${isMe ? 'opacity:0.9' : 'color:#6b7280'};">#${code}</div>
+                ${hasChildren ? `<div style="font-size:8px; ${isMe ? 'opacity:0.8' : 'color:#9ca3af'}; margin-top:2px;">+${descCount} تحت</div>` : ''}
             </div>`;
         }
-        const isMe = member.id === me.id;
-        const name = member.full_name || 'بدون اسم';
-        const code = member.member_code || '?';
-        const memberChildren = childrenMap[String(member.id)];
-        const hasChildren = memberChildren && (memberChildren.left || memberChildren.right);
-        const descCount = countDescendants(member.id);
-        const sideColor = side === 'left' ? '#3b82f6' : side === 'right' ? '#f59e0b' : '#10b981';
-        const sideIcon = side === 'left' ? '⬅️' : side === 'right' ? '➡️' : '';
-        const bgStyle = isMe
-            ? 'background:linear-gradient(135deg, #10b981, #059669); color:white; box-shadow:0 4px 12px rgba(16,185,129,0.3);'
-            : `background:#fff; border:2px solid ${sideColor};`;
 
-        // المسافة بين النودات بتقل مع كل مستوى عشان تتسع
-        const gapSize = Math.max(8, 50 - depth * 6);
+        let html = `<div class="tree-node-col">${cardHtml}`;
 
-        let html = `<div style="display:flex; flex-direction:column; align-items:center;">
-            <div style="padding:${depth > 4 ? '4px 8px' : '6px 12px'}; border-radius:10px; text-align:center; min-width:${depth > 6 ? '60px' : '80px'}; max-width:100px; ${bgStyle}">
-                <div style="font-size:${depth > 5 ? '8px' : '10px'}; ${isMe ? 'opacity:0.9' : 'color:#9ca3af'};">${isMe ? 'أنت' : ''}</div>
-                <div style="font-weight:bold; font-size:${depth > 5 ? '9px' : '11px'};">${name.length > 12 ? name.substring(0,12)+'...' : name}</div>
-                <div style="font-size:${depth > 5 ? '7px' : '9px'}; ${isMe ? 'opacity:0.9' : 'color:#6b7280'};">#${code}</div>
-                ${depth <= 3 && sideIcon ? `<div style="font-size:9px;">${sideIcon}</div>` : ''}
-                ${depth <= 4 && descCount > 0 ? `<div style="font-size:8px; ${isMe ? 'opacity:0.8' : 'color:#9ca3af'}; margin-top:1px;">+${descCount}</div>` : ''}
-            </div>`;
-
-        // أظهر كل المستويات بدون حد
         if (hasChildren) {
-            // خط vertical يوصّل الأب بالأبناء
-            html += `<div style="width:2px; height:12px; background:#d1d5db;"></div>`;
-            html += `<div style="display:flex; gap:${gapSize}px;">`;
-            html += renderNode(memberChildren.left, depth + 1, 'left');
-            html += renderNode(memberChildren.right, depth + 1, 'right');
-            html += '</div>';
+            html += `<div class="tree-children">`;
+            // LTR: left child أول شئ على الشمال، right child على اليمين
+            html += `<div class="tree-child-wrap">${renderNode(memberChildren.left, depth + 1, 'left')}</div>`;
+            html += `<div class="tree-child-wrap">${renderNode(memberChildren.right, depth + 1, 'right')}</div>`;
+            html += `</div>`;
         }
 
-        html += '</div>';
+        html += `</div>`;
         return html;
     }
 
     return `
-        <div id="treeViewContainer" style="overflow:auto; padding:20px 0; max-height:600px; border:1px solid #e5e7eb; border-radius:12px; position:relative;">
+        ${treeCSS}
+        <div id="treeViewContainer" class="tree-wrap" style="overflow:auto; padding:20px 10px; max-height:600px; border:1px solid #e5e7eb; border-radius:12px;">
             <div style="display:flex; flex-direction:column; align-items:center; min-width:${treeMinWidth}px; padding:10px;">
                 ${renderNode(me, 0, null)}
             </div>
