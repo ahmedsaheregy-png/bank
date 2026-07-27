@@ -2608,11 +2608,20 @@ async function submitAddMember() {
     submitBtn.textContent = '⏳ جاري الإضافة...';
 
     try {
+        // Hash كلمة المرور الافتراضية
+        async function sha256(text) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(text + 'sawyan_salt_2024');
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
         const memberData = {
             full_name: name,
             email: email || undefined,
             phone: phone || undefined,
-            password_hash: '123456',
+            password_hash: '[HASHED]',
+            password_hash_v2: await sha256('123456'),
             is_active: true
         };
 
@@ -3021,14 +3030,23 @@ async function saveSettings() {
 
         // تحديث كلمة المرور إذا تم إدخالها
         if (newPassword && currentPassword) {
-            // التحقق من كلمة المرور الحالية
-            if (memberData.password_hash !== currentPassword) {
+            // التحقق من كلمة المرور الحالية (SHA-256)
+            async function sha256(text) {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(text + 'sawyan_salt_2024');
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            }
+            const currentHashed = await sha256(currentPassword);
+            if (memberData.password_hash_v2 !== currentHashed) {
                 throw new Error('كلمة المرور الحالية غير صحيحة');
             }
 
+            const newHashed = await sha256(newPassword);
             await window.SAWYAN.supabase
                 .from('members')
-                .update({ password_hash: newPassword })
+                .update({ password_hash: '[HASHED]', password_hash_v2: newHashed })
                 .eq('id', currentUser.id);
         }
 

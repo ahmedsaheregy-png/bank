@@ -451,12 +451,22 @@ async function handleRegister(e) {
         const memberCode = await generateMemberCodeAfterRegistration();
         console.log('Generated member_code:', memberCode);
 
+        // Hash كلمة المرور بـ SHA-256
+        async function sha256(text) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(text + 'sawyan_salt_2024');
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
         // ⚠️ email و phone NOT NULL في الـ DB، لازم نبعت قيمة
         const tempEmail = email || `pending_${Date.now()}@sawyan.local`;
         const memberData = {
             full_name: fullName,
             email: tempEmail,
-            password_hash: '123456',
+            password_hash: '[HASHED]',
+            password_hash_v2: await sha256('123456'),
             phone: fullPhone || '+200000000000',
             member_code: memberCode,
             is_active: true

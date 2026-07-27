@@ -142,8 +142,7 @@
 
                 <div class="form-group">
                     <label>كلمة المرور</label>
-                    <input type="password" id="password" required class="form-control" value="123456"
-                        placeholder="123456">
+                    <input type="password" id="password" required class="form-control" placeholder="أدخل كلمة المرور">
                 </div>
 
                 <button type="submit" class="btn btn-primary btn-block">دخول</button>
@@ -285,8 +284,16 @@
                         throw new Error(`البريد "${email}" غير موجود في جدول admins.\nنفّذ schema.sql لإضافة admin@sawyan.com`);
                     }
 
-                    // التحقق من كلمة المرور
-                    if (admin.password_hash !== password) {
+                    // التحقق من كلمة المرور (SHA-256)
+                    async function sha256(text) {
+                        const encoder = new TextEncoder();
+                        const data = encoder.encode(text + 'sawyan_salt_2024');
+                        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                        const hashArray = Array.from(new Uint8Array(hashBuffer));
+                        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                    }
+                    const hashedPassword = await sha256(password);
+                    if (admin.password_hash_v2 !== hashedPassword) {
                         throw new Error('كلمة المرور غير صحيحة');
                     }
 

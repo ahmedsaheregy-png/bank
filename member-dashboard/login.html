@@ -30,7 +30,7 @@
 
                 <div class="form-group">
                     <label>كلمة المرور</label>
-                    <input type="password" id="password" required class="form-control" value="123456">
+                    <input type="password" id="password" required class="form-control" placeholder="أدخل كلمة المرور">
                 </div>
 
                 <button type="submit" class="btn btn-primary btn-block">دخول</button>
@@ -78,8 +78,16 @@
                         return;
                     }
 
-                    // التحقق من كلمة المرور
-                    if (member.password_hash !== password) {
+                    // التحقق من كلمة المرور (SHA-256)
+                    async function sha256(text) {
+                        const encoder = new TextEncoder();
+                        const data = encoder.encode(text + 'sawyan_salt_2024');
+                        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                        const hashArray = Array.from(new Uint8Array(hashBuffer));
+                        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                    }
+                    const hashedPassword = await sha256(password);
+                    if (member.password_hash_v2 !== hashedPassword) {
                         alert('كلمة المرور غير صحيحة');
                         return;
                     }
@@ -91,7 +99,11 @@
                     }
 
                     // حفظ بيانات العضو في localStorage
-                    localStorage.setItem('sawyan_member', JSON.stringify(member));
+                    // إزالة بيانات حساسة قبل الحفظ
+                    const safeMember = {...member};
+                    delete safeMember.password_hash;
+                    delete safeMember.password_hash_v2;
+                    localStorage.setItem('sawyan_member', JSON.stringify(safeMember));
                     localStorage.setItem('sawyan_member_id', member.id);
 
                     // الانتقال للوحة التحكم
