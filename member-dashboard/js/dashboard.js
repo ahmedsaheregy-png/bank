@@ -2181,7 +2181,6 @@ async function submitMemberTransaction(e) {
             plan_share: planShare,
             payment_method: selectedPaymentMethod,
             status: transactionStatus,
-            payment_status: transactionStatus,
             metadata: {
                 notes: notes,
                 provider_info: providerData
