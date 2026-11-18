@@ -466,22 +466,35 @@
             '</div>' +
 
             '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
-                '<h3 style="margin:0 0 10px 0;font-size:1rem;color:#0f172a;">🌍 بوابة تفعيل الدول والامتثال القانوني والضريبي (`sawyan.countries` — D13 / D18 / D19)</h3>' +
-                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>الدولة</th><th>العملة / التوقيت</th><th>الهدف / S03 ($)</th><th>ضرائب VAT / WHT</th><th>الرأي القانوني والشروط</th><th>التجار النشطون (الحد)</th><th>الحالة</th><th>إجراء الحوكمة</th></tr></thead><tbody>' +
+                '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">' +
+                    '<div>' +
+                        '<h3 style="margin:0;font-size:1rem;color:#0f172a;">🌍 بوابة تفعيل وتخصيص مدخلات الدول (`sawyan.countries` — D13 / D18 / D19)</h3>' +
+                        '<div style="font-size:0.78rem;color:#64748b;margin-top:3px;">تحكّم كامل ومباشر في العملة، سعر الصرف الإداري، الهدف الشهري، الستوبر المالي S03، الضرائب، مواعيد الصرف، وحالة التفعيل لكل دولة على حدة.</div>' +
+                    '</div>' +
+                    '<button type="button" class="btn btn-primary" onclick="svOpenCountryEditModal(null)">➕ إضافة دولة جديدة للنظام</button>' +
+                '</div>' +
+                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>الدولة</th><th>العملة / سعر الصرف</th><th>الهدف الشهري / S03</th><th>ضرائب VAT / WHT</th><th>الصرف / المرتجعات</th><th>الرأي القانوني</th><th>التجار (الحد)</th><th>الحالة</th><th>إجراءات التعديل والحوكمة</th></tr></thead><tbody>' +
                 countries.map(function (c) {
                     const nameAr = (c.country_name_i18n && c.country_name_i18n.ar) || c.country_code;
+                    const fx = Number(c.admin_fx_rate || 1);
+                    const localTarget = Number(c.monthly_target_usd || 24.75) * fx;
                     const merchOk = Number(c.active_merchants_count || 0) >= Number(c.min_merchants_threshold || 1);
+                    const founder = isSovereignFounder(LIVE_BUNDLE && LIVE_BUNDLE.admin);
                     return '<tr>' +
-                        '<td><b>' + esc(nameAr) + ' (' + esc(c.country_code) + ')</b></td>' +
-                        '<td>' + esc(c.currency_code) + ' • <small>' + esc(c.iana_timezone) + '</small></td>' +
-                        '<td>$' + fmt2(c.monthly_target_usd) + ' / <b>$' + fmt2(c.financial_stopper_usd) + '</b></td>' +
-                        '<td>VAT ' + Number(c.vat_rate || 0) + '% • WHT ' + Number(c.wht_rate || 0) + '%</td>' +
+                        '<td><b>' + esc(nameAr) + ' (' + esc(c.country_code) + ')</b><div style="font-size:0.72rem;color:#64748b;">' + esc(c.iana_timezone) + '</div></td>' +
+                        '<td><b>' + esc(c.currency_code) + '</b><div style="font-size:0.74rem;color:#0f766e;font-weight:800;">1$ = ' + fmt2(fx) + ' ' + esc(c.currency_code) + '</div></td>' +
+                        '<td><b>$' + fmt2(c.monthly_target_usd) + '</b> <small style="color:#64748b;">(' + fmt2(localTarget) + ' ' + esc(c.currency_code) + ')</small><div style="font-size:0.74rem;color:#1e293b;">S03: <b>$' + fmt2(c.financial_stopper_usd) + '</b></div></td>' +
+                        '<td>VAT ' + Number(c.vat_rate || 0) + '%<br>WHT ' + Number(c.wht_rate || 0) + '%</td>' +
+                        '<td>يوم <b>' + Number(c.payout_day || 15) + '</b><div style="font-size:0.72rem;color:#64748b;">إغلاق مرتجع: يوم ' + Number(c.return_cutoff_day || 14) + '</div></td>' +
                         '<td>' + (c.legal_opinion_verified ? '✅ موثق (' + esc(c.local_terms_version) + ')' : '❌ غير موثق') + '</td>' +
                         '<td><b style="color:' + (merchOk ? '#059669' : '#dc2626') + ';">' + Number(c.active_merchants_count || 0) + ' / ' + Number(c.min_merchants_threshold || 1) + '</b></td>' +
-                        '<td>' + (c.is_active ? '<span class="badge badge-success">🟢 نشطة</span>' : '<span class="badge badge-warning">⚪ بانتظار البوابة</span>') + '</td>' +
-                        '<td>' + (!c.is_active
-                            ? '<button type="button" class="btn-sm btn-primary" onclick="svSubmitCountryGate(\'' + esc(c.country_code) + '\')">' + (isSovereignFounder(LIVE_BUNDLE && LIVE_BUNDLE.admin) ? '👑 تفعيل سيادي فوري' : '📤 طلب تفعيل D13 (Maker)') + '</button>'
-                            : '<span style="font-size:0.76rem;color:#059669;font-weight:800;">مفعلة دستورياً</span>') + '</td>' +
+                        '<td>' + (c.is_active ? '<span class="badge badge-success">🟢 نشطة</span>' : '<span class="badge badge-warning">⚪ غير نشطة</span>') + '</td>' +
+                        '<td><div style="display:flex;gap:5px;flex-wrap:wrap;">' +
+                            '<button type="button" class="btn-sm" style="background:#0f172a;color:#ffffff;border:none;padding:5px 10px;border-radius:7px;font-family:Tajawal,sans-serif;font-weight:800;cursor:pointer;" onclick="svOpenCountryEditModal(\'' + esc(c.country_code) + '\')">⚙️ تعديل المدخلات</button>' +
+                            (!c.is_active
+                                ? '<button type="button" class="btn-sm btn-primary" onclick="svSubmitCountryGate(\'' + esc(c.country_code) + '\')">' + (founder ? '👑 تفعيل فوري' : '📤 طلب تفعيل D13') + '</button>'
+                                : (founder ? '<button type="button" class="btn-sm" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:5px 9px;border-radius:7px;font-family:Tajawal,sans-serif;font-weight:800;cursor:pointer;" onclick="svToggleCountryActive(\'' + esc(c.country_code) + '\',false)">⏸️ إيقاف</button>' : '<span style="font-size:0.74rem;color:#059669;font-weight:800;">مفعلة</span>')) +
+                        '</div></td>' +
                     '</tr>';
                 }).join('') +
                 '</tbody></table></div>' +
@@ -776,6 +789,193 @@
             });
             renderSovereignLivePage();
             showToast('اكتملت محاكاة الضغط الأكتواري S06 بنجاح (عجز = $0.00).', false);
+        } catch (err) {
+            showToast(err.message, true);
+        }
+    };
+
+    window.svUpdateCountryModalPreview = function () {
+        const fx = Number((document.getElementById('svEditCtyFx') || {}).value || 1);
+        const tgt = Number((document.getElementById('svEditCtyTarget') || {}).value || 24.75);
+        const stp = Number((document.getElementById('svEditCtyStopper') || {}).value || 4605.75);
+        const cur = String((document.getElementById('svEditCtyCurrency') || {}).value || 'EGP').toUpperCase();
+        const prev = document.getElementById('svEditCtyLocalPreview');
+        if (prev) {
+            prev.innerHTML = '💡 المعادل بالعملة المحلية وفق سعر الصرف المدخل: الهدف الشهري = <b>' + fmt2(tgt * fx) + ' ' + esc(cur) + '</b> • الستوبر المالي S03 = <b>' + fmt2(stp * fx) + ' ' + esc(cur) + '</b>';
+        }
+    };
+
+    window.svOpenCountryEditModal = function (countryCode) {
+        const countries = (LIVE_BUNDLE && LIVE_BUNDLE.countries) || [];
+        const existing = countryCode ? countries.find(function (x) { return x.country_code === countryCode; }) : null;
+        const isNew = !existing;
+        const c = existing || {
+            country_code: '',
+            country_name_i18n: { ar: '', en: '' },
+            currency_code: 'AED',
+            iana_timezone: 'Asia/Dubai',
+            admin_fx_rate: 3.6725,
+            monthly_target_usd: 24.75,
+            financial_stopper_usd: 4605.75,
+            compensatory_admin_fee_usd: 0.00,
+            vat_rate: 0.00,
+            wht_rate: 0.00,
+            payout_day: 15,
+            return_cutoff_day: 14,
+            min_merchants_threshold: 5,
+            local_terms_version: 'v3.0',
+            legal_opinion_doc_url: '',
+            legal_opinion_verified: true,
+            is_active: false
+        };
+        const founder = isSovereignFounder(LIVE_BUNDLE && LIVE_BUNDLE.admin);
+
+        let overlay = document.getElementById('svCountryEditorOverlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'svCountryEditorOverlay';
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:10040;background:rgba(15,23,42,0.65);display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;';
+            document.body.appendChild(overlay);
+        }
+        overlay.dataset.isNew = isNew ? '1' : '0';
+        overlay.style.display = 'flex';
+
+        overlay.innerHTML =
+            '<div style="background:#ffffff;border-radius:16px;max-width:760px;width:100%;max-height:92vh;overflow-y:auto;padding:22px;box-shadow:0 24px 48px rgba(15,23,42,0.35);font-family:Tajawal,sans-serif;direction:rtl;">' +
+                '<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1.5px solid #e2e8f0;padding-bottom:12px;margin-bottom:14px;">' +
+                    '<div>' +
+                        '<h3 style="margin:0;font-size:1.12rem;color:#0f172a;">' + (isNew ? '➕ إضافة دولة جديدة وتحديد مدخلاتها السيادية' : ('⚙️ تعديل مدخلات دولة: ' + esc((c.country_name_i18n && c.country_name_i18n.ar) || c.country_code) + ' (' + esc(c.country_code) + ')')) + '</h3>' +
+                        '<div style="font-size:0.78rem;color:#64748b;margin-top:2px;">جميع التعديلات تُحفظ مباشرة في جدول `sawyan.countries` وتُوثق في سجل التدقيق الجنائي.</div>' +
+                    '</div>' +
+                    '<button type="button" onclick="document.getElementById(\'svCountryEditorOverlay\').style.display=\'none\'" style="background:#f1f5f9;border:none;width:34px;height:34px;border-radius:8px;font-size:1.1rem;cursor:pointer;font-weight:900;">✕</button>' +
+                '</div>' +
+
+                '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:11px;margin-bottom:12px;">' +
+                    '<div><label style="font-size:0.78rem;font-weight:800;color:#334155;">رمز الدولة ISO (حرفان)</label><input id="svEditCtyCode" type="text" maxlength="2" ' + (isNew ? '' : 'readonly style="background:#f1f5f9;font-weight:900;"') + ' value="' + esc(c.country_code) + '" placeholder="AE" class="form-control"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:800;color:#334155;">اسم الدولة (عربي)</label><input id="svEditCtyNameAr" type="text" value="' + esc((c.country_name_i18n && c.country_name_i18n.ar) || '') + '" placeholder="الإمارات" class="form-control"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:800;color:#334155;">اسم الدولة (English)</label><input id="svEditCtyNameEn" type="text" value="' + esc((c.country_name_i18n && c.country_name_i18n.en) || '') + '" placeholder="UAE" class="form-control"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:800;color:#334155;">رمز العملة (3 أحرف)</label><input id="svEditCtyCurrency" type="text" maxlength="3" oninput="svUpdateCountryModalPreview()" value="' + esc(c.currency_code) + '" placeholder="AED" class="form-control"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:800;color:#0f766e;">سعر الصرف الإداري مقابل $1</label><input id="svEditCtyFx" type="number" step="0.0001" min="0.0001" oninput="svUpdateCountryModalPreview()" value="' + Number(c.admin_fx_rate || 1) + '" class="form-control" style="border-color:#10b981;font-weight:800;"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:800;color:#334155;">المنطقة الزمنية (IANA)</label><input id="svEditCtyTz" type="text" value="' + esc(c.iana_timezone) + '" placeholder="Asia/Dubai" class="form-control"></div>' +
+                '</div>' +
+
+                '<div id="svEditCtyLocalPreview" style="background:#ecfdf5;border:1px solid #6ee7b7;color:#065f46;padding:9px 12px;border-radius:10px;font-size:0.82rem;margin-bottom:12px;"></div>' +
+
+                '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:11px;margin-bottom:12px;">' +
+                    '<div><label style="font-size:0.78rem;font-weight:800;color:#334155;">الهدف الشهري للعضو ($)</label><input id="svEditCtyTarget" type="number" step="0.25" min="1" oninput="svUpdateCountryModalPreview()" value="' + Number(c.monthly_target_usd || 24.75) + '" class="form-control"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:800;color:#334155;">الستوبر المالي الشهري S03 ($)</label><input id="svEditCtyStopper" type="number" step="0.25" min="1" oninput="svUpdateCountryModalPreview()" value="' + Number(c.financial_stopper_usd || 4605.75) + '" class="form-control"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:800;color:#334155;">رسم الهدف التعويضي ($)</label><input id="svEditCtyCompFee" type="number" step="0.25" min="0" value="' + Number(c.compensatory_admin_fee_usd || 0) + '" class="form-control"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:800;color:#334155;">ضريبة القيمة المضافة VAT (%)</label><input id="svEditCtyVat" type="number" step="0.5" min="0" max="99" value="' + Number(c.vat_rate || 0) + '" class="form-control"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:800;color:#334155;">ضريبة المنبع WHT (%)</label><input id="svEditCtyWht" type="number" step="0.5" min="0" max="99" value="' + Number(c.wht_rate || 0) + '" class="form-control"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:800;color:#334155;">الحد الأدنى للتجار النشطين</label><input id="svEditCtyMinMerch" type="number" step="1" min="1" value="' + Number(c.min_merchants_threshold || 5) + '" class="form-control"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:800;color:#334155;">يوم صرف الأرباح (2–28)</label><input id="svEditCtyPayoutDay" type="number" step="1" min="2" max="28" value="' + Number(c.payout_day || 15) + '" class="form-control"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:800;color:#334155;">يوم إغلاق المرتجعات (&lt; يوم الصرف)</label><input id="svEditCtyCutoffDay" type="number" step="1" min="1" max="27" value="' + Number(c.return_cutoff_day || 14) + '" class="form-control"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:800;color:#334155;">إصدار الشروط المحلية</label><input id="svEditCtyTerms" type="text" value="' + esc(c.local_terms_version || 'v3.0') + '" class="form-control"></div>' +
+                '</div>' +
+
+                '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:11px;margin-bottom:14px;">' +
+                    '<div><label style="font-size:0.78rem;font-weight:800;color:#334155;">رابط الرأي القانوني الموثق (اختياري)</label><input id="svEditCtyLegalUrl" type="text" value="' + esc(c.legal_opinion_doc_url || '') + '" placeholder="https://legal.sawyan.global/opinion.pdf" class="form-control"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:800;color:#334155;">حالة الرأي القانوني D18</label><select id="svEditCtyLegalOk" class="form-control"><option value="true" ' + (c.legal_opinion_verified ? 'selected' : '') + '>✅ موثق ومعتمد</option><option value="false" ' + (!c.legal_opinion_verified ? 'selected' : '') + '>❌ غير موثق بعد</option></select></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:800;color:#334155;">حالة تفعيل الدولة التشغيلية</label><select id="svEditCtyActive" class="form-control"><option value="true" ' + (c.is_active ? 'selected' : '') + '>🟢 نشطة ومفعلة للتسجيل والعمليات</option><option value="false" ' + (!c.is_active ? 'selected' : '') + '>⚪ غير نشطة / موقوفة مؤقتاً</option></select></div>' +
+                '</div>' +
+
+                '<div style="margin-bottom:14px;"><label style="font-size:0.78rem;font-weight:800;color:#334155;">سبب التعديل / التوثيق الرقابي</label><input id="svEditCtyReason" type="text" value="تحديث سيادي لمدخلات ومعاملات الدولة وفق خطة التشغيل" class="form-control"></div>' +
+
+                '<div style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #e2e8f0;padding-top:14px;">' +
+                    '<button type="button" class="btn btn-outline" onclick="document.getElementById(\'svCountryEditorOverlay\').style.display=\'none\'">إلغاء</button>' +
+                    '<button type="button" id="svSaveCtyModalBtn" class="btn btn-primary" onclick="svSaveCountryModal()">' + (founder ? '👑 حفظ وتطبيق فوري بصلاحية المؤسس' : '📤 إرسال تعديل الدولة للاعتماد المزدوج') + '</button>' +
+                '</div>' +
+            '</div>';
+
+        window.svUpdateCountryModalPreview();
+    };
+
+    window.svSaveCountryModal = async function () {
+        try {
+            const code = String(document.getElementById('svEditCtyCode').value || '').trim().toUpperCase();
+            const nameAr = String(document.getElementById('svEditCtyNameAr').value || '').trim();
+            const nameEn = String(document.getElementById('svEditCtyNameEn').value || '').trim() || code;
+            const currency = String(document.getElementById('svEditCtyCurrency').value || '').trim().toUpperCase();
+            const fx = Number(document.getElementById('svEditCtyFx').value || 0);
+            const tz = String(document.getElementById('svEditCtyTz').value || '').trim() || 'UTC';
+            const targetUsd = Number(document.getElementById('svEditCtyTarget').value || 0);
+            const stopperUsd = Number(document.getElementById('svEditCtyStopper').value || 0);
+            const compFee = Number(document.getElementById('svEditCtyCompFee').value || 0);
+            const vat = Number(document.getElementById('svEditCtyVat').value || 0);
+            const wht = Number(document.getElementById('svEditCtyWht').value || 0);
+            const minMerch = Number(document.getElementById('svEditCtyMinMerch').value || 1);
+            const payoutDay = Number(document.getElementById('svEditCtyPayoutDay').value || 15);
+            const cutoffDay = Number(document.getElementById('svEditCtyCutoffDay').value || 14);
+            const terms = String(document.getElementById('svEditCtyTerms').value || 'v3.0').trim();
+            const legalUrl = String(document.getElementById('svEditCtyLegalUrl').value || '').trim();
+            const legalOk = document.getElementById('svEditCtyLegalOk').value === 'true';
+            const isActive = document.getElementById('svEditCtyActive').value === 'true';
+            const reason = String(document.getElementById('svEditCtyReason').value || '').trim();
+
+            if (code.length !== 2) { showToast('يرجى إدخال رمز الدولة من حرفين (مثل EG أو SA أو AE).', true); return; }
+            if (!nameAr) { showToast('يرجى إدخال اسم الدولة بالعربية.', true); return; }
+            if (currency.length !== 3) { showToast('يرجى إدخال رمز العملة من 3 أحرف (مثل EGP أو SAR أو AED).', true); return; }
+            if (fx <= 0) { showToast('سعر الصرف الإداري يجب أن يكون أكبر من صفر.', true); return; }
+            if (targetUsd <= 0 || stopperUsd <= 0) { showToast('الهدف الشهري والستوبر المالي يجب أن يكونا أكبر من صفر.', true); return; }
+            if (payoutDay < 2 || payoutDay > 28 || cutoffDay >= payoutDay) {
+                showToast('يوم إغلاق المرتجعات يجب أن يكون أقل من يوم صرف الأرباح (بين 2 و28).', true);
+                return;
+            }
+            if (reason.length < 5) { showToast('سبب التعديل إلزامي (5 أحرف على الأقل).', true); return; }
+
+            const payload = {
+                country_code: code,
+                name_ar: nameAr,
+                name_en: nameEn,
+                country_name_i18n: { ar: nameAr, en: nameEn, tr: nameEn },
+                currency_code: currency,
+                admin_fx_rate: fx,
+                iana_timezone: tz,
+                monthly_target_usd: targetUsd,
+                financial_stopper_usd: stopperUsd,
+                compensatory_admin_fee_usd: compFee,
+                vat_rate: vat,
+                wht_rate: wht,
+                min_merchants_threshold: minMerch,
+                payout_day: payoutDay,
+                return_cutoff_day: cutoffDay,
+                local_terms_version: terms,
+                legal_opinion_doc_url: legalUrl,
+                legal_opinion_verified: legalOk,
+                is_active: isActive
+            };
+
+            const res = await window.SAWYAN.API.adminSubmitGovernanceRequest({
+                actionType: 'COUNTRY_LEGAL_TAX_PREP',
+                targetEntity: 'countries',
+                targetId: code,
+                payloadAfter: payload,
+                reason: reason
+            });
+
+            document.getElementById('svCountryEditorOverlay').style.display = 'none';
+            showToast(res && res.sovereign_auto_executed
+                ? ('👑 تم حفظ وتطبيق مدخلات دولة ' + nameAr + ' (' + code + ') فوراً في قاعدة البيانات!')
+                : ('تم إرسال تعديلات دولة ' + code + ' لطابور الاعتماد المزدوج.'), false);
+            await refreshSovereignBundle(false);
+        } catch (err) {
+            showToast(err.message, true);
+        }
+    };
+
+    window.svToggleCountryActive = async function (countryCode, targetActive) {
+        try {
+            const res = await window.SAWYAN.API.adminSubmitGovernanceRequest({
+                actionType: 'COUNTRY_LEGAL_TAX_PREP',
+                targetEntity: 'countries',
+                targetId: countryCode,
+                payloadAfter: { country_code: countryCode, is_active: Boolean(targetActive) },
+                reason: targetActive ? 'إعادة تفعيل الدولة بأمر المؤسس السيادي' : 'إيقاف مؤقت لتفعيل الدولة بأمر المؤسس السيادي'
+            });
+            showToast(res && res.sovereign_auto_executed
+                ? ('👑 تم تحديث حالة الدولة (' + countryCode + ') فوراً!')
+                : 'تم إرسال الطلب للاعتماد.', false);
+            await refreshSovereignBundle(false);
         } catch (err) {
             showToast(err.message, true);
         }

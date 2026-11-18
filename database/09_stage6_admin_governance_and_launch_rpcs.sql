@@ -16,6 +16,23 @@ ALTER TABLE sawyan.admins
     ADD COLUMN IF NOT EXISTS password_hash TEXT,
     ADD COLUMN IF NOT EXISTS metadata      JSONB NOT NULL DEFAULT '{}'::jsonb;
 
+ALTER TABLE sawyan.settings DROP CONSTRAINT IF EXISTS chk_settings_maker_checker;
+
+ALTER TABLE sawyan.countries
+    ADD COLUMN IF NOT EXISTS admin_fx_rate NUMERIC(18,6) NOT NULL DEFAULT 1.000000 CHECK (admin_fx_rate > 0);
+
+UPDATE sawyan.countries
+   SET admin_fx_rate = CASE currency_code
+       WHEN 'EGP' THEN 50.000000
+       WHEN 'TRY' THEN 50.000000
+       WHEN 'SAR' THEN 3.750000
+       WHEN 'AED' THEN 3.672500
+       WHEN 'EUR' THEN 0.920000
+       WHEN 'USD' THEN 1.000000
+       ELSE admin_fx_rate
+   END
+ WHERE admin_fx_rate = 1.000000 AND currency_code <> 'USD';
+
 REVOKE ALL ON TABLE sawyan.admins FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON TABLE sawyan.partners FROM PUBLIC, anon, authenticated;
 
@@ -421,6 +438,7 @@ BEGIN
       INTO v_countries
       FROM (
           SELECT c.id, c.country_code, c.country_name_i18n, c.currency_code, c.iana_timezone,
+                 c.admin_fx_rate,
                  c.financial_stopper_usd, c.monthly_target_usd, c.compensatory_admin_fee_usd,
                  c.vat_rate, c.wht_rate, c.payout_day, c.return_cutoff_day,
                  c.legal_opinion_verified, c.legal_opinion_doc_url, c.local_terms_version,
@@ -826,22 +844,67 @@ BEGIN
               FROM sawyan.countries
              WHERE country_code = upper(trim(COALESCE(v_req.payload_after->>'country_code', v_req.target_id)))
              FOR UPDATE;
-            IF NOT FOUND THEN RAISE EXCEPTION 'COUNTRY_NOT_FOUND'; END IF;
 
-            UPDATE sawyan.countries
-               SET legal_opinion_verified     = COALESCE((v_req.payload_after->>'legal_opinion_verified')::boolean, legal_opinion_verified),
-                   legal_opinion_doc_url      = COALESCE(NULLIF(trim(v_req.payload_after->>'legal_opinion_doc_url'), ''), legal_opinion_doc_url),
-                   local_terms_version        = COALESCE(NULLIF(trim(v_req.payload_after->>'local_terms_version'), ''), local_terms_version),
-                   financial_stopper_usd      = COALESCE((v_req.payload_after->>'financial_stopper_usd')::numeric, financial_stopper_usd),
-                   monthly_target_usd         = COALESCE((v_req.payload_after->>'monthly_target_usd')::numeric, monthly_target_usd),
-                   compensatory_admin_fee_usd = COALESCE((v_req.payload_after->>'compensatory_admin_fee_usd')::numeric, compensatory_admin_fee_usd),
-                   vat_rate                   = COALESCE((v_req.payload_after->>'vat_rate')::numeric, vat_rate),
-                   wht_rate                   = COALESCE((v_req.payload_after->>'wht_rate')::numeric, wht_rate),
-                   min_merchants_threshold    = COALESCE((v_req.payload_after->>'min_merchants_threshold')::int, min_merchants_threshold),
-                   recorded_at                = now()
-             WHERE id = v_country.id;
+            IF NOT FOUND THEN
+                INSERT INTO sawyan.countries (
+                    country_code, country_name_i18n, currency_code, iana_timezone, admin_fx_rate,
+                    financial_stopper_usd, monthly_target_usd, compensatory_admin_fee_usd,
+                    vat_rate, wht_rate, payout_day, return_cutoff_day,
+                    legal_opinion_verified, legal_opinion_doc_url, local_terms_version,
+                    min_merchants_threshold, is_active
+                ) VALUES (
+                    upper(substr(trim(COALESCE(v_req.payload_after->>'country_code', v_req.target_id)), 1, 2)),
+                    COALESCE(v_req.payload_after->'country_name_i18n', jsonb_build_object('ar', COALESCE(v_req.payload_after->>'name_ar', v_req.target_id), 'en', COALESCE(v_req.payload_after->>'name_en', v_req.target_id))),
+                    upper(substr(trim(COALESCE(v_req.payload_after->>'currency_code', 'USD')), 1, 3)),
+                    COALESCE(NULLIF(trim(v_req.payload_after->>'iana_timezone'), ''), 'UTC'),
+                    GREATEST(COALESCE((v_req.payload_after->>'admin_fx_rate')::numeric, 1.000000), 0.000001),
+                    COALESCE((v_req.payload_after->>'financial_stopper_usd')::numeric, 4605.75),
+                    COALESCE((v_req.payload_after->>'monthly_target_usd')::numeric, 24.75),
+                    COALESCE((v_req.payload_after->>'compensatory_admin_fee_usd')::numeric, 0.00),
+                    COALESCE((v_req.payload_after->>'vat_rate')::numeric, 0.0000),
+                    COALESCE((v_req.payload_after->>'wht_rate')::numeric, 0.0000),
+                    COALESCE((v_req.payload_after->>'payout_day')::smallint, 15),
+                    COALESCE((v_req.payload_after->>'return_cutoff_day')::smallint, 14),
+                    COALESCE((v_req.payload_after->>'legal_opinion_verified')::boolean, false),
+                    NULLIF(trim(v_req.payload_after->>'legal_opinion_doc_url'), ''),
+                    COALESCE(NULLIF(trim(v_req.payload_after->>'local_terms_version'), ''), 'v3.0'),
+                    GREATEST(COALESCE((v_req.payload_after->>'min_merchants_threshold')::int, 1), 1),
+                    CASE WHEN COALESCE((v_admin_info->>'is_sovereign_founder')::boolean, false)
+                         THEN COALESCE((v_req.payload_after->>'is_active')::boolean, false)
+                         ELSE false END
+                ) RETURNING * INTO v_country;
+            ELSE
+                UPDATE sawyan.countries
+                   SET country_name_i18n          = CASE
+                                                        WHEN v_req.payload_after ? 'country_name_i18n' THEN v_req.payload_after->'country_name_i18n'
+                                                        WHEN v_req.payload_after ? 'name_ar' THEN country_name_i18n || jsonb_build_object('ar', v_req.payload_after->>'name_ar', 'en', COALESCE(NULLIF(trim(v_req.payload_after->>'name_en'), ''), country_name_i18n->>'en'))
+                                                        ELSE country_name_i18n
+                                                    END,
+                       currency_code              = COALESCE(NULLIF(upper(substr(trim(v_req.payload_after->>'currency_code'), 1, 3)), ''), currency_code),
+                       iana_timezone              = COALESCE(NULLIF(trim(v_req.payload_after->>'iana_timezone'), ''), iana_timezone),
+                       admin_fx_rate              = COALESCE((v_req.payload_after->>'admin_fx_rate')::numeric, admin_fx_rate),
+                       legal_opinion_verified     = COALESCE((v_req.payload_after->>'legal_opinion_verified')::boolean, legal_opinion_verified),
+                       legal_opinion_doc_url      = COALESCE(NULLIF(trim(v_req.payload_after->>'legal_opinion_doc_url'), ''), legal_opinion_doc_url),
+                       local_terms_version        = COALESCE(NULLIF(trim(v_req.payload_after->>'local_terms_version'), ''), local_terms_version),
+                       financial_stopper_usd      = COALESCE((v_req.payload_after->>'financial_stopper_usd')::numeric, financial_stopper_usd),
+                       monthly_target_usd         = COALESCE((v_req.payload_after->>'monthly_target_usd')::numeric, monthly_target_usd),
+                       compensatory_admin_fee_usd = COALESCE((v_req.payload_after->>'compensatory_admin_fee_usd')::numeric, compensatory_admin_fee_usd),
+                       vat_rate                   = COALESCE((v_req.payload_after->>'vat_rate')::numeric, vat_rate),
+                       wht_rate                   = COALESCE((v_req.payload_after->>'wht_rate')::numeric, wht_rate),
+                       payout_day                 = COALESCE((v_req.payload_after->>'payout_day')::smallint, payout_day),
+                       return_cutoff_day          = COALESCE((v_req.payload_after->>'return_cutoff_day')::smallint, return_cutoff_day),
+                       min_merchants_threshold    = COALESCE((v_req.payload_after->>'min_merchants_threshold')::int, min_merchants_threshold),
+                       is_active                  = CASE
+                                                        WHEN v_req.payload_after ? 'is_active' AND ((v_req.payload_after->>'is_active')::boolean = false OR COALESCE((v_admin_info->>'is_sovereign_founder')::boolean, false))
+                                                        THEN (v_req.payload_after->>'is_active')::boolean
+                                                        ELSE is_active
+                                                    END,
+                       recorded_at                = now()
+                 WHERE id = v_country.id
+                RETURNING * INTO v_country;
+            END IF;
 
-            v_exec_effect := jsonb_build_object('effect', 'country_compliance_updated', 'country_code', v_country.country_code);
+            v_exec_effect := jsonb_build_object('effect', 'country_parameters_updated', 'country_code', v_country.country_code);
 
         ELSIF v_req.action_type = 'COUNTRY_GATE_D13_ACTIVATION' THEN
             SELECT * INTO v_country
