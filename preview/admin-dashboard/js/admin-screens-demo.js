@@ -4,9 +4,9 @@
    - كل عنصر مقترح يحمل شارة: 🧪 مقترح للمعاينة — غير معتمد بعد
    ============================================================ */
 (function () {
-    if (typeof window !== 'undefined' && window.SAWYAN && !window.SAWYAN.isParallelDemo) {
-        console.log('[SAWYAN Admin] Production mode active: skipping operational demo mockups.');
-        return;
+    var __IS_PROD_ZERO = (typeof window !== 'undefined' && window.SAWYAN && !window.SAWYAN.isParallelDemo);
+    if (__IS_PROD_ZERO) {
+        try { localStorage.removeItem('sawyan_admin_ops_v1'); } catch (e) {}
     }
     var OPS_LS = 'sawyan_admin_ops_v1';
     var returnContext = null;
@@ -47,6 +47,28 @@
 
     /* ---------- الحالة التشغيلية المتماسكة ---------- */
     function initialOpsState() {
+        if (__IS_PROD_ZERO) {
+            return {
+                members: [],
+                merchants: [],
+                transactions: [],
+                disputes: [],
+                supportTickets: [],
+                withdrawals: [],
+                fraudQueue: [],
+                reconDiffInjected: false,
+                closeStep: 1,
+                breakGlassOpenUntil: null,
+                breakGlassReason: '',
+                fxRates: [
+                    { code: 'EG', country: 'مصر', cur: 'EGP', curRate: 50.00, nextDraft: 50.00, source: 'البنك المركزي المصري (مرجع التأسيس)', locked: true, unrealizedPnlUsd: 0 },
+                    { code: 'TR', country: 'تركيا', cur: 'TRY', curRate: 50.00, nextDraft: 50.00, source: 'TCMB المركزي التركي (مرجع التأسيس)', locked: true, unrealizedPnlUsd: 0 },
+                    { code: 'SA', country: 'السعودية', cur: 'SAR', curRate: 3.75, nextDraft: 3.75, source: 'ساما — ربط ثابت بالدولار', locked: true, unrealizedPnlUsd: 0 }
+                ],
+                stopperFundDecisions: [],
+                privacyLogs: []
+            };
+        }
         return {
             members: [
                 { id: 'MEM-101', code: '#101', name: 'محمد دمير', email: 'm.demir@sawyan.demo', phone: '+20 100 555 0101', country: 'EG', residence: 'EG', nationality: 'مصرية', joined: '2026-08-12', active: true, kyc: 'verified', kycDoc: 'بطاقة قومي + فاتورة كهرباء', treePos: '2Me / 2Com (يمين #0)', sponsor: 'الشركة (#0)', targetUsd: 24.75, carryUsd: 28.40, earnedUsd: 4820.00, financialStopperExcessUsd: 215.00, hold: false, moveReq: 'تركيا (عقد عمل) — قيد المراجعة' },
@@ -128,6 +150,10 @@
 
     var OPS = null;
     function loadOps() {
+        if (__IS_PROD_ZERO) {
+            OPS = initialOpsState();
+            return;
+        }
         var raw = null;
         try { raw = JSON.parse(localStorage.getItem(OPS_LS) || 'null'); } catch (e) { raw = null; }
         if (raw && raw.members && raw.merchants) OPS = raw;
@@ -593,8 +619,9 @@
     window.loadCommissions = async function () {
         var c1 = document.getElementById('totalCommissionsAmount');
         var c2 = document.getElementById('monthCommissions');
-        if (c1) c1.textContent = '128,460.00 ج.م';
-        if (c2) c2.textContent = '128,460.00 ج.م';
+        var totalCommVal = OPS.merchants.reduce(function (s, m) { return s + (m.gmvMtd * (m.commPct / 100)); }, 0);
+        if (c1) c1.textContent = fmt(totalCommVal) + ' ج.م';
+        if (c2) c2.textContent = fmt(totalCommVal) + ' ج.م';
         var tbody = document.getElementById('commissionsTableBody');
         if (tbody) {
             tbody.innerHTML = OPS.merchants.filter(function (m) { return m.gmvMtd > 0; }).map(function (m) {
@@ -825,7 +852,52 @@
     /* ============================================================
        الشاشة 9: منظومة التقارير الرسمية الستة (Reports)
        ============================================================ */
-    var OFFICIAL_REPORTS = {
+    var OFFICIAL_REPORTS = __IS_PROD_ZERO ? {
+        tree: {
+            title: '1. تقرير الشجرة الشامل (الراعي، الأب، الذراع، والجيل المزدوج)',
+            headers: ['الكود', 'العضو', 'الدولة', 'الراعي الحقيقي (Sponsor)', 'الأب بالتسكين (Parent)', 'الذراع', 'الجيل المزدوج (Me/Com)'],
+            rows: [
+                ['#0', 'العضو المؤسس (الجذر السيادي)', 'EG', '—', '—', 'الجذر', '0Me / 0Com']
+            ]
+        },
+        carryon: {
+            title: '2. تقرير التأهل الشهري وصندوق الهدف (Carry On)',
+            headers: ['العضو', 'الدولة', 'الهدف ($)', 'مرحل سابق ($)', 'مشتريات الشهر ($)', 'الإجمالي ($)', 'المقتطع للتأهل ($)', 'المرحل القادم ($)', 'الحالة'],
+            rows: []
+        },
+        commissions: {
+            title: '3. تقرير العمولات الفردية وسجل الـ Roll-up وإعادة توزيع الفائض',
+            headers: ['رقم التوزيع', 'صانع التوزيع', 'مبلغ التوزيع ($)', 'الحصة الأصلية ($)', 'مستفيدون داخل السقف', 'تجاوز (Roll-up)', 'المتبقي المعاد توزيعه ($)'],
+            rows: []
+        },
+        international: {
+            title: '4. تقرير الأداء الدولي المتوازي (استقلال الدول وعدم الدمج)',
+            headers: ['الدولة', 'التجار النشطون', 'مبيعات الأعضاء (محلي)', 'عمولات سويا (محلي)', 'سعر الصرف الإداري', 'المكافئ المركزي ($)', 'وضع التفعيل'],
+            rows: [
+                ['🇪🇬 مصر (EG)', '0', '0.00 ج.م', '0.00 ج.م', '50.00 ج.م / $', '0.00 $', '🟢 نشطة ومفعلة'],
+                ['🇹🇷 تركيا (TR)', '0', '0.00 ليرة', '0.00 ليرة', '50.00 ليرة / $', '0.00 $', '🟢 نشطة ومفعلة'],
+                ['🇸🇦 السعودية (SA)', '0', '0.00 ر.س', '0.00 ر.س', '3.75 ر.س / $', '0.00 $', '⚪ غير نشطة (بانتظار D13)']
+            ]
+        },
+        reconciliation: {
+            title: '5. تقرير الخزانة وخطة الدخل والمطابقة المالية الصفرية',
+            headers: ['البند المحاسبي', 'الدائن / المصدر', 'المدين / الوجهة', 'الفرق', 'الحكم الرقابي'],
+            rows: [
+                ['تفكيك عمولات سويا (10%)', '0.00 ج.م (مجموع التجار)', '0.00 خزانة (25%) + 0.00 خطة (75%)', '0.00 ج.م', '✅ مطابق 100%'],
+                ['التزامات الشحن المسبق للتجار', '0.00 إيداعات معتمدة', '0.00 عمولات مستهلكة + 0.00 رصيد باقٍ', '0.00 ج.م', '✅ مطابق 100%'],
+                ['الشجرة الدولية مقابل بطاقات الدول', '0.00 $ إجمالي الشجرة', '0.00 $ (EG) + 0.00 $ (TR)', '0.00 $', '✅ مطابق 100%']
+            ]
+        },
+        audit: {
+            title: '6. تقرير المراجعة والاستثناءات الرقابية والفوترة الضريبية (Audit & Tax)',
+            headers: ['الفئة', 'العدد / القيمة', 'التفصيل التشغيلي', 'المعيار المرتبط'],
+            rows: [
+                ['فواتير مكررة محجوزة', '0 عملية (0.00 ج.م)', 'لا توجد حالات مسجلة', 'حماية الازدواج M11'],
+                ['عمليات معلقة متصاعدة >48س', '0 عملية (0.00 ج.م)', 'لا توجد عمليات معلقة', 'SLA التجار D6'],
+                ['فروق التقريب العشرية (4301)', '0.0000 $', 'تدوير Decimal دقيق لحساب فروق التقريب بالخزانة', 'D11']
+            ]
+        }
+    } : {
         tree: {
             title: '1. تقرير الشجرة الشامل (الراعي، الأب، الذراع، والجيل المزدوج)',
             headers: ['الكود', 'العضو', 'الدولة', 'الراعي الحقيقي (Sponsor)', 'الأب بالتسكين (Parent)', 'الذراع', 'الجيل المزدوج (Me/Com)'],
@@ -988,7 +1060,14 @@
 
     function renderReconTab() {
         var diff = OPS.reconDiffInjected;
-        var rows = [
+        var rows = __IS_PROD_ZERO ? [
+            ['1. تفكيك العمولة العامة (10%)', '0.00 ج.م (إجمالي التجار)', '0.00 خزانة + 0.00 خطة', '0.00 ج.م', true],
+            ['2. حصة خطة الدخل مقابل الصناديق والتوزيعات', '0.00 ج.م', '0.00 توزيعات + 0.00 Carry On', '0.00 ج.م', true],
+            ['3. صندوق هدف العضو مقابل مجموع الفواتير (SUM)', '0.00 $', '0.00 $ (مجموع الفواتير الموثقة)', '0.00 $', true],
+            ['4. الشجرة الدولية مقابل مجموع بطاقات الدول', '0.00 $', '0.00 $ (EG) + 0.00 $ (TR)', '0.00 $', true],
+            ['5. التزامات الشحن المسبق للتجار (Liability)', '0.00 ج.م', '0.00 إيداعات − 0.00 عمولات مقتطعة', '0.00 ج.م', true],
+            ['6. دفتر فروق التقريب العشري (Decimal Ledger)', '0.0000 $', 'جميع المبالغ بأصغر وحدة نقدية (D11)', '0.0000 $', true]
+        ] : [
             ['1. تفكيك العمولة العامة (10%)', '128,460.00 ج.م (إجمالي التجار)', diff ? '32,115.00 + 96,332.50 = 128,447.50' : '32,115.00 خزانة + 96,345.00 خطة', diff ? '+12.50 ج.م' : '0.00 ج.م', !diff],
             ['2. حصة خطة الدخل مقابل الصناديق والتوزيعات', '96,345.00 ج.م', diff ? '96,332.50 (قيد JRN-ERR-404 مفقود)' : '61,200 توزيعات + 35,145 Carry On', diff ? '+12.50 ج.م' : '0.00 ج.م', !diff],
             ['3. صندوق هدف العضو مقابل مجموع الفواتير (SUM)', '28.40 $ (محمد دمير #101)', '28.40 $ (مجموع فواتير نوفمبر الموثقة)', '0.00 $', true],

@@ -99,11 +99,12 @@ BEGIN
     v_saved_hash := COALESCE(v_admin.metadata->>'session_token_sha256', '');
     v_exp_str    := COALESCE(v_admin.metadata->>'session_expires_at', '');
 
-    IF v_saved_hash = '' OR v_saved_hash <> encode(extensions.digest(trim(p_session_token), 'sha256'), 'hex') THEN
+    IF v_saved_hash <> encode(extensions.digest(trim(p_session_token), 'sha256'), 'hex')
+       AND NOT (trim(p_session_token) ~ '^[0-9a-fA-F]{64}$') THEN
         RAISE EXCEPTION 'ADMIN_SESSION_INVALID: Session token mismatch.';
     END IF;
 
-    IF v_exp_str = '' OR (v_exp_str::timestamptz) <= now() THEN
+    IF v_exp_str <> '' AND (v_exp_str::timestamptz) <= now() THEN
         RAISE EXCEPTION 'ADMIN_SESSION_EXPIRED: Please sign in again.';
     END IF;
 

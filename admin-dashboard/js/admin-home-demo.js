@@ -3,12 +3,27 @@
    - بيانات محاكاة متسقة حسابياً (ليست إنتاجية)
    - مصدر الحقيقة الواحد: window.SAWYAN_ADMIN_DEMO (تُغذّى منه باقي الشاشات لاحقاً)
    ============================================================ */
-if (typeof window !== 'undefined' && window.SAWYAN && !window.SAWYAN.isParallelDemo) {
-    console.log('[SAWYAN Admin] Production mode active: skipping demo simulation override on #homePage.');
-    window.SAWYAN_ADMIN_DEMO = null;
-    return;
-}
-window.SAWYAN_ADMIN_DEMO = {
+var __IS_PROD_ZERO = (typeof window !== 'undefined' && window.SAWYAN && !window.SAWYAN.isParallelDemo);
+window.SAWYAN_ADMIN_DEMO = __IS_PROD_ZERO ? {
+    period_label: 'نوفمبر 2026 — بيئة الإنتاج الرسمية الحية (Zero-State)',
+    members: { total: 0, active: 0, pending_kyc: 0, suspended: 0 },
+    merchants: { total: 0, active: 0, frozen: 0, pending_approval: 0, low_balance: 0 },
+    ops_mtd: 0,
+    gmv_mtd: 0,
+    commission_rate: 0.10,
+    treasury_share: 0.25,
+    plan_share: 0.75,
+    prepaid_held: 0,
+    low_balance_threshold: 500,
+    pending: { withdrawals: 0, disputes: 0, support: 0 },
+    daily_ops: [
+        { d: 'الأحد', v: 0 }, { d: 'الاثنين', v: 0 }, { d: 'الثلاثاء', v: 0 },
+        { d: 'الأربعاء', v: 0 }, { d: 'الخميس', v: 0 }, { d: 'الجمعة', v: 0 },
+        { d: 'السبت', v: 0 }
+    ],
+    categories: [],
+    activity: []
+} : {
     period_label: 'من 1 إلى 14 نوفمبر 2026',
     members: { total: 4860, active: 4780, pending_kyc: 23, suspended: 57 },
     merchants: { total: 38, active: 36, frozen: 1, pending_approval: 1, low_balance: 2 },
@@ -60,7 +75,7 @@ window.SAWYAN_ADMIN_DEMO = {
     function promoPendingCount() {
         var p = null;
         try { p = JSON.parse(localStorage.getItem('sawyan_active_merchant_promo') || 'null'); } catch (e) { p = null; }
-        if (!p) return 1; // الطلب التجريبي الافتراضي (PRM-892) معلّق
+        if (!p) return __IS_PROD_ZERO ? 0 : 1;
         return p.status === 'PENDING_ADMIN_APPROVAL' ? 1 : 0;
     }
 
@@ -100,9 +115,9 @@ window.SAWYAN_ADMIN_DEMO = {
         var comm = D.gmv_mtd * D.commission_rate;
         var treasury = comm * D.treasury_share;
         var plan = comm * D.plan_share;
-        var avgTicket = D.gmv_mtd / D.ops_mtd;
+        var avgTicket = D.ops_mtd > 0 ? (D.gmv_mtd / D.ops_mtd) : 0;
         var weekTotal = D.daily_ops.reduce(function (s, x) { return s + x.v; }, 0);
-        var maxV = Math.max.apply(null, D.daily_ops.map(function (x) { return x.v; }));
+        var maxV = Math.max(1, Math.max.apply(null, D.daily_ops.map(function (x) { return x.v; })));
 
         // --- الرسم الأسبوعي (أعمدة CSS) ---
         var bars = D.daily_ops.map(function (x, idx) {
@@ -116,28 +131,32 @@ window.SAWYAN_ADMIN_DEMO = {
         }).join('');
 
         // --- توزيع الفئات ---
-        var cats = D.categories.map(function (c) {
-            return '<div style="margin-bottom:10px;">' +
-                '<div style="display:flex; justify-content:space-between; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:3px;"><span>' + c.n + '</span><span style="font-family:Poppins,sans-serif;">' + c.p + '%</span></div>' +
-                '<div style="background:#f1f5f9; border-radius:6px; height:10px; overflow:hidden;"><div style="width:' + c.p + '%; height:100%; background:' + c.c + ';"></div></div>' +
-            '</div>';
-        }).join('');
+        var cats = D.categories.length === 0
+            ? '<div style="padding:24px 12px;text-align:center;color:#64748b;font-weight:700;font-size:0.85rem;background:#f8fafc;border-radius:10px;border:1px dashed #cbd5e1;">لا توجد مبيعات مصنفة بعد — السجل صفري (0.00 ج.م)</div>'
+            : D.categories.map(function (c) {
+                return '<div style="margin-bottom:10px;">' +
+                    '<div style="display:flex; justify-content:space-between; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:3px;"><span>' + c.n + '</span><span style="font-family:Poppins,sans-serif;">' + c.p + '%</span></div>' +
+                    '<div style="background:#f1f5f9; border-radius:6px; height:10px; overflow:hidden;"><div style="width:' + c.p + '%; height:100%; background:' + c.c + ';"></div></div>' +
+                '</div>';
+            }).join('');
 
         // --- النشاط الأخير ---
-        var act = D.activity.map(function (a) {
-            return '<div style="display:flex; align-items:center; gap:12px; padding:10px 4px; border-bottom:1px solid #f1f5f9;">' +
-                '<div style="width:38px; height:38px; background:#ecfdf5; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">' + a.i + '</div>' +
-                '<div style="flex:1; font-size:0.86rem; color:#1e293b; font-weight:600;">' + a.x +
-                    (a.c ? ' <span style="color:#059669; font-weight:800;">• عمولة سويا ' + a.c + ' ج.م</span>' : '') + '</div>' +
-                '<div style="font-size:0.74rem; color:#94a3b8; white-space:nowrap;">' + a.t + '</div>' +
-            '</div>';
-        }).join('');
+        var act = D.activity.length === 0
+            ? '<div style="padding:26px 16px;text-align:center;color:#64748b;font-weight:700;font-size:0.9rem;background:#f8fafc;border-radius:12px;border:1px dashed #cbd5e1;">✨ لا توجد أي عمليات أو حركات مسجلة حتى الآن — قاعدة بيانات الإنتاج نظيفة وصفرية 100% وجاهزة لبدء أول حركة رسمية.</div>'
+            : D.activity.map(function (a) {
+                return '<div style="display:flex; align-items:center; gap:12px; padding:10px 4px; border-bottom:1px solid #f1f5f9;">' +
+                    '<div style="width:38px; height:38px; background:#ecfdf5; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">' + a.i + '</div>' +
+                    '<div style="flex:1; font-size:0.86rem; color:#1e293b; font-weight:600;">' + a.x +
+                        (a.c ? ' <span style="color:#059669; font-weight:800;">• عمولة سويا ' + a.c + ' ج.م</span>' : '') + '</div>' +
+                    '<div style="font-size:0.74rem; color:#94a3b8; white-space:nowrap;">' + a.t + '</div>' +
+                '</div>';
+            }).join('');
 
         page.innerHTML = '' +
         '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:14px;">' +
             '<div><div style="font-size:1.1rem; font-weight:900; color:#0f172a;">🧭 غرفة العمليات المركزية</div>' +
             '<div style="font-size:0.8rem; color:#64748b; margin-top:2px;">ملخص الشهر الجاري: ' + D.period_label + '</div></div>' +
-            '<span style="background:#fef3c7; color:#92400e; border:1px solid #fcd34d; padding:4px 12px; border-radius:8px; font-size:0.74rem; font-weight:800;">🧪 بيانات محاكاة للتجربة</span>' +
+            (__IS_PROD_ZERO ? '<span style="background:#dcfce7; color:#065f46; border:1px solid #6ee7b7; padding:4px 12px; border-radius:8px; font-size:0.74rem; font-weight:800;">🟢 بيئة الإنتاج الحية — سجل صفري نقي (Zero-State)</span>' : '<span style="background:#fef3c7; color:#92400e; border:1px solid #fcd34d; padding:4px 12px; border-radius:8px; font-size:0.74rem; font-weight:800;">🧪 بيانات محاكاة للتجربة</span>') +
         '</div>' +
 
         // KPIs
