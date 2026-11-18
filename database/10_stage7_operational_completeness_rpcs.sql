@@ -1537,9 +1537,9 @@ BEGIN
                  (tc.depth + 1) AS spatial_me_label,
                  c.country_code,
                  c.monthly_target_usd,
-                 COALESCE(tb.carry_in_usd + tb.current_month_accum_usd, 0.00) AS box_accum_usd,
-                 LEAST(ROUND(((COALESCE(tb.carry_in_usd + tb.current_month_accum_usd, 0.00) / GREATEST(c.monthly_target_usd, 0.01)) * 100.0)::numeric, 1), 100.0) AS progress_pct,
-                 GREATEST(c.monthly_target_usd - COALESCE(tb.carry_in_usd + tb.current_month_accum_usd, 0.00), 0.00) AS remaining_to_qualify_usd,
+                 COALESCE(tb.carry_on_in_usd + tb.current_month_purchases_usd + tb.compensatory_incoming_usd, 0.00) AS box_accum_usd,
+                 LEAST(ROUND(((COALESCE(tb.carry_on_in_usd + tb.current_month_purchases_usd + tb.compensatory_incoming_usd, 0.00) / GREATEST(c.monthly_target_usd, 0.01)) * 100.0)::numeric, 1), 100.0) AS progress_pct,
+                 GREATEST(c.monthly_target_usd - COALESCE(tb.carry_on_in_usd + tb.current_month_purchases_usd + tb.compensatory_incoming_usd, 0.00), 0.00) AS remaining_to_qualify_usd,
                  COALESCE(tb.is_qualified, false) AS is_qualified,
                  m.created_at
             FROM sawyan.tree_closure tc
