@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ============================================================================
  * SAWYAN ECOSYSTEM — STAGE 6 SOVEREIGN ADMIN V3.0 LIVE POSTGRESQL BRIDGE
  * Connects the 10-Screen / 25-Unit Admin Dashboard to Live Supabase Schemas:
@@ -269,6 +269,24 @@
                 '<div style="background:rgba(255,255,255,0.08);padding:8px 11px;border-radius:10px;">🎯 التزام الخطة 75%: <b>$' + fmt2(k.plan_pool_liability_usd) + '</b></div>' +
                 '<div style="background:rgba(255,255,255,0.08);padding:8px 11px;border-radius:10px;">⚖️ المطابقة الصفرية: <b style="color:' + (zd.is_zero_discrepancy_intact ? '#6ee7b7' : '#fca5a5') + ';">' + (zd.is_zero_discrepancy_intact ? '✅ فرق $0.00' : '⛔ خلل!') + '</b></div>' +
             '</div>';
+
+        const elMemb = document.getElementById('totalMembers');
+        const elMerch = document.getElementById('totalMerchants');
+        const elTx = document.getElementById('totalTransactions');
+        const elComm = document.getElementById('totalCommissions');
+        const elAct = document.getElementById('activityList');
+
+        if (elMemb) elMemb.textContent = Number(k.members_total || 0);
+        if (elMerch) elMerch.textContent = Number(k.merchants_total || 0);
+        if (elTx) elTx.textContent = Number(k.transactions_completed || k.transactions_total || 0);
+        if (elComm) elComm.textContent = fmt2(k.commission_local_completed || 0) + ' ج.م';
+
+        if (elAct) {
+            const acts = LIVE_BUNDLE.recent_activity || [];
+            if (acts.length === 0) {
+                elAct.innerHTML = '<div style=\"padding:28px 16px;text-align:center;color:#64748b;font-weight:700;font-size:0.92rem;background:#f8fafc;border-radius:12px;border:1px dashed #cbd5e1;\">✨ لا توجد أي عمليات أو حركات مسجلة حتى الآن — قاعدة بيانات الإنتاج نظيفة وصفرية 100% وجاهزة لبدء أول حركة رسمية.</div>';
+            }
+        }
     }
 
     // ------------------------------------------------------------------------
@@ -830,3 +848,4 @@
         }
     };
 })();
+

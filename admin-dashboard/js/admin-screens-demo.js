@@ -1,9 +1,13 @@
-/* ============================================================
+﻿/* ============================================================
    SAWYAN Admin — Operational Screens (2–9) & Governance Modules
    - بيئة معاينة ومحاكاة تفاعلية متسقة حسابياً مع SAWYAN_ADMIN_DEMO
    - كل عنصر مقترح يحمل شارة: 🧪 مقترح للمعاينة — غير معتمد بعد
    ============================================================ */
 (function () {
+    if (typeof window !== 'undefined' && window.SAWYAN && !window.SAWYAN.isParallelDemo) {
+        console.log('[SAWYAN Admin] Production mode active: skipping operational demo mockups.');
+        return;
+    }
     var OPS_LS = 'sawyan_admin_ops_v1';
     var returnContext = null;
 
@@ -1206,3 +1210,4 @@
         renderGovernance: renderGovernanceOps
     };
 })();
+

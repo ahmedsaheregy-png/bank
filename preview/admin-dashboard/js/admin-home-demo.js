@@ -1,8 +1,13 @@
-/* ============================================================
+﻿/* ============================================================
    SAWYAN Admin — Screen 1: Command Center (Home) — DEMO SIMULATION
    - بيانات محاكاة متسقة حسابياً (ليست إنتاجية)
    - مصدر الحقيقة الواحد: window.SAWYAN_ADMIN_DEMO (تُغذّى منه باقي الشاشات لاحقاً)
    ============================================================ */
+if (typeof window !== 'undefined' && window.SAWYAN && !window.SAWYAN.isParallelDemo) {
+    console.log('[SAWYAN Admin] Production mode active: skipping demo simulation override on #homePage.');
+    window.SAWYAN_ADMIN_DEMO = null;
+    return;
+}
 window.SAWYAN_ADMIN_DEMO = {
     period_label: 'من 1 إلى 14 نوفمبر 2026',
     members: { total: 4860, active: 4780, pending_kyc: 23, suspended: 57 },
@@ -211,3 +216,4 @@ window.SAWYAN_ADMIN_DEMO = {
         setTimeout(function () { renderHome(); refreshPromoRow(); }, 0);
     }
 })();
+
