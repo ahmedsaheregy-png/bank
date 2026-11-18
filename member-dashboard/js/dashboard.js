@@ -15,6 +15,7 @@ let currentMember = null;
 let memberBundle = null;
 let activeLensCountry = null;
 let liveCatalog = [];
+let liveCountriesPlanMap = new Map();
 let radarCatalogOverride = null;
 let merchantFilterState = { q: '', country: 'ALL', category: 'all' };
 
@@ -31,11 +32,48 @@ function fmtUsd(v) {
     return `$${Number(v || 0).toFixed(2)}`;
 }
 
+function calcMemberUnitShareUsd(targetUsd, s02Slots = 11) {
+    const tgtCents = Math.max(0, Math.round(Number(targetUsd || 0) * 100));
+    const slots = Math.max(1, parseInt(s02Slots || 11, 10) || 11);
+    return Math.floor(tgtCents / slots) / 100;
+}
+
+function getCountryPlanInfo(countryCode) {
+    const p = (memberBundle && memberBundle.profile) || currentMember || {};
+    const cc = String(countryCode || p.country_code || 'EG').toUpperCase();
+    const matrixArr = (memberBundle && Array.isArray(memberBundle.countries_plan_matrix)) ? memberBundle.countries_plan_matrix : [];
+    const fromMatrix = matrixArr.find(x => String(x.country_code || '').toUpperCase() === cc);
+    const fromPub = liveCountriesPlanMap.get(cc);
+    const src = fromPub || fromMatrix || (cc === String(p.country_code || '').toUpperCase() ? p : null) || {};
+
+    const s02 = Math.max(1, parseInt(src.upline_ceiling_s02 || p.upline_ceiling_s02 || 11, 10) || 11);
+    const s01 = Math.max(1, Math.min(40, parseInt(src.numerical_stopper_s01 || p.numerical_stopper_s01 || 11, 10) || 11));
+    const idealNodes = Math.pow(2, s01) - 1;
+    const targetUsd = Number(src.monthly_target_usd || (cc === p.country_code ? p.monthly_target_usd : 24.75) || 24.75);
+    const unitShareUsd = src.unit_share_usd !== undefined ? Number(src.unit_share_usd) : calcMemberUnitShareUsd(targetUsd, s02);
+    const defaultStopperUsd = (Math.round(unitShareUsd * 100) * idealNodes) / 100;
+    const rawStopper = Number(src.financial_stopper_usd || (cc === p.country_code ? p.financial_stopper_usd : 0) || 0);
+    const wasLegacyUnlinked = (Math.abs(rawStopper - 4605.75) < 0.005 && Math.abs(targetUsd - 24.75) > 0.005);
+    const stopperUsd = (rawStopper > 0 && !wasLegacyUnlinked) ? rawStopper : defaultStopperUsd;
+
+    const fallbackFx = { EGP: 50, TRY: 50, SAR: 3.75, AED: 3.6725, EUR: 0.92, USD: 1 }[src.currency_code || p.currency_code || 'USD'] || 1;
+    const rawFx = Number(src.admin_fx_rate || src.fx_rate_to_usd || 0);
+    const currencyCode = src.currency_code || (cc === p.country_code ? p.currency_code : null) || ({ EG: 'EGP', TR: 'TRY', SA: 'SAR', AE: 'AED', DE: 'EUR', US: 'USD' }[cc] || 'USD');
+    const fx = (rawFx > 0 && !(rawFx === 1 && currencyCode !== 'USD')) ? rawFx : fallbackFx;
+
+    return { countryCode: cc, currencyCode, fx, targetUsd, s02, s01, idealNodes, unitShareUsd, stopperUsd, defaultStopperUsd };
+}
+
 function getMemberFxContext() {
     const p = (memberBundle && memberBundle.profile) || currentMember || {};
-    const fx = Number(p.fx_rate_to_usd || 1) > 0 ? Number(p.fx_rate_to_usd || 1) : 1;
-    const code = p.currency_code || 'USD';
-    return { fx, code };
+    const info = getCountryPlanInfo(p.country_code);
+    return { fx: info.fx, code: info.currencyCode };
+}
+
+function fmtCountryLocal(usdVal, planInfo) {
+    const info = planInfo || getCountryPlanInfo();
+    const localAmt = Number(usdVal || 0) * info.fx;
+    return `${localAmt.toLocaleString('ar-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${info.currencyCode}`;
 }
 
 function fmtLocalFromUsd(usdVal) {
@@ -85,11 +123,24 @@ async function ensureAuthenticatedSession() {
 async function refreshDashboardBundle(lensCountry = activeLensCountry) {
     activeLensCountry = lensCountry || null;
     try {
+        if (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.getPublicActiveCountriesAndCities) {
+            try {
+                const pubCty = await window.SAWYAN.API.getPublicActiveCountriesAndCities();
+                if (pubCty && Array.isArray(pubCty.countries)) {
+                    liveCountriesPlanMap.clear();
+                    pubCty.countries.forEach(c => {
+                        if (c && c.country_code) liveCountriesPlanMap.set(String(c.country_code).toUpperCase(), c);
+                    });
+                }
+            } catch (_) {}
+        }
+
         memberBundle = await window.SAWYAN.API.getMemberDashboardBundle({
             memberId: currentMember.id,
             lensCountryCode: activeLensCountry
         });
         window.__memberBundleCache = memberBundle;
+        window.getSawyanMemberCountryPlan = getCountryPlanInfo;
 
         if (memberBundle.profile) {
             currentMember = { ...currentMember, ...memberBundle.profile };
@@ -271,29 +322,41 @@ function renderHomePage() {
             statsGrid.parentNode.insertBefore(boxCard, statsGrid.nextSibling);
         }
     }
+    const homePlan = getCountryPlanInfo(profile.country_code);
     const homeBox = boxes.find(b => b.country_code === profile.country_code && b.period_ym === memberBundle.period_ym) || boxes[0];
-    if (homeBox) {
-        const net = Number(homeBox.net_accumulated_usd || 0);
-        const req = Number(homeBox.target_required_usd || 24.75);
-        const pct = Math.max(0, Math.min(100, Math.round((net / req) * 100)));
-        boxCard.innerHTML = `
-            <div style="background:#ffffff;border:1.5px solid ${homeBox.is_qualified ? '#10b981' : '#f59e0b'};border-radius:16px;padding:18px;margin:16px 0;box-shadow:0 4px 12px rgba(15,23,42,0.05);">
-                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-                    <strong style="font-size:1.05rem;color:#0f172a;">🎯 صندوق الهدف الشهري (${esc(homeBox.period_ym)} — ${esc(homeBox.country_code)})</strong>
-                    <span style="padding:4px 10px;border-radius:999px;font-size:0.82rem;font-weight:800;background:${homeBox.is_qualified ? '#d1fae5' : '#fef3c7'};color:${homeBox.is_qualified ? '#065f46' : '#92400e'};">
-                        ${homeBox.is_qualified ? '✅ مؤهل للتوزيع' : `⏳ قيد الاستكمال (${pct}%)`}
-                    </span>
-                </div>
-                <div style="height:10px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-bottom:10px;">
-                    <div style="width:${pct}%;height:100%;background:${homeBox.is_qualified ? '#10b981' : '#f59e0b'};"></div>
-                </div>
-                <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:0.86rem;color:#334155;">
-                    <span>المحقق الصافي: <strong>${esc(fmtLocalFromUsd(net))} / ${esc(fmtLocalFromUsd(req))}</strong></span>
-                    <span>المرحّل (Carry On): <strong>${esc(fmtLocalFromUsd(homeBox.carry_on_in_usd))}</strong></span>
-                    <span>مشتريات الشهر: <strong>${esc(fmtLocalFromUsd(homeBox.current_month_purchases_usd))}</strong></span>
-                </div>
+    const req = Number((homeBox && homeBox.target_required_usd) || homePlan.targetUsd || 24.75);
+    const net = Number((homeBox && homeBox.net_accumulated_usd) || 0);
+    const carryUsd = Number((homeBox && homeBox.carry_on_in_usd) || 0);
+    const monthUsd = Number((homeBox && homeBox.current_month_purchases_usd) || 0);
+    const isQual = Boolean(homeBox && homeBox.is_qualified);
+    const boxCountry = (homeBox && homeBox.country_code) || profile.country_code || 'EG';
+    const boxPeriod = (homeBox && homeBox.period_ym) || memberBundle.period_ym || '';
+    const unitShareUsd = calcMemberUnitShareUsd(req, homePlan.s02);
+    const pct = Math.max(0, Math.min(100, Math.round((net / Math.max(req, 0.01)) * 100)));
+
+    boxCard.innerHTML = `
+        <div style="background:#ffffff;border:1.5px solid ${isQual ? '#10b981' : '#f59e0b'};border-radius:16px;padding:18px;margin:16px 0;box-shadow:0 4px 12px rgba(15,23,42,0.05);">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+                <strong style="font-size:1.05rem;color:#0f172a;">🎯 صندوق الهدف الشهري (${esc(boxPeriod)} — ${esc(boxCountry)})</strong>
+                <span style="padding:4px 10px;border-radius:999px;font-size:0.82rem;font-weight:800;background:${isQual ? '#d1fae5' : '#fef3c7'};color:${isQual ? '#065f46' : '#92400e'};">
+                    ${isQual ? '✅ مؤهل للتوزيع' : `⏳ قيد الاستكمال (${pct}%)`}
+                </span>
             </div>
-        `;
+            <div style="height:10px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-bottom:10px;">
+                <div style="width:${pct}%;height:100%;background:${isQual ? '#10b981' : '#f59e0b'};"></div>
+            </div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:0.86rem;color:#334155;align-items:center;">
+                <span>المحقق الصافي: <strong>${esc(fmtLocalFromUsd(net))} / ${esc(fmtLocalFromUsd(req))}</strong></span>
+                <span>المرحّل (Carry On): <strong>${esc(fmtLocalFromUsd(carryUsd))}</strong></span>
+                <span>مشتريات الشهر: <strong>${esc(fmtLocalFromUsd(monthUsd))}</strong></span>
+                <span style="background:#ecfdf5;border:1px solid #6ee7b7;color:#065f46;padding:4px 10px;border-radius:8px;font-weight:800;">
+                    💎 حصة الفرد المؤهل (الهدف ÷ ${homePlan.s02}): <strong>${esc(fmtLocalFromUsd(unitShareUsd))}</strong> <small>(${fmtUsd(unitShareUsd)})</small>
+                </span>
+            </div>
+        </div>
+    `;
+    if (typeof window.recalcMemberHomeCalculator === 'function') {
+        window.recalcMemberHomeCalculator();
     }
 
     // كود QR الثابت للهوية عند الكاشير (البند المجمّد #1: بدون TOTP 60s)
@@ -592,10 +655,16 @@ function loadTree() {
         return n.node_color === 'ORANGE' && d >= 2 && d <= 11;
     });
 
+    const activeLensCode = (tree.lens_country_code && tree.lens_country_code !== 'ALL')
+        ? tree.lens_country_code
+        : ((memberBundle.profile && memberBundle.profile.country_code) || 'EG');
+    const lensPlan = getCountryPlanInfo(activeLensCode);
+    const homePlanForTree = getCountryPlanInfo(memberBundle.profile && memberBundle.profile.country_code);
+
     page.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
             <div>
-                <h2 style="margin:0;">🌳 شجرتي العمودية الثنائية (S01 = 11 مؤهلاً)</h2>
+                <h2 style="margin:0;">🌳 شجرتي العمودية الثنائية (S01 = ${lensPlan.s01} مؤهلاً)</h2>
                 <small style="color:#64748b;">العدسة النشطة: <strong>${esc(tree.lens_country_code || 'ALL')}</strong> • ترتيب شجري غير متقاطع (يمين ← يسار)</small>
             </div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
@@ -613,8 +682,13 @@ function loadTree() {
 
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:16px;">
             <div style="background:#ecfdf5;border:1.5px solid #10b981;border-radius:14px;padding:14px;">
-                <div style="font-size:0.8rem;color:#065f46;">فريق العمولة النشط (1/11 .. 11/11)</div>
+                <div style="font-size:0.8rem;color:#065f46;">فريق العمولة النشط (1/${lensPlan.s01} .. ${lensPlan.s01}/${lensPlan.s01})</div>
                 <strong style="font-size:1.5rem;color:#047857;">${tree.commission_team_count || 0}</strong>
+            </div>
+            <div style="background:#f0fdf4;border:1.5px solid #059669;border-radius:14px;padding:14px;">
+                <div style="font-size:0.8rem;color:#065f46;">💎 حصة الفرد المؤهل (${esc(activeLensCode)} • الهدف ÷ ${lensPlan.s02})</div>
+                <strong style="font-size:1.22rem;color:#047857;display:block;margin-top:2px;">${esc(fmtCountryLocal(lensPlan.unitShareUsd, lensPlan))}</strong>
+                <small style="color:#065f46;font-weight:700;">${fmtUsd(lensPlan.unitShareUsd)} لكل متأهل • S03 دولتي: ${fmtUsd(homePlanForTree.stopperUsd)}</small>
             </div>
             <div style="background:#eff6ff;border:1.5px solid #3b82f6;border-radius:14px;padding:14px;">
                 <div style="font-size:0.8rem;color:#1e40af;">الفريق الرديف (D26 إجمالي مجمّع فقط)</div>
@@ -770,24 +844,33 @@ function loadWalletDetails() {
                 </div>
             </div>
 
-            <!-- بطاقة المطابقة الثلاثية USD + العملة المحلية + ستوبر S03 -->
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:16px 0;">
-                <div style="background:#fff;border:1.5px solid #cbd5e1;border-radius:14px;padding:14px;">
-                    <div style="font-size:0.8rem;color:#475569;">1️⃣ إجمالي عائدات الشبكة المحتسبة</div>
-                    <strong style="font-size:1.15rem;color:#0f172a;display:block;margin-top:4px;">${esc(fmtLocalFromUsd(grossNetworkUsd))}</strong>
-                    <small style="color:#64748b;">مرجع الدفتر: ${fmtUsd(grossNetworkUsd)}</small>
-                </div>
-                <div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:14px;padding:14px;">
-                    <div style="font-size:0.8rem;color:#92400e;">2️⃣ تسوية سقف S03 Pro-Rata (حساب 2303)</div>
-                    <strong style="font-size:1.15rem;color:#b45309;display:block;margin-top:4px;">${esc(fmtLocalFromUsd(suspenseUsd))}</strong>
-                    <small style="color:#92400e;">فائض معلق: ${fmtUsd(suspenseUsd)}</small>
-                </div>
-                <div style="background:#ecfdf5;border:1.5px solid #10b981;border-radius:14px;padding:14px;">
-                    <div style="font-size:0.8rem;color:#065f46;">3️⃣ صافي المحفظة القابل للصرف (حساب 2302)</div>
-                    <strong style="font-size:1.15rem;color:#047857;display:block;margin-top:4px;">${esc(fmtLocalFromUsd(availableUsd))}</strong>
-                    <small style="color:#065f46;">الصافي الدولاري: ${fmtUsd(availableUsd)}</small>
-                </div>
-            </div>
+            <!-- بطاقة المطابقة الثلاثية USD + العملة المحلية + ستوبر S03 + حصة الفرد المؤهل -->
+            ${(() => {
+                const hp = getCountryPlanInfo(profile.country_code);
+                return `
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(205px,1fr));gap:12px;margin:16px 0;">
+                    <div style="background:#f0fdf4;border:1.5px solid #10b981;border-radius:14px;padding:14px;">
+                        <div style="font-size:0.8rem;color:#065f46;">💎 حصة الفرد المؤهل بدولتك (${esc(hp.countryCode)})</div>
+                        <strong style="font-size:1.15rem;color:#047857;display:block;margin-top:4px;">${esc(fmtLocalFromUsd(hp.unitShareUsd))}</strong>
+                        <small style="color:#065f46;">${fmtUsd(hp.unitShareUsd)} = الهدف (${fmtUsd(hp.targetUsd)}) ÷ ${hp.s02}</small>
+                    </div>
+                    <div style="background:#fff;border:1.5px solid #cbd5e1;border-radius:14px;padding:14px;">
+                        <div style="font-size:0.8rem;color:#475569;">1️⃣ إجمالي عائدات الشبكة المحتسبة</div>
+                        <strong style="font-size:1.15rem;color:#0f172a;display:block;margin-top:4px;">${esc(fmtLocalFromUsd(grossNetworkUsd))}</strong>
+                        <small style="color:#64748b;">مرجع الدفتر: ${fmtUsd(grossNetworkUsd)}</small>
+                    </div>
+                    <div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:14px;padding:14px;">
+                        <div style="font-size:0.8rem;color:#92400e;">2️⃣ تسوية سقف S03 Pro-Rata (حساب 2303)</div>
+                        <strong style="font-size:1.15rem;color:#b45309;display:block;margin-top:4px;">${esc(fmtLocalFromUsd(suspenseUsd))}</strong>
+                        <small style="color:#92400e;">سقف S03 المعتمد: ${esc(fmtLocalFromUsd(hp.stopperUsd))} (${fmtUsd(hp.stopperUsd)})</small>
+                    </div>
+                    <div style="background:#ecfdf5;border:1.5px solid #10b981;border-radius:14px;padding:14px;">
+                        <div style="font-size:0.8rem;color:#065f46;">3️⃣ صافي المحفظة القابل للصرف (حساب 2302)</div>
+                        <strong style="font-size:1.15rem;color:#047857;display:block;margin-top:4px;">${esc(fmtLocalFromUsd(availableUsd))}</strong>
+                        <small style="color:#065f46;">الصافي الدولاري: ${fmtUsd(availableUsd)}</small>
+                    </div>
+                </div>`;
+            })()}
 
             <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:12px;margin:14px 0;font-size:0.85rem;color:#334155;">
                 🛡️ <strong>ضوابط الأمان المالية (D24 / W07 / D7):</strong> يُحظر تماماً التحويل المباشر بين الأعضاء (<code>No P2P</code>)، وتخضع كل وسيلة استلام مضافة لفترة تهدئة إجبارية <code>72 ساعة</code> مع اشتراط توثيق الهوية <code>KYC = verified</code> قبل السحب.

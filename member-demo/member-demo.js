@@ -113,10 +113,14 @@ function initCalculator() {
         const teamCount = parseInt((teamInput && teamInput.value) || '0', 10) || 0;
 
         const ownReturn = amount * (netRate / 100);
-        const avgTeamSpend = amount * 0.5;
-        const teamReturn = teamCount * avgTeamSpend * (netRate / 100) * 0.10;
-        const targetSar = 92.81; // مرجعي 24.75$ بالريال
+        const targetSar = 92.81; // مرجعي 24.75$ × 3.75 ر.س
+        const unitShareSar = 2.25 * 3.75; // حصة الفرد المؤهل = 24.75$ ÷ 11 = 2.25$ (8.4375 ر.س)
         const coveragePct = Math.min(100, Math.round((ownReturn / targetSar) * 100));
+        const teamReturn = (teamCount * unitShareSar) + (coveragePct >= 100 ? unitShareSar : 0);
+        const unitShareEl = document.getElementById('calc-unit-share');
+        if (unitShareEl) {
+            unitShareEl.textContent = `${unitShareSar.toFixed(2)} ر.س ($2.25)`;
+        }
 
         if (resultEl) {
             resultEl.textContent = `${ownReturn.toFixed(2)} ر.س`;

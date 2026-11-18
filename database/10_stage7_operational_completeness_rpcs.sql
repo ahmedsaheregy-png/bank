@@ -130,7 +130,12 @@ BEGIN
                  c.iana_timezone,
                  c.admin_fx_rate,
                  c.monthly_target_usd,
+                 gs.s01_gens AS numerical_stopper_s01,
+                 gs.s02_slots AS upline_ceiling_s02,
+                 ((2::numeric ^ LEAST(gs.s01_gens, 40)) - 1) AS ideal_tree_nodes,
+                 TRUNC(c.monthly_target_usd / gs.s02_slots, 2) AS unit_share_usd,
                  c.financial_stopper_usd,
+                 ROUND((((2::numeric ^ LEAST(gs.s01_gens, 40)) - 1) * TRUNC(c.monthly_target_usd / gs.s02_slots, 2))::numeric, 2) AS default_financial_stopper_usd,
                  c.vat_rate,
                  c.payout_day,
                  COALESCE((
@@ -144,6 +149,14 @@ BEGIN
                      WHERE g.country_code = c.country_code
                  ), '[]'::jsonb) AS cities
             FROM sawyan.countries c
+            CROSS JOIN LATERAL (
+                SELECT GREATEST(COALESCE(s.numerical_stopper_s01, 11), 1) AS s01_gens,
+                       GREATEST(COALESCE(s.upline_ceiling_s02, 11), 1) AS s02_slots
+                  FROM sawyan.settings s
+                 WHERE s.country_id IS NULL
+                 ORDER BY s.effective_from DESC, s.recorded_at DESC
+                 LIMIT 1
+            ) gs
            WHERE c.is_active = true
       ) t;
 
@@ -1536,7 +1549,10 @@ BEGIN
                  tc.depth AS spatial_depth,
                  (tc.depth + 1) AS spatial_me_label,
                  c.country_code,
+                 c.currency_code,
+                 c.admin_fx_rate,
                  c.monthly_target_usd,
+                 TRUNC(c.monthly_target_usd / 11, 2) AS unit_share_usd,
                  COALESCE(tb.carry_on_in_usd + tb.current_month_purchases_usd + tb.compensatory_incoming_usd, 0.00) AS box_accum_usd,
                  LEAST(ROUND(((COALESCE(tb.carry_on_in_usd + tb.current_month_purchases_usd + tb.compensatory_incoming_usd, 0.00) / GREATEST(c.monthly_target_usd, 0.01)) * 100.0)::numeric, 1), 100.0) AS progress_pct,
                  GREATEST(c.monthly_target_usd - COALESCE(tb.carry_on_in_usd + tb.current_month_purchases_usd + tb.compensatory_incoming_usd, 0.00), 0.00) AS remaining_to_qualify_usd,

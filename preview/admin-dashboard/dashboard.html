@@ -466,9 +466,6 @@
             container.innerHTML = '<div style=\"background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 12px; padding: 14px; text-align: center; color: #64748b; font-weight: 700; font-size: 0.88rem;\">✨ لا توجد إعلانات أو عروض معلقة بانتظار الاعتماد — النظام بصفر معلقات وجاهز للتشغيل الفعلي.</div>';
             return;
         }
-        const container = document.getElementById('adminPromoQueueContainer');
-        const badge = document.getElementById('adminPromoCountBadge');
-        if (!container) return;
 
         let promo = JSON.parse(localStorage.getItem('sawyan_active_merchant_promo') || 'null');
         

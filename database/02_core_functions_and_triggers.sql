@@ -205,11 +205,15 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $$
 DECLARE
-    v_share_per_member NUMERIC(18,6);
+    v_unit_share_trunc NUMERIC(18,2);
+    v_s01_gens         INTEGER;
+    v_ideal_nodes      NUMERIC(24,0);
 BEGIN
     IF NEW.cap_auto_calc = true THEN
-        v_share_per_member := NEW.monthly_target_usd / NEW.upline_ceiling_s02;
-        NEW.cap_amount := ROUND((((1::bigint << NEW.generations_count) - 1) * v_share_per_member)::numeric, 2);
+        v_s01_gens         := GREATEST(COALESCE(NEW.numerical_stopper_s01, NEW.generations_count, 11), 1);
+        v_unit_share_trunc := TRUNC(NEW.monthly_target_usd / GREATEST(NEW.upline_ceiling_s02, 1), 2);
+        v_ideal_nodes      := (2::numeric ^ LEAST(v_s01_gens, 40)) - 1;
+        NEW.cap_amount     := ROUND((v_ideal_nodes * v_unit_share_trunc)::numeric, 2);
     END IF;
     RETURN NEW;
 END;

@@ -116,9 +116,9 @@
     var CP = [
         { k: 'active', label: 'الدولة مفعّلة', t: 'toggle', v: { EG: true, TR: true, SA: false }, src: 'doc' },
         { k: 'rate', label: 'سعر الصرف الشهري (عملة محلية لكل 1$)', t: 'num', step: 0.01, min: 0.0001, v: { EG: 50, TR: 50, SA: 3.75 }, src: 'doc', tip: 'مؤقت حسب الوثيقة' },
-        { k: 'tgt', label: 'الهدف الشهري ($)', t: 'num', step: 0.25, min: 0.25, v: { EG: 24.75, TR: 24.75, SA: 24.75 }, src: 'doc' },
+        { k: 'tgt', label: 'الهدف الشهري — حصة خطة الدخل ($)', t: 'num', step: 0.25, min: 0.25, v: { EG: 24.75, TR: 24.75, SA: 24.75 }, src: 'doc' },
         { k: 'comp', label: 'الهدف التعويضي ($)', t: 'num', step: 0.25, min: 0, v: { EG: 33, TR: 33, SA: 33 }, src: 'doc', tip: 'معتمد (D1): الشهري + حصة الخزانة المقابلة + إيرادات إدارية من الأهداف التعويضية (≥ 0)' },
-        { k: 'fstop', label: 'الستوبر المالي الشهري ($)', t: 'num', step: 1, min: 0, v: { EG: null, TR: null, SA: null }, src: 'none', tip: 'معتمد (D14): إلزامي التحديد لكل دولة قبل تفعيلها؛ الفائض يُعزل بحساب معلق Pro-Rata باعتماد مزدوج ومهلة قصوى' },
+        { k: 'fstop', label: 'الستوبر المالي الشهري S03 ($)', t: 'num', step: 0.25, min: 1, v: { EG: 4605.75, TR: 4605.75, SA: 4605.75 }, src: 'doc', tip: 'الديفولت التلقائي لكل دولة = حصة الفرد المؤهل × إجمالي الشجرة المثالية المكتملة (2047)؛ مع جواز التعديل اليدوي (D14 / D27)' },
         { k: 'floor', label: 'حد أدنى مطلق لرصيد التاجر (عملة محلية)', t: 'num', step: 10, min: 0, v: { EG: 500, TR: null, SA: null }, src: 'doc', tip: 'معتمد (D15): ألغى المؤسس الحد المقطوع لصالح النسب المئوية فقط (30% / 20% / 10%) بدون قيود.' },
         { k: 'wmin', label: 'أدنى مبلغ للسحب ($)', t: 'num', step: 1, min: 0, v: { EG: null, TR: null, SA: null }, src: 'none', tip: 'معتمد (D17 / W04): تحدده الإدارة لكل دولة ولكل وسيلة استلام (تحويل لحظي / SEPA / ACH / محفظة رقمية / IBAN).' },
         { k: 'wmax', label: 'أقصى سحب للعملية ($)', t: 'num', step: 1, min: 0, v: { EG: null, TR: null, SA: null }, src: 'none', tip: 'معتمد (D17 / W04): تحدده الإدارة لكل دولة ولكل وسيلة استلام.' },
@@ -161,8 +161,13 @@
             ST = { active: ACTIVE, version: 0, approved: {}, history: [{ ver: 0, at: now(), by: 'النظام', approvedBy: '—', reason: 'القيم الأولية المستخرجة من الوثائق الثلاث (بعضها اقتراح لجنة بانتظار الاعتماد)', effective: now().slice(0, 10), changes: [] }], pending: [], audit: [{ t: now(), a: 'النظام', act: 'INIT', d: 'تهيئة سجل المعاملات من الوثائق' }], seq: 0 };
             save();
         }
-        // دمج أي معاملات جديدة لم تكن في نسخة محفوظة
-        var d0 = defaults(); for (var k in d0) if (!(k in ACTIVE)) ACTIVE[k] = d0[k];
+        // دمج أي معاملات جديدة لم تكن في نسخة محفوظة + تعبئة ديفولت الستوبر المالي لو كان فارغاً قديماً
+        var d0 = defaults();
+        for (var k in d0) {
+            if (!(k in ACTIVE) || (k.indexOf('fstop.') === 0 && (ACTIVE[k] === null || ACTIVE[k] === ''))) {
+                ACTIVE[k] = d0[k];
+            }
+        }
         DRAFT = JSON.parse(JSON.stringify(ACTIVE));
     }
     function save() { ST.active = ACTIVE; localStorage.setItem(LS, JSON.stringify(ST)); }
@@ -197,6 +202,17 @@
         return String(v) + (m.u ? ' ' + m.u : '');
     }
 
+    function calcCtyUnitShare(tgtUsd, sharesCount) {
+        if (tgtUsd === null || !sharesCount || sharesCount < 1) return null;
+        return Math.floor(Math.round(Number(tgtUsd) * 100) / sharesCount) / 100;
+    }
+    function calcCtyDefaultStopper(tgtUsd, stGens, sharesCount) {
+        var sh = calcCtyUnitShare(tgtUsd, sharesCount);
+        if (sh === null || stGens === null || stGens < 1) return null;
+        var nodes = Math.pow(2, Math.min(stGens, 40)) - 1;
+        return Math.round(sh * 100 * nodes) / 100;
+    }
+
     /* ---------- المشتقات والقيود ---------- */
     function derived() {
         var out = [];
@@ -204,19 +220,23 @@
         var com = num(V('F01')), dec = num(V('F06')); dec = dec === null ? 2 : dec;
         var tg = num(V('tgt.EG')), ups = num(V('S02')), st = num(V('S01'));
         var shares = ups === null ? null : ups + 1;
-        var share = (tg !== null && shares) ? tg / shares : null;
+        var share = calcCtyUnitShare(tg, shares);
+        var idealNodes = st !== null ? (Math.pow(2, st) - 1) : null;
         out.push(['نسبة خطة الدخل', fmt(plan, 1) + '%', '100 − نسبة الخزانة']);
         var equiv = (tg !== null && com && plan !== null) ? tg / ((com / 100) * (plan / 100)) : null;
         out.push(['المشتريات المكافئة للهدف الشهري', fmt(equiv, 2) + ' $', 'الهدف ÷ (عمولة التاجر × نسبة الخطة)']);
-        out.push(['إجمالي حصص التوزيع', shares === null ? '—' : String(shares), 'عدد الـ Uplines + 1 (صانع التوزيع)']);
-        out.push(['الحصة الأصلية لكل مستفيد', fmt(share, 2) + ' $', 'الهدف ÷ إجمالي الحصص']);
-        var cap = (share !== null && st !== null) ? Math.floor((Math.pow(2, st) - 1) * share) : null;
-        out.push(['الحد الأقصى النظري للتوزيعات (cap)', cap === null ? '—' : fmt(cap, 0) + ' $', '⌊(2^الستوبر − 1) × الحصة⌋ — يُعاد حسابه تلقائياً']);
+        out.push(['إجمالي حصص التوزيع (السقف)', shares === null ? '—' : String(shares), 'عدد الـ Uplines + 1 (صانع التوزيع)']);
+        out.push(['حصة الفرد المؤهل (مصر مرجعياً)', fmt(share, 2) + ' $', 'حصة خطة الدخل ÷ عدد حصص السقف']);
+        var cap = calcCtyDefaultStopper(tg, st, shares);
+        out.push(['ديفولت الستوبر المالي (×' + (idealNodes === null ? '2047' : fmt(idealNodes, 0)) + ')', cap === null ? '—' : fmt(cap, 2) + ' $', 'حصة الفرد المؤهل × إجمالي الشجرة المثالية المكتملة']);
         COUNTRIES.forEach(function (c) {
             var act = V('active.' + c.c), r = num(V('rate.' + c.c)), t = num(V('tgt.' + c.c)), cp = num(V('comp.' + c.c));
+            var cSh = calcCtyUnitShare(t, shares);
             if (!act) return;
             var loc = (r !== null && t !== null) ? t * r : null;
+            var locSh = (r !== null && cSh !== null) ? cSh * r : null;
             out.push(['الهدف المحلي — ' + c.n, fmt(loc, dec) + ' ' + c.cur, 'الهدف بالدولار × سعر الشهر']);
+            out.push(['💎 حصة الفرد المؤهل — ' + c.n, (cSh === null ? '—' : ('$' + fmt(cSh, 2) + ' (' + fmt(locSh, dec) + ' ' + c.cur + ')')), 'الهدف الشهري ÷ ' + (shares || 11)]);
             if (cp !== null && t !== null && tr !== null && plan) {
                 var uplift = cp - t - t * (tr / plan);
                 out.push(['إيرادات إدارية من الأهداف التعويضية — ' + c.n, fmt(uplift, 2) + ' $', 'التعويضي − الشهري − حصة الخزانة المقابلة']);
@@ -346,7 +366,8 @@
     function groupHtml(g, readonly) { return '<div class="sc-card">' + G.filter(function (p) { return p.g === g; }).map(function (p) { return rowHtml(p, readonly); }).join('') + '</div>'; }
 
     function countryHtml(readonly) {
-        var h = '<div class="sc-card"><div style="font-weight:900;margin-bottom:8px">🌍 إدارة الدول والأهداف وأسعار الصرف</div><div style="overflow:auto"><table class="sc-tbl"><thead><tr><th>المعامل</th>' + COUNTRIES.map(function (c) { return '<th>' + c.n + '<br><small style="color:#64748b">' + c.cur + ' • ' + c.tz + '</small></th>'; }).join('') + '</tr></thead><tbody>';
+        var ups = num(V('S02')), st = num(V('S01')), shares = ups === null ? 11 : (ups + 1), nodes = st === null ? 2047 : (Math.pow(2, st) - 1);
+        var h = '<div class="sc-card"><div style="font-weight:900;margin-bottom:8px">🌍 إدارة الدول والأهداف وحصة الفرد وأسعار الصرف</div><div style="overflow:auto"><table class="sc-tbl"><thead><tr><th>المعامل</th>' + COUNTRIES.map(function (c) { return '<th>' + c.n + '<br><small style="color:#64748b">' + c.cur + ' • ' + c.tz + '</small></th>'; }).join('') + '</tr></thead><tbody>';
         CP.forEach(function (p) {
             h += '<tr><td><b>' + esc(p.label) + '</b>' + (p.tip ? '<div class="sc-help">' + esc(p.tip) + '</div>' : '') + '</td>';
             COUNTRIES.forEach(function (c) {
@@ -355,6 +376,16 @@
                 h += '<td id="row_' + k.replace('.', '_') + '" data-k="' + k + '">' + chip(srcState(k)) + '<div class="sc-in">' + inputHtml(k, m, readonly) + '</div><div class="sc-err" id="err_' + k.replace('.', '_') + '"></div></td>';
             });
             h += '</tr>';
+            if (p.k === 'tgt') {
+                h += '<tr style="background:#ecfdf5;"><td><b style="color:#065f46;">💎 حصة الفرد المؤهل من الهدف الشهري ($)</b><div class="sc-help" style="color:#047857;">معادلة تلقائية دائمة = حصة خطة الدخل ÷ عدد أجيال السقف (' + shares + ') • ومنها ديفولت S03 = الحصة × ' + fmt(nodes, 0) + '</div></td>';
+                COUNTRIES.forEach(function (c) {
+                    var tVal = num(V('tgt.' + c.c)), rVal = num(V('rate.' + c.c));
+                    var shUsd = calcCtyUnitShare(tVal, shares);
+                    var shLoc = (shUsd !== null && rVal !== null) ? (shUsd * rVal) : null;
+                    h += '<td id="derived_share_' + c.c + '"><span class="sc-chip" style="background:#d1fae5;color:#065f46;">محسوب تلقائياً (🔒)</span><div class="sc-in"><input type="text" readonly disabled value="' + (shUsd === null ? '—' : ('$' + fmt(shUsd, 2))) + '" style="background:#ffffff;border-color:#10b981;color:#065f46;font-weight:900;min-width:130px;"></div><div class="sc-help" style="color:#047857;font-weight:700;">' + (shLoc === null ? '' : ('= ' + fmt(shLoc, 2) + ' ' + c.cur)) + '</div></td>';
+                });
+                h += '</tr>';
+            }
         });
         h += '</tbody></table></div></div>';
         h += '<div class="sc-card"><div style="font-weight:900;margin-bottom:6px">إعدادات أسعار الصرف العامة</div>' + FX_GLOBAL.map(function (p) { return rowHtml(p, readonly); }).join('') + '</div>';
@@ -481,10 +512,41 @@
 
     /* ---------- الأفعال ---------- */
     window.scSet = function (k, val) {
+        var oldUps = num(V('S02')), oldSt = num(V('S01'));
+        var oldShares = oldUps === null ? 11 : (oldUps + 1);
+        var prevDefs = {};
+        COUNTRIES.forEach(function (c) {
+            prevDefs[c.c] = calcCtyDefaultStopper(num(V('tgt.' + c.c)), oldSt === null ? 11 : oldSt, oldShares);
+        });
+
         var m = meta(k);
         if (m.t === 'toggle') DRAFT[k] = !!val;
         else if (m.t === 'select' || m.t === 'text') DRAFT[k] = val;
         else DRAFT[k] = (val === '' || val === null) ? null : Number(val);
+
+        // تحديث ديفولت الستوبر المالي وحصة الفرد تلقائياً عند تغيير الهدف الشهري أو S01 أو S02
+        if (k.indexOf('tgt.') === 0 || k.indexOf('rate.') === 0 || k === 'S01' || k === 'S02') {
+            var newUps = num(V('S02')), newSt = num(V('S01'));
+            var newShares = newUps === null ? 11 : (newUps + 1);
+            COUNTRIES.forEach(function (c) {
+                var curFstop = num(DRAFT['fstop.' + c.c]);
+                var newDef = calcCtyDefaultStopper(num(V('tgt.' + c.c)), newSt === null ? 11 : newSt, newShares);
+                if (newDef !== null && (curFstop === null || (prevDefs[c.c] !== null && Math.abs(curFstop - prevDefs[c.c]) < 0.01))) {
+                    DRAFT['fstop.' + c.c] = newDef;
+                    var fIn = document.getElementById('sc_fstop_' + c.c);
+                    if (fIn) fIn.value = newDef;
+                }
+                var shCell = document.getElementById('derived_share_' + c.c);
+                if (shCell) {
+                    var shU = calcCtyUnitShare(num(V('tgt.' + c.c)), newShares);
+                    var rU = num(V('rate.' + c.c));
+                    var shInp = shCell.querySelector('input');
+                    var shHlp = shCell.querySelectorAll('.sc-help');
+                    if (shInp) shInp.value = shU === null ? '—' : ('$' + fmt(shU, 2));
+                    if (shHlp && shHlp.length) shHlp[shHlp.length - 1].textContent = (shU !== null && rU !== null) ? ('= ' + fmt(shU * rU, 2) + ' ' + c.cur) : '';
+                }
+            });
+        }
         refreshAside();
     };
     window.scTab = function (t) { TAB = t; render(); };

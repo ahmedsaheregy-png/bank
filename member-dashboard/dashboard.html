@@ -138,10 +138,11 @@
                                 <input type="number" id="dashCalcTeam" value="12" min="0" max="500" style="width:100%; padding:10px; border:1.5px solid #cbd5e1; border-radius:10px;">
                             </div>
                         </div>
-                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; background:linear-gradient(135deg,#0f2744,#065f46); color:#ffffff; padding:14px; border-radius:12px;">
-                            <div><span style="display:block; font-size:0.78rem; color:#cbd5e1;">عائدات مشترياتك المباشرة</span><strong id="dashCalcOwnOut" style="font-size:1.15rem; color:#6ee7b7;">135.00</strong></div>
-                            <div><span style="display:block; font-size:0.78rem; color:#cbd5e1;">عائدات فريقك التقديرية</span><strong id="dashCalcTeamOut" style="font-size:1.15rem; color:#6ee7b7;">81.00</strong></div>
-                            <div><span style="display:block; font-size:0.78rem; color:#cbd5e1;">تغطية صندوق الهدف (24.75$ مرجعي)</span><strong id="dashCalcTargetOut" style="font-size:1.05rem; color:#fef08a;">100% مكتمل ✓</strong></div>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(175px, 1fr)); gap:10px; background:linear-gradient(135deg,#0f2744,#065f46); color:#ffffff; padding:14px; border-radius:12px;">
+                            <div><span style="display:block; font-size:0.78rem; color:#cbd5e1;">💎 حصة الفرد المؤهل (الهدف ÷ 11)</span><strong id="dashCalcShareOut" style="font-size:1.12rem; color:#6ee7b7;">112.50 ج.م ($2.25)</strong></div>
+                            <div><span style="display:block; font-size:0.78rem; color:#cbd5e1;">ما يدخل صندوق هدفك من مشترياتك</span><strong id="dashCalcOwnOut" style="font-size:1.15rem; color:#6ee7b7;">135.00</strong></div>
+                            <div><span style="display:block; font-size:0.78rem; color:#cbd5e1;">عائدك من الأعضاء المؤهلين بفريقك</span><strong id="dashCalcTeamOut" style="font-size:1.15rem; color:#6ee7b7;">1,462.50</strong></div>
+                            <div><span id="dashCalcTargetLabel" style="display:block; font-size:0.78rem; color:#cbd5e1;">تغطية صندوق الهدف (24.75$ مرجعي)</span><strong id="dashCalcTargetOut" style="font-size:1.05rem; color:#fef08a;">100% مكتمل ✓</strong></div>
                         </div>
                     </div>
 
@@ -245,25 +246,40 @@
                 const spendEl = document.getElementById('dashCalcSpend');
                 const rateEl = document.getElementById('dashCalcRate');
                 const teamEl = document.getElementById('dashCalcTeam');
+                const shareOut = document.getElementById('dashCalcShareOut');
                 const ownOut = document.getElementById('dashCalcOwnOut');
                 const teamOut = document.getElementById('dashCalcTeamOut');
+                const targetLabel = document.getElementById('dashCalcTargetLabel');
                 const targetOut = document.getElementById('dashCalcTargetOut');
                 if (!spendEl || !rateEl || !teamEl) return;
 
                 function recalc() {
+                    const plan = (typeof window.getSawyanMemberCountryPlan === 'function')
+                        ? window.getSawyanMemberCountryPlan()
+                        : { fx: 50, currencyCode: 'EGP', targetUsd: 24.75, s02: 11, unitShareUsd: 2.25 };
+                    const fx = Number(plan.fx || 50) > 0 ? Number(plan.fx || 50) : 50;
+                    const cur = plan.currencyCode || 'EGP';
+                    const targetLocal = Number(plan.targetUsd || 24.75) * fx;
+                    const unitShareUsd = Number(plan.unitShareUsd || 2.25);
+                    const unitShareLocal = unitShareUsd * fx;
+
                     const spend = parseFloat(spendEl.value) || 0;
                     const netRate = parseFloat(rateEl.value) || 0;
                     const teamCount = parseInt(teamEl.value, 10) || 0;
 
-                    const ownVal = spend * (netRate / 100);
-                    const teamVal = teamCount * (spend * 0.5) * (netRate / 100) * 0.10;
-                    const pct = Math.min(100, Math.round((ownVal / 24.75) * 100));
+                    const ownBoxAddLocal = spend * (netRate / 100);
+                    const pct = Math.min(100, Math.round((ownBoxAddLocal / Math.max(targetLocal, 0.01)) * 100));
+                    const ownCreatorShareLocal = pct >= 100 ? unitShareLocal : 0;
+                    const teamTotalLocal = (teamCount * unitShareLocal) + ownCreatorShareLocal;
 
-                    if (ownOut) ownOut.textContent = `${ownVal.toFixed(2)}`;
-                    if (teamOut) teamOut.textContent = `${teamVal.toFixed(2)}`;
+                    if (shareOut) shareOut.textContent = `${unitShareLocal.toFixed(2)} ${cur} ($${unitShareUsd.toFixed(2)})`;
+                    if (ownOut) ownOut.textContent = `${ownBoxAddLocal.toFixed(2)} ${cur}`;
+                    if (teamOut) teamOut.textContent = `${teamTotalLocal.toFixed(2)} ${cur}`;
+                    if (targetLabel) targetLabel.textContent = `تغطية صندوق الهدف (${targetLocal.toFixed(2)} ${cur} / $${Number(plan.targetUsd || 24.75).toFixed(2)})`;
                     if (targetOut) targetOut.textContent = pct >= 100 ? '100% مكتمل ✓' : `${pct}% من الهدف`;
                 }
 
+                window.recalcMemberHomeCalculator = recalc;
                 spendEl.addEventListener('input', recalc);
                 rateEl.addEventListener('input', recalc);
                 teamEl.addEventListener('input', recalc);

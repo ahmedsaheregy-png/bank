@@ -1,5 +1,5 @@
 /* ============================================
-   SAWYAN BANK - Bidirectional Text Support
+   SAWYAN - Bidirectional Text Support
    دعم النص ثنائي الاتجاه (RTL + LTR)
    ============================================ */
 
@@ -47,7 +47,7 @@
     unicode-bidi: isolate;
 }
 
-/* ===== Cashback Badge - شارة الكاشباك ===== */
+/* ===== Income Plan Return Badge - شارة عائدات خطة الدخل ===== */
 .merchant-cashback-small {
     direction: ltr;
     unicode-bidi: isolate;

@@ -27,6 +27,33 @@
         return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
+    function getGlobalStopperConfig() {
+        const s = (LIVE_BUNDLE && Array.isArray(LIVE_BUNDLE.settings) && LIVE_BUNDLE.settings[0]) || {};
+        const s01 = Math.max(1, Math.min(40, parseInt(s.numerical_stopper_s01 || s.generations_count || 11, 10) || 11));
+        const s02 = Math.max(1, parseInt(s.upline_ceiling_s02 || 11, 10) || 11);
+        const idealNodes = Math.pow(2, s01) - 1;
+        return { s01: s01, s02: s02, idealNodes: idealNodes };
+    }
+
+    function calcUnitShareCents(targetUsd, s02Slots) {
+        const tgtCents = Math.max(0, Math.round(Number(targetUsd || 0) * 100));
+        const slots = Math.max(1, parseInt(s02Slots || 11, 10) || 11);
+        return Math.floor(tgtCents / slots);
+    }
+
+    function calcUnitShareUsd(targetUsd, s02Slots) {
+        return calcUnitShareCents(targetUsd, s02Slots) / 100;
+    }
+
+    function calcDefaultCountryStopperUsd(targetUsd, s01Gens, s02Slots) {
+        const cfg = getGlobalStopperConfig();
+        const s01 = s01Gens ? Math.max(1, Math.min(40, parseInt(s01Gens, 10) || cfg.s01)) : cfg.s01;
+        const s02 = s02Slots ? Math.max(1, parseInt(s02Slots, 10) || cfg.s02) : cfg.s02;
+        const shareCents = calcUnitShareCents(targetUsd, s02);
+        const idealNodes = Math.pow(2, s01) - 1;
+        return (shareCents * idealNodes) / 100;
+    }
+
     function isSovereignFounder(adm) {
         if (!adm) return false;
         return Boolean(adm.is_sovereign_founder || String(adm.email || '').toLowerCase() === 'ahmed.saher.egy@gmail.com');
@@ -436,6 +463,9 @@
     // --- Tab 3: Live Country Gate D13 + Actuarial Stress-Test Simulator S06 ---
     function renderLiveCountryAndActuarialTab() {
         const countries = LIVE_BUNDLE.countries || [];
+        const gCfg = getGlobalStopperConfig();
+        const actDefaultShare = calcUnitShareUsd(24.75, gCfg.s02);
+        const actDefaultS03 = calcDefaultCountryStopperUsd(24.75, gCfg.s01, gCfg.s02);
         const simHtml = LAST_ACTUARIAL
             ? '<div style="background:#ecfdf5;border:1.5px solid #10b981;border-radius:12px;padding:12px 14px;margin-top:12px;font-size:0.84rem;color:#064e3b;">' +
                 '<b>📊 نتيجة اختبار الضغط الأكتواري الحي (`admin_run_actuarial_stress_test_s06`):</b> ' +
@@ -453,11 +483,12 @@
             '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
                 '<h3 style="margin:0 0 8px 0;font-size:1rem;color:#0f172a;">🧮 المحاكي الأكتواري واختبار الملاءة القصوى قبل تفعيل أي دولة (S06)</h3>' +
                 '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;">' +
-                    '<div><label style="font-size:0.78rem;font-weight:700;">رمز الدولة</label><input id="svActCountry" type="text" value="SA" maxlength="2" class="form-control"></div>' +
-                    '<div><label style="font-size:0.78rem;font-weight:700;">الهدف الشهري ($)</label><input id="svActTarget" type="number" step="0.25" value="24.75" class="form-control"></div>' +
-                    '<div><label style="font-size:0.78rem;font-weight:700;">الستوبر العددي S01</label><input id="svActS01" type="number" value="11" class="form-control"></div>' +
-                    '<div><label style="font-size:0.78rem;font-weight:700;">السقف الصاعد S02</label><input id="svActS02" type="number" value="11" class="form-control"></div>' +
-                    '<div><label style="font-size:0.78rem;font-weight:700;">الستوبر المالي S03 ($)</label><input id="svActS03" type="number" step="0.25" value="4605.75" class="form-control"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:700;">رمز الدولة</label><input id="svActCountry" type="text" value="SA" maxlength="2" oninput="svOnActuarialCountryChange()" class="form-control"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:700;">الهدف الشهري ($)</label><input id="svActTarget" type="number" step="0.25" value="24.75" oninput="svSyncActuarialDerived(false)" class="form-control"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:800;color:#047857;">حصة الفرد المؤهل (÷S02) ($)</label><input id="svActUnitShare" type="text" readonly value="' + actDefaultShare.toFixed(2) + '" class="form-control" style="background:#ecfdf5;border-color:#6ee7b7;color:#065f46;font-weight:900;"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:700;">الستوبر العددي S01</label><input id="svActS01" type="number" value="' + gCfg.s01 + '" oninput="svSyncActuarialDerived(false)" class="form-control"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:700;">السقف الصاعد S02</label><input id="svActS02" type="number" value="' + gCfg.s02 + '" oninput="svSyncActuarialDerived(false)" class="form-control"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:700;display:flex;justify-content:space-between;align-items:center;"><span>الستوبر المالي S03 ($)</span><a href="#" onclick="svSyncActuarialDerived(true);return false;" style="font-size:0.7rem;color:#059669;text-decoration:underline;">↺ ديفولت</a></label><input id="svActS03" type="number" step="0.25" value="' + actDefaultS03.toFixed(2) + '" data-custom="0" oninput="this.dataset.custom=\'1\'" class="form-control"></div>' +
                     '<div><label style="font-size:0.78rem;font-weight:700;">حجم الشبكة المختبرة</label><input id="svActMembers" type="number" step="1000" value="10000" class="form-control"></div>' +
                 '</div>' +
                 '<div style="margin-top:10px;"><button type="button" id="svRunActuarialBtn" onclick="svRunActuarial()" class="btn btn-primary">🧮 تشغيل اختبار الملاءة الأكتواري S06</button></div>' +
@@ -468,21 +499,34 @@
                 '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">' +
                     '<div>' +
                         '<h3 style="margin:0;font-size:1rem;color:#0f172a;">🌍 بوابة تفعيل وتخصيص مدخلات الدول (`sawyan.countries` — D13 / D18 / D19)</h3>' +
-                        '<div style="font-size:0.78rem;color:#64748b;margin-top:3px;">تحكّم كامل ومباشر في العملة، سعر الصرف الإداري، الهدف الشهري، الستوبر المالي S03، الضرائب، مواعيد الصرف، وحالة التفعيل لكل دولة على حدة.</div>' +
+                        '<div style="font-size:0.78rem;color:#64748b;margin-top:3px;">تحكّم كامل ومباشر في العملة، سعر الصرف الإداري، الهدف الشهري، حصة الفرد المؤهل (الهدف ÷ ' + gCfg.s02 + ')، ديفولت الستوبر المالي S03 (×' + gCfg.idealNodes.toLocaleString('en-US') + ')، الضرائب، ومواعيد الصرف لكل دولة.</div>' +
                     '</div>' +
                     '<button type="button" class="btn btn-primary" onclick="svOpenCountryEditModal(null)">➕ إضافة دولة جديدة للنظام</button>' +
                 '</div>' +
-                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>الدولة</th><th>العملة / سعر الصرف</th><th>الهدف الشهري / S03</th><th>ضرائب VAT / WHT</th><th>الصرف / المرتجعات</th><th>الرأي القانوني</th><th>التجار (الحد)</th><th>الحالة</th><th>إجراءات التعديل والحوكمة</th></tr></thead><tbody>' +
+                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>الدولة</th><th>العملة / سعر الصرف</th><th>الهدف الشهري / حصة الفرد / S03</th><th>ضرائب VAT / WHT</th><th>الصرف / المرتجعات</th><th>الرأي القانوني</th><th>التجار (الحد)</th><th>الحالة</th><th>إجراءات التعديل والحوكمة</th></tr></thead><tbody>' +
                 countries.map(function (c) {
                     const nameAr = (c.country_name_i18n && c.country_name_i18n.ar) || c.country_code;
                     const fx = Number(c.admin_fx_rate || 1);
-                    const localTarget = Number(c.monthly_target_usd || 24.75) * fx;
+                    const cS01 = Number(c.numerical_stopper_s01 || gCfg.s01);
+                    const cS02 = Number(c.upline_ceiling_s02 || gCfg.s02);
+                    const cNodes = Number(c.ideal_tree_nodes || (Math.pow(2, cS01) - 1));
+                    const targetUsd = Number(c.monthly_target_usd || 24.75);
+                    const unitShareUsd = c.unit_share_usd !== undefined ? Number(c.unit_share_usd) : calcUnitShareUsd(targetUsd, cS02);
+                    const defStopperUsd = c.default_financial_stopper_usd !== undefined ? Number(c.default_financial_stopper_usd) : calcDefaultCountryStopperUsd(targetUsd, cS01, cS02);
+                    const savedStopperUsd = Number(c.financial_stopper_usd || defStopperUsd);
+                    const isDefaultStopper = Math.abs(savedStopperUsd - defStopperUsd) < 0.005;
+                    const localTarget = targetUsd * fx;
+                    const localShare = unitShareUsd * fx;
                     const merchOk = Number(c.active_merchants_count || 0) >= Number(c.min_merchants_threshold || 1);
                     const founder = isSovereignFounder(LIVE_BUNDLE && LIVE_BUNDLE.admin);
                     return '<tr>' +
                         '<td><b>' + esc(nameAr) + ' (' + esc(c.country_code) + ')</b><div style="font-size:0.72rem;color:#64748b;">' + esc(c.iana_timezone) + '</div></td>' +
                         '<td><b>' + esc(c.currency_code) + '</b><div style="font-size:0.74rem;color:#0f766e;font-weight:800;">1$ = ' + fmt2(fx) + ' ' + esc(c.currency_code) + '</div></td>' +
-                        '<td><b>$' + fmt2(c.monthly_target_usd) + '</b> <small style="color:#64748b;">(' + fmt2(localTarget) + ' ' + esc(c.currency_code) + ')</small><div style="font-size:0.74rem;color:#1e293b;">S03: <b>$' + fmt2(c.financial_stopper_usd) + '</b></div></td>' +
+                        '<td>' +
+                            '<div>الهدف: <b>$' + fmt2(targetUsd) + '</b> <small style="color:#64748b;">(' + fmt2(localTarget) + ' ' + esc(c.currency_code) + ')</small></div>' +
+                            '<div style="font-size:0.75rem;color:#047857;font-weight:800;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:6px;padding:2px 6px;margin:3px 0;display:inline-block;">💎 حصة الفرد (÷' + cS02 + '): <b>$' + fmt2(unitShareUsd) + '</b> <small>(' + fmt2(localShare) + ' ' + esc(c.currency_code) + ')</small></div>' +
+                            '<div style="font-size:0.74rem;color:#1e293b;">S03: <b>$' + fmt2(savedStopperUsd) + '</b> <small style="color:' + (isDefaultStopper ? '#059669' : '#b45309') + ';font-weight:700;">' + (isDefaultStopper ? '(ديفولت ×' + cNodes.toLocaleString('en-US') + ')' : '(مخصص • الديفولت $' + fmt2(defStopperUsd) + ')') + '</small></div>' +
+                        '</td>' +
                         '<td>VAT ' + Number(c.vat_rate || 0) + '%<br>WHT ' + Number(c.wht_rate || 0) + '%</td>' +
                         '<td>يوم <b>' + Number(c.payout_day || 15) + '</b><div style="font-size:0.72rem;color:#64748b;">إغلاق مرتجع: يوم ' + Number(c.return_cutoff_day || 14) + '</div></td>' +
                         '<td>' + (c.legal_opinion_verified ? '✅ موثق (' + esc(c.local_terms_version) + ')' : '❌ غير موثق') + '</td>' +
@@ -793,21 +837,112 @@
         }
     };
 
+    window.svSyncActuarialDerived = function (forceResetS03) {
+        const tgt = Number((document.getElementById('svActTarget') || {}).value || 24.75);
+        const s01 = Number((document.getElementById('svActS01') || {}).value || 11);
+        const s02 = Number((document.getElementById('svActS02') || {}).value || 11);
+        const shareEl = document.getElementById('svActUnitShare');
+        const s03El = document.getElementById('svActS03');
+        const shareUsd = calcUnitShareUsd(tgt, s02);
+        const defS03 = calcDefaultCountryStopperUsd(tgt, s01, s02);
+        if (shareEl) shareEl.value = shareUsd.toFixed(2);
+        if (s03El && (forceResetS03 || s03El.dataset.custom !== '1')) {
+            s03El.value = defS03.toFixed(2);
+            if (forceResetS03) s03El.dataset.custom = '0';
+        }
+    };
+
+    window.svOnActuarialCountryChange = function () {
+        const cc = String((document.getElementById('svActCountry') || {}).value || '').trim().toUpperCase();
+        const cty = ((LIVE_BUNDLE && LIVE_BUNDLE.countries) || []).find(function (x) { return x.country_code === cc; });
+        if (!cty) return;
+        const tgtEl = document.getElementById('svActTarget');
+        const s03El = document.getElementById('svActS03');
+        if (tgtEl) tgtEl.value = Number(cty.monthly_target_usd || 24.75);
+        if (s03El) {
+            s03El.dataset.custom = '0';
+            window.svSyncActuarialDerived(true);
+            if (cty.financial_stopper_usd && Math.abs(Number(cty.financial_stopper_usd) - Number(s03El.value)) > 0.005
+                && !(Math.abs(Number(cty.financial_stopper_usd) - 4605.75) < 0.005 && Math.abs(Number(cty.monthly_target_usd || 24.75) - 24.75) > 0.005)) {
+                s03El.value = Number(cty.financial_stopper_usd);
+                s03El.dataset.custom = '1';
+            }
+        }
+    };
+
     window.svUpdateCountryModalPreview = function () {
+        const gCfg = getGlobalStopperConfig();
         const fx = Number((document.getElementById('svEditCtyFx') || {}).value || 1);
         const tgt = Number((document.getElementById('svEditCtyTarget') || {}).value || 24.75);
-        const stp = Number((document.getElementById('svEditCtyStopper') || {}).value || 4605.75);
+        const shareUsd = calcUnitShareUsd(tgt, gCfg.s02);
+        const rawShare = tgt > 0 ? (tgt / gCfg.s02) : 0;
+        const defStp = calcDefaultCountryStopperUsd(tgt, gCfg.s01, gCfg.s02);
+        const stpEl = document.getElementById('svEditCtyStopper');
+        const stp = Number((stpEl || {}).value || defStp);
         const cur = String((document.getElementById('svEditCtyCurrency') || {}).value || 'EGP').toUpperCase();
+
+        const shareBox = document.getElementById('svEditCtyUnitShare');
+        if (shareBox) shareBox.value = shareUsd.toFixed(2);
+
+        const shareSub = document.getElementById('svEditCtyUnitShareSub');
+        if (shareSub) {
+            const exactNote = Math.abs(rawShare - shareUsd) > 0.0001 ? (' • الكسر قبل القطع: $' + rawShare.toFixed(4)) : '';
+            shareSub.innerHTML = '= <b>' + fmt2(shareUsd * fx) + ' ' + esc(cur) + '</b> (حصة خطة الدخل ÷ ' + gCfg.s02 + esc(exactNote) + ')';
+        }
+
+        const badgeEl = document.getElementById('svEditCtyStopperBadge');
+        if (badgeEl) {
+            const isDef = Math.abs(stp - defStp) < 0.005;
+            badgeEl.innerHTML = isDef
+                ? '<span style="color:#059669;font-size:0.7rem;font-weight:800;">✓ ديفولت ($' + fmt2(shareUsd) + ' × ' + gCfg.idealNodes.toLocaleString('en-US') + ')</span>'
+                : '<button type="button" onclick="svResetCountryStopperToDefault()" style="background:#ecfdf5;color:#047857;border:1px solid #6ee7b7;border-radius:6px;padding:1px 7px;font-family:Tajawal,sans-serif;font-size:0.7rem;font-weight:800;cursor:pointer;">↺ ضبط الديفولت ($' + fmt2(defStp) + ')</button>';
+        }
+
         const prev = document.getElementById('svEditCtyLocalPreview');
         if (prev) {
-            prev.innerHTML = '💡 المعادل بالعملة المحلية وفق سعر الصرف المدخل: الهدف الشهري = <b>' + fmt2(tgt * fx) + ' ' + esc(cur) + '</b> • الستوبر المالي S03 = <b>' + fmt2(stp * fx) + ' ' + esc(cur) + '</b>';
+            prev.innerHTML = '💡 المعادل بالعملة المحلية وفق سعر الصرف المدخل: الهدف الشهري = <b>' + fmt2(tgt * fx) + ' ' + esc(cur) + '</b> • حصة الفرد المؤهل (1/' + gCfg.s02 + ') = <b>' + fmt2(shareUsd * fx) + ' ' + esc(cur) + '</b> ($' + fmt2(shareUsd) + ') • الستوبر المالي S03 = <b>' + fmt2(stp * fx) + ' ' + esc(cur) + '</b>';
         }
+    };
+
+    window.svOnCountryTargetInput = function () {
+        const gCfg = getGlobalStopperConfig();
+        const overlay = document.getElementById('svCountryEditorOverlay');
+        const tgt = Number((document.getElementById('svEditCtyTarget') || {}).value || 0);
+        const stpEl = document.getElementById('svEditCtyStopper');
+        if (stpEl && (!overlay || overlay.dataset.stopperCustom !== '1') && tgt > 0) {
+            stpEl.value = calcDefaultCountryStopperUsd(tgt, gCfg.s01, gCfg.s02).toFixed(2);
+        }
+        window.svUpdateCountryModalPreview();
+    };
+
+    window.svOnCountryStopperInput = function () {
+        const gCfg = getGlobalStopperConfig();
+        const overlay = document.getElementById('svCountryEditorOverlay');
+        const tgt = Number((document.getElementById('svEditCtyTarget') || {}).value || 24.75);
+        const stp = Number((document.getElementById('svEditCtyStopper') || {}).value || 0);
+        const defStp = calcDefaultCountryStopperUsd(tgt, gCfg.s01, gCfg.s02);
+        if (overlay) {
+            overlay.dataset.stopperCustom = Math.abs(stp - defStp) < 0.005 ? '0' : '1';
+        }
+        window.svUpdateCountryModalPreview();
+    };
+
+    window.svResetCountryStopperToDefault = function () {
+        const gCfg = getGlobalStopperConfig();
+        const overlay = document.getElementById('svCountryEditorOverlay');
+        const tgt = Number((document.getElementById('svEditCtyTarget') || {}).value || 24.75);
+        const stpEl = document.getElementById('svEditCtyStopper');
+        if (stpEl) stpEl.value = calcDefaultCountryStopperUsd(tgt, gCfg.s01, gCfg.s02).toFixed(2);
+        if (overlay) overlay.dataset.stopperCustom = '0';
+        window.svUpdateCountryModalPreview();
     };
 
     window.svOpenCountryEditModal = function (countryCode) {
         const countries = (LIVE_BUNDLE && LIVE_BUNDLE.countries) || [];
+        const gCfg = getGlobalStopperConfig();
         const existing = countryCode ? countries.find(function (x) { return x.country_code === countryCode; }) : null;
         const isNew = !existing;
+        const initDefaultS03 = calcDefaultCountryStopperUsd(24.75, gCfg.s01, gCfg.s02);
         const c = existing || {
             country_code: '',
             country_name_i18n: { ar: '', en: '' },
@@ -815,7 +950,7 @@
             iana_timezone: 'Asia/Dubai',
             admin_fx_rate: 3.6725,
             monthly_target_usd: 24.75,
-            financial_stopper_usd: 4605.75,
+            financial_stopper_usd: initDefaultS03,
             compensatory_admin_fee_usd: 0.00,
             vat_rate: 0.00,
             wht_rate: 0.00,
@@ -827,6 +962,13 @@
             legal_opinion_verified: true,
             is_active: false
         };
+        const cTarget = Number(c.monthly_target_usd || 24.75);
+        const cShare = calcUnitShareUsd(cTarget, gCfg.s02);
+        const cDefStopper = calcDefaultCountryStopperUsd(cTarget, gCfg.s01, gCfg.s02);
+        const rawSavedStopper = Number(c.financial_stopper_usd || 0);
+        const wasLegacyUnlinked = (!isNew && Math.abs(rawSavedStopper - 4605.75) < 0.005 && Math.abs(cTarget - 24.75) > 0.005);
+        const isAutoDefault = isNew || rawSavedStopper <= 0 || Math.abs(rawSavedStopper - cDefStopper) < 0.005 || wasLegacyUnlinked;
+        const effectiveStopper = isAutoDefault ? cDefStopper : rawSavedStopper;
         const founder = isSovereignFounder(LIVE_BUNDLE && LIVE_BUNDLE.admin);
 
         let overlay = document.getElementById('svCountryEditorOverlay');
@@ -837,10 +979,11 @@
             document.body.appendChild(overlay);
         }
         overlay.dataset.isNew = isNew ? '1' : '0';
+        overlay.dataset.stopperCustom = isAutoDefault ? '0' : '1';
         overlay.style.display = 'flex';
 
         overlay.innerHTML =
-            '<div style="background:#ffffff;border-radius:16px;max-width:760px;width:100%;max-height:92vh;overflow-y:auto;padding:22px;box-shadow:0 24px 48px rgba(15,23,42,0.35);font-family:Tajawal,sans-serif;direction:rtl;">' +
+            '<div style="background:#ffffff;border-radius:16px;max-width:820px;width:100%;max-height:92vh;overflow-y:auto;padding:22px;box-shadow:0 24px 48px rgba(15,23,42,0.35);font-family:Tajawal,sans-serif;direction:rtl;">' +
                 '<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1.5px solid #e2e8f0;padding-bottom:12px;margin-bottom:14px;">' +
                     '<div>' +
                         '<h3 style="margin:0;font-size:1.12rem;color:#0f172a;">' + (isNew ? '➕ إضافة دولة جديدة وتحديد مدخلاتها السيادية' : ('⚙️ تعديل مدخلات دولة: ' + esc((c.country_name_i18n && c.country_name_i18n.ar) || c.country_code) + ' (' + esc(c.country_code) + ')')) + '</h3>' +
@@ -860,9 +1003,10 @@
 
                 '<div id="svEditCtyLocalPreview" style="background:#ecfdf5;border:1px solid #6ee7b7;color:#065f46;padding:9px 12px;border-radius:10px;font-size:0.82rem;margin-bottom:12px;"></div>' +
 
-                '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:11px;margin-bottom:12px;">' +
-                    '<div><label style="font-size:0.78rem;font-weight:800;color:#334155;">الهدف الشهري للعضو ($)</label><input id="svEditCtyTarget" type="number" step="0.25" min="1" oninput="svUpdateCountryModalPreview()" value="' + Number(c.monthly_target_usd || 24.75) + '" class="form-control"></div>' +
-                    '<div><label style="font-size:0.78rem;font-weight:800;color:#334155;">الستوبر المالي الشهري S03 ($)</label><input id="svEditCtyStopper" type="number" step="0.25" min="1" oninput="svUpdateCountryModalPreview()" value="' + Number(c.financial_stopper_usd || 4605.75) + '" class="form-control"></div>' +
+                '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:11px;margin-bottom:12px;">' +
+                    '<div><label style="font-size:0.78rem;font-weight:800;color:#334155;">الهدف الشهري للعضو — حصة الخطة ($)</label><input id="svEditCtyTarget" type="number" step="0.25" min="1" oninput="svOnCountryTargetInput()" value="' + cTarget + '" class="form-control"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:900;color:#047857;">💎 حصة الفرد المؤهل (الهدف ÷ ' + gCfg.s02 + ') ($)</label><input id="svEditCtyUnitShare" type="text" readonly value="' + cShare.toFixed(2) + '" class="form-control" style="background:#ecfdf5;border:1.5px solid #10b981;color:#065f46;font-weight:900;"><div id="svEditCtyUnitShareSub" style="font-size:0.71rem;color:#047857;margin-top:3px;"></div></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:800;color:#334155;display:flex;justify-content:space-between;align-items:center;gap:4px;flex-wrap:wrap;"><span>الستوبر المالي الشهري S03 ($)</span><span id="svEditCtyStopperBadge"></span></label><input id="svEditCtyStopper" type="number" step="0.01" min="1" oninput="svOnCountryStopperInput()" value="' + effectiveStopper.toFixed(2) + '" class="form-control"></div>' +
                     '<div><label style="font-size:0.78rem;font-weight:800;color:#334155;">رسم الهدف التعويضي ($)</label><input id="svEditCtyCompFee" type="number" step="0.25" min="0" value="' + Number(c.compensatory_admin_fee_usd || 0) + '" class="form-control"></div>' +
                     '<div><label style="font-size:0.78rem;font-weight:800;color:#334155;">ضريبة القيمة المضافة VAT (%)</label><input id="svEditCtyVat" type="number" step="0.5" min="0" max="99" value="' + Number(c.vat_rate || 0) + '" class="form-control"></div>' +
                     '<div><label style="font-size:0.78rem;font-weight:800;color:#334155;">ضريبة المنبع WHT (%)</label><input id="svEditCtyWht" type="number" step="0.5" min="0" max="99" value="' + Number(c.wht_rate || 0) + '" class="form-control"></div>' +
@@ -982,16 +1126,25 @@
 
     window.svSubmitCountryGate = async function (countryCode) {
         try {
+            const gCfg = getGlobalStopperConfig();
+            const cty = ((LIVE_BUNDLE && LIVE_BUNDLE.countries) || []).find(function (x) { return x.country_code === countryCode; }) || {};
+            const cTarget = Number(cty.monthly_target_usd || 24.75);
+            const defStopper = calcDefaultCountryStopperUsd(cTarget, gCfg.s01, gCfg.s02);
+            const savedStopper = Number(cty.financial_stopper_usd || 0);
+            const wasLegacyUnlinked = (Math.abs(savedStopper - 4605.75) < 0.005 && Math.abs(cTarget - 24.75) > 0.005);
+            const gateStopperUsd = (savedStopper > 0 && !wasLegacyUnlinked) ? savedStopper : defStopper;
+
             const ctyRes = await window.SAWYAN.API.adminSubmitGovernanceRequest({
                 actionType: 'COUNTRY_GATE_D13_ACTIVATION',
                 targetEntity: 'countries',
                 targetId: countryCode,
                 payloadAfter: {
                     country_code: countryCode,
+                    monthly_target_usd: cTarget,
                     legal_opinion_verified: true,
-                    legal_opinion_doc_url: 'https://legal.sawyan.global/opinions/' + countryCode + '-2026.pdf',
-                    local_terms_version: 'v3.0-' + countryCode,
-                    financial_stopper_usd: 4605.75
+                    legal_opinion_doc_url: cty.legal_opinion_doc_url || ('https://legal.sawyan.global/opinions/' + countryCode + '-2026.pdf'),
+                    local_terms_version: cty.local_terms_version || ('v3.0-' + countryCode),
+                    financial_stopper_usd: gateStopperUsd
                 },
                 reason: 'طلب تفعيل بوابة الدولة D13 بعد مراجعة الرأي القانوني والمحاكي الأكتواري S06'
             });

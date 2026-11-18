@@ -331,6 +331,10 @@ DECLARE
     v_pay_methods JSONB;
     v_gouging     JSONB;
     v_fx_rate     NUMERIC(18,6);
+    v_s01_gens    INTEGER := 11;
+    v_s02_slots   INTEGER := 11;
+    v_ideal_nodes NUMERIC(24,0) := 2047;
+    v_cty_matrix  JSONB;
     v_tree        JSONB;
     v_topology    JSONB;
 BEGIN
@@ -339,22 +343,36 @@ BEGIN
     SELECT * INTO v_sponsor FROM sawyan.members WHERE id = v_member.sponsor_id;
     SELECT * INTO v_wallet FROM sawyan.wallets WHERE member_id = v_member.id;
 
+    SELECT COALESCE(s.numerical_stopper_s01, 11), COALESCE(s.upline_ceiling_s02, 11)
+      INTO v_s01_gens, v_s02_slots
+      FROM sawyan.settings s
+     WHERE s.country_id IS NULL
+     ORDER BY s.effective_from DESC, s.recorded_at DESC
+     LIMIT 1;
+    v_s01_gens    := GREATEST(COALESCE(v_s01_gens, 11), 1);
+    v_s02_slots   := GREATEST(COALESCE(v_s02_slots, 11), 1);
+    v_ideal_nodes := (2::numeric ^ LEAST(v_s01_gens, 40)) - 1;
+
     v_period := COALESCE(
         p_period_ym,
         to_char(now() AT TIME ZONE COALESCE(v_country.iana_timezone, 'UTC'), 'YYYY-MM')
     );
 
-    -- 1) صناديق الأهداف الشهرية (24.75$ + Carry On — ممنوع السالب D5)
+    -- 1) صناديق الأهداف الشهرية (الهدف الشهري + حصة الفرد المؤهل + Carry On — ممنوع السالب D5)
     SELECT COALESCE(jsonb_agg(jsonb_build_object(
         'country_code', c.country_code,
         'currency_code', c.currency_code,
         'country_name_i18n', c.country_name_i18n,
+        'admin_fx_rate', c.admin_fx_rate,
         'period_ym', b.period_ym,
         'carry_on_in_usd', ROUND(b.carry_on_in_usd::numeric, 2),
         'current_month_purchases_usd', ROUND(b.current_month_purchases_usd::numeric, 2),
         'carry_on_out_usd', ROUND(b.carry_on_out_usd::numeric, 2),
         'net_accumulated_usd', ROUND((b.carry_on_in_usd + b.current_month_purchases_usd)::numeric, 2),
         'target_required_usd', b.target_required_usd,
+        'upline_ceiling_s02', v_s02_slots,
+        'unit_share_usd', TRUNC(b.target_required_usd / v_s02_slots, 2),
+        'financial_stopper_usd', c.financial_stopper_usd,
         'is_qualified', b.is_qualified,
         'qualification_source', b.qualification_source
     ) ORDER BY b.period_ym DESC, c.id ASC), '[]'::jsonb)
@@ -515,13 +533,43 @@ BEGIN
       JOIN sawyan.merchants mc ON mc.id = pg.merchant_id
      WHERE pg.member_id = v_member.id;
 
-    v_fx_rate := CASE v_country.currency_code
-        WHEN 'EGP' THEN 50.000000
-        WHEN 'TRY' THEN 50.000000
-        WHEN 'SAR' THEN 3.750000
-        WHEN 'EUR' THEN 0.920000
+    v_fx_rate := CASE
+        WHEN COALESCE(v_country.admin_fx_rate, 0) > 0
+             AND NOT (v_country.admin_fx_rate = 1.000000 AND v_country.currency_code <> 'USD')
+        THEN v_country.admin_fx_rate
+        WHEN v_country.currency_code = 'EGP' THEN 50.000000
+        WHEN v_country.currency_code = 'TRY' THEN 50.000000
+        WHEN v_country.currency_code = 'SAR' THEN 3.750000
+        WHEN v_country.currency_code = 'AED' THEN 3.672500
+        WHEN v_country.currency_code = 'EUR' THEN 0.920000
         ELSE 1.000000
     END;
+
+    SELECT COALESCE(jsonb_agg(jsonb_build_object(
+        'country_code', c2.country_code,
+        'country_name_i18n', c2.country_name_i18n,
+        'currency_code', c2.currency_code,
+        'admin_fx_rate', CASE
+            WHEN COALESCE(c2.admin_fx_rate, 0) > 0 AND NOT (c2.admin_fx_rate = 1.000000 AND c2.currency_code <> 'USD')
+            THEN c2.admin_fx_rate
+            WHEN c2.currency_code = 'EGP' THEN 50.000000
+            WHEN c2.currency_code = 'TRY' THEN 50.000000
+            WHEN c2.currency_code = 'SAR' THEN 3.750000
+            WHEN c2.currency_code = 'AED' THEN 3.672500
+            WHEN c2.currency_code = 'EUR' THEN 0.920000
+            ELSE 1.000000
+        END,
+        'monthly_target_usd', c2.monthly_target_usd,
+        'upline_ceiling_s02', v_s02_slots,
+        'numerical_stopper_s01', v_s01_gens,
+        'ideal_tree_nodes', v_ideal_nodes,
+        'unit_share_usd', TRUNC(c2.monthly_target_usd / v_s02_slots, 2),
+        'financial_stopper_usd', c2.financial_stopper_usd,
+        'default_financial_stopper_usd', ROUND((v_ideal_nodes * TRUNC(c2.monthly_target_usd / v_s02_slots, 2))::numeric, 2),
+        'is_active', c2.is_active
+    ) ORDER BY c2.is_active DESC, c2.country_code ASC), '[]'::jsonb)
+      INTO v_cty_matrix
+      FROM sawyan.countries c2;
 
     RETURN jsonb_build_object(
         'period_ym', v_period,
@@ -536,7 +584,12 @@ BEGIN
             'currency_code', v_country.currency_code,
             'fx_rate_to_usd', v_fx_rate,
             'monthly_target_usd', v_country.monthly_target_usd,
+            'upline_ceiling_s02', v_s02_slots,
+            'numerical_stopper_s01', v_s01_gens,
+            'ideal_tree_nodes', v_ideal_nodes,
+            'unit_share_usd', TRUNC(v_country.monthly_target_usd / v_s02_slots, 2),
             'financial_stopper_usd', v_country.financial_stopper_usd,
+            'default_financial_stopper_usd', ROUND((v_ideal_nodes * TRUNC(v_country.monthly_target_usd / v_s02_slots, 2))::numeric, 2),
             'payout_cooldown_until', v_member.payout_cooldown_until,
             'manual_district_fallback', v_member.manual_district_fallback,
             'sponsor_code', v_sponsor.member_code,
@@ -552,6 +605,7 @@ BEGIN
             's03_suspense_balance_usd', COALESCE(v_wallet.s03_suspense_balance_usd, 0.00),
             'total_earned_usd', COALESCE(v_wallet.total_earned_usd, 0.00)
         ),
+        'countries_plan_matrix', v_cty_matrix,
         'target_boxes', v_boxes,
         'transactions', v_txs,
         'wallet_transactions', v_w_txs,

@@ -137,15 +137,18 @@
                         return '<button type="button" onclick="svSetLeaderRadarFilter(\'' + f[0] + '\')" style="padding:6px 11px;border-radius:8px;border:1px solid ' + (on ? '#0f766e' : '#cbd5e1') + ';background:' + (on ? '#0f766e' : '#f8fafc') + ';color:' + (on ? '#fff' : '#334155') + ';font-family:Tajawal,sans-serif;font-weight:800;font-size:0.78rem;cursor:pointer;">' + f[1] + '</button>';
                     }).join('') +
                 '</div>' +
-                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>العضو</th><th>الجيل المكاني</th><th>الدولة</th><th>إنجاز الهدف الشهري</th><th>المتبقي للتأهل</th><th>متابعة سريعة</th></tr></thead><tbody>' +
-                (list.length === 0 ? '<tr><td colspan="6" style="text-align:center;padding:20px;color:#64748b;">لا يوجد أعضاء ضمن هذا الفلتر حالياً</td></tr>' : list.map(function (r) {
+                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>العضو</th><th>الجيل المكاني</th><th>الدولة</th><th>إنجاز الهدف الشهري</th><th>المتبقي للتأهل</th><th>💎 حصة الفرد (1/11)</th><th>متابعة سريعة</th></tr></thead><tbody>' +
+                (list.length === 0 ? '<tr><td colspan="7" style="text-align:center;padding:20px;color:#64748b;">لا يوجد أعضاء ضمن هذا الفلتر حالياً</td></tr>' : list.map(function (r) {
                     const wa = 'https://wa.me/' + String(r.phone || '').replace(/\D/g, '');
+                    const tgtU = Number(r.monthly_target_usd || 24.75);
+                    const shU = r.unit_share_usd !== undefined ? Number(r.unit_share_usd) : (Math.floor(Math.round(tgtU * 100) / 11) / 100);
                     return '<tr>' +
                         '<td><b>' + esc(r.full_name) + '</b> (#' + Number(r.member_code) + ')</td>' +
                         '<td><b>' + Number(r.spatial_me_label) + 'Me</b></td>' +
                         '<td>' + esc(r.country_code) + '</td>' +
                         '<td><div style="font-weight:800;color:#059669;">' + Number(r.progress_pct) + '%</div></td>' +
                         '<td>$' + Number(r.remaining_to_qualify_usd || 0).toFixed(2) + '</td>' +
+                        '<td><b style="color:#047857;">$' + shU.toFixed(2) + '</b></td>' +
                         '<td><a href="' + esc(wa) + '" target="_blank" style="background:#16a34a;color:#fff;padding:4px 9px;border-radius:6px;text-decoration:none;font-size:0.76rem;font-weight:800;">💬 واتساب</a></td>' +
                     '</tr>';
                 }).join('')) +

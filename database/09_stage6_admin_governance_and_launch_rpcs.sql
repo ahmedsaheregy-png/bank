@@ -36,6 +36,60 @@ UPDATE sawyan.countries
 REVOKE ALL ON TABLE sawyan.admins FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON TABLE sawyan.partners FROM PUBLIC, anon, authenticated;
 
+-- دالة حساب الديفولت الديناميكي للستوبر المالي S03 لكل دولة: حصة الفرد المؤهل (TRUNC(الهدف ÷ S02, 2)) × الشجرة المثالية ((2^S01) - 1)
+CREATE OR REPLACE FUNCTION sawyan.calc_country_default_s03_usd(
+    p_monthly_target_usd NUMERIC,
+    p_s01_gens           INTEGER DEFAULT NULL,
+    p_s02_slots          INTEGER DEFAULT NULL
+) RETURNS NUMERIC(18,2)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $$
+DECLARE
+    v_s01        INTEGER;
+    v_s02        INTEGER;
+    v_unit_share NUMERIC(18,2);
+    v_nodes      NUMERIC(24,0);
+BEGIN
+    IF p_s01_gens IS NULL OR p_s02_slots IS NULL THEN
+        SELECT COALESCE(s.numerical_stopper_s01, 11), COALESCE(s.upline_ceiling_s02, 11)
+          INTO v_s01, v_s02
+          FROM sawyan.settings s
+         WHERE s.country_id IS NULL
+         ORDER BY s.effective_from DESC, s.recorded_at DESC
+         LIMIT 1;
+    END IF;
+    v_s01        := GREATEST(COALESCE(p_s01_gens, v_s01, 11), 1);
+    v_s02        := GREATEST(COALESCE(p_s02_slots, v_s02, 11), 1);
+    v_unit_share := TRUNC(GREATEST(COALESCE(p_monthly_target_usd, 24.75), 0.01) / v_s02, 2);
+    v_nodes      := (2::numeric ^ LEAST(v_s01, 40)) - 1;
+    RETURN ROUND((v_nodes * v_unit_share)::numeric, 2);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION sawyan.calc_country_default_s03_usd(NUMERIC, INTEGER, INTEGER) FROM PUBLIC, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION sawyan.trg_countries_auto_default_s03()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $$
+BEGIN
+    IF NEW.financial_stopper_usd IS NULL OR NEW.financial_stopper_usd <= 0 THEN
+        NEW.financial_stopper_usd := sawyan.calc_country_default_s03_usd(NEW.monthly_target_usd, NULL, NULL);
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_countries_default_s03 ON sawyan.countries;
+CREATE TRIGGER trg_countries_default_s03
+    BEFORE INSERT OR UPDATE ON sawyan.countries
+    FOR EACH ROW EXECUTE FUNCTION sawyan.trg_countries_auto_default_s03();
+
 -- تأسيس الحسابات السيادية الأولية للإدارة في بيئة الإنتاج بكلمات مرور مشفرة قوية (حظر 123456 — D10)
 INSERT INTO sawyan.admins (
     full_name, email, auth_user_id, role, must_change_password, two_factor_enabled, is_active, password_hash
@@ -433,13 +487,18 @@ BEGIN
         'corporate_partners_count', (SELECT COUNT(*) FROM sawyan.partners WHERE is_active = true)
     );
 
-    -- 3. بوابة الدول وجاهزية الامتثال (D13 / D18 / D19)
+    -- 3. بوابة الدول وجاهزية الامتثال (D13 / D18 / D19) + حصة الفرد المؤهل وديفولت S03 لكل دولة
     SELECT COALESCE(jsonb_agg(row_to_json(ct)::jsonb ORDER BY ct.is_active DESC, ct.country_code ASC), '[]'::jsonb)
       INTO v_countries
       FROM (
           SELECT c.id, c.country_code, c.country_name_i18n, c.currency_code, c.iana_timezone,
                  c.admin_fx_rate,
                  c.financial_stopper_usd, c.monthly_target_usd, c.compensatory_admin_fee_usd,
+                 gs.s01_gens AS numerical_stopper_s01,
+                 gs.s02_slots AS upline_ceiling_s02,
+                 ((2::numeric ^ LEAST(gs.s01_gens, 40)) - 1) AS ideal_tree_nodes,
+                 TRUNC(c.monthly_target_usd / gs.s02_slots, 2) AS unit_share_usd,
+                 ROUND((((2::numeric ^ LEAST(gs.s01_gens, 40)) - 1) * TRUNC(c.monthly_target_usd / gs.s02_slots, 2))::numeric, 2) AS default_financial_stopper_usd,
                  c.vat_rate, c.wht_rate, c.payout_day, c.return_cutoff_day,
                  c.legal_opinion_verified, c.legal_opinion_doc_url, c.local_terms_version,
                  c.min_merchants_threshold, c.activation_notice_days, c.is_active, c.effective_from,
@@ -447,6 +506,14 @@ BEGIN
                  (SELECT COUNT(*) FROM sawyan.transactions t WHERE t.country_id = c.id AND t.status = 'completed') AS completed_tx_count,
                  (SELECT COUNT(*) FROM sawyan.members mem WHERE mem.residency_country_id = c.id AND mem.member_code > 0) AS resident_members_count
             FROM sawyan.countries c
+            CROSS JOIN LATERAL (
+                SELECT GREATEST(COALESCE(s.numerical_stopper_s01, 11), 1) AS s01_gens,
+                       GREATEST(COALESCE(s.upline_ceiling_s02, 11), 1) AS s02_slots
+                  FROM sawyan.settings s
+                 WHERE s.country_id IS NULL
+                 ORDER BY s.effective_from DESC, s.recorded_at DESC
+                 LIMIT 1
+            ) gs
       ) ct;
 
     -- 4. سجل المعاملات ثنائي الزمن (Bitemporal Settings — D28)
@@ -758,11 +825,15 @@ BEGIN
             p_admin_id,
             p_session_token,
             v_cc,
-            COALESCE((p_payload_after->>'monthly_target_usd')::numeric, 24.75),
+            COALESCE((p_payload_after->>'monthly_target_usd')::numeric, (SELECT monthly_target_usd FROM sawyan.countries WHERE country_code = v_cc), 24.75),
             25.00,
             11,
             11,
-            COALESCE((p_payload_after->>'financial_stopper_usd')::numeric, 4605.75),
+            COALESCE(
+                NULLIF((p_payload_after->>'financial_stopper_usd')::numeric, 0),
+                (SELECT financial_stopper_usd FROM sawyan.countries WHERE country_code = v_cc),
+                sawyan.calc_country_default_s03_usd(COALESCE((p_payload_after->>'monthly_target_usd')::numeric, 24.75), NULL, NULL)
+            ),
             10000
         );
     END IF;
@@ -858,7 +929,10 @@ BEGIN
                     upper(substr(trim(COALESCE(v_req.payload_after->>'currency_code', 'USD')), 1, 3)),
                     COALESCE(NULLIF(trim(v_req.payload_after->>'iana_timezone'), ''), 'UTC'),
                     GREATEST(COALESCE((v_req.payload_after->>'admin_fx_rate')::numeric, 1.000000), 0.000001),
-                    COALESCE((v_req.payload_after->>'financial_stopper_usd')::numeric, 4605.75),
+                    COALESCE(
+                        NULLIF((v_req.payload_after->>'financial_stopper_usd')::numeric, 0),
+                        sawyan.calc_country_default_s03_usd(COALESCE((v_req.payload_after->>'monthly_target_usd')::numeric, 24.75), NULL, NULL)
+                    ),
                     COALESCE((v_req.payload_after->>'monthly_target_usd')::numeric, 24.75),
                     COALESCE((v_req.payload_after->>'compensatory_admin_fee_usd')::numeric, 0.00),
                     COALESCE((v_req.payload_after->>'vat_rate')::numeric, 0.0000),
@@ -932,7 +1006,11 @@ BEGIN
                 UPDATE sawyan.countries
                    SET legal_opinion_verified = true,
                        local_terms_version    = COALESCE(NULLIF(trim(local_terms_version), ''), 'v3.0-FOUNDER-SOVEREIGN'),
-                       financial_stopper_usd  = CASE WHEN COALESCE(financial_stopper_usd, 0) <= 0 THEN 4605.75 ELSE financial_stopper_usd END,
+                       financial_stopper_usd  = CASE
+                                                    WHEN COALESCE(financial_stopper_usd, 0) <= 0
+                                                    THEN sawyan.calc_country_default_s03_usd(monthly_target_usd, NULL, NULL)
+                                                    ELSE financial_stopper_usd
+                                                END,
                        is_active              = true,
                        effective_from         = now(),
                        recorded_at            = now()
