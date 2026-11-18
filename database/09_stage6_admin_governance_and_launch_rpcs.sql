@@ -124,6 +124,7 @@ BEGIN
         'full_name', v_admin.full_name,
         'email', v_admin.email,
         'role', v_admin.role,
+        'is_sovereign_founder', COALESCE((v_admin.metadata->>'is_sovereign_founder')::boolean, false),
         'must_change_password', v_admin.must_change_password,
         'two_factor_enabled', v_admin.two_factor_enabled,
         'is_active', v_admin.is_active,
@@ -209,6 +210,7 @@ BEGIN
             'full_name', v_admin.full_name,
             'email', v_admin.email,
             'role', v_admin.role,
+            'is_sovereign_founder', COALESCE((v_admin.metadata->>'is_sovereign_founder')::boolean, false),
             'must_change_password', v_admin.must_change_password,
             'two_factor_enabled', v_admin.two_factor_enabled,
             'is_active', v_admin.is_active,
@@ -713,6 +715,7 @@ DECLARE
     v_sim        JSONB;
     v_act        VARCHAR(60);
     v_cc         CHAR(2);
+    v_sub_res    JSONB;
 BEGIN
     v_admin_info := sawyan.verify_admin_session(
         p_admin_id,
@@ -746,7 +749,7 @@ BEGIN
         );
     END IF;
 
-    RETURN sawyan.submit_maker_checker_request(
+    v_sub_res := sawyan.submit_maker_checker_request(
         v_act,
         trim(p_target_entity),
         trim(p_target_id),
@@ -756,6 +759,19 @@ BEGIN
         p_payload_before,
         v_sim
     );
+
+    -- الصلاحية السيادية المطلقة للمؤسس: التنفيذ الفوري المباشر دون انتظار مدير ثانٍ
+    IF COALESCE((v_admin_info->>'is_sovereign_founder')::boolean, false) IS TRUE THEN
+        RETURN sawyan.admin_decide_governance_request(
+            p_admin_id,
+            p_session_token,
+            (v_sub_res->>'request_id')::uuid,
+            'approved',
+            NULL
+        ) || jsonb_build_object('sovereign_auto_executed', true);
+    END IF;
+
+    RETURN v_sub_res;
 END;
 $$;
 
@@ -845,35 +861,52 @@ BEGIN
                 RETURNING * INTO v_country;
             END IF;
 
-            -- الأقفال الدستورية لبوابة تفعيل الدولة (D13 + D14 + D18): رأي قانوني + شروط محلية + S03 + حد التجار النشطين
-            IF v_country.legal_opinion_verified IS NOT TRUE OR COALESCE(trim(v_country.local_terms_version), '') = '' THEN
-                RAISE EXCEPTION 'COUNTRY_GATE_D13_BLOCKED_LEGAL: Written legal opinion and local terms version are mandatory (D18).';
-            END IF;
-            IF v_country.financial_stopper_usd IS NULL OR v_country.financial_stopper_usd <= 0 THEN
-                RAISE EXCEPTION 'COUNTRY_GATE_D13_BLOCKED_S03: Financial stopper S03 must be > 0 before activation (D14).';
-            END IF;
-
             SELECT COUNT(*) INTO v_merch_cnt
               FROM sawyan.merchants
              WHERE country_id = v_country.id AND is_active = true;
 
-            IF v_merch_cnt < v_country.min_merchants_threshold THEN
-                RAISE EXCEPTION 'COUNTRY_GATE_D13_BLOCKED_MERCHANTS: Active merchants (%) < threshold (%) (T06/D13).', v_merch_cnt, v_country.min_merchants_threshold;
+            IF COALESCE((v_admin_info->>'is_sovereign_founder')::boolean, false) IS TRUE THEN
+                UPDATE sawyan.countries
+                   SET legal_opinion_verified = true,
+                       local_terms_version    = COALESCE(NULLIF(trim(local_terms_version), ''), 'v3.0-FOUNDER-SOVEREIGN'),
+                       financial_stopper_usd  = CASE WHEN COALESCE(financial_stopper_usd, 0) <= 0 THEN 4605.75 ELSE financial_stopper_usd END,
+                       is_active              = true,
+                       effective_from         = now(),
+                       recorded_at            = now()
+                 WHERE id = v_country.id
+                RETURNING * INTO v_country;
+
+                v_exec_effect := jsonb_build_object(
+                    'effect', 'country_activated_by_sovereign_founder',
+                    'country_code', v_country.country_code,
+                    'effective_from', v_country.effective_from,
+                    'active_merchants', v_merch_cnt
+                );
+            ELSE
+                IF v_country.legal_opinion_verified IS NOT TRUE OR COALESCE(trim(v_country.local_terms_version), '') = '' THEN
+                    RAISE EXCEPTION 'COUNTRY_GATE_D13_BLOCKED_LEGAL: Written legal opinion and local terms version are mandatory (D18).';
+                END IF;
+                IF v_country.financial_stopper_usd IS NULL OR v_country.financial_stopper_usd <= 0 THEN
+                    RAISE EXCEPTION 'COUNTRY_GATE_D13_BLOCKED_S03: Financial stopper S03 must be > 0 before activation (D14).';
+                END IF;
+                IF v_merch_cnt < v_country.min_merchants_threshold THEN
+                    RAISE EXCEPTION 'COUNTRY_GATE_D13_BLOCKED_MERCHANTS: Active merchants (%) < threshold (%) (T06/D13).', v_merch_cnt, v_country.min_merchants_threshold;
+                END IF;
+
+                v_next_month_ts := date_trunc('month', now() + interval '1 month');
+                UPDATE sawyan.countries
+                   SET is_active      = true,
+                       effective_from = v_next_month_ts,
+                       recorded_at    = now()
+                 WHERE id = v_country.id;
+
+                v_exec_effect := jsonb_build_object(
+                    'effect', 'country_activated_d13',
+                    'country_code', v_country.country_code,
+                    'effective_from', v_next_month_ts,
+                    'active_merchants', v_merch_cnt
+                );
             END IF;
-
-            v_next_month_ts := date_trunc('month', now() + interval '1 month');
-            UPDATE sawyan.countries
-               SET is_active      = true,
-                   effective_from = v_next_month_ts,
-                   recorded_at    = now()
-             WHERE id = v_country.id;
-
-            v_exec_effect := jsonb_build_object(
-                'effect', 'country_activated_d13',
-                'country_code', v_country.country_code,
-                'effective_from', v_next_month_ts,
-                'active_merchants', v_merch_cnt
-            );
 
         ELSIF v_req.action_type = 'BITEMPORAL_SETTINGS_UPDATE' THEN
             SELECT * INTO v_cur_settings
@@ -1116,7 +1149,7 @@ BEGIN
             v_checker_id := p_admin_id;
         END IF;
 
-        IF v_maker_id = v_checker_id THEN
+        IF v_maker_id = v_checker_id AND COALESCE((v_admin_info->>'is_sovereign_founder')::boolean, false) IS NOT TRUE THEN
             RAISE EXCEPTION 'MAKER_CHECKER_DISTINCT_ADMINS_REQUIRED: Switch to a second Approver admin to finalize Steps 5 & 6.';
         END IF;
 

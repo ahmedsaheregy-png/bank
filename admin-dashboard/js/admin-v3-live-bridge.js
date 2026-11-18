@@ -27,7 +27,15 @@
         return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    function roleLabel(role) {
+    function isSovereignFounder(adm) {
+        if (!adm) return false;
+        return Boolean(adm.is_sovereign_founder || String(adm.email || '').toLowerCase() === 'ahmed.saher.egy@gmail.com');
+    }
+
+    function roleLabel(role, adm) {
+        if (isSovereignFounder(adm)) {
+            return '👑 المؤسس السيادي — صلاحية مطلقة فورية';
+        }
         const map = {
             approver: 'سلطة اعتماد عليا (Approver)',
             finance: 'إدارة مالية وتسويات (Finance Maker)',
@@ -106,7 +114,7 @@
         if (nameEl) nameEl.textContent = adm.full_name || adm.email;
         const badgeEl = document.querySelector('.dashboard-header .member-code');
         if (badgeEl) {
-            badgeEl.textContent = roleLabel(adm.role);
+            badgeEl.textContent = roleLabel(adm.role, adm);
             badgeEl.style.background = adm.role === 'auditor' ? '#fef3c7' : adm.role === 'approver' ? '#dcfce7' : '#dbeafe';
             badgeEl.style.color = adm.role === 'auditor' ? '#92400e' : adm.role === 'approver' ? '#065f46' : '#1e40af';
         }
@@ -352,15 +360,16 @@
                     '<div><label style="font-size:0.78rem;font-weight:700;">احتياطي المرتجعات الدوار S02 (0-5%)</label><input id="svSetRollingPct" type="number" step="0.5" min="0" max="5" value="' + Number(curSettings.rolling_reserve_pct || 2) + '" class="form-control"></div>' +
                     '<div><label style="font-size:0.78rem;font-weight:700;">سبب التعديل الإلزامي للتدقيق</label><input id="svSetReason" type="text" value="تحديث رقابي معتمد وفق مراجعة المخاطر" class="form-control"></div>' +
                 '</div>' +
-                '<button type="button" id="svSubmitSettingsMcBtn" onclick="svSubmitSettingsMc()" class="btn btn-primary">📤 إرسال الطلب لطابور الاعتماد المزدوج (Maker)</button>' +
+                '<button type="button" id="svSubmitSettingsMcBtn" onclick="svSubmitSettingsMc()" class="btn btn-primary">' + (isSovereignFounder(adm) ? '👑 حفظ واعتماد سيادي فوري (صلاحية المؤسس المطلقة)' : '📤 إرسال الطلب لطابور الاعتماد المزدوج (Maker)') + '</button>' +
             '</div>' +
 
             '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
                 '<h3 style="margin:0 0 10px 0;font-size:1rem;color:#0f172a;">📋 سجل طلبات الاعتماد المزدوج في PostgreSQL (`maker_checker_requests`)</h3>' +
                 '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>النوع</th><th>الكيان / الهدف</th><th>المُنشئ (Maker)</th><th>المُعتمِد (Checker)</th><th>السبب</th><th>الحالة</th><th>قرار الاعتماد</th></tr></thead><tbody>' +
                 (list.length === 0 ? '<tr><td colspan="7" class="empty-state">لا توجد طلبات مسجلة</td></tr>' : list.map(function (r) {
-                    const isSelf = r.maker_admin_id === adm.id;
-                    const canDecide = r.status === 'pending' && (adm.role === 'approver' || adm.role === 'finance');
+                    const founder = isSovereignFounder(adm);
+                    const isSelf = (r.maker_admin_id === adm.id) && !founder;
+                    const canDecide = r.status === 'pending' && (founder || adm.role === 'approver' || adm.role === 'finance');
                     return '<tr>' +
                         '<td><b>' + esc(r.action_type) + '</b></td>' +
                         '<td>' + esc(r.target_entity) + ' / <code>' + esc(r.target_id) + '</code></td>' +
@@ -373,7 +382,7 @@
                                 ? (isSelf
                                     ? '<span style="font-size:0.75rem;color:#b45309;font-weight:800;">⏳ بانتظار مدير ثانٍ (محظور اعتماد طلبك)</span>'
                                     : (canDecide
-                                        ? '<div style="display:flex;gap:5px;"><button type="button" class="btn-sm btn-success" onclick="svDecideMc(\'' + r.id + '\',\'approved\')">✅ اعتماد وتنفيذ</button><button type="button" class="btn-sm btn-danger" onclick="svDecideMc(\'' + r.id + '\',\'rejected\')">❌ رفض</button></div>'
+                                        ? '<div style="display:flex;gap:5px;"><button type="button" class="btn-sm btn-success" onclick="svDecideMc(\'' + r.id + '\',\'approved\')">' + (founder ? '👑 اعتماد وتنفيذ سيادي فوري' : '✅ اعتماد وتنفيذ') + '</button><button type="button" class="btn-sm btn-danger" onclick="svDecideMc(\'' + r.id + '\',\'rejected\')">❌ رفض</button></div>'
                                         : '<span style="font-size:0.75rem;color:#64748b;">يلزم دور Approver/Finance</span>'))
                                 : '—') +
                         '</td>' +
@@ -471,7 +480,7 @@
                         '<td><b style="color:' + (merchOk ? '#059669' : '#dc2626') + ';">' + Number(c.active_merchants_count || 0) + ' / ' + Number(c.min_merchants_threshold || 1) + '</b></td>' +
                         '<td>' + (c.is_active ? '<span class="badge badge-success">🟢 نشطة</span>' : '<span class="badge badge-warning">⚪ بانتظار البوابة</span>') + '</td>' +
                         '<td>' + (!c.is_active
-                            ? '<button type="button" class="btn-sm btn-primary" onclick="svSubmitCountryGate(\'' + esc(c.country_code) + '\')">📤 طلب تفعيل D13 (Maker)</button>'
+                            ? '<button type="button" class="btn-sm btn-primary" onclick="svSubmitCountryGate(\'' + esc(c.country_code) + '\')">' + (isSovereignFounder(LIVE_BUNDLE && LIVE_BUNDLE.admin) ? '👑 تفعيل سيادي فوري' : '📤 طلب تفعيل D13 (Maker)') + '</button>'
                             : '<span style="font-size:0.76rem;color:#059669;font-weight:800;">مفعلة دستورياً</span>') + '</td>' +
                     '</tr>';
                 }).join('') +
@@ -496,7 +505,7 @@
                     '<div><label style="font-size:0.78rem;font-weight:700;">نسبة المشاركة من الخزانة %</label><input id="svPtrShare" type="number" step="0.25" min="0.25" max="49" value="5.00" class="form-control"></div>' +
                     '<div><label style="font-size:0.78rem;font-weight:700;">مرجع العقد الموثق</label><input id="svPtrContract" type="text" placeholder="CONTRACT-SW-2026-09" class="form-control"></div>' +
                 '</div>' +
-                '<button type="button" id="svSubmitPartnerBtn" onclick="svSubmitPartnerD24()" class="btn btn-primary">📤 تقديم عقد شريك باعتماد مزدوج (Maker — D24)</button>' +
+                '<button type="button" id="svSubmitPartnerBtn" onclick="svSubmitPartnerD24()" class="btn btn-primary">' + (isSovereignFounder(LIVE_BUNDLE && LIVE_BUNDLE.admin) ? '👑 تسجيل واعتماد الشريك فوراً (D24)' : '📤 تقديم عقد شريك باعتماد مزدوج (Maker — D24)') + '</button>' +
             '</div>' +
 
             '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
@@ -688,7 +697,7 @@
                 payloadAfter: payload,
                 reason: reason
             });
-            showToast('تم تسجيل طلب Maker في قاعدة البيانات (#' + String(res.request_id).slice(0, 8) + '). انتقل لدور Checker لاعتماده.', false);
+            showToast(res && res.sovereign_auto_executed ? '👑 تم التنفيذ والاعتماد السيادي الفوري للإعدادات بصلاحية المؤسس المطلقة!' : ('تم تسجيل طلب Maker في قاعدة البيانات (#' + String(res.request_id).slice(0, 8) + '). انتقل لدور Checker لاعتماده.'), false);
             await refreshSovereignBundle(false);
         } catch (err) {
             showToast(err.message, true);
@@ -726,7 +735,7 @@
                 ias21FxDeltaUsd: ias
             });
             showToast(stepAction === 'run_steps_1_to_4'
-                ? 'اكتملت الخطوات 1–4 بنجاح! قم بالتبديل إلى حساب المعتمد الثاني (Checker) لإغلاق الخطوتين 5–6.'
+                ? (isSovereignFounder(LIVE_BUNDLE && LIVE_BUNDLE.admin) ? '👑 اكتملت الخطوات 1–4! يمكنك الآن اعتماد الخطوتين 5–6 فوراً بصلاحية المؤسس.' : 'اكتملت الخطوات 1–4 بنجاح! قم بالتبديل إلى حساب المعتمد الثاني (Checker) لإغلاق الخطوتين 5–6.')
                 : 'اكتمل الإقفال الشهري النهائي (Step 6 Hard Lock) وترحيل المحافظ بنجاح!', false);
             await refreshSovereignBundle(false);
         } catch (err) {
@@ -739,14 +748,14 @@
             const ym = document.getElementById('svClosePeriodInput').value.trim();
             const reason = prompt('سبب الفتح الاستثنائي لقفل الشهر (Break-Glass — ساعتان باعتماد مزدوج):', 'تصحيح قيد تسوية بنكية موثق قبل الصرف');
             if (!reason || reason.trim().length < 5) return;
-            await window.SAWYAN.API.adminSubmitGovernanceRequest({
+            const bgRes = await window.SAWYAN.API.adminSubmitGovernanceRequest({
                 actionType: 'BREAK_GLASS_UNLOCK',
                 targetEntity: 'settlement_cycles',
                 targetId: ym,
                 payloadAfter: { period_ym: ym },
                 reason: reason.trim()
             });
-            showToast('تم رفع طلب Break-Glass لطابور الاعتماد المزدوج.', false);
+            showToast(bgRes && bgRes.sovereign_auto_executed ? '👑 تم فتح القفل الاستثنائي (Break-Glass) فوراً بصلاحية المؤسس السيادية!' : 'تم رفع طلب Break-Glass لطابور الاعتماد المزدوج.', false);
             ACTIVE_LIVE_TAB = 'mc';
             await refreshSovereignBundle(false);
         } catch (err) {
@@ -774,7 +783,7 @@
 
     window.svSubmitCountryGate = async function (countryCode) {
         try {
-            await window.SAWYAN.API.adminSubmitGovernanceRequest({
+            const ctyRes = await window.SAWYAN.API.adminSubmitGovernanceRequest({
                 actionType: 'COUNTRY_GATE_D13_ACTIVATION',
                 targetEntity: 'countries',
                 targetId: countryCode,
@@ -787,8 +796,12 @@
                 },
                 reason: 'طلب تفعيل بوابة الدولة D13 بعد مراجعة الرأي القانوني والمحاكي الأكتواري S06'
             });
-            showToast('أُرسل طلب تفعيل الدولة ' + countryCode + ' مع المحاكاة الأكتوارية لطابور الاعتماد المزدوج!', false);
-            ACTIVE_LIVE_TAB = 'mc';
+            if (ctyRes && ctyRes.sovereign_auto_executed) {
+                showToast('👑 تم التفعيل السيادي الفوري لبوابة الدولة (' + countryCode + ') بصلاحية المؤسس المطلقة!', false);
+            } else {
+                showToast('أُرسل طلب تفعيل الدولة ' + countryCode + ' مع المحاكاة الأكتوارية لطابور الاعتماد المزدوج!', false);
+                ACTIVE_LIVE_TAB = 'mc';
+            }
             await refreshSovereignBundle(false);
         } catch (err) {
             showToast(err.message, true);
@@ -808,7 +821,7 @@
                 showToast('يرجى تعبئة بيانات الشريك ومرجع العقد بالكامل.', true);
                 return;
             }
-            await window.SAWYAN.API.adminSubmitGovernanceRequest({
+            const ptrRes = await window.SAWYAN.API.adminSubmitGovernanceRequest({
                 actionType: 'PARTNER_CONTRACT_D24',
                 targetEntity: 'partners',
                 targetId: code,
@@ -825,8 +838,12 @@
                 },
                 reason: 'تسجيل عقد شراكة مؤسسي D24 مرجع: ' + contract
             });
-            showToast('تم رفع عقد الشريك لطابور الاعتماد المزدوج بنجاح!', false);
-            ACTIVE_LIVE_TAB = 'mc';
+            if (ptrRes && ptrRes.sovereign_auto_executed) {
+                showToast('👑 تم تسجيل واعتماد عقد الشريك (' + code + ') فوراً بصلاحية المؤسس المطلقة!', false);
+            } else {
+                showToast('تم رفع عقد الشريك لطابور الاعتماد المزدوج بنجاح!', false);
+                ACTIVE_LIVE_TAB = 'mc';
+            }
             await refreshSovereignBundle(false);
         } catch (err) {
             showToast(err.message, true);

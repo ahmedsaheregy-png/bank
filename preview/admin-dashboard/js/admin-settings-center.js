@@ -5,6 +5,12 @@
    اعتماد مدير ثانٍ (Checker) ← تاريخ سريان ← إصدار جديد ← سجل تدقيق لا يُحذف
    ============================================================ */
 (function () {
+    function isFounderSession() {
+        try {
+            var a = JSON.parse(localStorage.getItem('sawyan_admin') || 'null');
+            return Boolean(a && (a.is_sovereign_founder || String(a.email || '').toLowerCase() === 'ahmed.saher.egy@gmail.com'));
+        } catch (e) { return false; }
+    }
     var LS = 'sawyan_admin_params_v1';
     var USER_LS = 'sawyan_admin_params_user';
     var COUNTRIES = [
@@ -400,7 +406,7 @@
                 r.changes.map(function (c) { return '<div style="font-size:.8rem;padding:3px 0;border-bottom:1px dashed #e2e8f0">' + esc(c.label) + ': <span style="color:#b91c1c">' + esc(showVal(c.k, c.old)) + '</span> ← <span style="color:#047857;font-weight:800">' + esc(showVal(c.k, c.nw)) + '</span></div>'; }).join('') +
                 (r.note ? '<div class="sc-help" style="margin-top:6px">ملاحظة المراجع (' + esc(r.checker) + '): ' + esc(r.note) + '</div>' : '');
             if (r.status === 'PENDING') {
-                var self = (r.byId === u.id), can = (u.role === 'checker' && !self);
+                var founder = isFounderSession(), self = (r.byId === u.id) && !founder, can = founder || (u.role === 'checker' && !self);
                 h += '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="sc-btn p" id="ap_' + r.id + '" ' + (can ? '' : 'disabled') + ' onclick="scApprove(\'' + r.id + '\')">اعتماد</button><button class="sc-btn d" id="rj_' + r.id + '" ' + (can ? '' : 'disabled') + ' onclick="scReject(\'' + r.id + '\')">رفض</button>' +
                     (!can ? '<span class="sc-err">' + (self ? 'لا يمكنك اعتماد طلبك (فصل المهام).' : 'يلزم مستخدم بدور «مُعتمِد».') + '</span>' : '') + '</div>';
             }
@@ -493,6 +499,17 @@
         if (reason.length < 5) { alert('سبب التغيير إلزامي (5 أحرف على الأقل).'); return; }
         var eff = document.getElementById('scEff').value;
         ST.seq++; var id = 'CR-' + (ST.seq < 10 ? '00' : ST.seq < 100 ? '0' : '') + ST.seq;
+        if (isFounderSession()) {
+            chs.forEach(function (c) { ACTIVE[c.k] = c.nw; });
+            ST.version++;
+            ST.pending.push({ id: id, at: now(), by: 'ahmed (المؤسس السيادي)', byId: u.id, checker: 'ahmed (أمر سيادي فوري)', checkerId: u.id, reason: reason, effective: eff, status: 'ACTIVE', changes: chs });
+            ST.history.push({ ver: ST.version, at: now(), by: 'ahmed (المؤسس)', approvedBy: 'صلاحية المؤسس المطلقة', reason: reason, effective: eff, changes: chs });
+            log('SOVEREIGN_FOUNDER_APPLIED', id + ' — اعتماد وتفعيل سيادي فوري بصلاحية المؤسس المطلقة (v' + ST.version + ')');
+            save();
+            DRAFT = JSON.parse(JSON.stringify(ACTIVE)); render();
+            alert('👑 تم تطبيق وتفعيل التعديلات فوراً (الإصدار v' + ST.version + ') بصلاحية المؤسس السيادية المطلقة!');
+            return;
+        }
         ST.pending.push({ id: id, at: now(), by: u.n, byId: u.id, reason: reason, effective: eff, status: 'PENDING', changes: chs });
         log('CHANGE_REQUEST_SUBMITTED', id + ' — ' + chs.length + ' تغيير — سريان ' + eff + ' — السبب: ' + reason);
         DRAFT = JSON.parse(JSON.stringify(ACTIVE)); TAB = 'apr'; render();
@@ -502,8 +519,8 @@
     window.scApprove = function (id) {
         var r = findReq(id), u = curUser();
         if (!r || r.status !== 'PENDING') return;
-        if (u.role !== 'checker') { alert('يلزم دور «مُعتمِد».'); return; }
-        if (r.byId === u.id) { alert('لا يمكنك اعتماد طلبك (فصل المهام).'); return; }
+        if (!isFounderSession() && u.role !== 'checker') { alert('يلزم دور «مُعتمِد».'); return; }
+        if (!isFounderSession() && r.byId === u.id) { alert('لا يمكنك اعتماد طلبك (فصل المهام).'); return; }
         // فحص تعارض: القيمة القديمة لم تعد مطابقة للسارية
         var stale = r.changes.filter(function (c) { return String(ACTIVE[c.k] === null ? '' : ACTIVE[c.k]) !== String(c.old === null ? '' : c.old); });
         if (stale.length) { alert('⛔ تعارض: تغيّرت القيمة السارية منذ إنشاء الطلب لـ: ' + stale.map(function (s) { return s.label; }).join('، ') + '\nيلزم إنشاء طلب جديد.'); return; }
