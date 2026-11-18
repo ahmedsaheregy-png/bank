@@ -1,0 +1,272 @@
+/* ============================================
+   نظام الإشعارات - CSS
+   ============================================ */
+
+.notification-container {
+    position: relative;
+    display: inline-block;
+}
+
+/* جرس الإشعارات */
+.notification-bell {
+    position: relative;
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.notification-bell:hover {
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.bell-icon {
+    font-size: 1.5rem;
+    animation: none;
+}
+
+.notification-bell.has-notifications .bell-icon {
+    animation: ring 0.5s ease-in-out;
+}
+
+@keyframes ring {
+
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+
+    20%,
+    60% {
+        transform: rotate(15deg);
+    }
+
+    40%,
+    80% {
+        transform: rotate(-15deg);
+    }
+}
+
+/* عداد الإشعارات */
+.notification-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* القائمة المنسدلة */
+.notification-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 350px;
+    max-height: 450px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    overflow: hidden;
+    animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* رأس الإشعارات */
+.notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: linear-gradient(135deg, #10B981, #059669);
+    color: white;
+}
+
+.notification-header h4 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.notification-header button {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-family: inherit;
+}
+
+.notification-header button:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* قائمة الإشعارات */
+.notification-list {
+    max-height: 350px;
+    overflow-y: auto;
+}
+
+.notification-item {
+    display: flex;
+    gap: 12px;
+    padding: 15px 20px;
+    border-bottom: 1px solid #f3f4f6;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.notification-item:hover {
+    background: #f9fafb;
+}
+
+.notification-item.unread {
+    background: #f0fdf4;
+    border-right: 3px solid #10B981;
+}
+
+.notification-item.unread:hover {
+    background: #dcfce7;
+}
+
+.notification-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.notification-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.notification-title {
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 4px;
+    font-size: 0.9rem;
+}
+
+.notification-message {
+    color: #6b7280;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.notification-time {
+    color: #9ca3af;
+    font-size: 0.75rem;
+    margin-top: 6px;
+}
+
+/* رسالة فارغة */
+.empty-notifications {
+    text-align: center;
+    padding: 40px 20px;
+    color: #9ca3af;
+}
+
+/* للشاشات الصغيرة */
+@media (max-width: 480px) {
+    .notification-dropdown {
+        width: 300px;
+        left: -100px;
+    }
+}
+
+/* Toast Notifications */
+.notification-toast {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    padding: 15px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 10000;
+    animation: slideIn 0.3s ease, fadeOut 0.3s ease 4.7s;
+    max-width: 350px;
+    border-right: 4px solid #10B981;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-100%);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeOut {
+    to {
+        opacity: 0;
+        transform: translateX(-100%);
+    }
+}
+
+.notification-toast .toast-icon {
+    font-size: 1.5rem;
+}
+
+.notification-toast .toast-content {
+    flex: 1;
+}
+
+.notification-toast .toast-title {
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 4px;
+}
+
+.notification-toast .toast-message {
+    color: #6b7280;
+    font-size: 0.85rem;
+}
+
+.notification-toast button {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 5px;
+}
+
+.notification-toast button:hover {
+    color: #374151;
+}

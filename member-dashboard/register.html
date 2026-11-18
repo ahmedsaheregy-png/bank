@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تسجيل عضو جديد - SAWYAN BANK</title>
+    <title>تسجيل عضو جديد - SAWYAN</title>
     <link
         href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
         rel="stylesheet">
@@ -472,7 +472,7 @@
             <div id="logoContainer" class="logo-section"></div>
 
             <h1>تسجيل عضو جديد</h1>
-            <p class="subtitle">انضم إلى SAWYAN BANK</p>
+            <p class="subtitle">انضم إلى منصة SAWYAN مجاناً</p>
 
             <!-- عرض كود العضوية بعد التسجيل الناجح -->
             <div id="memberCodeDisplay" class="member-code-display">
@@ -481,69 +481,120 @@
             </div>
 
             <form id="registerForm" class="auth-form">
-                <!-- الحقول الإجبارية أولاً -->
-                <div class="required-fields-section">
-                    <h3>البيانات الإجبارية</h3>
-
-                    <div class="form-group">
-                        <label>الاسم الكامل <span class="required-star">*</span></label>
-                        <input type="text" id="fullName" required class="form-control" placeholder="أدخل الاسم الكامل">
+                <!-- 1. القسم الإجباري السريع (إنهاء التسجيل في 15 ثانية) -->
+                <div class="required-fields-section" style="border: 2px solid #10b981; border-radius: 14px; padding: 18px; margin-bottom: 16px; background: #ffffff;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                        <h3 style="margin: 0; color: #065f46; font-size: 1.05rem; font-weight: 800;">🔒 البيانات الأساسية للتسجيل الفوري</h3>
+                        <span style="background: #ecfdf5; color: #047857; font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 6px; border: 1px solid #a7f3d0;">إلزامية للتسكين الفوري</span>
                     </div>
 
-                    <div class="form-group">
-                        <label>كود الأب لاين (الراعي) <span class="required-star">*</span></label>
-                        <input type="text" id="sponsorCode" required class="form-control"
-                            placeholder="أدخل كود الراعي (للتسجيل تحت المؤسس استخدم: 1)">
+                    <!-- الاسم الكامل -->
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label style="font-weight: 800; font-size: 0.88rem; color: #0f172a;">الاسم الكامل <span class="required-star">*</span></label>
+                        <input type="text" id="fullName" required class="form-control" placeholder="أدخل اسمك الثلاثي أو الرباعي">
                     </div>
 
-                    <div class="form-group sponsor-name-group">
-                        <label>اسم الراعي</label>
-                        <div class="sponsor-name-display" id="sponsorNameDisplay">
-                            <span class="sponsor-name-text" id="sponsorNameText">سيظهر اسم الراعي هنا...</span>
-                            <span class="sponsor-status-icon" id="sponsorStatusIcon"></span>
+                    <!-- كود الراعي وفحصه اللحظي التلقائي عبر PostgreSQL -->
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label style="font-weight: 800; font-size: 0.88rem; color: #0f172a;">كود الأب لاين (الراعي) <span class="required-star">*</span></label>
+                        <input type="number" id="sponsorCode" required min="1" class="form-control" placeholder="أدخل كود العضو الداعي لك (الجذر #0 مقيد للإدارة)">
+                    </div>
+
+                    <div class="form-group sponsor-name-group" style="margin-bottom: 14px;">
+                        <div class="sponsor-name-display" id="sponsorNameDisplay" style="padding: 10px 12px; min-height: 44px; display: flex; justify-content: space-between; align-items: center;">
+                            <span class="sponsor-name-text" id="sponsorNameText" style="font-weight: 700; font-size: 0.84rem;">أدخل كود الراعي ليظهر اسمه الكامل للتأكيد...</span>
+                            <span class="sponsor-status-icon" id="sponsorStatusIcon">⚪</span>
                         </div>
                         <input type="hidden" id="sponsorId" value="">
+                        <label id="sponsorConfirmRow" style="display:none; align-items:center; gap:8px; margin-top:8px; font-size:0.84rem; font-weight:800; color:#065f46; background:#ecfdf5; border:1px solid #a7f3d0; padding:8px 12px; border-radius:8px; cursor:pointer;">
+                            <input type="checkbox" id="sponsorConfirmCheckbox">
+                            <span id="sponsorConfirmLabel">أؤكد الانضمام في فريق هذا الراعي</span>
+                        </label>
                     </div>
 
+                    <!-- دولة الإقامة المعتمدة -->
+                    <div class="form-group country-select" style="margin-bottom: 12px;">
+                        <label style="font-weight: 800; font-size: 0.88rem; color: #0f172a;">دولة الإقامة الحالية <span class="required-star">*</span></label>
+                        <select id="countryOfResidence" class="form-control" style="font-weight: 800; border: 2px solid #10b981; background: #f0fdf4;" onchange="handleCountryChange(this.value)">
+                            <option value="EG" selected>🇪🇬 جمهورية مصر العربية (نشطة — العملة: EGP)</option>
+                            <option value="TR">🇹🇷 تركيا (نشطة — العملة: TRY)</option>
+                            <option value="SA">🇸🇦 المملكة العربية السعودية (العملة: SAR)</option>
+                            <option value="DE">🇩🇪 ألمانيا (العملة: EUR)</option>
+                            <option value="US">🇺🇸 الولايات المتحدة (العملة: USD)</option>
+                        </select>
+                    </div>
+
+                    <!-- رقم الهاتف المقفول بدولة الإقامة -->
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label style="font-weight: 800; font-size: 0.88rem; color: #0f172a;">رقم الهاتف النشط <span class="required-star">*</span></label>
+                        <div class="phone-input-wrapper" style="display: flex; gap: 8px;">
+                            <div style="background: #e2e8f0; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 10px 14px; font-weight: 800; display: flex; align-items: center; gap: 6px; min-width: 90px; justify-content: center;" id="dialCodeBadge">
+                                <span id="countryFlag">🇪🇬</span>
+                                <span id="countryDialCode" style="direction: ltr; font-family: monospace;">+20</span>
+                            </div>
+                            <input type="tel" id="phone" required class="form-control" placeholder="11 خانة (مثال: 01012345678)" maxlength="11" style="flex: 1; font-weight: 700; letter-spacing: 1px;" oninput="validatePhoneDigits(this)">
+                        </div>
+                        <div id="phoneDigitCounter" style="display: flex; justify-content: space-between; font-size: 0.74rem; color: #64748b; font-weight: 700; margin-top: 3px;">
+                            <span id="phoneValidationMsg">أدخل رقم هاتفك المحلي</span>
+                            <span id="phoneCounterText">0 / 11 خانة</span>
+                        </div>
+                    </div>
+
+                    <!-- المحافظة والحي الجغرافي -->
+                    <div class="form-row" style="display: flex; gap: 10px; margin-bottom: 12px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label style="font-weight: 800; font-size: 0.86rem; color: #0f172a;">المحافظة / المدينة <span class="required-star">*</span></label>
+                            <select id="citySelect" class="form-control" style="font-weight: 700;" onchange="handleCityChange(this.value)">
+                                <option value="cairo" selected>القاهرة</option>
+                                <option value="giza">الجيزة</option>
+                                <option value="alex">الإسكندرية</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" style="flex: 1;">
+                            <label style="font-weight: 800; font-size: 0.86rem; color: #0f172a;">الحي / المنطقة <span class="required-star">*</span></label>
+                            <select id="districtSelect" class="form-control" style="font-weight: 700;">
+                                <option value="مدينة نصر" selected>مدينة نصر</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- كلمة المرور القوية الإلزامية (يحظر 123456) -->
+                    <div class="form-row" style="display: flex; gap: 10px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label style="font-weight: 800; font-size: 0.86rem; color: #0f172a;">كلمة المرور (8 أحرف على الأقل) <span class="required-star">*</span></label>
+                            <input type="password" id="password" required minlength="8" class="form-control" placeholder="أدخل كلمة مرور قوية">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label style="font-weight: 800; font-size: 0.86rem; color: #0f172a;">تأكيد كلمة المرور <span class="required-star">*</span></label>
+                            <input type="password" id="confirmPassword" required minlength="8" class="form-control" placeholder="أعد كتابة كلمة المرور">
+                        </div>
+                    </div>
                 </div>
 
-                <!-- المعلومات الاختيارية -->
-                <div class="form-section optional-section">
-                    <h3>معلومات إضافية <span class="optional-badge">(اختياري - يمكن إكماله لاحقاً)</span></h3>
-
-                    <div class="form-group">
-                        <label>رقم الهاتف</label>
-                        <div class="phone-input-wrapper">
-                            <div class="country-code-selector">
-                                <button type="button" id="countryCodeBtn" class="country-code-btn">
-                                    <span class="flag">🇪🇬</span>
-                                    <span class="dial-code">+20</span>
-                                </button>
-                                <div id="countryCodeDropdown" class="country-code-dropdown">
-                                    <input type="text" class="search-input" placeholder="بحث..." id="countryCodeSearch">
-                                    <div id="countryCodeList"></div>
-                                </div>
-                            </div>
-                            <input type="tel" id="phone" class="form-control" placeholder="123 456 7890">
-                            <input type="hidden" id="phoneCountryCode" value="EG">
-                            <input type="hidden" id="phoneDialCode" value="+20">
-                        </div>
+                <!-- 2. قسم البيانات الإضافية المعتمدة (اختياري الآن ويمكن إكماله لاحقاً) -->
+                <div class="form-section optional-section" style="border: 1px solid #cbd5e1; border-radius: 12px; padding: 14px; margin-bottom: 16px; background: #f8fafc;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <div style="font-weight: 800; font-size: 0.92rem; color: #334155;">✨ بيانات تكميلية (اختيارية الآن)</div>
+                        <span class="optional-badge" style="background: #e2e8f0; color: #475569; font-size: 0.7rem; font-weight: 700; padding: 2px 6px; border-radius: 4px;">يمكنك تجاوزها والبدء فوراً</span>
                     </div>
 
-                    <div class="form-group">
-                        <label>البريد الإلكتروني</label>
-                        <input type="email" id="email" class="form-control" placeholder="example@email.com">
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>تاريخ الميلاد</label>
-                            <input type="date" id="dateOfBirth" class="form-control">
+                    <!-- الجنسية والجنس في صف واحد -->
+                    <div class="form-row" style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <div class="form-group country-select" style="flex: 1;">
+                            <label style="font-size: 0.82rem; font-weight: 700; color: #475569;">الجنسية</label>
+                            <select id="nationality" class="form-control" style="font-size: 0.85rem;">
+                                <option value="EG" selected>🇪🇬 مصري</option>
+                                <option value="TR">🇹🇷 تركي</option>
+                                <option value="SA">🇸🇦 سعودي</option>
+                                <option value="DE">🇩🇪 ألماني</option>
+                                <option value="US">🇺🇸 أمريكي</option>
+                            </select>
                         </div>
 
-                        <div class="form-group">
-                            <label>الجنس</label>
-                            <select id="gender" class="form-control">
+                        <div class="form-group" style="flex: 1;">
+                            <label style="font-size: 0.82rem; font-weight: 700; color: #475569;">النوع (الجنس)</label>
+                            <select id="gender" class="form-control" style="font-size: 0.85rem;">
                                 <option value="">اختر...</option>
                                 <option value="male">ذكر</option>
                                 <option value="female">أنثى</option>
@@ -551,72 +602,293 @@
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label>الحالة الاجتماعية</label>
-                        <select id="maritalStatus" class="form-control">
-                            <option value="">اختر...</option>
-                            <option value="single">أعزب</option>
-                            <option value="married">متزوج</option>
-                        </select>
+                    <!-- البريد الإلكتروني -->
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label style="font-size: 0.82rem; font-weight: 700; color: #475569;">البريد الإلكتروني (اختياري)</label>
+                        <input type="email" id="email" class="form-control" placeholder="example@email.com" style="font-size: 0.85rem;">
+                    </div>
+
+                    <!-- رقم الهوية الوطنية -->
+                    <div class="form-group" style="margin-bottom: 6px;">
+                        <label style="font-size: 0.82rem; font-weight: 700; color: #475569;">رقم الهوية الوطنية / جواز السفر <span style="font-size: 0.72rem; color: #64748b;">(اختياري الآن - مطلوب لاحقاً عند سحب الأرباح)</span></label>
+                        <input type="text" id="nationalId" class="form-control" placeholder="يمكنك تركه فارغاً وإدخاله لاحقاً من الإعدادات" style="font-size: 0.85rem;">
                     </div>
                 </div>
 
-                <!-- الهوية والعنوان -->
-                <div class="form-section optional-section">
-                    <h3>الهوية والعنوان <span class="optional-badge">(اختياري - يمكن إكماله لاحقاً)</span></h3>
-
-                    <div class="form-group">
-                        <label>رقم الهوية الوطنية</label>
-                        <input type="text" id="nationalId" class="form-control" placeholder="رقم الهوية أو جواز السفر">
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group country-select">
-                            <label>الجنسية</label>
-                            <select id="nationality" class="form-control">
-                                <option value="">اختر الجنسية...</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group country-select">
-                            <label>دولة الإقامة</label>
-                            <select id="countryOfResidence" class="form-control">
-                                <option value="">اختر دولة الإقامة...</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>المدينة</label>
-                        <input type="text" id="city" class="form-control" placeholder="مثال: القاهرة">
-                    </div>
-
-                    <div class="form-group">
-                        <label>العنوان التفصيلي</label>
-                        <textarea id="address" class="form-control" rows="3"
-                            placeholder="الشارع، الحي، المنطقة..."></textarea>
+                <!-- 3. التنبيه المؤسسي -->
+                <div style="background: #fffbeb; border: 1.5px dashed #f59e0b; border-radius: 10px; padding: 12px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 10px;">
+                    <span style="font-size: 1.4rem;">💡</span>
+                    <div style="font-size: 0.78rem; color: #92400e; line-height: 1.5;">
+                        <strong>التسكين الذري الفوري (G01–G05):</strong><br>
+                        يتم تسكينك تلقائياً في الموضع الأقرب والأعدل في شجرة الراعي، مع حماية رقم هاتفك بحيث لا يراه إلا الأب المباشر أو القائد ضمن الـ <code>10</code> أجيال الهيكلية فقط (<code>D26</code>).
                     </div>
                 </div>
 
-                <div class="form-note">
-                    <p><strong>ملاحظة:</strong> كلمة المرور الافتراضية: <code>123456</code></p>
-                    <p class="info-text">الحقول المميزة بعلامة (*) إجبارية للتسجيل. يمكنك إكمال باقي البيانات لاحقاً من
-                        لوحة التحكم.</p>
-                </div>
+                <button type="submit" id="submitBtn" class="btn btn-primary btn-block" style="background: #10b981; border: none; padding: 14px; font-size: 1.05rem; font-weight: 800; border-radius: 10px; cursor: pointer;">
+                    ✅ إنشاء حساب العضوية والتسكين بالشجرة فوراً
+                </button>
 
-                <button type="submit" id="submitBtn" class="btn btn-primary btn-block">تسجيل</button>
-
-                <div class="auth-footer">
-                    <p>لديك حساب؟ <a href="login.html">تسجيل الدخول</a></p>
-                    <p style="margin-top: 1rem;"><a href="../index.html">← العودة للرئيسية</a></p>
+                <div class="auth-footer" style="margin-top: 16px; text-align: center;">
+                    <p style="color: #64748b;">لديك حساب بالفعل؟ <a href="login.html" style="color: #10b981; font-weight: 800;">تسجيل الدخول</a></p>
                 </div>
             </form>
+
+            <script>
+            // قاعدة بيانات الدول المعتمدة في SAWYAN: مفاتيح الهواتف، أطوال الأرقام، ومدنها وأحيائها
+            const SAWYAN_COUNTRIES_DB = {
+                EG: {
+                    name: 'مصر',
+                    flag: '🇪🇬',
+                    dialCode: '+20',
+                    phoneLength: 11,
+                    phonePlaceholder: '11 خانة (مثال: 01012345678)',
+                    idLabel: 'الرقم القومي (14 رقم)',
+                    idMax: 14,
+                    cities: {
+                        cairo: { name: 'القاهرة', districts: ['مدينة نصر', 'التجمع الخامس', 'المعادي', 'مصر الجديدة', 'شبرا', 'وسط البلد', 'حلوان'] },
+                        giza: { name: 'الجيزة', districts: ['الدقي', 'المهندسين', 'الهرم', 'فيصل', 'الشيخ زايد', '6 أكتوبر'] },
+                        alex: { name: 'الإسكندرية', districts: ['سموحة', 'سيدي جابر', 'ميامي', 'المنتزه', 'محرم بك', 'العجمي'] },
+                        mansoura: { name: 'المنصورة', districts: ['حي الجامعة', 'المشاية السفلية', 'توريل', 'طلخا'] }
+                    }
+                },
+                SA: {
+                    name: 'السعودية',
+                    flag: '🇸🇦',
+                    dialCode: '+966',
+                    phoneLength: 10,
+                    phonePlaceholder: '10 خانات (مثال: 0512345678)',
+                    idLabel: 'رقم الهوية الوطنية / الإقامة (10 أرقام)',
+                    idMax: 10,
+                    cities: {
+                        riyadh: { name: 'الرياض', districts: ['العليا', 'الملز', 'النرجس', 'الياسمين', 'الصحافة'] },
+                        jeddah: { name: 'جدة', districts: ['الروضة', 'الحمراء', 'الشاطئ', 'الصفا', 'البلد'] },
+                        dammam: { name: 'الدمام', districts: ['الشاطئ الغربي', 'الفردوس', 'الفيصلية', 'الزهور'] },
+                        makkah: { name: 'مكة المكرمة', districts: ['العزيزية', 'الشوقية', 'العوالي', 'النسيم'] }
+                    }
+                },
+                AE: {
+                    name: 'الإمارات',
+                    flag: '🇦🇪',
+                    dialCode: '+971',
+                    phoneLength: 10,
+                    phonePlaceholder: '10 خانات (مثال: 0501234567)',
+                    idLabel: 'رقم الهوية الإماراتية (15 رقم)',
+                    idMax: 15,
+                    cities: {
+                        dubai: { name: 'دبي', districts: ['ديرة', 'بر دبي', 'المرسى (مارينا)', 'وسط دبي (داون تاون)', 'البرشاء'] },
+                        abudhabi: { name: 'أبوظبي', districts: ['الخالدية', 'الكورنيش', 'جزيرة ياس', 'المرور', 'المصفح'] },
+                        sharjah: { name: 'الشارقة', districts: ['المجاز', 'القاسمية', 'التعاون', 'النهدة'] }
+                    }
+                },
+                TR: {
+                    name: 'تركيا',
+                    flag: '🇹🇷',
+                    dialCode: '+90',
+                    phoneLength: 11,
+                    phonePlaceholder: '11 خانة (مثال: 05321234567)',
+                    idLabel: 'رقم الكيملك / الإقامة التركية (TC: 11 رقم)',
+                    idMax: 11,
+                    cities: {
+                        istanbul: { name: 'إسطنبول', districts: ['الفاتح', 'باشاك شهير', 'إسنيورت', 'كاديكوي', 'شيشلي', 'بيليك دوزو'] },
+                        ankara: { name: 'أنقرة', districts: ['تشانكايا', 'كيشي أورين', 'يني محلة'] },
+                        bursa: { name: 'بورصة', districts: ['عثمان غازي', 'نيلوفر', 'يلدريم'] }
+                    }
+                },
+                DE: {
+                    name: 'ألمانيا',
+                    flag: '🇩🇪',
+                    dialCode: '+49',
+                    phoneLength: 11,
+                    phonePlaceholder: '11 خانة (مثال: 01512345678)',
+                    idLabel: 'رقم الهوية الأوروبية / الإقامة',
+                    idMax: 12,
+                    cities: {
+                        berlin: { name: 'برلين', districts: ['ميته', 'كرويتسبرغ', 'نويكولن', 'شارلوتنبورغ'] },
+                        munich: { name: 'ميونخ', districts: ['ألتشتات', 'شفابينغ', 'بوغنهاوزن'] },
+                        frankfurt: { name: 'فرانكفورت', districts: ['إننشتات', 'زاكسنهاوزن', 'وستإند'] }
+                    }
+                },
+                US: {
+                    name: 'الولايات المتحدة',
+                    flag: '🇺🇸',
+                    dialCode: '+1',
+                    phoneLength: 10,
+                    phonePlaceholder: '10 خانات (مثال: 2125550199)',
+                    idLabel: 'رقم جواز السفر / الهوية الفيدرالية (اختياري الآن)',
+                    idMax: 12,
+                    cities: {
+                        new_york: { name: 'نيويورك', districts: ['مانهاتن', 'بروكلين', 'كوينز', 'برونكس'] },
+                        chicago: { name: 'شيكاغو', districts: ['داون تاون', 'لينكولن بارك', 'هايد بارك'] },
+                        los_angeles: { name: 'لوس أنجلوس', districts: ['وسط لوس أنجلوس', 'سانتا مونيكا', 'بيفرلي هيلز'] }
+                    }
+                },
+                GB: {
+                    name: 'بريطانيا',
+                    flag: '🇬🇧',
+                    dialCode: '+44',
+                    phoneLength: 11,
+                    phonePlaceholder: '11 خانة (مثال: 07700900123)',
+                    idLabel: 'رقم الهوية / رخصة الإقامة BRP',
+                    idMax: 12,
+                    cities: {
+                        london: { name: 'لندن', districts: ['وسط لندن', 'كنسينغتون', 'إيلينغ', 'تاور هامليتس'] },
+                        manchester: { name: 'مانشستر', districts: ['سيتي سنتر', 'روشولم', 'ترافورد'] }
+                    }
+                },
+                MA: {
+                    name: 'المغرب',
+                    flag: '🇲🇦',
+                    dialCode: '+212',
+                    phoneLength: 10,
+                    phonePlaceholder: '10 خانات (مثال: 0612345678)',
+                    idLabel: 'رقم البطاقة الوطنية للتعريف',
+                    idMax: 10,
+                    cities: {
+                        casablanca: { name: 'الدار البيضاء', districts: ['المعاريف', 'أنفا', 'عين دياب', 'سيدي معروف'] },
+                        rabat: { name: 'الرباط', districts: ['أكدال', 'حسان', 'السويسي', 'يعقوب المنصور'] },
+                        marrakech: { name: 'مراكش', districts: ['جيليز', 'المدينة العتيقة', 'النخيل'] }
+                    }
+                },
+                OTHER: {
+                    name: 'دول أخرى',
+                    flag: '🌍',
+                    dialCode: '+',
+                    phoneLength: 10,
+                    phonePlaceholder: 'أدخل رقم الهاتف مع رمز الدولة',
+                    idLabel: 'رقم جواز السفر / الهوية المحلية (اختياري الآن)',
+                    idMax: 20,
+                    cities: {
+                        main: { name: 'المدينة الرئيسية', districts: ['وسط المدينة', 'أونلاين / نطاق عالمي'] }
+                    }
+                }
+            };
+
+            function getCountryEntry(countryCode) {
+                return SAWYAN_COUNTRIES_DB[countryCode] || SAWYAN_COUNTRIES_DB.OTHER;
+            }
+
+            function handleCountryChange(countryCode, preferredCity) {
+                const c = getCountryEntry(countryCode);
+
+                document.getElementById('countryFlag').innerText = c.flag;
+                document.getElementById('countryDialCode').innerText = c.dialCode;
+
+                const phoneInput = document.getElementById('phone');
+                phoneInput.maxLength = c.phoneLength;
+                phoneInput.placeholder = c.phonePlaceholder;
+                if (phoneInput.value && phoneInput.value.length !== c.phoneLength) {
+                    phoneInput.value = '';
+                }
+                validatePhoneDigits(phoneInput);
+
+                const idInput = document.getElementById('nationalId');
+                if (idInput) {
+                    idInput.maxLength = c.idMax;
+                    idInput.placeholder = c.idLabel;
+                }
+
+                const citySelect = document.getElementById('citySelect');
+                citySelect.innerHTML = '';
+                const cityKeys = Object.keys(c.cities);
+                const selectedCityKey = (preferredCity && c.cities[preferredCity]) ? preferredCity : cityKeys[0];
+
+                cityKeys.forEach((key) => {
+                    const opt = document.createElement('option');
+                    opt.value = key;
+                    opt.innerText = c.cities[key].name;
+                    if (key === selectedCityKey) opt.selected = true;
+                    citySelect.appendChild(opt);
+                });
+
+                handleCityChange(selectedCityKey);
+            }
+
+            function handleCityChange(cityKey) {
+                const countryCode = document.getElementById('countryOfResidence').value;
+                const c = getCountryEntry(countryCode);
+                const cityObj = (c && c.cities[cityKey]) ? c.cities[cityKey] : c.cities[Object.keys(c.cities)[0]];
+                if (!cityObj) return;
+
+                const districtSelect = document.getElementById('districtSelect');
+                districtSelect.innerHTML = '';
+                cityObj.districts.forEach((dist, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = dist;
+                    opt.innerText = dist;
+                    if (idx === 0) opt.selected = true;
+                    districtSelect.appendChild(opt);
+                });
+            }
+
+            function validatePhoneDigits(el) {
+                const countryCode = document.getElementById('countryOfResidence').value;
+                const c = getCountryEntry(countryCode);
+                const requiredLen = c ? c.phoneLength : 11;
+                const currentLen = el.value.length;
+
+                document.getElementById('phoneCounterText').innerText = currentLen + ' / ' + requiredLen + ' خانة';
+
+                if (currentLen === requiredLen) {
+                    document.getElementById('phoneValidationMsg').innerText = '✅ رقم هاتف مطابق لمعيار ' + c.name;
+                    document.getElementById('phoneValidationMsg').style.color = '#059669';
+                } else {
+                    document.getElementById('phoneValidationMsg').innerText = '⚠️ يلزم ' + requiredLen + ' خانات تماماً';
+                    document.getElementById('phoneValidationMsg').style.color = '#dc2626';
+                }
+            }
+
+            function validateNationalId(el) {
+                const countryCode = document.getElementById('countryOfResidence').value;
+                const c = getCountryEntry(countryCode);
+                const maxLen = c ? c.idMax : 14;
+                const hint = document.getElementById('nationalIdHint');
+                if (!hint) return;
+
+                if (el.value.length === maxLen) {
+                    hint.innerText = '✅ رقم هوية فريد صالح للمحفظة وصرف المستحقات';
+                    hint.style.color = '#059669';
+                } else {
+                    hint.innerText = '⚠️ يفضّل إدخال ' + maxLen + ' خانة';
+                    hint.style.color = '#d97706';
+                }
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                const params = new URLSearchParams(window.location.search);
+                let initCountry = (params.get('country') || '').toUpperCase();
+                let initCity = (params.get('city') || '').toLowerCase();
+
+                if (!initCountry && window.SAWYAN_GEO && typeof window.SAWYAN_GEO.detectInitial === 'function') {
+                    const detected = window.SAWYAN_GEO.detectInitial();
+                    initCountry = (detected.country || 'EG').toUpperCase();
+                    initCity = initCity || (detected.city || '');
+                }
+
+                if (initCountry === 'ALL' || initCountry === 'PIONEER' || !initCountry) {
+                    initCountry = 'EG';
+                }
+
+                const resSelect = document.getElementById('countryOfResidence');
+                if (resSelect) {
+                    const hasOpt = Array.from(resSelect.options).some(opt => opt.value === initCountry);
+                    resSelect.value = hasOpt ? initCountry : 'EG';
+                    handleCountryChange(resSelect.value, initCity);
+
+                    const natSelect = document.getElementById('nationality');
+                    if (natSelect && Array.from(natSelect.options).some(opt => opt.value === resSelect.value)) {
+                        natSelect.value = resSelect.value;
+                    }
+                }
+            });
+            </script>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../shared/config/supabase.js"></script>
+    <script src="../shared/api/sawyan-api.js"></script>
     <script src="../shared/components/logo.js"></script>
+    <script src="../js/demo-data.js"></script>
     <script src="../shared/data/countries.js"></script>
     <script src="js/register.js"></script>
 </body>

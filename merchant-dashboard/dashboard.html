@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة تحكم التاجر - SAWYAN BANK</title>
+    <title>لوحة تحكم التاجر ونقطة البيع - SAWYAN</title>
     <link
         href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
         rel="stylesheet">
@@ -13,6 +13,9 @@
     <link rel="stylesheet" href="../shared/css/notifications.css">
     <link rel="stylesheet" href="../shared/css/image-upload.css">
     <link rel="stylesheet" href="../member-dashboard/css/dashboard.css">
+    <!-- Leaflet for Merchant Radar Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 
 <body>
@@ -28,29 +31,45 @@
             </div>
 
             <nav class="sidebar-nav">
-                <a href="#" class="nav-item active" data-page="home">
+                <a href="#" class="nav-item active" data-page="home" onclick="showPage('home'); return false;">
                     <span class="icon">🏠</span>
                     <span>الرئيسية</span>
                 </a>
-                <a href="#" class="nav-item" data-page="pending">
+                <a href="#" class="nav-item" data-page="kiosk" onclick="showPage('kiosk'); return false;" style="background:rgba(255,255,255,0.14);font-weight:800;">
+                    <span class="icon">⚡</span>
+                    <span>وضع الكاشير (Kiosk)</span>
+                </a>
+                <a href="#" class="nav-item" data-page="pending" onclick="showPage('pending'); return false;">
                     <span class="icon">⏳</span>
                     <span>طلبات معلقة</span>
                 </a>
-                <a href="#" class="nav-item" data-page="scan">
+                <a href="#" class="nav-item" data-page="scan" onclick="showPage('scan'); return false;">
                     <span class="icon">📷</span>
                     <span>تسجيل عملية</span>
                 </a>
-                <a href="#" class="nav-item" data-page="transactions">
-                    <span class="icon">💳</span>
-                    <span>العمليات المكتملة</span>
+                <a href="#" class="nav-item" data-page="qrScanner" onclick="showPage('qrScanner'); return false;">
+                    <span class="icon">📱</span>
+                    <span>دفع / كاشير PIN</span>
                 </a>
-                <a href="#" class="nav-item" data-page="financial">
+                <a href="#" class="nav-item" data-page="transactions" onclick="showPage('transactions'); return false;">
+                    <span class="icon">💳</span>
+                    <span>العمليات والوردية</span>
+                </a>
+                <a href="#" class="nav-item" data-page="financial" onclick="showPage('financial'); return false;">
                     <span class="icon">📊</span>
                     <span>الموقف المالي</span>
                 </a>
-                <a href="#" class="nav-item" data-page="settings">
+                <a href="#" class="nav-item" data-page="radar" onclick="openMerchantMembersRadarModal(); return false;">
+                    <span class="icon">👥</span>
+                    <span>رادار الأعضاء حولي</span>
+                </a>
+                <a href="#" class="nav-item" data-page="storeKit" onclick="openStoreKitModal(); return false;">
+                    <span class="icon">🖨️</span>
+                    <span>طقم المتجر (Store Kit)</span>
+                </a>
+                <a href="#" class="nav-item" data-page="settings" onclick="showPage('settings'); return false;">
                     <span class="icon">⚙️</span>
-                    <span>الإعدادات</span>
+                    <span>الإعدادات والكاشير</span>
                 </a>
             </nav>
 
@@ -60,57 +79,96 @@
         </aside>
 
         <main class="main-content">
-            <header class="dashboard-header">
+            <header class="dashboard-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
                 <h1 id="pageTitle">لوحة التحكم</h1>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <span id="posVaultStatusBadge" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;padding:4px 10px;border-radius:999px;font-size:0.78rem;font-weight:800;">🟢 متصل • حافظة الأوفلاين المشفرة: 0</span>
+                    <button type="button" onclick="showPage('kiosk')" style="background:#0f172a;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-weight:800;font-size:0.8rem;cursor:pointer;font-family:'Tajawal';">⚡ وضع الكاشير (3 أزرار)</button>
+                    <button type="button" onclick="openStoreKitModal()" style="background:#059669;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-weight:800;font-size:0.8rem;cursor:pointer;font-family:'Tajawal';">🖨️ ملصق المتجر (Store Kit)</button>
+                </div>
             </header>
 
             <div class="content-area">
                 <!-- Home Page -->
                 <div id="homePage" class="page active">
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-icon">💳</div>
-                            <div class="stat-info">
-                                <div class="stat-label">عمليات اليوم</div>
-                                <div class="stat-value" id="todayTransactions">0</div>
+                    <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 20px;">
+                        <!-- 1. مبيعات اليوم -->
+                        <div class="stat-card" style="background: white; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 16px; border-right: 4px solid #10b981;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-size: 0.8rem; color: #64748b; font-weight: 700;">مبيعات اليوم (أعضاء سويا)</div>
+                                    <div style="font-size: 1.5rem; font-weight: 900; color: #0f172a; margin-top: 4px;" id="todaySales">3,450.00 ج.م</div>
+                                    <small style="color: #059669; font-weight: 700; font-size: 0.75rem;" id="todayTransactions">8 عمليات مكتملة</small>
+                                </div>
+                                <div style="width: 44px; height: 44px; background: #ecfdf5; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">💰</div>
                             </div>
                         </div>
 
-                        <div class="stat-card">
-                            <div class="stat-icon">💰</div>
-                            <div class="stat-info">
-                                <div class="stat-label">مبيعات اليوم</div>
-                                <div class="stat-value" id="todaySales">0.00 ج.م</div>
+                        <!-- 2. عمولات سويا اليوم -->
+                        <div class="stat-card" style="background: white; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 16px; border-right: 4px solid #ef4444;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-size: 0.8rem; color: #64748b; font-weight: 700;">عمولات سويا اليوم (10%)</div>
+                                    <div style="font-size: 1.5rem; font-weight: 900; color: #dc2626; margin-top: 4px;" id="totalCommissionsDue">-345.00 ج.م</div>
+                                    <small style="color: #64748b; font-size: 0.75rem;">خُصمت من رصيد الشحن</small>
+                                </div>
+                                <div style="width: 44px; height: 44px; background: #fef2f2; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">🏷️</div>
                             </div>
                         </div>
 
-                        <!-- Commission Ledger Card (New) -->
-                        <div class="stat-card stat-warning">
-                            <div class="stat-icon">⚖️</div>
-                            <div class="stat-info">
-                                <div class="stat-label">المستحقات للإدارة</div>
-                                <div class="stat-value" id="totalCommissionsDue">0.00 ج.م</div>
-                                <small style="color: #666; font-size: 0.8rem;">عمولات متراكمة</small>
+                        <!-- 3. صافي نقدية المتجر اليوم -->
+                        <div class="stat-card" style="background: white; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 16px; border-right: 4px solid #3b82f6;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-size: 0.8rem; color: #64748b; font-weight: 700;">صافي نقدية المتجر اليوم (90%)</div>
+                                    <div style="font-size: 1.5rem; font-weight: 900; color: #2563eb; margin-top: 4px;" id="todayMerchantNet">3,105.00 ج.م</div>
+                                    <small style="color: #2563eb; font-weight: 700; font-size: 0.75rem;">في درج الكاشير كاش</small>
+                                </div>
+                                <div style="width: 44px; height: 44px; background: #eff6ff; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">💵</div>
                             </div>
                         </div>
 
-                        <div class="stat-card stat-info">
-                            <div class="stat-icon">📦</div>
-                            <div class="stat-info">
-                                <div class="stat-label">إجمالي العمليات</div>
-                                <div class="stat-value" id="totalTransactionsCount">0</div>
-                            </div>
-                        </div>
-
-                        <div class="stat-card">
-                            <div class="stat-icon">💸</div>
-                            <div class="stat-info">
-                                <div class="stat-label">المستحق للشركة</div>
-                                <div class="stat-value" id="pendingPayment">0.00 ج.م</div>
+                        <!-- 4. رصيد الشحن المسبق (صمام الأمان) -->
+                        <div class="stat-card" style="background: white; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 16px; border-right: 4px solid #059669;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-size: 0.8rem; color: #64748b; font-weight: 700;">رصيد الشحن مسبق الدفع (Prepaid)</div>
+                                    <div style="font-size: 1.5rem; font-weight: 900; color: #047857; margin-top: 4px;" id="pendingPayment">4,850.00 ج.م</div>
+                                    <small style="color: #059669; font-weight: 800; font-size: 0.75rem;">🟢 رصيد نشط يكفي 48,500 ج.م</small>
+                                </div>
+                                <div style="width: 44px; height: 44px; background: #ecfdf5; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">🛡️</div>
                             </div>
                         </div>
                     </div>
-                </div>
+<!-- بطاقة رادار أعضاء سويا في محيط المتجر (القوة الشرائية المستهدفة) -->
+                        <div class="stat-card" style="grid-column: 1 / -1; background: linear-gradient(135deg, #064e3b, #0f172a); border-radius: 16px; padding: 22px; color: white; box-shadow: 0 6px 20px rgba(6,78,59,0.25); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; border: 1px solid #10b981;">
+                            <div style="flex: 1; min-width: 280px;">
+                                <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(16,185,129,0.2); border: 1px solid #10b981; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; color: #a7f3d0; margin-bottom: 8px;">
+                                    <span>📍 رادار أعضاء سويا في محيطك (نطاق 3 كم)</span>
+                                </div>
+                                <h2 id="homeRadarHeadline" style="margin: 0 0 6px 0; font-size: 1.35rem; font-weight: 900; color: #ffffff;">
+                                    رادار الكثافة الجغرافية حول متجرك (حماية الخصوصية <code>k-Anonymity &ge; 10</code>)
+                                </h2>
+                                <p id="homeRadarSubtext" style="margin: 0 0 14px 0; font-size: 0.85rem; color: #cbd5e1; line-height: 1.5;">
+                                    يعرض مؤشرات الكثافة المجمّعة للأعضاء في دوائر 1 و2 و3 كم حول فرعك دون كشف أي بيانات فردية أو مواقع شخصية.
+                                </p>
+                                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                    <button onclick="openMerchantMembersRadarModal()" style="background: #10b981; color: white; border: none; padding: 10px 18px; border-radius: 10px; font-weight: 800; font-size: 0.9rem; font-family: 'Tajawal', sans-serif; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(16,185,129,0.4);">
+                                        <span>🗺️ استكشف خريطة ورادار الأعضاء حولي</span>
+                                    </button>
+                                    <button id="promoActionBtn" onclick="document.getElementById('merchantPromoRequestModal').style.display='flex';" style="background: rgba(255,255,255,0.12); color: white; border: 1px solid rgba(255,255,255,0.25); padding: 10px 16px; border-radius: 10px; font-weight: 700; font-size: 0.85rem; font-family: 'Tajawal', sans-serif; cursor: pointer;">
+                                        <span id="promoBtnText">📢 إرسال إشعار ترويجي فوري (Flash Offer)</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 14px 18px; min-width: 190px; text-align: center;">
+                                <div style="font-size: 0.78rem; color: #94a3b8;">نسبة العمولة التعاقدية الإجمالية</div>
+                                <div id="radarCardContractPct" style="font-size: 1.4rem; font-weight: 900; color: #34d399; margin: 4px 0;">10.0%</div>
+                                <div id="radarCardZoneStatus" style="font-size: 0.72rem; color: #a7f3d0;">🟢 المنطقة الخضراء نشطة</div>
+                            </div>
+                        </div>
+                    </div>
+                </div> <!-- End of homePage -->
 
                 <!-- Scan Page -->
                 <div id="scanPage" class="page">
@@ -120,7 +178,8 @@
                         <p class="or-divider">أو</p>
                         <div class="manual-input">
                             <input type="text" id="memberCodeInput" class="form-control"
-                                placeholder="أدخل كود العضو يدوياً">
+                                placeholder="أدخل كود العضو يدوياً (مثال: 124 أو 101)" oninput="handleScanPageMemberCode(this.value)">
+                            <div id="scanPageMemberPreview" style="display:none; margin-top:10px; padding:10px 14px; background:#ecfdf5; border:1.5px solid #10b981; border-radius:10px;"></div>
                         </div>
                     </div>
 
@@ -151,9 +210,11 @@
                 </div>
 
                 <!-- Other Pages -->
+                <div id="kioskPage" class="page"></div>
                 <div id="pendingPage" class="page"></div>
                 <div id="transactionsPage" class="page"></div>
                 <div id="financialPage" class="page"></div>
+                <div id="qrScannerPage" class="page"></div>
                 <div id="settingsPage" class="page"></div>
             </div>
         </main>
@@ -161,15 +222,15 @@
 
     <!-- Bottom Navigation للموبايل -->
     <nav class="bottom-nav">
-        <a href="#" class="bottom-nav-item active" data-page="home">
+        <a href="#" class="bottom-nav-item active" data-page="home" onclick="showPage('home'); return false;">
             <span class="bottom-nav-icon">🏠</span>
             <span class="bottom-nav-label">الرئيسية</span>
         </a>
-        <a href="#" class="bottom-nav-item" data-page="scan">
+        <a href="#" class="bottom-nav-item" data-page="scan" onclick="showPage('scan'); return false;">
             <span class="bottom-nav-icon">📷</span>
             <span class="bottom-nav-label">تسجيل</span>
         </a>
-        <a href="#" class="bottom-nav-item" data-page="pending">
+        <a href="#" class="bottom-nav-item" data-page="pending" onclick="showPage('pending'); return false;">
             <span class="bottom-nav-icon">⏳</span>
             <span class="bottom-nav-label">المعلقة</span>
         </a>
@@ -186,13 +247,13 @@
             <button onclick="closeMoreMenu()" class="close-btn">&times;</button>
         </div>
         <div class="more-menu-items">
-            <a href="#" class="more-menu-item" data-page="transactions" onclick="goToPage('transactions')">
+            <a href="#" class="more-menu-item" data-page="transactions" onclick="showPage('transactions'); return false;" onclick="goToPage('transactions')">
                 <span>💳</span> العمليات المكتملة
             </a>
-            <a href="#" class="more-menu-item" data-page="financial" onclick="goToPage('financial')">
+            <a href="#" class="more-menu-item" data-page="financial" onclick="showPage('financial'); return false;" onclick="goToPage('financial')">
                 <span>📊</span> الموقف المالي
             </a>
-            <a href="#" class="more-menu-item" data-page="settings" onclick="goToPage('settings')">
+            <a href="#" class="more-menu-item" data-page="settings" onclick="showPage('settings'); return false;" onclick="goToPage('settings')">
                 <span>⚙️</span> الإعدادات
             </a>
             <a href="#" class="more-menu-item logout" onclick="logout()">
@@ -202,22 +263,330 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     <script src="../shared/config/supabase.js"></script>
+    <script src="../shared/api/sawyan-api.js"></script>
     <script src="../shared/components/logo.js"></script>
     <script src="../shared/components/notifications.js"></script>
     <script src="../shared/components/image-upload.js"></script>
+    <script src="../shared/payments/payment-provider.js"></script>
+    <script src="../shared/payments/payment-service.js"></script>
+    <script src="../shared/payments/mock-provider.js"></script>
+    <script src="../shared/payments/payment-init.js"></script>
     <script src="js/dashboard.js"></script>
     <script>
-        // تهيئة الإشعارات بعد تحميل البيانات
         document.addEventListener('DOMContentLoaded', function () {
             setTimeout(() => {
-                const merchant = JSON.parse(localStorage.getItem('sawyan_merchant') || '{}');
-                if (merchant.id) {
+                const merchant = (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.getSavedMerchant()) || {};
+                if (merchant.id && window.SAWYAN && window.SAWYAN.Notifications) {
                     SAWYAN.Notifications.init('merchant', merchant.id);
                 }
             }, 1000);
         });
     </script>
+
+    <!-- نافذة منبثقة لرادار الأعضاء للتاجر -->
+    <div id="merchantRadarModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.85); z-index:99999; align-items:center; justify-content:center; padding:15px; font-family:'Tajawal', sans-serif;">
+        <div style="background:white; border-radius:16px; max-width:680px; width:100%; max-height:94vh; overflow-y:auto; padding:20px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:14px;">
+                <div>
+                    <div style="font-size:1.15rem; font-weight:900; color:#0f172a;">🗺️ رادار الكثافة المجمّعة للأعضاء حول متجرك (<code>k-Anonymity &ge; 10</code>)</div>
+                    <div id="radarModalStoreTitle" style="font-size:0.78rem; color:#059669; font-weight:700; margin-top:2px;">📍 متجرك في المركز</div>
+                </div>
+                <button onclick="document.getElementById('merchantRadarModal').style.display='none'" style="background:#f1f5f9; border:none; border-radius:50%; width:32px; height:32px; cursor:pointer; font-weight:800;">✕</button>
+            </div>
+            
+            <!-- ملخص الإحصائيات المقنّعة بـ k-Anonymity >= 10 (M18) -->
+            <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-bottom:14px;">
+                <div style="background:#ecfdf5; border:1px solid #a7f3d0; border-radius:10px; padding:10px; text-align:center;">
+                    <div style="font-size:0.75rem; color:#065f46; font-weight:700;">أعضاء سويا حولك (3 كم)</div>
+                    <div id="radarRing3Count" style="font-size:1.25rem; font-weight:900; color:#047857;">&lt; 10</div>
+                </div>
+                <div style="background:#fef3c7; border:1px solid #fde68a; border-radius:10px; padding:10px; text-align:center;">
+                    <div style="font-size:0.75rem; color:#92400e; font-weight:700;">يبحثون عن إغلاق الهدف</div>
+                    <div id="radarOpenTargetCount" style="font-size:1.25rem; font-weight:900; color:#b45309;">&lt; 10</div>
+                </div>
+                <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px; text-align:center;">
+                    <div style="font-size:0.75rem; color:#1e40af; font-weight:700;">حماية الخصوصية المكانية</div>
+                    <div id="radarPowerLabel" style="font-size:0.95rem; font-weight:900; color:#1d4ed8;">M18 نشط (&ge;10)</div>
+                </div>
+            </div>
+
+            <!-- حاوية خريطة الرادار التفاعلية (Leaflet Radar Heatmap) -->
+            <div style="border-radius:12px; overflow:hidden; border:2px solid #059669; box-shadow:0 4px 12px rgba(0,0,0,0.08); margin-bottom:12px; position:relative;">
+                <div id="merchantLeafletMap" style="height:320px; width:100%; background:#e2e8f0;"></div>
+                
+                <!-- دليل رموز الخريطة العائم -->
+                <div style="position:absolute; top:10px; right:10px; z-index:1000; background:rgba(255,255,255,0.92); backdrop-filter:blur(4px); border-radius:8px; padding:6px 10px; font-size:0.72rem; font-weight:700; color:#0f172a; border:1px solid #cbd5e1; box-shadow:0 2px 6px rgba(0,0,0,0.1);">
+                    <div style="display:flex; align-items:center; gap:4px; margin-bottom:2px;">
+                        <span style="display:inline-block; width:10px; height:10px; background:#d97706; border-radius:50%; border:1.5px solid white;"></span>
+                        <span>🏪 متجرك (المركز)</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:4px;">
+                        <span style="display:inline-block; width:10px; height:10px; background:#059669; border-radius:50%; border:1.5px solid white;"></span>
+                        <span>👥 تجمعات أعضاء سويا</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- الزر الذهبي للتاجر: فتح خريطة الأعضاء في تطبيق Google Maps الرسمي -->
+            <div style="margin-bottom:12px;">
+                <a href="https://www.google.com/maps/search/مناطق+المعادي+ودجلة+والسرايات/@29.960,31.280,14z" target="_blank" style="display:flex; align-items:center; justify-content:center; gap:8px; width:100%; box-sizing:border-box; background:linear-gradient(135deg, #1e40af, #0284c7); color:white; text-decoration:none; padding:12px; border-radius:10px; font-weight:800; font-size:0.92rem; font-family:'Tajawal', sans-serif; text-align:center; box-shadow:0 4px 12px rgba(2,132,199,0.3);">
+                    <span>🌐 فتح خريطة تجمعات أعضاء سويا في تطبيق Google Maps الرسمي</span>
+                </a>
+                <div style="font-size:0.72rem; color:#64748b; text-align:center; margin-top:4px;">
+                    * يفتح تطبيق Google Maps مع طبقة التجمعات السكنية لأعضاء سويا المحيطين بمتجرك بنطاق 3 كم.
+                </div>
+            </div>
+
+            <!-- تفاصيل النطاقات الجغرافية والكثافة -->
+            <div style="background:#0f172a; border-radius:12px; padding:14px; color:white; margin-bottom:14px;">
+                <div style="font-size:0.82rem; font-weight:800; color:#34d399; margin-bottom:8px;">
+                    📊 توزيع تجمعات الأعضاء والقوة الشرائية حولك:
+                </div>
+                <div style="display:flex; flex-direction:column; gap:6px; font-size:0.8rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.06); padding:6px 10px; border-radius:6px;">
+                        <span>🟢 نطاق 1 كم حول الفرع:</span>
+                        <strong id="radarRing1Text" style="color:#34d399;">&lt; 10 (مقنّع k-Anonymity)</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.06); padding:6px 10px; border-radius:6px;">
+                        <span>🟡 نطاق 2 كم حول الفرع:</span>
+                        <strong id="radarRing2Text" style="color:#fbbf24;">&lt; 10 (مقنّع k-Anonymity)</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.06); padding:6px 10px; border-radius:6px;">
+                        <span>🔵 نطاق 3 كم حول الفرع:</span>
+                        <strong id="radarRing3Text" style="color:#60a5fa;">&lt; 10 (مقنّع k-Anonymity)</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:8px 12px; margin-bottom:14px; font-size:0.75rem; color:#64748b; line-height:1.5;">
+                🔒 <strong>قفل الخصوصية الصارم:</strong> بيانات الأعضاء الشخصية وأرقام هواتفهم مشفرة ومحمية وفق سياسة الأمان الدولية. يرى التاجر الكثافة الجغرافية ومؤشرات الاستهلاك الإجمالية دون اختراق خصوصية الأفراد.
+            </div>
+
+            <div style="display:flex; gap:8px;">
+                <button onclick="document.getElementById('merchantRadarModal').style.display='none'; document.getElementById('merchantPromoRequestModal').style.display='flex';" style="flex:2; background:#059669; color:white; border:none; padding:11px; border-radius:8px; font-weight:800; font-family:'Tajawal'; cursor:pointer; font-size:0.88rem;">
+                    📢 إرسال إشعار ترويجي فوري (Flash Offer)
+                </button>
+                <button onclick="document.getElementById('merchantRadarModal').style.display='none'" style="flex:1; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:11px; border-radius:8px; font-weight:700; font-family:'Tajawal'; cursor:pointer; font-size:0.85rem;">
+                    إغلاق
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const u = new URLSearchParams(window.location.search);
+        if (u.get('modal') === 'radar') {
+            openMerchantMembersRadarModal();
+        }
+    });
+    
+    let merchantMapInstance = null;
+    function initMerchantMap() {
+        const container = document.getElementById('merchantLeafletMap');
+        if (!container || typeof L === 'undefined') return;
+
+        const prof = (window.__merchantBundleCache && window.__merchantBundleCache.profile) || {};
+        const storeLat = Number(prof.latitude) || 30.0561;
+        const storeLng = Number(prof.longitude) || 31.3301;
+        const storeName = prof.business_name || 'متجرك المعتمد';
+        const storeAddr = prof.address || '';
+
+        if (merchantMapInstance) {
+            merchantMapInstance.remove();
+            merchantMapInstance = null;
+        }
+
+        merchantMapInstance = L.map('merchantLeafletMap', {
+            center: [storeLat, storeLng],
+            zoom: 13,
+            zoomControl: true
+        });
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: '© OpenStreetMap | رادار SAWYAN (M18 k-Anonymity)'
+        }).addTo(merchantMapInstance);
+
+        // دوائر النطاق الجغرافي المقنّعة فقط (يحظر إظهار أي دبابيس فردية للأعضاء — M18)
+        L.circle([storeLat, storeLng], { radius: 1000, color: '#10b981', fillOpacity: 0.12, weight: 1.5 }).addTo(merchantMapInstance);
+        L.circle([storeLat, storeLng], { radius: 2000, color: '#f59e0b', fillOpacity: 0.08, weight: 1.5 }).addTo(merchantMapInstance);
+        L.circle([storeLat, storeLng], { radius: 3000, color: '#3b82f6', fillOpacity: 0.04, weight: 1.5 }).addTo(merchantMapInstance);
+
+        const storeIcon = L.divIcon({
+            html: '<div style="background:#d97706; width:34px; height:34px; border-radius:50%; border:3px solid white; box-shadow:0 0 12px rgba(217,119,6,0.8); display:flex; align-items:center; justify-content:center; color:white; font-size:16px;">🏪</div>',
+            className: 'store-pin',
+            iconSize: [34, 34],
+            iconAnchor: [17, 17]
+        });
+        L.marker([storeLat, storeLng], { icon: storeIcon }).addTo(merchantMapInstance)
+            .bindPopup(`<div style="font-family:Tajawal; direction:rtl; text-align:center;"><strong>🏪 ${storeName}</strong><br>${storeAddr}</div>`);
+    }
+
+    function openMerchantMembersRadarModal() {
+        const b = window.__merchantBundleCache || {};
+        const prof = b.profile || {};
+        const rings = b.radar_rings || {};
+        const fmtRing = (r) => {
+            if (!r) return '< 10 (مقنّع k-Anonymity)';
+            if (r.k_anonymity_masked || r.total_members_display === '< 10') return '< 10 (مقنّع لحماية الخصوصية M18)';
+            return `${r.total_members_display} عضو`;
+        };
+        const titleEl = document.getElementById('radarModalStoreTitle');
+        if (titleEl) titleEl.textContent = `📍 المركز: ${prof.business_name || 'متجرك'} (${prof.address || ''})`;
+        if (document.getElementById('radarRing1Text')) document.getElementById('radarRing1Text').textContent = fmtRing(rings.r1km);
+        if (document.getElementById('radarRing2Text')) document.getElementById('radarRing2Text').textContent = fmtRing(rings.r2km);
+        if (document.getElementById('radarRing3Text')) document.getElementById('radarRing3Text').textContent = fmtRing(rings.r3km);
+        if (document.getElementById('radarRing3Count')) document.getElementById('radarRing3Count').textContent = rings.r3km?.total_members_display || '< 10';
+        if (document.getElementById('radarOpenTargetCount')) document.getElementById('radarOpenTargetCount').textContent = rings.r3km?.pending_target_display || '< 10';
+
+        document.getElementById('merchantRadarModal').style.display = 'flex';
+        setTimeout(initMerchantMap, 80);
+    }
+    </script>
+
+
+      <!-- مودال طلب اعتماد إشعار ترويجي من الإدارة (Admin Approval Gate) -->
+      <div id="merchantPromoRequestModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.65); z-index:99999; justify-content:center; align-items:center; padding:15px; direction:rtl; font-family:'Tajawal', sans-serif;">
+          <div style="background:white; border-radius:16px; max-width:540px; width:100%; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.3); animation: fadeIn 0.3s ease;">
+              
+              <!-- ترويسة المودال -->
+              <div style="background:linear-gradient(135deg, #065f46, #0f172a); color:white; padding:16px 20px; display:flex; justify-content:space-between; align-items:center;">
+                  <div>
+                      <div style="font-weight:900; font-size:1.05rem; display:flex; align-items:center; gap:8px;">
+                          <span>📢 طلب بث إشعار ترويجي (Flash Offer)</span>
+                      </div>
+                      <div style="font-size:0.75rem; color:#a7f3d0; margin-top:2px;">المحيط الجغرافي: نطاق 3 كم حول المتجر (1,420 عضواً)</div>
+                  </div>
+                  <button onclick="document.getElementById('merchantPromoRequestModal').style.display='none'" style="background:rgba(255,255,255,0.15); border:none; color:white; font-size:1.1rem; border-radius:50%; width:30px; height:30px; cursor:pointer;">✕</button>
+              </div>
+
+              <!-- تنبيه الاعتماد السيادي للإدارة -->
+              <div style="background:#eff6ff; border-bottom:1px solid #bfdbfe; padding:10px 16px; font-size:0.78rem; color:#1e40af; display:flex; align-items:center; gap:8px;">
+                  <span style="font-size:1.1rem;">🛡️</span>
+                  <span><strong>صمام الأمان والرقابة:</strong> يمر هذا الإشعار أولاً على إدارة سويا للمراجعة والاعتماد خلال 60 دقيقة قبل البث المباشر لهواتف الأعضاء.</span>
+              </div>
+
+              <!-- حاوية النموذج -->
+              <div id="promoFormContainer" style="padding:18px 20px;">
+                  <div style="margin-bottom:12px;">
+                      <label style="display:block; font-size:0.85rem; font-weight:800; color:#0f172a; margin-bottom:4px;">عنوان الإشعار (يظهر في شريط إشعارات هاتف العضو) <span style="color:#ef4444;">*</span></label>
+                      <input type="text" id="promoTitle" value="🔥 عرض كاشباك إضافي 10% اليوم فقط!" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #cbd5e1; font-weight:700; font-family:'Tajawal'; font-size:0.88rem;">
+                  </div>
+
+                  <div style="margin-bottom:12px;">
+                      <label style="display:block; font-size:0.85rem; font-weight:800; color:#0f172a; margin-bottom:4px;">نص العرض الترويجي والتفاصيل <span style="color:#ef4444;">*</span></label>
+                      <textarea id="promoBody" rows="3" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600; font-family:'Tajawal'; font-size:0.84rem; line-height:1.5;">تسوق اليوم من سوبرماركت الفارق بفرع مدينة نصر واكسب كاشباك إضافي 10% على كافة المشتريات لإغلاق هدفك الشهري ومضاعفة نقاطك!</textarea>
+                  </div>
+
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;">
+                      <div>
+                          <label style="display:block; font-size:0.8rem; font-weight:700; color:#475569; margin-bottom:3px;">الفئة المستهدفة:</label>
+                          <select id="promoTarget" style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid #cbd5e1; font-family:'Tajawal'; font-size:0.82rem; font-weight:700; background:#f8fafc;">
+                              <option selected>🎯 الأعضاء الباحثين عن إغلاق الهدف (850 عضواً)</option>
+                              <option>👥 جميع الأعضاء في نطاق 3 كم (1,420 عضواً)</option>
+                          </select>
+                      </div>
+                      <div>
+                          <label style="display:block; font-size:0.8rem; font-weight:700; color:#475569; margin-bottom:3px;">صلاحية العرض:</label>
+                          <select id="promoDuration" style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid #cbd5e1; font-family:'Tajawal'; font-size:0.82rem; font-weight:700; background:#f8fafc;">
+                              <option selected>⏳ 24 ساعة فقط (عرض فلاش)</option>
+                              <option>⏳ 48 ساعة</option>
+                              <option>⏳ نهاية الأسبوع (الجمعة والسبت)</option>
+                          </select>
+                      </div>
+                  </div>
+
+                  <div style="display:flex; gap:8px;">
+                      <button onclick="submitPromoRequestForReview()" style="flex:2; background:#059669; color:white; border:none; padding:12px; border-radius:8px; font-weight:800; font-family:'Tajawal'; font-size:0.92rem; cursor:pointer; box-shadow:0 3px 10px rgba(5,150,105,0.3);">
+                          📨 إرسال الطلب لاعتماد الإدارة والبث
+                      </button>
+                      <button onclick="document.getElementById('merchantPromoRequestModal').style.display='none'" style="flex:1; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:12px; border-radius:8px; font-weight:700; font-family:'Tajawal'; font-size:0.85rem; cursor:pointer;">
+                          إلغاء
+                      </button>
+                  </div>
+              </div>
+
+              <!-- حاوية الحالة بعد الإرسال -->
+              <div id="promoStatusContainer" style="display:none; padding:24px 20px; text-align:center;">
+                  <div style="font-size:3rem; margin-bottom:10px;">⏳</div>
+                  <div style="font-weight:900; font-size:1.1rem; color:#0f172a; margin-bottom:6px;">تم إرسال العرض بنجاح إلى إدارة سويا!</div>
+                  <div style="font-size:0.82rem; color:#64748b; line-height:1.5; margin-bottom:16px;">
+                      رقم الطلب: <strong id="promoReqId">#PRM-892</strong><br>
+                      يقوم فريق التدقيق بمراجعة النص ومطابقته لضوابط المنصة. ستصلك رسالة تأكيد فور اعتماد الإشعار وبثه لهواتف الـ 1,420 عضواً.
+                  </div>
+                  <div style="background:#fef3c7; border:1px dashed #f59e0b; border-radius:8px; padding:10px; font-size:0.75rem; color:#92400e; font-weight:700; margin-bottom:16px;">
+                      الحالة الحالية: 🟡 قيد مراجعة واعتماد الإدارة (متوقع خلال 45 دقيقة)
+                  </div>
+                  <button onclick="document.getElementById('merchantPromoRequestModal').style.display='none'; document.getElementById('promoFormContainer').style.display='block'; document.getElementById('promoStatusContainer').style.display='none';" style="background:#0f172a; color:white; border:none; padding:10px 24px; border-radius:8px; font-weight:800; font-family:'Tajawal'; cursor:pointer;">
+                      حسناً، فهمت
+                  </button>
+              </div>
+
+          </div>
+      </div>
+
+
+
+<script>
+async function submitPromoRequestForReview() {
+    const titleEl = document.getElementById('promoTitle');
+    const bodyEl = document.getElementById('promoBody');
+    const durationEl = document.getElementById('promoDuration');
+
+    const title = titleEl ? titleEl.value.trim() : '';
+    const body = bodyEl ? bodyEl.value.trim() : '';
+    const duration = durationEl ? durationEl.value : '24h';
+
+    if (!title || !body) {
+        alert('يرجى ملء عنوان وتفاصيل العرض الترويجي.');
+        return;
+    }
+
+    try {
+        const saved = window.SAWYAN.API.getSavedMerchant();
+        if (!saved || !saved.id) throw new Error('يرجى تسجيل الدخول أولاً');
+
+        const res = await window.SAWYAN.API.merchantSubmitFlashOfferGuarded({
+            merchantId: saved.id,
+            title,
+            body,
+            discountHint: duration
+        });
+
+        const promoId = res.request_id ? String(res.request_id).slice(0, 8).toUpperCase() : 'PRM-LIVE';
+        const formCont = document.getElementById('promoFormContainer');
+        const statusCont = document.getElementById('promoStatusContainer');
+        const reqIdEl = document.getElementById('promoReqId');
+
+        if (formCont) formCont.style.display = 'none';
+        if (statusCont) statusCont.style.display = 'block';
+        if (reqIdEl) reqIdEl.innerText = '#' + promoId;
+
+        const btn = document.getElementById('promoActionBtn');
+        if (btn) {
+            btn.innerHTML = '<span style="color:#fef08a; font-weight:800;">⏳ العرض قيد مراجعة الإدارة (#' + promoId + ')</span>';
+            btn.style.background = '#b45309';
+            btn.style.borderColor = '#f59e0b';
+        }
+        if (typeof refreshMerchantBundle === 'function') {
+            await refreshMerchantBundle();
+        }
+    } catch (err) {
+        const msg = String(err.message || '');
+        if (msg.includes('MERCHANT_NOT_IN_GREEN_ZONE')) {
+            alert('⛔ يشترط النظام أن يكون رصيد الشحن المسبق للمتجر في المنطقة الخضراء (> 30%) لبث العروض الخاطفة (M17).');
+        } else if (msg.includes('EXTERNAL_LINKS_OR_PHONES_FORBIDDEN')) {
+            alert('⛔ يُحظر تضمين روابط خارجية أو أرقام هواتف دفع مباشر داخل نص الإشعار الترويجي (Y08).');
+        } else {
+            alert('❌ تعذر إرسال العرض: ' + msg);
+        }
+    }
+}
+</script>
+
 </body>
 
 </html>

@@ -1,0 +1,1032 @@
+/**
+ * ============================================================================
+ * SAWYAN ECOSYSTEM — V3.0 UNIFIED FRONTEND API ADAPTER (sawyan-api.js)
+ * Single Codebase + Dual Environment Routing (D10)
+ * Original Site -> `sawyan` schema | Parallel Site (/preview/ | ?env=demo) -> `sawyan_demo` schema
+ * ============================================================================
+ */
+
+(function (global) {
+    'use strict';
+
+    function getClient() {
+        if (!global.SAWYAN || !global.SAWYAN.supabase) {
+            throw new Error('SAWYAN_SUPABASE_NOT_READY');
+        }
+        return global.SAWYAN.supabase;
+    }
+
+    function generateIdempotencyKey() {
+        if (global.SAWYAN && global.SAWYAN.IPaymentProvider) {
+            return global.SAWYAN.IPaymentProvider.generateUUIDv7();
+        }
+        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+            return crypto.randomUUID();
+        }
+        throw new Error('CRYPTO_RANDOM_UNAVAILABLE');
+    }
+
+    async function callRpc(fnName, args = {}) {
+        const client = getClient();
+        const { data, error } = await client.rpc(fnName, args);
+        if (error) {
+            throw new Error(`RPC[${fnName}] failed: ${error.message}`);
+        }
+        return data;
+    }
+
+    function escapeCsvField(val) {
+        const str = val === null || val === undefined ? '' : String(val);
+        if (/[",\r\n]/.test(str)) {
+            return '"' + str.replace(/"/g, '""') + '"';
+        }
+        return str;
+    }
+
+    const SawyanAPI = {
+        getActiveSchema() {
+            return (global.SAWYAN && global.SAWYAN.schema) || 'sawyan';
+        },
+
+        isDemoMode() {
+            return Boolean(global.SAWYAN && global.SAWYAN.isParallelDemo);
+        },
+
+        newIdempotencyKey() {
+            return generateIdempotencyKey();
+        },
+
+        /**
+         * البحث عن الراعي بالرقم عند التسجيل وحظر الجذر #0 على العامة (Workflow 1 / A08)
+         */
+        async lookupSponsorByCode(memberCode) {
+            return await callRpc('lookup_sponsor_by_code', {
+                p_member_code: Number(memberCode)
+            });
+        },
+
+        /**
+         * التحقق العلني الآمن من كود الفاتورة بدون كشف هواتف أو نسب تقسيم (verify.html / D26)
+         */
+        async publicVerifyTransaction(shortCode) {
+            return await callRpc('public_verify_transaction', {
+                p_short_code: String(shortCode || '').trim()
+            });
+        },
+
+        /**
+         * إرسال معاملة نقطة بيع / دفع بـ Soft Hold أو PIN مع مفتاح عدم تكرار إلزامي (Point 14 / D25)
+         */
+        async submitPosTransaction({
+            memberId,
+            merchantId,
+            branchId,
+            amount,
+            paymentType = 'cash',
+            uniquePaymentRef,
+            swShortCode,
+            idempotencyKey = null,
+            cashierEmployeeId = null,
+            isInstantPin = true,
+            receiptMediaUrl = null
+        }) {
+            const idem = idempotencyKey || generateIdempotencyKey();
+            return await callRpc('submit_pos_transaction', {
+                p_member_id: memberId,
+                p_merchant_id: merchantId,
+                p_branch_id: branchId,
+                p_amount: Number(amount),
+                p_payment_type: paymentType,
+                p_unique_payment_ref: uniquePaymentRef,
+                p_sw_short_code: swShortCode,
+                p_idempotency_key: idem,
+                p_cashier_employee_id: cashierEmployeeId,
+                p_is_instant_pin: Boolean(isInstantPin),
+                p_receipt_media_url: receiptMediaUrl
+            });
+        },
+
+        /**
+         * تقرير تقفيل الوردية للتاجر والمحاسب مع قيد Audit Log عند التصدير وتطهير CSV (Point 13)
+         */
+        async getMerchantShiftClosing({
+            merchantId,
+            branchId = null,
+            periodFilter = 'today',
+            fromDate = null,
+            toDate = null,
+            exportFormat = null,
+            actorId = null
+        }) {
+            return await callRpc('get_merchant_shift_closing', {
+                p_merchant_id: merchantId,
+                p_branch_id: branchId,
+                p_period_filter: periodFilter,
+                p_from_date: fromDate,
+                p_to_date: toDate,
+                p_export_format: exportFormat,
+                p_actor_id: actorId
+            });
+        },
+
+        /**
+         * بناء ملف CSV مطهّر 100% جاهز للتنزيل في المتصفح (بـ BOM لعرض العربية في Excel)
+         */
+        buildSafeCsvContent(shiftResult) {
+            const headers = [
+                'Code', 'Timestamp', 'Customer (D26 Masked)', 'Branch',
+                'Cashier', 'Amount', 'Net Commission', 'Currency', 'Payment Type', 'Status'
+            ];
+            const lines = [headers.map(escapeCsvField).join(',')];
+            const rows = (shiftResult && Array.isArray(shiftResult.transactions)) ? shiftResult.transactions : [];
+            for (const row of rows) {
+                const s = row.csv_safe_row || {};
+                const vals = [
+                    s.short_code ?? row.short_code,
+                    s.created_at ?? row.created_at,
+                    s.member ?? row.masked_member,
+                    s.branch ?? row.branch_name,
+                    s.cashier ?? row.cashier_name,
+                    s.total_amount ?? row.total_amount,
+                    s.commission_amount ?? row.commission_amount,
+                    s.currency ?? row.currency_code,
+                    s.payment_type ?? row.payment_type,
+                    s.status ?? row.status
+                ];
+                lines.push(vals.map(escapeCsvField).join(','));
+            }
+            return '\uFEFF' + lines.join('\r\n');
+        },
+
+        /**
+         * إرسال عرض خاطف لمراجعة الإدارة بعد التحقق من المنطقة الخضراء وخلو النص من الروابط/الهواتف (Point 12)
+         */
+        async submitMerchantFlashOffer({ merchantId, title, body, discountHint = null, actorId = null }) {
+            return await callRpc('submit_merchant_flash_offer', {
+                p_merchant_id: merchantId,
+                p_title: title,
+                p_body: body,
+                p_discount_hint: discountHint,
+                p_actor_id: actorId
+            });
+        },
+
+        /**
+         * رادار المتاجر القريبة للعضو (Haversine + كاشباك العضو الصافي فقط بدون 25%)
+         */
+        async getMerchantsRadar({ lat, lng, radiusKm = 10, countryCode = null, category = null }) {
+            return await callRpc('get_merchants_radar', {
+                p_lat: Number(lat),
+                p_lng: Number(lng),
+                p_radius_km: Number(radiusKm),
+                p_country_code: countryCode,
+                p_category: category
+            });
+        },
+
+        /**
+         * رادار كثافة الأعضاء للتاجر مع تطبيق k-Anonymity >= 10 في SQL (M18)
+         */
+        async getMerchantMembersDensity(branchId, radiusKm = 3) {
+            return await callRpc('get_merchant_members_density', {
+                p_branch_id: branchId,
+                p_radius_km: Number(radiusKm)
+            });
+        },
+
+        /**
+         * محرك تحليل الشجرة وعدسات الدول + فصل S01 (11 نزولاً) + الفريق الرديف + الخصوصية D26
+         */
+        async getTreeAnalyticsWithCountryLens(viewerMemberId, periodYm, countryCode = null) {
+            return await callRpc('get_tree_analytics_with_country_lens', {
+                p_viewer_member_id: viewerMemberId,
+                p_period_ym: periodYm,
+                p_country_code: countryCode
+            });
+        },
+
+        /**
+         * تقديم طلب اعتماد مزدوج Maker-Checker للإدارة (D20 / A19)
+         */
+        async submitMakerCheckerRequest({
+            actionType,
+            targetEntity,
+            targetId,
+            payloadAfter,
+            makerAdminId,
+            reason,
+            payloadBefore = null,
+            impactSimulation = null
+        }) {
+            return await callRpc('submit_maker_checker_request', {
+                p_action_type: actionType,
+                p_target_entity: targetEntity,
+                p_target_id: String(targetId),
+                p_payload_after: payloadAfter,
+                p_maker_admin_id: makerAdminId,
+                p_reason: reason,
+                p_payload_before: payloadBefore,
+                p_impact_simulation: impactSimulation
+            });
+        },
+
+        /**
+         * قرار الاعتماد الثنائي (يرفض من قاعدة البيانات إذا كان checker_admin_id = maker_admin_id)
+         */
+        async decideMakerCheckerRequest({ requestId, checkerAdminId, decision, rejectionReason = null }) {
+            return await callRpc('decide_maker_checker_request', {
+                p_request_id: requestId,
+                p_checker_admin_id: checkerAdminId,
+                p_decision: decision,
+                p_rejection_reason: rejectionReason
+            });
+        },
+
+        // =====================================================================
+        // Stage 4 & Phase 4.5: Schema-Namespaced Session Storage & Member RPCs
+        // =====================================================================
+
+        _storageKey(baseKey) {
+            return `${baseKey}_${SawyanAPI.getActiveSchema()}`;
+        },
+
+        getSavedMember() {
+            try {
+                const raw = localStorage.getItem(SawyanAPI._storageKey('sawyan_member'));
+                return raw ? JSON.parse(raw) : null;
+            } catch (e) {
+                return null;
+            }
+        },
+
+        getSessionToken() {
+            try {
+                return localStorage.getItem(SawyanAPI._storageKey('sawyan_session_token')) || null;
+            } catch (e) {
+                return null;
+            }
+        },
+
+        saveMemberSession(memberObj, sessionToken) {
+            try {
+                if (memberObj) {
+                    localStorage.setItem(SawyanAPI._storageKey('sawyan_member'), JSON.stringify(memberObj));
+                    if (memberObj.id) localStorage.setItem(SawyanAPI._storageKey('sawyan_member_id'), memberObj.id);
+                }
+                if (sessionToken) {
+                    localStorage.setItem(SawyanAPI._storageKey('sawyan_session_token'), sessionToken);
+                }
+            } catch (e) {}
+        },
+
+        clearMemberSession() {
+            try {
+                localStorage.removeItem(SawyanAPI._storageKey('sawyan_member'));
+                localStorage.removeItem(SawyanAPI._storageKey('sawyan_member_id'));
+                localStorage.removeItem(SawyanAPI._storageKey('sawyan_session_token'));
+            } catch (e) {}
+        },
+
+        getSavedMerchant() {
+            try {
+                const raw = localStorage.getItem(SawyanAPI._storageKey('sawyan_merchant'));
+                return raw ? JSON.parse(raw) : null;
+            } catch (e) {
+                return null;
+            }
+        },
+
+        getMerchantSessionToken() {
+            try {
+                return localStorage.getItem(SawyanAPI._storageKey('sawyan_merchant_session_token')) || null;
+            } catch (e) {
+                return null;
+            }
+        },
+
+        saveMerchantSession(merchantObj, sessionToken) {
+            try {
+                if (merchantObj) {
+                    localStorage.setItem(SawyanAPI._storageKey('sawyan_merchant'), JSON.stringify(merchantObj));
+                }
+                if (sessionToken) {
+                    localStorage.setItem(SawyanAPI._storageKey('sawyan_merchant_session_token'), sessionToken);
+                }
+            } catch (e) {}
+        },
+
+        clearMerchantSession() {
+            try {
+                localStorage.removeItem(SawyanAPI._storageKey('sawyan_merchant'));
+                localStorage.removeItem(SawyanAPI._storageKey('sawyan_merchant_session_token'));
+            } catch (e) {}
+        },
+
+        getSavedAdmin() {
+            try {
+                const raw = localStorage.getItem(SawyanAPI._storageKey('sawyan_admin'));
+                return raw ? JSON.parse(raw) : null;
+            } catch (e) {
+                return null;
+            }
+        },
+
+        getAdminSessionToken() {
+            try {
+                return localStorage.getItem(SawyanAPI._storageKey('sawyan_admin_session_token')) || null;
+            } catch (e) {
+                return null;
+            }
+        },
+
+        saveAdminSession(adminObj, sessionToken) {
+            try {
+                if (adminObj) {
+                    localStorage.setItem(SawyanAPI._storageKey('sawyan_admin'), JSON.stringify(adminObj));
+                    localStorage.setItem('sawyan_admin', JSON.stringify(adminObj));
+                }
+                if (sessionToken) {
+                    localStorage.setItem(SawyanAPI._storageKey('sawyan_admin_session_token'), sessionToken);
+                }
+            } catch (e) {}
+        },
+
+        clearAdminSession() {
+            try {
+                localStorage.removeItem(SawyanAPI._storageKey('sawyan_admin'));
+                localStorage.removeItem(SawyanAPI._storageKey('sawyan_admin_session_token'));
+                localStorage.removeItem('sawyan_admin');
+                localStorage.removeItem('sawyan_user_type');
+            } catch (e) {}
+        },
+
+        async registerNewMember({
+            fullName,
+            phone,
+            sponsorCode,
+            password,
+            residencyCountryCode = 'EG',
+            nationalityCountryCode = null,
+            cityGeonameId = null,
+            manualDistrict = null,
+            email = null,
+            metadata = {}
+        }) {
+            return await callRpc('register_new_member', {
+                p_full_name: fullName,
+                p_phone: phone,
+                p_sponsor_code: Number(sponsorCode),
+                p_password: password,
+                p_residency_country_code: residencyCountryCode,
+                p_nationality_country_code: nationalityCountryCode,
+                p_city_geoname_id: cityGeonameId,
+                p_manual_district: manualDistrict,
+                p_email: email,
+                p_metadata: metadata
+            });
+        },
+
+        async authenticateMemberLogin(identifier, password) {
+            return await callRpc('authenticate_member_login', {
+                p_identifier: String(identifier || '').trim(),
+                p_password: String(password || '')
+            });
+        },
+
+        async getPublicMerchantsCatalog({ countryCode = null, category = null } = {}) {
+            return await callRpc('get_public_merchants_catalog', {
+                p_country_code: countryCode && countryCode !== 'ALL' ? countryCode : null,
+                p_category: category && category !== 'all' ? category : null
+            });
+        },
+
+        async getMemberDashboardBundle({
+            memberId,
+            sessionToken = null,
+            periodYm = null,
+            lensCountryCode = null
+        }) {
+            const tok = sessionToken || SawyanAPI.getSessionToken();
+            return await callRpc('get_member_dashboard_bundle', {
+                p_member_id: memberId,
+                p_session_token: tok,
+                p_period_ym: periodYm,
+                p_lens_country_code: lensCountryCode && lensCountryCode !== 'ALL' ? lensCountryCode : null
+            });
+        },
+
+        async manageMemberCrmContact({
+            memberId,
+            action,
+            contactId = null,
+            contactName = null,
+            contactPhone = null,
+            notes = null,
+            sessionToken = null
+        }) {
+            const tok = sessionToken || SawyanAPI.getSessionToken();
+            return await callRpc('manage_member_crm_contact', {
+                p_member_id: memberId,
+                p_action: action,
+                p_session_token: tok,
+                p_contact_id: contactId,
+                p_contact_name: contactName,
+                p_contact_phone: contactPhone,
+                p_notes: notes
+            });
+        },
+
+        async submitMemberPendingPurchase({
+            memberId,
+            merchantId,
+            branchId,
+            amount,
+            paymentType = 'cash',
+            idempotencyKey = null,
+            receiptUrl = null,
+            sessionToken = null
+        }) {
+            const tok = sessionToken || SawyanAPI.getSessionToken();
+            return await callRpc('submit_member_pending_purchase', {
+                p_member_id: memberId,
+                p_merchant_id: merchantId,
+                p_branch_id: branchId,
+                p_amount: Number(amount),
+                p_payment_type: paymentType,
+                p_idempotency_key: idempotencyKey || generateIdempotencyKey(),
+                p_session_token: tok,
+                p_receipt_url: receiptUrl
+            });
+        },
+
+        async submitMemberDispute({ memberId, transactionId, reason, sessionToken = null }) {
+            const tok = sessionToken || SawyanAPI.getSessionToken();
+            return await callRpc('submit_member_dispute', {
+                p_member_id: memberId,
+                p_transaction_id: transactionId,
+                p_dispute_reason: reason,
+                p_session_token: tok
+            });
+        },
+
+        async submitMemberReview({ memberId, transactionId, rating, comment = null, sessionToken = null }) {
+            const tok = sessionToken || SawyanAPI.getSessionToken();
+            return await callRpc('submit_member_review', {
+                p_member_id: memberId,
+                p_transaction_id: transactionId,
+                p_rating: Number(rating),
+                p_comment: comment,
+                p_session_token: tok
+            });
+        },
+
+        async updateMemberProfileSettings({
+            memberId,
+            fullName = null,
+            email = null,
+            manualDistrict = null,
+            favoriteMerchantId = null,
+            favoriteAction = null,
+            currentPassword = null,
+            newPassword = null,
+            sessionToken = null
+        }) {
+            const tok = sessionToken || SawyanAPI.getSessionToken();
+            return await callRpc('update_member_profile_settings', {
+                p_member_id: memberId,
+                p_session_token: tok,
+                p_full_name: fullName,
+                p_email: email,
+                p_manual_district: manualDistrict,
+                p_favorite_merchant_id: favoriteMerchantId,
+                p_favorite_action: favoriteAction,
+                p_current_password: currentPassword,
+                p_new_password: newPassword
+            });
+        },
+
+        async manageMemberPayoutMethod({
+            memberId,
+            action,
+            provider = null,
+            holderName = null,
+            accountIdentifier = null,
+            methodId = null,
+            sessionToken = null
+        }) {
+            const tok = sessionToken || SawyanAPI.getSessionToken();
+            return await callRpc('manage_member_payout_method', {
+                p_member_id: memberId,
+                p_action: action,
+                p_session_token: tok,
+                p_provider: provider,
+                p_holder_name: holderName,
+                p_account_identifier: accountIdentifier,
+                p_method_id: methodId
+            });
+        },
+
+        async requestMemberWithdrawal({
+            memberId,
+            paymentMethodId,
+            amountUsd,
+            idempotencyKey = null,
+            sessionToken = null
+        }) {
+            const tok = sessionToken || SawyanAPI.getSessionToken();
+            return await callRpc('request_member_withdrawal', {
+                p_member_id: memberId,
+                p_payment_method_id: paymentMethodId,
+                p_amount_usd: Number(amountUsd),
+                p_idempotency_key: idempotencyKey || generateIdempotencyKey(),
+                p_session_token: tok
+            });
+        },
+
+        async submitPriceGougingReport({
+            memberId,
+            transactionId,
+            declaredPrice,
+            chargedPrice,
+            shelfPhotoUrl,
+            receiptUrl,
+            sessionToken = null
+        }) {
+            const tok = sessionToken || SawyanAPI.getSessionToken();
+            return await callRpc('submit_price_gouging_report', {
+                p_member_id: memberId,
+                p_transaction_id: transactionId,
+                p_declared_price: Number(declaredPrice),
+                p_charged_price: Number(chargedPrice),
+                p_shelf_photo_url: shelfPhotoUrl,
+                p_receipt_url: receiptUrl,
+                p_session_token: tok
+            });
+        },
+
+        async finalizeSettlementPayoutStep56({
+            periodYm,
+            makerAdminId,
+            checkerAdminId,
+            ias21FxDeltaUsd = 0
+        }) {
+            return await callRpc('finalize_settlement_payout_step5_6', {
+                p_period_ym: periodYm,
+                p_maker_admin_id: makerAdminId,
+                p_checker_admin_id: checkerAdminId,
+                p_ias21_fx_delta_usd: Number(ias21FxDeltaUsd || 0)
+            });
+        },
+
+        // =====================================================================
+        // Stage 5: Merchant Portal, POS Kiosk, Cashier PIN (D25) & Store Ops
+        // =====================================================================
+
+        async registerNewMerchant({
+            businessName,
+            ownerName,
+            phone,
+            password,
+            countryCode = 'EG',
+            category = 'supermarket',
+            merchantType = 'physical',
+            deductionPercent = 10.0,
+            email = null,
+            address = null,
+            cityGeonameId = null,
+            latitude = null,
+            longitude = null,
+            onboardedByMemberCode = null,
+            initialCashierPin = null,
+            metadata = {}
+        }) {
+            return await callRpc('register_new_merchant', {
+                p_business_name: businessName,
+                p_owner_name: ownerName,
+                p_phone: phone,
+                p_password: password,
+                p_country_code: countryCode,
+                p_category: category,
+                p_merchant_type: merchantType,
+                p_deduction_percent: Number(deductionPercent || 10),
+                p_email: email,
+                p_address: address,
+                p_city_geoname_id: cityGeonameId,
+                p_latitude: latitude !== null && latitude !== '' ? Number(latitude) : null,
+                p_longitude: longitude !== null && longitude !== '' ? Number(longitude) : null,
+                p_onboarded_by_member_code: onboardedByMemberCode ? Number(onboardedByMemberCode) : null,
+                p_initial_cashier_pin: initialCashierPin || null,
+                p_metadata: metadata || {}
+            });
+        },
+
+        async authenticateMerchantLogin(identifier, password) {
+            return await callRpc('authenticate_merchant_login', {
+                p_identifier: String(identifier || '').trim(),
+                p_password: String(password || '')
+            });
+        },
+
+        async lookupMemberForPos({ merchantId, memberIdentifier, sessionToken = null }) {
+            const tok = sessionToken || SawyanAPI.getMerchantSessionToken();
+            return await callRpc('lookup_member_for_pos', {
+                p_merchant_id: merchantId,
+                p_member_identifier: String(memberIdentifier || '').trim(),
+                p_session_token: tok
+            });
+        },
+
+        async authenticateAndSubmitPosTx({
+            merchantId,
+            memberCode,
+            amount,
+            paymentType = 'cash',
+            idempotencyKey = null,
+            branchId = null,
+            employeeCode = null,
+            cashierPin = null,
+            swShortCode = null,
+            uniquePaymentRef = null,
+            sessionToken = null
+        }) {
+            const tok = sessionToken || SawyanAPI.getMerchantSessionToken();
+            return await callRpc('authenticate_and_submit_pos_tx', {
+                p_merchant_id: merchantId,
+                p_member_code: Number(memberCode),
+                p_amount: Number(amount),
+                p_payment_type: paymentType || 'cash',
+                p_idempotency_key: idempotencyKey || generateIdempotencyKey(),
+                p_session_token: tok,
+                p_branch_id: branchId,
+                p_employee_code: employeeCode || null,
+                p_cashier_pin: cashierPin || null,
+                p_sw_short_code: swShortCode || null,
+                p_unique_payment_ref: uniquePaymentRef || null
+            });
+        },
+
+        async confirmOrRejectPendingTx({
+            merchantId,
+            transactionId,
+            decision,
+            rejectionReason = null,
+            sessionToken = null
+        }) {
+            const tok = sessionToken || SawyanAPI.getMerchantSessionToken();
+            return await callRpc('confirm_or_reject_pending_tx', {
+                p_merchant_id: merchantId,
+                p_transaction_id: transactionId,
+                p_decision: decision,
+                p_rejection_reason: rejectionReason,
+                p_session_token: tok
+            });
+        },
+
+        async manageMerchantCashierAndSettings({
+            merchantId,
+            action = 'update_profile',
+            businessName = null,
+            ownerName = null,
+            phone = null,
+            address = null,
+            latitude = null,
+            longitude = null,
+            wifiSsid = null,
+            wifiPassword = null,
+            workingHours = null,
+            currentPassword = null,
+            newPassword = null,
+            employeeCode = null,
+            employeeName = null,
+            employeePin = null,
+            linkedMemberCode = null,
+            maxTxLimit = null,
+            employeeId = null,
+            branchId = null,
+            sessionToken = null
+        }) {
+            const tok = sessionToken || SawyanAPI.getMerchantSessionToken();
+            return await callRpc('manage_merchant_cashier_and_settings', {
+                p_merchant_id: merchantId,
+                p_action: action,
+                p_session_token: tok,
+                p_business_name: businessName,
+                p_owner_name: ownerName,
+                p_phone: phone,
+                p_address: address,
+                p_latitude: latitude !== null && latitude !== '' ? Number(latitude) : null,
+                p_longitude: longitude !== null && longitude !== '' ? Number(longitude) : null,
+                p_wifi_ssid: wifiSsid,
+                p_wifi_password: wifiPassword,
+                p_working_hours: workingHours,
+                p_current_password: currentPassword,
+                p_new_password: newPassword,
+                p_employee_code: employeeCode,
+                p_employee_name: employeeName,
+                p_employee_pin: employeePin,
+                p_linked_member_code: linkedMemberCode ? Number(linkedMemberCode) : null,
+                p_max_tx_limit: maxTxLimit !== null && maxTxLimit !== '' ? Number(maxTxLimit) : null,
+                p_employee_id: employeeId,
+                p_branch_id: branchId
+            });
+        },
+
+        async merchantInitiateTopup({
+            merchantId,
+            amount,
+            provider = 'instapay',
+            paymentRef = null,
+            idempotencyKey = null,
+            sessionToken = null
+        }) {
+            const tok = sessionToken || SawyanAPI.getMerchantSessionToken();
+            return await callRpc('merchant_initiate_topup', {
+                p_merchant_id: merchantId,
+                p_amount: Number(amount),
+                p_provider: provider,
+                p_payment_ref: paymentRef,
+                p_idempotency_key: idempotencyKey || generateIdempotencyKey(),
+                p_session_token: tok
+            });
+        },
+
+        async merchantShiftClosingGuarded({
+            merchantId,
+            branchId = null,
+            periodFilter = 'today',
+            exportFormat = null,
+            sessionToken = null
+        }) {
+            const tok = sessionToken || SawyanAPI.getMerchantSessionToken();
+            return await callRpc('merchant_shift_closing_guarded', {
+                p_merchant_id: merchantId,
+                p_session_token: tok,
+                p_branch_id: branchId,
+                p_period_filter: periodFilter,
+                p_export_format: exportFormat
+            });
+        },
+
+        async merchantSubmitFlashOfferGuarded({
+            merchantId,
+            title,
+            body,
+            discountHint = null,
+            sessionToken = null
+        }) {
+            const tok = sessionToken || SawyanAPI.getMerchantSessionToken();
+            return await callRpc('merchant_submit_flash_offer_guarded', {
+                p_merchant_id: merchantId,
+                p_title: title,
+                p_body: body,
+                p_discount_hint: discountHint,
+                p_session_token: tok
+            });
+        },
+
+        async merchantRadarDensityGuarded({
+            merchantId,
+            branchId = null,
+            radiusKm = 3.0,
+            sessionToken = null
+        }) {
+            const tok = sessionToken || SawyanAPI.getMerchantSessionToken();
+            return await callRpc('merchant_radar_density_guarded', {
+                p_merchant_id: merchantId,
+                p_branch_id: branchId,
+                p_radius_km: Number(radiusKm),
+                p_session_token: tok
+            });
+        },
+
+        async getMerchantDashboardBundle({
+            merchantId,
+            shiftFilter = 'today',
+            branchId = null,
+            sessionToken = null
+        }) {
+            const tok = sessionToken || SawyanAPI.getMerchantSessionToken();
+            return await callRpc('get_merchant_dashboard_bundle', {
+                p_merchant_id: merchantId,
+                p_session_token: tok,
+                p_shift_filter: shiftFilter,
+                p_branch_id: branchId
+            });
+        },
+
+        // =====================================================================
+        // Stage 6: Sovereign Admin Governance, Maker-Checker & Period Close RPCs
+        // =====================================================================
+
+        async authenticateAdminLogin({ email, password, totpCode = null }) {
+            const res = await callRpc('authenticate_admin_login', {
+                p_email: String(email || '').trim(),
+                p_password: String(password || ''),
+                p_totp_code: totpCode
+            });
+            if (res && res.admin && res.session_token) {
+                SawyanAPI.saveAdminSession(res.admin, res.session_token);
+            }
+            return res;
+        },
+
+        async getAdminSovereignBundle({ adminId = null, periodYm = null, sessionToken = null } = {}) {
+            const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id);
+            const tok = sessionToken || SawyanAPI.getAdminSessionToken();
+            return await callRpc('get_admin_sovereign_bundle', {
+                p_admin_id: adm,
+                p_session_token: tok,
+                p_period_ym: periodYm
+            });
+        },
+
+        async adminRunActuarialStressTestS06({
+            adminId = null,
+            sessionToken = null,
+            countryCode = 'EG',
+            monthlyTargetUsd = 24.75,
+            companyPercent = 25.0,
+            s01Gens = 11,
+            s02Slots = 11,
+            s03StopperUsd = 4605.75,
+            simulatedMembers = 10000
+        } = {}) {
+            const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id);
+            const tok = sessionToken || SawyanAPI.getAdminSessionToken();
+            return await callRpc('admin_run_actuarial_stress_test_s06', {
+                p_admin_id: adm,
+                p_session_token: tok,
+                p_country_code: countryCode,
+                p_monthly_target_usd: Number(monthlyTargetUsd),
+                p_company_percent: Number(companyPercent),
+                p_s01_gens: Number(s01Gens),
+                p_s02_slots: Number(s02Slots),
+                p_s03_stopper_usd: Number(s03StopperUsd),
+                p_simulated_members: Number(simulatedMembers)
+            });
+        },
+
+        async adminSubmitGovernanceRequest({
+            adminId = null,
+            sessionToken = null,
+            actionType,
+            targetEntity,
+            targetId,
+            payloadAfter,
+            reason,
+            payloadBefore = null,
+            impactSimulation = null
+        }) {
+            const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id);
+            const tok = sessionToken || SawyanAPI.getAdminSessionToken();
+            return await callRpc('admin_submit_governance_request', {
+                p_admin_id: adm,
+                p_session_token: tok,
+                p_action_type: actionType,
+                p_target_entity: targetEntity,
+                p_target_id: String(targetId),
+                p_payload_after: payloadAfter,
+                p_reason: reason,
+                p_payload_before: payloadBefore,
+                p_impact_simulation: impactSimulation
+            });
+        },
+
+        async adminDecideGovernanceRequest({
+            adminId = null,
+            sessionToken = null,
+            requestId,
+            decision,
+            rejectionReason = null
+        }) {
+            const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id);
+            const tok = sessionToken || SawyanAPI.getAdminSessionToken();
+            return await callRpc('admin_decide_governance_request', {
+                p_admin_id: adm,
+                p_session_token: tok,
+                p_request_id: requestId,
+                p_decision: decision,
+                p_rejection_reason: rejectionReason
+            });
+        },
+
+        async adminExecutePeriodCloseWizard({
+            adminId = null,
+            sessionToken = null,
+            countryCode = 'EG',
+            periodYm,
+            stepAction,
+            checkerAdminId = null,
+            ias21FxDeltaUsd = 0.0
+        }) {
+            const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id);
+            const tok = sessionToken || SawyanAPI.getAdminSessionToken();
+            return await callRpc('admin_execute_period_close_wizard', {
+                p_admin_id: adm,
+                p_session_token: tok,
+                p_country_code: countryCode,
+                p_period_ym: periodYm,
+                p_step_action: stepAction,
+                p_checker_admin_id: checkerAdminId,
+                p_ias21_fx_delta_usd: Number(ias21FxDeltaUsd)
+            });
+        },
+
+        async adminOperationalDecision({
+            adminId = null,
+            sessionToken = null,
+            domain,
+            recordId,
+            decision,
+            notes = null,
+            reversalPhase = 'in_month'
+        }) {
+            const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id);
+            const tok = sessionToken || SawyanAPI.getAdminSessionToken();
+            return await callRpc('admin_operational_decision', {
+                p_admin_id: adm,
+                p_session_token: tok,
+                p_domain: domain,
+                p_record_id: String(recordId),
+                p_decision: decision,
+                p_notes: notes,
+                p_reversal_phase: reversalPhase
+            });
+        },
+
+        getSiblingEnvironmentUrl() {
+            if (typeof window === 'undefined') return '#';
+            const loc = window.location;
+            const p = loc.pathname || '/';
+            if (p.includes('/preview/')) {
+                return p.replace('/preview/', '/') + (loc.search || '');
+            }
+            // على الموقع الأصلي: أضف preview/ بعد مجلد المستودع (GitHub Pages /bank/ أو الجذر المحلي /)
+            const parts = p.split('/');
+            const idxBank = parts.indexOf('bank');
+            if (idxBank !== -1) {
+                const head = parts.slice(0, idxBank + 1).join('/');
+                const tail = parts.slice(idxBank + 1).join('/');
+                return `${head}/preview/${tail}` + (loc.search || '');
+            }
+            return '/preview/' + p.replace(/^\/+/, '') + (loc.search || '');
+        },
+
+        mountEnvironmentSwitchBar() {
+            if (typeof document === 'undefined' || document.getElementById('sawyanEnvRibbon')) return;
+            const isDemo = SawyanAPI.isDemoMode();
+            const targetUrl = SawyanAPI.getSiblingEnvironmentUrl();
+            const bar = document.createElement('div');
+            bar.id = 'sawyanEnvRibbon';
+            bar.style.cssText = isDemo
+                ? 'background:#78350f;color:#fef3c7;font-family:Tajawal,sans-serif;font-size:12px;font-weight:700;padding:5px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border-bottom:2px solid #f59e0b;position:fixed;top:0;left:0;right:0;width:100%;box-sizing:border-box;z-index:9999;'
+                : 'background:#064e3b;color:#d1fae5;font-family:Tajawal,sans-serif;font-size:12px;font-weight:700;padding:5px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border-bottom:2px solid #10b981;position:fixed;top:0;left:0;right:0;width:100%;box-sizing:border-box;z-index:9999;';
+
+            const syncLayoutBelowRibbon = () => {
+                const h = bar.offsetHeight || 34;
+                if (document.body) {
+                    document.body.style.paddingTop = h + 'px';
+                }
+                const sb = document.querySelector('.sidebar');
+                if (sb && typeof window !== 'undefined') {
+                    const st = window.getComputedStyle(sb);
+                    if (st.position === 'fixed') {
+                        sb.style.top = h + 'px';
+                        sb.style.height = `calc(100vh - ${h}px)`;
+                    }
+                }
+            };
+
+            const left = document.createElement('span');
+            left.textContent = isDemo
+                ? '🧪 الموقع الموازي للتجربة (Parallel Sandbox — Schema: sawyan_demo • شجرة تجريبية 48 عضواً)'
+                : '🟢 الموقع الأصلي الحي (Production — Schema: sawyan • الجذر المؤسس #0)';
+
+            const link = document.createElement('a');
+            link.href = targetUrl;
+            link.textContent = isDemo ? 'الانتقال إلى الموقع الأصلي (Production) ↗' : 'الانتقال إلى الموقع الموازي للتجربة (/preview/) ↗';
+            link.style.cssText = 'background:rgba(255,255,255,0.16);color:#ffffff;padding:3px 10px;border-radius:999px;text-decoration:none;border:1px solid rgba(255,255,255,0.35);white-space:nowrap;';
+
+            bar.appendChild(left);
+            bar.appendChild(link);
+            if (document.body) {
+                document.body.insertBefore(bar, document.body.firstChild);
+                syncLayoutBelowRibbon();
+                if (typeof window !== 'undefined') {
+                    window.addEventListener('resize', syncLayoutBelowRibbon);
+                }
+            }
+        }
+    };
+
+    global.SAWYAN = global.SAWYAN || {};
+    global.SAWYAN.API = SawyanAPI;
+
+    if (typeof document !== 'undefined') {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => SawyanAPI.mountEnvironmentSwitchBar());
+        } else {
+            SawyanAPI.mountEnvironmentSwitchBar();
+        }
+    }
+})(typeof window !== 'undefined' ? window : globalThis);

@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل تاجر - SAWYAN</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../shared/css/variables.css">
+    <link rel="stylesheet" href="../shared/css/logo.css">
+    <link rel="stylesheet" href="../member-dashboard/css/auth.css">
+</head>
+
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div id="logoContainer" class="logo-section"></div>
+
+            <h1>تسجيل تاجر جديد</h1>
+            <p class="subtitle">انضم إلى شبكة SAWYAN</p>
+
+            <form id="registerForm" class="auth-form">
+                <!-- كود التاجر -->
+                <div class="form-group">
+                    <label>كود التاجر (تلقائي)</label>
+                    <input type="text" id="merchantCode" readonly class="form-control">
+                </div>
+
+                <!-- المعلومات الأساسية - مهمة حالياً -->
+                <div class="form-section">
+                    <h3>المعلومات الأساسية</h3>
+
+                    <div class="form-group">
+                        <label>اسم النشاط التجاري *</label>
+                        <input type="text" id="businessName" required class="form-control"
+                            placeholder="مثال: سوبر ماركت الأمل">
+                    </div>
+
+                    <div class="form-group">
+                        <label>اسم المالك</label>
+                        <input type="text" id="ownerName" class="form-control" placeholder="الاسم الكامل للمالك">
+                    </div>
+
+                    <div class="form-group">
+                        <label>البريد الإلكتروني</label>
+                        <input type="email" id="email" class="form-control" placeholder="merchant@example.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label>رقم الهاتف النشط (بمفتاح الدولة) *</label>
+                        <input type="tel" id="phone" required class="form-control" placeholder="+201012345678">
+                    </div>
+
+                    <div class="form-row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+                        <div class="form-group">
+                            <label>دولة النشاط التجاري (بوابة تفعيل الدول D13) *</label>
+                            <select id="countryCodeSelect" required class="form-control">
+                                <option value="EG" selected>🇪🇬 مصر (نشطة — العملة: EGP)</option>
+                                <option value="TR">🇹🇷 تركيا (نشطة — العملة: TRY)</option>
+                                <option value="SA">🇸🇦 السعودية (قريباً — بوابة D13)</option>
+                                <option value="DE">🇩🇪 ألمانيا (قريباً — بوابة D13)</option>
+                                <option value="US">🇺🇸 الولايات المتحدة (قريباً — بوابة D13)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>كود العضو المرشِّح للمتجر (اختياري)</label>
+                            <input type="number" id="onboardedByCode" min="1" class="form-control" placeholder="مثال: 1">
+                        </div>
+                    </div>
+
+                    <div class="form-row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+                        <div class="form-group">
+                            <label>كلمة مرور حساب التاجر (8+ أحرف) *</label>
+                            <input type="password" id="password" required minlength="8" class="form-control" placeholder="أدخل كلمة مرور قوية (يُحظر 123456)">
+                        </div>
+                        <div class="form-group">
+                            <label>تأكيد كلمة المرور *</label>
+                            <input type="password" id="confirmPassword" required minlength="8" class="form-control" placeholder="أعد إدخال كلمة المرور">
+                        </div>
+                    </div>
+
+                    <div class="form-row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+                        <div class="form-group">
+                            <label>نسبة العمولة التعاقدية الإجمالية (%) *</label>
+                            <input type="number" id="commissionPercentage" required class="form-control" step="0.25" min="1" max="40" value="10">
+                            <small class="form-text">النسبة الإجمالية المعتمدة على الفاتورة (من 1% إلى 40%)</small>
+                        </div>
+                        <div class="form-group">
+                            <label>رمز PIN الكاشير الرئيسي (4 أرقام — اختياري D25)</label>
+                            <input type="password" id="initialCashierPin" maxlength="4" pattern="\d{4}" inputmode="numeric" class="form-control" placeholder="مثال: 2580">
+                            <small class="form-text">ينشئ تلقائياً موظف كاشير رئيسي (EMP-01) لتوثيق المبيعات فوراً</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- نوع النشاط - مهم حالياً -->
+                <div class="form-section">
+                    <h3>نوع النشاط</h3>
+
+                    <div class="form-group">
+                        <label>نوع التاجر</label>
+                        <select id="merchantType" class="form-control">
+                            <option value="physical" selected>فيزيائي (محل على الأرض)</option>
+                            <option value="online">إلكتروني (متجر أونلاين)</option>
+                            <option value="both">كلاهما</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>فئة النشاط</label>
+                        <select id="businessCategory" class="form-control">
+                            <option value="supermarket" selected>🛒 سوبر ماركت وبقالة</option>
+                            <option value="pharmacy">💊 صيدليات ورعاية صحية</option>
+                            <option value="restaurant">🍽️ مطاعم ومأكولات</option>
+                            <option value="cafe">☕ كافيهات ومخبوزات</option>
+                            <option value="clothing">👕 ملابس وأزياء</option>
+                            <option value="shoes">👟 أحذية وحقائب</option>
+                            <option value="butcher">🥩 جزارة ولحوم</option>
+                            <option value="electronics">📱 إلكترونيات وهواتف</option>
+                            <option value="home-goods">🏠 أدوات منزلية وأثاث</option>
+                            <option value="delivery">🚚 خدمات التوصيل والشحن</option>
+                            <option value="cosmetics">💄 عطور وتجميل</option>
+                            <option value="real-estate">🏢 خدمات عقارية</option>
+                            <option value="entertainment">🎮 ترفيه وسياحة</option>
+                            <option value="tech-services">💻 خدمات تقنية وتعليم</option>
+                            <option value="other">📦 أخرى</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>وصف النشاط</label>
+                        <textarea id="businessDescription" class="form-control" rows="3"
+                            placeholder="وصف مختصر عن نشاطك التجاري..."></textarea>
+                    </div>
+                </div>
+
+                <!-- الموقع - للتجار الفيزيائيين (اختياري حالياً) -->
+                <div class="form-section optional-section" id="physicalLocationSection" style="display: none;">
+                    <h3>الموقع الجغرافي <span class="optional-badge">(للمحلات الفيزيائية)</span></h3>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>الدولة</label>
+                            <input type="text" id="country" class="form-control" placeholder="مثال: مصر">
+                        </div>
+
+                        <div class="form-group">
+                            <label>المدينة</label>
+                            <input type="text" id="city" class="form-control" placeholder="مثال: القاهرة">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>العنوان التفصيلي</label>
+                        <textarea id="address" class="form-control" rows="2"
+                            placeholder="الشارع، الحي، المنطقة..."></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>خط الطول (Longitude)</label>
+                            <input type="number" id="longitude" class="form-control" step="any"
+                                placeholder="مثال: 31.2357">
+                        </div>
+
+                        <div class="form-group">
+                            <label>خط العرض (Latitude)</label>
+                            <input type="number" id="latitude" class="form-control" step="any"
+                                placeholder="مثال: 30.0444">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>رابط خرائط جوجل</label>
+                        <input type="url" id="googleMapsUrl" class="form-control"
+                            placeholder="https://maps.google.com/...">
+                    </div>
+                </div>
+
+                <!-- المتجر الإلكتروني - للتجار الإلكترونيين (اختياري حالياً) -->
+                <div class="form-section optional-section" id="onlineStoreSection" style="display: none;">
+                    <h3>المتجر الإلكتروني <span class="optional-badge">(للمتاجر الأونلاين)</span></h3>
+
+                    <div class="form-group">
+                        <label>رابط الموقع الإلكتروني</label>
+                        <input type="url" id="websiteUrl" class="form-control" placeholder="https://example.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label>رابط Webhook (للتكامل التقني)</label>
+                        <input type="url" id="webhookUrl" class="form-control"
+                            placeholder="https://example.com/webhook">
+                        <small class="form-text">سيتم استخدامه لإرسال إشعارات العمليات تلقائياً</small>
+                    </div>
+                </div>
+
+                <!-- أوقات العمل (للتجار الفيزيائيين) -->
+                <div class="form-section optional-section" id="workingHoursSection" style="display: none;">
+                    <h3>أوقات العمل <span class="optional-badge">(اختياري)</span></h3>
+
+                    <div class="working-hours-container">
+                        <div class="working-hours-row">
+                            <label>السبت</label>
+                            <input type="time" id="sat_from" class="form-control time-input">
+                            <span>إلى</span>
+                            <input type="time" id="sat_to" class="form-control time-input">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="sat_closed"> مغلق
+                            </label>
+                        </div>
+                        <div class="working-hours-row">
+                            <label>الأحد</label>
+                            <input type="time" id="sun_from" class="form-control time-input">
+                            <span>إلى</span>
+                            <input type="time" id="sun_to" class="form-control time-input">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="sun_closed"> مغلق
+                            </label>
+                        </div>
+                        <div class="working-hours-row">
+                            <label>الإثنين</label>
+                            <input type="time" id="mon_from" class="form-control time-input">
+                            <span>إلى</span>
+                            <input type="time" id="mon_to" class="form-control time-input">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="mon_closed"> مغلق
+                            </label>
+                        </div>
+                        <div class="working-hours-row">
+                            <label>الثلاثاء</label>
+                            <input type="time" id="tue_from" class="form-control time-input">
+                            <span>إلى</span>
+                            <input type="time" id="tue_to" class="form-control time-input">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="tue_closed"> مغلق
+                            </label>
+                        </div>
+                        <div class="working-hours-row">
+                            <label>الأربعاء</label>
+                            <input type="time" id="wed_from" class="form-control time-input">
+                            <span>إلى</span>
+                            <input type="time" id="wed_to" class="form-control time-input">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="wed_closed"> مغلق
+                            </label>
+                        </div>
+                        <div class="working-hours-row">
+                            <label>الخميس</label>
+                            <input type="time" id="thu_from" class="form-control time-input">
+                            <span>إلى</span>
+                            <input type="time" id="thu_to" class="form-control time-input">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="thu_closed"> مغلق
+                            </label>
+                        </div>
+                        <div class="working-hours-row">
+                            <label>الجمعة</label>
+                            <input type="time" id="fri_from" class="form-control time-input">
+                            <span>إلى</span>
+                            <input type="time" id="fri_to" class="form-control time-input">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="fri_closed" checked> مغلق
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- روابط التواصل الاجتماعي -->
+                <div class="form-section optional-section">
+                    <h3>روابط التواصل <span class="optional-badge">(اختياري)</span></h3>
+
+                    <div class="form-group">
+                        <label>📱 واتساب</label>
+                        <input type="tel" id="whatsapp" class="form-control" placeholder="+20 123 456 7890">
+                        <small class="form-text">رقم واتساب للتواصل مع العملاء</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>📘 فيسبوك</label>
+                        <input type="url" id="facebookUrl" class="form-control"
+                            placeholder="https://facebook.com/yourpage">
+                    </div>
+
+                    <div class="form-group">
+                        <label>📸 انستغرام</label>
+                        <input type="url" id="instagramUrl" class="form-control"
+                            placeholder="https://instagram.com/yourprofile">
+                    </div>
+
+                    <div class="form-group">
+                        <label>🐦 تويتر / X</label>
+                        <input type="url" id="twitterUrl" class="form-control" placeholder="https://x.com/yourprofile">
+                    </div>
+
+                    <div class="form-group">
+                        <label>🎥 تيك توك</label>
+                        <input type="url" id="tiktokUrl" class="form-control"
+                            placeholder="https://tiktok.com/@yourprofile">
+                    </div>
+                </div>
+
+                <!-- الصور (اختياري حالياً) -->
+                <div class="form-section optional-section">
+                    <h3>الصور <span class="optional-badge">(اختياري - يمكن إضافتها لاحقاً)</span></h3>
+
+                    <div class="form-group">
+                        <label>شعار النشاط (Logo)</label>
+                        <input type="url" id="logoUrl" class="form-control" placeholder="رابط صورة الشعار">
+                    </div>
+
+                    <div class="form-group">
+                        <label>صورة الغلاف</label>
+                        <input type="url" id="coverImageUrl" class="form-control" placeholder="رابط صورة الغلاف">
+                    </div>
+
+                    <div class="form-group">
+                        <label>صور النشاط (يمكن إضافة عدة روابط مفصولة بفاصلة)</label>
+                        <textarea id="images" class="form-control" rows="2"
+                            placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-note" style="background:#f0fdf4;border:1.5px solid #10b981;border-radius:12px;padding:14px;">
+                    <p style="margin:0 0 6px;color:#065f46;"><strong>⚡ التفعيل الذري السريع (3-Minute Onboarding):</strong></p>
+                    <p class="info-text" style="margin:0;color:#047857;">يتم تشفير كلمة مرور المنشأة ورمز <code>PIN</code> الكاشير بـ <code>Bcrypt</code> في الخادم وإنشاء الفرع الرئيسي وطقم المتجر <code>Store Kit</code> فوراً، مع تطبيق قفل الشحن المسبق (<code>D4</code>).</p>
+                </div>
+
+                <button type="submit" id="merchantRegBtn" class="btn btn-primary btn-block">✅ تسجيل المتجر وتفعيل نقطة البيع</button>
+
+                <div class="auth-footer">
+                    <p>لديك حساب؟ <a href="login.html">تسجيل الدخول</a></p>
+                    <p style="margin-top: 1rem;"><a href="../index.html">← العودة للرئيسية</a></p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../shared/config/supabase.js"></script>
+    <script src="../shared/api/sawyan-api.js"></script>
+    <script src="../shared/components/logo.js"></script>
+    <script src="js/register.js"></script>
+
+    <script>
+        // إظهار/إخفاء الأقسام حسب نوع التاجر
+        document.getElementById('merchantType').addEventListener('change', function () {
+            const physicalSection = document.getElementById('physicalLocationSection');
+            const onlineSection = document.getElementById('onlineStoreSection');
+            const workingHoursSection = document.getElementById('workingHoursSection');
+
+            if (this.value === 'physical') {
+                physicalSection.style.display = 'block';
+                workingHoursSection.style.display = 'block';
+                onlineSection.style.display = 'none';
+            } else if (this.value === 'online') {
+                physicalSection.style.display = 'none';
+                workingHoursSection.style.display = 'none';
+                onlineSection.style.display = 'block';
+            } else if (this.value === 'both') {
+                physicalSection.style.display = 'block';
+                workingHoursSection.style.display = 'block';
+                onlineSection.style.display = 'block';
+            } else {
+                physicalSection.style.display = 'none';
+                workingHoursSection.style.display = 'none';
+                onlineSection.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+
+</html>

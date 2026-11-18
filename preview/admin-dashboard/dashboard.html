@@ -1,0 +1,670 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم الإدارة السيادية — SAWYAN</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../shared/css/variables.css">
+    <link rel="stylesheet" href="../shared/css/logo.css">
+    <link rel="stylesheet" href="../member-dashboard/css/dashboard.css">
+    <link rel="stylesheet" href="css/admin.css">
+    <link rel="stylesheet" href="css/admin_mobile_tables.css">
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div id="logoContainer"></div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-page="home">
+                    <span class="icon">🏠</span>
+                    <span>الرئيسية</span>
+                </a>
+                <a href="#" class="nav-item" data-page="decisionsLab">
+                    <span class="icon">🧪</span>
+                    <span>مختبر القرارات والمقترحات</span>
+                </a>
+                <a href="#" class="nav-item" data-page="governanceOps">
+                    <span class="icon">🛡️</span>
+                    <span>وحدات الرقابة والإقفال</span>
+                </a>
+                <a href="#" class="nav-item" data-page="members">
+                    <span class="icon">👥</span>
+                    <span>الأعضاء</span>
+                </a>
+                <a href="#" class="nav-item" data-page="merchants">
+                    <span class="icon">🏪</span>
+                    <span>التجار</span>
+                </a>
+                <a href="#" class="nav-item" data-page="transactions">
+                    <span class="icon">💳</span>
+                    <span>العمليات</span>
+                </a>
+                <a href="#" class="nav-item" data-page="commissions">
+                    <span class="icon">💰</span>
+                    <span>العمولات</span>
+                </a>
+                <a href="#" class="nav-item" data-page="disputes">
+                    <span class="icon">⚠️</span>
+                    <span>الشكاوى</span>
+                </a>
+                <a href="#" class="nav-item" data-page="support">
+                    <span class="icon">🎫</span>
+                    <span>الدعم الفني</span>
+                </a>
+                <a href="#" class="nav-item" data-page="reports">
+                    <span class="icon">📊</span>
+                    <span>التقارير</span>
+                </a>
+                <a href="#" class="nav-item" data-page="withdrawals">
+                    <span class="icon">💸</span>
+                    <span>طلبات السحب</span>
+                </a>
+                <a href="#" class="nav-item" data-page="settings">
+                    <span class="icon">⚙️</span>
+                    <span>الإعدادات</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="btn btn-outline btn-block" onclick="logout()">تسجيل الخروج</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="dashboard-header">
+                <h1 id="pageTitle">لوحة تحكم الأدمن</h1>
+                <div class="user-info">
+                    <span id="adminName">مدير النظام</span>
+                    <span class="member-code">Super Admin</span>
+                </div>
+            </header>
+
+            <div class="content-area" id="contentArea">
+                <!-- Home Page -->
+                <div id="homePage" class="page active">
+                    <div class="stats-grid">
+                        <div class="stat-card stat-primary">
+                            <div class="stat-icon">👥</div>
+                            <div class="stat-info">
+                                <div class="stat-label">إجمالي الأعضاء</div>
+                                <div class="stat-value" id="totalMembers">0</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card stat-success">
+                            <div class="stat-icon">🏪</div>
+                            <div class="stat-info">
+                                <div class="stat-label">إجمالي التجار</div>
+                                <div class="stat-value" id="totalMerchants">0</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card stat-info">
+                            <div class="stat-icon">💳</div>
+                            <div class="stat-info">
+                                <div class="stat-label">إجمالي العمليات</div>
+                                <div class="stat-value" id="totalTransactions">0</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card stat-warning">
+                            <div class="stat-icon">💰</div>
+                            <div class="stat-info">
+                                <div class="stat-label">إجمالي العمولات</div>
+                                <div class="stat-value" id="totalCommissions">0 ج.م</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="charts-grid">
+                        <div class="chart-card">
+                            <h3>العمليات اليومية (آخر 7 أيام)</h3>
+                            <div id="dailyChart" class="chart-placeholder">
+                                <p>الرسم البياني سيظهر هنا</p>
+                            </div>
+                        </div>
+
+                        <div class="chart-card">
+                            <h3>التوزيع حسب الفئات</h3>
+                            <div id="categoryChart" class="chart-placeholder">
+                                <p>الرسم البياني سيظهر هنا</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="recent-activity">
+                        <h2>النشاط الأخير</h2>
+                        <div id="activityList" class="activity-list"></div>
+                    </div>
+                </div>
+
+                <!-- Members Page -->
+                <div id="membersPage" class="page">
+                    <div class="page-header">
+                        <h2>إدارة الأعضاء</h2>
+                        <button class="btn btn-primary" onclick="exportMembers()">تصدير Excel</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="membersTable">
+                            <thead>
+                                <tr>
+                                    <th>كود العضوية</th>
+                                    <th>الاسم</th>
+                                    <th>البريد الإلكتروني</th>
+                                    <th>الموبايل</th>
+                                    <th>تاريخ التسجيل</th>
+                                    <th>الحالة</th>
+                                    <th>إجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="membersTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Merchants Page -->
+                <div id="merchantsPage" class="page">
+                    <div class="page-header">
+                        <h2>إدارة التجار</h2>
+                        <button class="btn btn-primary" onclick="exportMerchants()">تصدير Excel</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="merchantsTable">
+                            <thead>
+                                <tr>
+                                    <th>كود التاجر</th>
+                                    <th>اسم النشاط</th>
+                                    <th>النوع</th>
+                                    <th>الفئة</th>
+                                    <th>النسبة %</th>
+                                    <th>المستحقات</th>
+                                    <th>الحالة</th>
+                                    <th>إجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="merchantsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Transactions Page -->
+                <div id="transactionsPage" class="page">
+                    <div class="page-header">
+                        <h2>جميع العمليات</h2>
+                        <button class="btn btn-primary" onclick="exportTransactions()">تصدير Excel</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="transactionsTable">
+                            <thead>
+                                <tr>
+                                    <th>كود العملية</th>
+                                    <th>العضو</th>
+                                    <th>التاجر</th>
+                                    <th>المبلغ</th>
+                                    <th>العمولة</th>
+                                    <th>التاريخ</th>
+                                    <th>الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- Commissions Page -->
+                <div id="commissionsPage" class="page">
+                    <div class="page-header">
+                        <h2>إدارة العمولات</h2>
+                        <button class="btn btn-primary" onclick="exportCommissions()">تصدير Excel</button>
+                    </div>
+                    <div class="stats-grid" style="margin-bottom: 2rem;">
+                        <div class="stat-card stat-success">
+                            <div class="stat-icon">💰</div>
+                            <div class="stat-info">
+                                <div class="stat-label">إجمالي العمولات</div>
+                                <div class="stat-value" id="totalCommissionsAmount">0 ج.م</div>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-info">
+                            <div class="stat-icon">📊</div>
+                            <div class="stat-info">
+                                <div class="stat-label">عمولات هذا الشهر</div>
+                                <div class="stat-value" id="monthCommissions">0 ج.م</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="commissionsTable">
+                            <thead>
+                                <tr>
+                                    <th>التاجر</th>
+                                    <th>إجمالي العمليات</th>
+                                    <th>إجمالي المبيعات</th>
+                                    <th>إجمالي العمولات</th>
+                                    <th>النسبة %</th>
+                                </tr>
+                            </thead>
+                            <tbody id="commissionsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Disputes Page -->
+                <div id="disputesPage" class="page">
+                    <div class="page-header">
+                        <h2>إدارة الشكاوى والنزاعات</h2>
+                        <button class="btn btn-primary" onclick="exportDisputes()">تصدير Excel</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="disputesTable">
+                            <thead>
+                                <tr>
+                                    <th>كود الشكوى</th>
+                                    <th>العملية</th>
+                                    <th>العضو</th>
+                                    <th>التاجر</th>
+                                    <th>السبب</th>
+                                    <th>التاريخ</th>
+                                    <th>الحالة</th>
+                                    <th>إجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="disputesTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Support Page -->
+                <div id="supportPage" class="page">
+                    <div class="page-header">
+                        <h2>طلبات الدعم الفني</h2>
+                        <button class="btn btn-primary" onclick="exportSupport()">تصدير Excel</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="supportTable">
+                            <thead>
+                                <tr>
+                                    <th>كود التذكرة</th>
+                                    <th>المستخدم</th>
+                                    <th>النوع</th>
+                                    <th>الموضوع</th>
+                                    <th>الأولوية</th>
+                                    <th>التاريخ</th>
+                                    <th>الحالة</th>
+                                    <th>إجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="supportTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Reports Page -->
+                <div id="reportsPage" class="page">
+                    <div class="page-header">
+                        <h2>التقارير والإحصائيات</h2>
+                    </div>
+
+                    <div class="report-filters"
+                        style="background: var(--surface-color); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
+                        <h3 style="margin-bottom: 1rem;">فلترة التقارير</h3>
+                        <div
+                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                            <div>
+                                <label>من تاريخ</label>
+                                <input type="date" id="reportStartDate" class="form-control">
+                            </div>
+                            <div>
+                                <label>إلى تاريخ</label>
+                                <input type="date" id="reportEndDate" class="form-control">
+                            </div>
+                            <div>
+                                <label>نوع التقرير</label>
+                                <select id="reportType" class="form-control">
+                                    <option value="all">جميع التقارير</option>
+                                    <option value="transactions">تقرير العمليات</option>
+                                    <option value="commissions">تقرير العمولات</option>
+                                    <option value="members">تقرير الأعضاء</option>
+                                    <option value="merchants">تقرير التجار</option>
+                                </select>
+                            </div>
+                            <div style="display: flex; align-items: flex-end;">
+                                <button class="btn btn-primary btn-block" onclick="generateReport()">إنشاء
+                                    التقرير</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="reportResults" class="report-results">
+                        <p class="empty-state">اختر نوع التقرير والفترة الزمنية ثم اضغط على "إنشاء التقرير"</p>
+                    </div>
+                </div>
+
+                <!-- Withdrawals Page -->
+                <div id="withdrawalsPage" class="page">
+                    <div class="page-header">
+                        <h2>💸 طلبات السحب</h2>
+                    </div>
+                    <div id="withdrawalsContent">
+                        <p class="empty-state">جاري تحميل طلبات السحب...</p>
+                    </div>
+                </div>
+
+                <!-- Decisions & Proposals Interactive Lab Page (Prototype) -->
+                <div id="decisionsLabPage" class="page"></div>
+
+                <!-- Governance, Close, Reconciliation & Fraud Ops Page (Prototype) -->
+                <div id="governanceOpsPage" class="page"></div>
+
+                <!-- Settings Page -->
+                <div id="settingsPage" class="page">
+                    <div class="page-header">
+                        <h2>إعدادات النظام</h2>
+                    </div>
+
+                    <div class="settings-container">
+                        <div class="settings-section">
+                            <h3>إعدادات العمولات</h3>
+                            <div class="form-group">
+                                <label>نسبة العمولة الافتراضية (%)</label>
+                                <input type="number" id="defaultCommission" class="form-control" step="0.1" min="0"
+                                    max="100">
+                            </div>
+                            <div class="form-group">
+                                <label>الحد الأدنى للعمولة (ج.م)</label>
+                                <input type="number" id="minCommission" class="form-control" step="0.01" min="0">
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3>إعدادات النظام</h3>
+                            <div class="form-group">
+                                <label>اسم النظام</label>
+                                <input type="text" id="systemName" class="form-control" value="SAWYAN">
+                            </div>
+                            <div class="form-group">
+                                <label>بريد الدعم الفني</label>
+                                <input type="email" id="supportEmail" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label>رقم الدعم الفني</label>
+                                <input type="tel" id="supportPhone" class="form-control">
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3>إدارة المديرين</h3>
+                            <button class="btn btn-primary" onclick="addNewAdmin()">إضافة مدير جديد</button>
+                            <div class="table-container" style="margin-top: 1rem;">
+                                <table class="data-table" id="adminsTable">
+                                    <thead>
+                                        <tr>
+                                            <th>الاسم</th>
+                                            <th>البريد الإلكتروني</th>
+                                            <th>الصلاحيات</th>
+                                            <th>الحالة</th>
+                                            <th>إجراءات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="adminsTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="settings-actions"
+                            style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: flex-end;">
+                            <button class="btn btn-outline" onclick="resetSettings()">إعادة تعيين</button>
+                            <button class="btn btn-primary" onclick="saveSettings()">حفظ الإعدادات</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        
+    <!-- بطاقة تدقيق واعتماد الإعلانات الترويجية للتجار (Admin Promo Moderation Queue) -->
+    <div id="adminPromoModerationSection" class="card" style="border: 2px solid #3b82f6; border-radius: 14px; padding: 18px; margin: 20px 0; background: #ffffff; box-shadow: 0 4px 15px rgba(59,130,246,0.1);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.3rem;">🛡️</span>
+                <div>
+                    <h3 style="margin: 0; color: #1e3a8a; font-size: 1.1rem; font-weight: 800;">طلبات الإعلانات الترويجية للتجار (بانتظار موافقة الإدارة)</h3>
+                    <div style="font-size: 0.78rem; color: #64748b; margin-top: 2px;">مراجعة النصوص والعروض قبل البث المباشر على هواتف الأعضاء بالحي</div>
+                </div>
+            </div>
+            <span id="adminPromoCountBadge" style="background: #eff6ff; color: #1d4ed8; font-size: 0.78rem; font-weight: 800; padding: 4px 10px; border-radius: 8px; border: 1px solid #bfdbfe;">
+                🔔 طلب جديد معلق (1)
+            </span>
+        </div>
+
+        <div id="adminPromoQueueContainer">
+            <!-- سيتم ملؤه ديناميكياً من localStorage -->
+        </div>
+    </div>
+
+    <script>
+    function renderAdminPromoQueue() {
+        const container = document.getElementById('adminPromoQueueContainer');
+        const badge = document.getElementById('adminPromoCountBadge');
+        if (!container) return;
+
+        let promo = JSON.parse(localStorage.getItem('sawyan_active_merchant_promo') || 'null');
+        
+        // If not in localStorage yet, supply a default demo pending promo
+        if (!promo) {
+            promo = {
+                id: 'PRM-892',
+                merchant_name: 'سوبر ماركت الفارق المركزي',
+                merchant_code: 'EG-MKT-101',
+                branch: 'فرع مدينة نصر',
+                title: '🔥 عرض كاشباك إضافي 10% اليوم فقط!',
+                body: 'تسوق اليوم من سوبرماركت الفارق بفرع مدينة نصر واكسب كاشباك إضافي 10% على كافة المشتريات لإغلاق هدفك الشهري ومضاعفة نقاطك!',
+                target: 'الأعضاء الباحثين عن إغلاق الهدف (850 عضواً)',
+                duration: '24 ساعة فقط (عرض فلاش)',
+                status: 'PENDING_ADMIN_APPROVAL',
+                created_at: '07:15 م'
+            };
+            localStorage.setItem('sawyan_active_merchant_promo', JSON.stringify(promo));
+        }
+
+        if (promo.status === 'PENDING_ADMIN_APPROVAL') {
+            badge.innerText = '🔔 طلب جديد معلق (1)';
+            badge.style.background = '#eff6ff';
+            badge.style.color = '#1d4ed8';
+
+            container.innerHTML = `
+                <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                        <div>
+                            <div style="font-weight: 900; font-size: 0.95rem; color: #0f172a;">
+                                🏪 ${promo.merchant_name} <span style="font-size: 0.78rem; color: #64748b;">(#${promo.merchant_code} • ${promo.branch})</span>
+                            </div>
+                            <div style="font-size: 0.78rem; color: #059669; font-weight: 700; margin-top: 3px;">
+                                📍 الفئة المستهدفة: ${promo.target} • الصلاحية: ${promo.duration} • أُرسل في: ${promo.created_at}
+                            </div>
+                        </div>
+                        <span style="background: #fef3c7; color: #92400e; font-size: 0.74rem; font-weight: 800; padding: 3px 8px; border-radius: 6px;">🟡 بانتظار الاعتماد (#${promo.id})</span>
+                    </div>
+
+                    <!-- نص الإعلان المطلوب بثه -->
+                    <div style="background: #ffffff; border: 1px dashed #94a3b8; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px;">
+                        <div style="font-weight: 800; font-size: 0.86rem; color: #1e293b; margin-bottom: 4px;">
+                            📢 العنوان: <span style="color: #047857;">${promo.title}</span>
+                        </div>
+                        <div style="font-size: 0.82rem; color: #334155; line-height: 1.5;">
+                            "${promo.body}"
+                        </div>
+                    </div>
+
+                    <!-- أزرار قرار الإدارة التفاعلية الحقيقية -->
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="approveMerchantPromo('${promo.id}')" style="flex: 2; background: #059669; color: white; border: none; padding: 11px; border-radius: 8px; font-weight: 800; font-family: 'Tajawal'; font-size: 0.9rem; cursor: pointer; box-shadow: 0 2px 8px rgba(5,150,105,0.25);">
+                            ✅ اعتماد ونشر الإشعار لهواتف الأعضاء فوراً
+                        </button>
+                        <button onclick="rejectMerchantPromo('${promo.id}')" style="flex: 1; background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; padding: 11px; border-radius: 8px; font-weight: 800; font-family: 'Tajawal'; font-size: 0.86rem; cursor: pointer;">
+                            ❌ رفض العرض
+                        </button>
+                    </div>
+                </div>
+            `;
+        } else if (promo.status === 'APPROVED') {
+            badge.innerText = '✅ لا توجد طلبات معلقة (0)';
+            badge.style.background = '#ecfdf5';
+            badge.style.color = '#047857';
+
+            container.innerHTML = `
+                <div style="background: #f0fdf4; border: 1.5px solid #10b981; border-radius: 12px; padding: 16px; text-align: center;">
+                    <div style="font-size: 1.8rem; margin-bottom: 6px;">🎉</div>
+                    <div style="font-weight: 900; font-size: 1.05rem; color: #065f46;">تم اعتماد العرض #${promo.id} بنجاح!</div>
+                    <div style="font-size: 0.82rem; color: #047857; margin-top: 4px;">
+                        تم بث الإشعار بنجاح عبر خدمة Push Notifications لهواتف الأعضاء في محيط ${promo.branch}.
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <button onclick="resetDemoPromo()" style="background: white; border: 1px solid #cbd5e1; color: #475569; padding: 5px 12px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;">🔄 إعادة تعيين التجربة لعرض جديد</button>
+                    </div>
+                </div>
+            `;
+        } else if (promo.status === 'REJECTED') {
+            badge.innerText = '❌ طلب مرفوض';
+            badge.style.background = '#fef2f2';
+            badge.style.color = '#dc2626';
+
+            container.innerHTML = `
+                <div style="background: #fef2f2; border: 1.5px solid #fca5a5; border-radius: 12px; padding: 16px; text-align: center;">
+                    <div style="font-weight: 900; font-size: 1.05rem; color: #991b1b;">تم رفض العرض #${promo.id}</div>
+                    <div style="font-size: 0.82rem; color: #b91c1c; margin-top: 4px;">السبب: "${promo.rejection_reason || 'غير مطابق للشروط'}" وتم إبلاغ التاجر في لوحته.</div>
+                    <div style="margin-top: 10px;">
+                        <button onclick="resetDemoPromo()" style="background: white; border: 1px solid #cbd5e1; color: #475569; padding: 5px 12px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;">🔄 إعادة تعيين التجربة</button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    function approveMerchantPromo(promoId) {
+        let promo = JSON.parse(localStorage.getItem('sawyan_active_merchant_promo') || '{}');
+        promo.status = 'APPROVED';
+        promo.approved_at = new Date().toLocaleTimeString('ar-EG');
+        localStorage.setItem('sawyan_active_merchant_promo', JSON.stringify(promo));
+        
+        // Also fire notification in member dashboard
+        localStorage.setItem('sawyan_member_broadcast_notification', JSON.stringify({
+            title: promo.title,
+            body: promo.body,
+            merchant: promo.merchant_name,
+            time: 'الآن'
+        }));
+
+        alert('✅ قرار الإدارة: تم اعتماد الإشعار الترويجي #' + promoId + ' وبثه فوراً لهواتف الأعضاء في الحي!');
+        renderAdminPromoQueue();
+    }
+
+    function rejectMerchantPromo(promoId) {
+        const reason = prompt('يرجى كتابة سبب الرفض لتوجيه التاجر:', 'نسبة الخصم غير واضحة لبعض الأصناف');
+        if (!reason) return;
+
+        let promo = JSON.parse(localStorage.getItem('sawyan_active_merchant_promo') || '{}');
+        promo.status = 'REJECTED';
+        promo.rejection_reason = reason;
+        localStorage.setItem('sawyan_active_merchant_promo', JSON.stringify(promo));
+
+        alert('❌ تم رفض الطلب وإرسال سبب الرفض إلى لوحة تحكم التاجر.');
+        renderAdminPromoQueue();
+    }
+
+    function resetDemoPromo() {
+        localStorage.removeItem('sawyan_active_merchant_promo');
+        localStorage.removeItem('sawyan_member_broadcast_notification');
+        renderAdminPromoQueue();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        renderAdminPromoQueue();
+    });
+    </script>
+</main>
+    </div>
+
+    <!-- Bottom Navigation للموبايل -->
+    <nav class="bottom-nav">
+        <a href="#" class="bottom-nav-item active" data-page="home">
+            <span class="bottom-nav-icon">🏠</span>
+            <span class="bottom-nav-label">الرئيسية</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-page="members">
+            <span class="bottom-nav-icon">👥</span>
+            <span class="bottom-nav-label">الأعضاء</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-page="merchants">
+            <span class="bottom-nav-icon">🏪</span>
+            <span class="bottom-nav-label">التجار</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-page="more" onclick="toggleMoreMenu(event)">
+            <span class="bottom-nav-icon">☰</span>
+            <span class="bottom-nav-label">المزيد</span>
+        </a>
+    </nav>
+
+    <!-- قائمة المزيد -->
+    <div class="more-menu" id="moreMenu">
+        <div class="more-menu-header">
+            <h3>المزيد</h3>
+            <button onclick="closeMoreMenu()" class="close-btn">&times;</button>
+        </div>
+        <div class="more-menu-items">
+            <a href="#" class="more-menu-item" data-page="transactions" onclick="goToPage('transactions')">
+                <span>💳</span> العمليات
+            </a>
+            <a href="#" class="more-menu-item" data-page="commissions" onclick="goToPage('commissions')">
+                <span>💰</span> العمولات
+            </a>
+            <a href="#" class="more-menu-item" data-page="disputes" onclick="goToPage('disputes')">
+                <span>⚠️</span> الشكاوى
+            </a>
+            <a href="#" class="more-menu-item" data-page="support" onclick="goToPage('support')">
+                <span>🎫</span> الدعم الفني
+            </a>
+            <a href="#" class="more-menu-item" data-page="reports" onclick="goToPage('reports')">
+                <span>📊</span> التقارير
+            </a>
+            <a href="#" class="more-menu-item" data-page="withdrawals" onclick="goToPage('withdrawals')">
+                <span>💸</span> طلبات السحب
+            </a>
+            <a href="#" class="more-menu-item" data-page="settings" onclick="goToPage('settings')">
+                <span>⚙️</span> الإعدادات
+            </a>
+            <a href="#" class="more-menu-item" data-page="sovereignLive" onclick="closeMoreMenu(); openSovereignLivePage('mc'); return false;">
+                <span>⚡</span> الحوكمة الحية وشركاء الشركة
+            </a>
+            <a href="#" class="more-menu-item" data-page="decisionsLab" onclick="goToPage('decisionsLab')">
+                <span>🧪</span> مختبر القرارات والمقترحات
+            </a>
+            <a href="#" class="more-menu-item" data-page="governanceOps" onclick="goToPage('governanceOps')">
+                <span>🛡️</span> وحدات الرقابة والإقفال
+            </a>
+            <a href="#" class="more-menu-item logout" onclick="logout()">
+                <span>🚪</span> تسجيل الخروج
+            </a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../shared/config/supabase.js"></script>
+    <script src="../shared/api/sawyan-api.js"></script>
+    <script src="../shared/components/logo.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/dashboard-extended.js"></script>
+    <script src="js/admin-home-demo.js?v=1"></script>
+    <script src="js/admin-settings-center.js?v=1"></script>
+    <script src="js/admin-screens-demo.js?v=1"></script>
+    <script src="js/admin-decisions-lab.js?v=1"></script>
+    <script src="js/admin-v3-live-bridge.js?v=3"></script>
+</body>
+
+</html>

@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ابدأ الآن - SAWYAN BANK</title>
-    <meta name="description" content="سجّل أو سجّل دخول في SAWYAN BANK كعضو أو تاجر">
+    <title>ابدأ الآن - SAWYAN</title>
+    <meta name="description" content="سجّل أو سجّل دخول في منصة SAWYAN كمتسوق أو شريك أو تاجر">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -198,8 +198,8 @@
     <nav class="preview-nav" id="navbar">
         <div class="container">
             <div class="nav-content">
-                <a href="index.html" class="nav-logo">
-                    <span>SAWYAN BANK</span>
+                <a href="index.html" class="nav-logo" id="navBrandLogo">
+                    <span style="font-weight:900; color:#047857;">SAWYAN</span>
                 </a>
 
                 <!-- Hamburger Menu Button للموبايل -->
@@ -223,7 +223,7 @@
         <!-- Mobile Menu Drawer -->
         <div class="mobile-menu" id="mobileMenu">
             <div class="mobile-menu-header">
-                <span class="mobile-menu-title">SAWYAN BANK</span>
+                <span class="mobile-menu-title">SAWYAN</span>
                 <button class="mobile-menu-close" onclick="closeMobileMenu()">&times;</button>
             </div>
             <div class="mobile-menu-links">
@@ -242,7 +242,7 @@
     <section class="auth-gateway">
         <div class="gateway-container">
             <div class="gateway-header">
-                <h1>🚀 ابدأ رحلتك مع <span class="text-gradient">SAWYAN BANK</span></h1>
+                <h1>🚀 ابدأ رحلتك مع <span class="text-gradient">SAWYAN</span></h1>
                 <p>اختر نوع حسابك للمتابعة</p>
             </div>
 
@@ -251,14 +251,14 @@
                 <div class="gateway-card member">
                     <div class="gateway-icon">👤</div>
                     <h2>عضو / متسوق</h2>
-                    <p>احصل على كاشباك من كل عملية شراء واكسب من بناء فريقك</p>
+                    <p>حوّل مشترياتك اليومية إلى أرباح حقيقية ضمن عالم الاستهلاك الاستثماري وشارك لبناء فريقك</p>
 
                     <ul class="gateway-features">
-                        <li>كاشباك يصل إلى 20%</li>
-                        <li>محفظة إلكترونية</li>
-                        <li>QR Code شخصي</li>
-                        <li>سحب فوري للأرباح</li>
-                        <li>عمولات من الفريق</li>
+                        <li>عائدات الاستهلاك الاستثماري لخطة الدخل بدون رسوم اشتراك</li>
+                        <li>محفظة إلكترونية وصندوق هدف شفاف</li>
+                        <li>QR Code شخصي لتوثيق الفواتير</li>
+                        <li>صرف منظم يوم 15 بعد مهلة مراجعة 14 يوماً</li>
+                        <li>ربط فريق عالمي بلا حواجز جغرافية</li>
                     </ul>
 
                     <div class="gateway-buttons">
@@ -302,7 +302,25 @@
         </div>
     </section>
 
-    <script src="js/preview.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared/config/supabase.js"></script>
+    <script src="shared/api/sawyan-api.js"></script>
+    <script src="shared/components/logo.js"></script>
+    <script src="js/demo-data.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.SAWYAN && window.SAWYAN.Logo && document.getElementById('navBrandLogo')) {
+                document.getElementById('navBrandLogo').innerHTML = window.SAWYAN.Logo.svg('default');
+            }
+            if (window.SAWYAN_GEO) {
+                var ctx = window.SAWYAN_GEO.detectInitial();
+                var q = '?country=' + encodeURIComponent(ctx.country) + (ctx.city && ctx.city !== 'all' ? '&city=' + encodeURIComponent(ctx.city) : '');
+                document.querySelectorAll('a[href$="register.html"]').forEach(function (a) {
+                    a.setAttribute('href', a.getAttribute('href') + q);
+                });
+            }
+        });
+    </script>
     <script>
         // Mobile Menu Functions
         function toggleMobileMenu() {

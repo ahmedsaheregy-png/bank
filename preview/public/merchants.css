@@ -1,0 +1,798 @@
+/* ============================================
+   Merchants Page Styles - SAWYAN BANK
+   الألوان: كحلي، أخضر، موف
+   ============================================ */
+
+/* Universal Cairo Font */
+* {
+    font-family: 'Tajawal', sans-serif !important;
+}
+
+/* Page Header */
+.page-header {
+    padding: 120px 0 60px;
+    text-align: center;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #dbeafe 100%);
+    position: relative;
+}
+
+.page-header h1 {
+    font-family: 'Tajawal', sans-serif !important;
+    font-size: 2.5rem;
+    margin-bottom: var(--spacing-md);
+    color: #0f2744;
+}
+
+.page-header h1 .text-gradient {
+    background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.page-header p {
+    font-size: 1.125rem;
+    color: #475569;
+    font-family: 'Tajawal', sans-serif !important;
+}
+
+/* Filters Section */
+.filters-section {
+    padding: var(--spacing-xl) 0;
+    background: white;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.filters-bar {
+    display: flex;
+    gap: var(--spacing-md);
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.search-box {
+    flex: 1;
+    min-width: 250px;
+    position: relative;
+}
+
+.search-box input {
+    width: 100%;
+    padding: var(--spacing-md) var(--spacing-xl);
+    padding-right: 50px;
+    background: #f8fafc;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: var(--radius-lg);
+    font-size: 1rem;
+    font-family: 'Tajawal', sans-serif !important;
+    color: #0f172a;
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+.search-box .search-icon {
+    position: absolute;
+    right: var(--spacing-md);
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+}
+
+.filter-select {
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: #f8fafc;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: var(--radius-lg);
+    font-size: 0.9375rem;
+    font-family: 'Tajawal', sans-serif !important;
+    color: #0f172a;
+    cursor: pointer;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: #10b981;
+}
+
+/* Categories Pills */
+/* Categories Pills - Enhanced for Mobile */
+.categories-pills {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+    justify-content: center;
+    /* توسيط العناصر في الموبايل */
+}
+
+.category-pill {
+    padding: 12px 20px;
+    /* زيادة المساحة للضغط المريح */
+    background: #ffffff;
+    /* أبيض بدلاً من رمادي فاتح لزيادة التباين */
+    border: 1px solid #cbd5e1;
+    /* حدود أوضح */
+    border-radius: 50px;
+    color: #1e293b;
+    /* لون نص داكن وواضح */
+    font-size: 1rem;
+    /* تكبير الخط */
+    font-weight: 600;
+    font-family: 'Tajawal', sans-serif !important;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    /* ظل خفيف للبروز */
+}
+
+.category-pill:hover {
+    background: #f1f5f9;
+    border-color: #10b981;
+    color: #0f172a;
+    transform: translateY(-2px);
+}
+
+.category-pill.active {
+    background: #10b981;
+    border-color: #10b981;
+    color: white;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.category-pill .pill-count {
+    background: rgba(0, 0, 0, 0.08);
+    /* تغميق الخلفية قليلاً */
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: inherit;
+}
+
+.category-pill.active .pill-count {
+    background: rgba(255, 255, 255, 0.25);
+    color: white;
+}
+
+/* Merchants Count */
+.merchants-count {
+    margin-bottom: var(--spacing-lg);
+    color: #64748b;
+    font-size: 0.875rem;
+    font-family: 'Tajawal', sans-serif !important;
+}
+
+.merchants-count span {
+    color: #10b981;
+    font-weight: 700;
+}
+
+/* Merchant Card Enhanced */
+.merchant-card {
+    cursor: pointer;
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    transition: var(--transition-normal);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.merchant-card:hover {
+    transform: translateY(-5px);
+    border-color: #10b981;
+    box-shadow: 0 20px 40px rgba(16, 185, 129, 0.15);
+}
+
+.merchant-card .merchant-image {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    height: 140px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.merchant-card .merchant-cashback {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: white;
+    color: #10b981;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 0.75rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    z-index: 2;
+}
+
+.merchant-card .merchant-info {
+    padding: var(--spacing-lg);
+}
+
+.merchant-card .merchant-name {
+    font-size: 1.125rem;
+    margin-bottom: var(--spacing-xs);
+    color: #0f2744;
+    font-family: 'Tajawal', sans-serif !important;
+    font-weight: 700;
+}
+
+.merchant-card .merchant-category {
+    color: #10b981;
+    font-size: 0.875rem;
+    margin-bottom: var(--spacing-sm);
+}
+
+.merchant-card .merchant-rating {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.merchant-card .stars {
+    color: #fbbf24;
+}
+
+.merchant-card .rating-count {
+    color: #64748b;
+    font-size: 0.875rem;
+}
+
+.merchant-verified {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: 0.75rem;
+    color: #10b981;
+    margin-top: var(--spacing-sm);
+}
+
+.merchant-card .merchant-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: var(--spacing-md);
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.merchant-card .merchant-transactions {
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+/* Section Background */
+.section {
+    background: #f8fafc;
+    padding: var(--spacing-3xl) 0;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: var(--spacing-3xl);
+    background: white;
+    border-radius: var(--radius-xl);
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: var(--spacing-lg);
+}
+
+.empty-state h3 {
+    margin-bottom: var(--spacing-sm);
+    color: #0f2744;
+}
+
+.empty-state p {
+    color: #64748b;
+}
+
+/* CTA Section */
+.cta-section {
+    padding: var(--spacing-3xl) 0;
+    background: #f1f5f9;
+}
+
+.cta-box {
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-3xl);
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+}
+
+.cta-box h2 {
+    color: #0f2744;
+    margin-bottom: var(--spacing-md);
+    font-family: 'Tajawal', sans-serif !important;
+}
+
+.cta-box p {
+    color: #64748b;
+    margin-bottom: var(--spacing-xl);
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: var(--z-modal);
+    padding: var(--spacing-lg);
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: var(--radius-xl);
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+}
+
+.modal-close {
+    position: absolute;
+    top: var(--spacing-md);
+    left: var(--spacing-md);
+    width: 40px;
+    height: 40px;
+    background: rgba(0, 0, 0, 0.1);
+    border: none;
+    border-radius: 50%;
+    color: #0f172a;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    z-index: 10;
+}
+
+.modal-close:hover {
+    background: #ef4444;
+    color: white;
+}
+
+/* Modal Body */
+.merchant-modal-header {
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 5rem;
+    position: relative;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.merchant-modal-badge {
+    position: absolute;
+    top: var(--spacing-md);
+    right: var(--spacing-md);
+    background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+    color: #0f172a;
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.merchant-modal-body {
+    padding: var(--spacing-xl);
+}
+
+.merchant-modal-name {
+    font-size: 1.75rem;
+    margin-bottom: var(--spacing-xs);
+    color: #0f2744;
+    font-family: 'Tajawal', sans-serif !important;
+}
+
+.merchant-modal-category {
+    color: #10b981;
+    margin-bottom: var(--spacing-lg);
+}
+
+.merchant-modal-desc {
+    color: #64748b;
+    margin-bottom: var(--spacing-xl);
+    line-height: 1.8;
+}
+
+.merchant-modal-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-xl);
+}
+
+.modal-stat {
+    text-align: center;
+    padding: var(--spacing-md);
+    background: #f8fafc;
+    border-radius: var(--radius-lg);
+}
+
+.modal-stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1e3a5f;
+}
+
+.modal-stat-value.cashback {
+    color: #10b981;
+}
+
+.modal-stat-label {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.merchant-modal-actions {
+    display: flex;
+    gap: var(--spacing-md);
+}
+
+.merchant-modal-actions .btn {
+    flex: 1;
+}
+
+/* ===== Reviews Section ===== */
+.reviews-section {
+    margin-top: var(--spacing-xl);
+    padding-top: var(--spacing-xl);
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.reviews-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-lg);
+}
+
+.reviews-header h3 {
+    margin: 0;
+    color: #0f2744;
+    font-size: 1.25rem;
+}
+
+.reviews-summary {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.reviews-avg {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.avg-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0f2744;
+}
+
+.avg-stars {
+    color: #fbbf24;
+    font-size: 1.25rem;
+}
+
+.reviews-count {
+    color: #64748b;
+    font-size: 0.875rem;
+}
+
+.reviews-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    max-height: 400px;
+    overflow-y: auto;
+    padding-left: var(--spacing-sm);
+}
+
+.review-card {
+    background: #f8fafc;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    transition: var(--transition-fast);
+}
+
+.review-card:hover {
+    background: #f1f5f9;
+    border-color: rgba(16, 185, 129, 0.2);
+}
+
+.review-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-md);
+}
+
+.review-author {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.author-avatar {
+    width: 45px;
+    height: 45px;
+    background: linear-gradient(135deg, #1e3a5f 0%, #3b6491 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.author-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.author-name {
+    font-weight: 600;
+    color: #0f2744;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.verified-badge {
+    color: #10b981;
+    font-size: 0.875rem;
+}
+
+.author-level {
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    width: fit-content;
+    margin-top: 2px;
+}
+
+.author-level.gold {
+    background: rgba(251, 191, 36, 0.15);
+    color: #b45309;
+}
+
+.author-level.silver {
+    background: rgba(148, 163, 184, 0.15);
+    color: #475569;
+}
+
+.author-level.bronze {
+    background: rgba(205, 127, 50, 0.15);
+    color: #8b5a2b;
+}
+
+.review-rating {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.review-stars {
+    color: #fbbf24;
+    font-size: 1rem;
+}
+
+.review-date {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+
+.review-content {
+    color: #475569;
+    line-height: 1.8;
+    margin-bottom: var(--spacing-md);
+}
+
+.review-footer {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-lg);
+}
+
+.review-helpful {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    color: #64748b;
+    font-size: 0.875rem;
+    cursor: pointer;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    transition: var(--transition-fast);
+}
+
+.review-helpful:hover {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.helpful-count {
+    font-weight: 600;
+}
+
+/* Add Review Button */
+.add-review-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-lg);
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.add-review-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+/* Stars Interactive */
+.stars-interactive {
+    display: flex;
+    gap: 4px;
+}
+
+.stars-interactive .star {
+    font-size: 1.5rem;
+    color: #e2e8f0;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.stars-interactive .star:hover,
+.stars-interactive .star.active {
+    color: #fbbf24;
+    transform: scale(1.1);
+}
+
+/* Review Form Modal */
+.review-form {
+    background: #f8fafc;
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    margin-top: var(--spacing-lg);
+}
+
+.review-form-title {
+    font-size: 1.125rem;
+    color: #0f2744;
+    margin-bottom: var(--spacing-lg);
+}
+
+.form-group {
+    margin-bottom: var(--spacing-lg);
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: var(--spacing-sm);
+}
+
+.form-group textarea {
+    width: 100%;
+    padding: var(--spacing-md);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: var(--radius-md);
+    font-family: 'Tajawal', sans-serif;
+    font-size: 1rem;
+    resize: vertical;
+    min-height: 100px;
+    transition: var(--transition-fast);
+}
+
+.form-group textarea:focus {
+    outline: none;
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+.form-actions {
+    display: flex;
+    gap: var(--spacing-md);
+    justify-content: flex-end;
+}
+
+/* Empty Reviews */
+.no-reviews {
+    text-align: center;
+    padding: var(--spacing-2xl);
+    color: #94a3b8;
+}
+
+.no-reviews-icon {
+    font-size: 3rem;
+    margin-bottom: var(--spacing-md);
+}
+
+.no-reviews p {
+    margin: 0;
+    color: #64748b;
+}
+
+/* Review Rating Value Display */
+.rating-value {
+    font-weight: 600;
+    color: #0f2744;
+    margin-right: var(--spacing-xs);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .filters-bar {
+        flex-direction: column;
+    }
+
+    .search-box {
+        width: 100%;
+    }
+
+    .merchant-modal-stats {
+        grid-template-columns: 1fr;
+    }
+}
+ / *   H i d e   b r o k e n   o r   e m p t y   i m a g e s   * / 
+ . m e r c h a n t - c a r d   . m e r c h a n t - i m a g e   i m g [ s r c = ' ' ]   { 
+         d i s p l a y :   n o n e   ! i m p o r t a n t ; 
+ } 
+  
+ 
+ / *   F O R C E   F I X   f o r   B a d g e   S i z e   i s s u e   * / 
+ . m e r c h a n t - c a r d   . m e r c h a n t - c a s h b a c k   { 
+         w i d t h :   a u t o   ! i m p o r t a n t ; 
+         h e i g h t :   a u t o   ! i m p o r t a n t ; 
+         d i s p l a y :   i n l i n e - b l o c k   ! i m p o r t a n t ; 
+         t o p :   1 0 p x   ! i m p o r t a n t ; 
+         r i g h t :   1 0 p x   ! i m p o r t a n t ; 
+         p a d d i n g :   2 p x   8 p x   ! i m p o r t a n t ; 
+         b a c k g r o u n d :   w h i t e   ! i m p o r t a n t ; 
+         z - i n d e x :   1 0 0   ! i m p o r t a n t ; 
+         f o n t - s i z e :   0 . 7 5 r e m   ! i m p o r t a n t ; 
+         b o r d e r - r a d i u s :   4 p x   ! i m p o r t a n t ; 
+ }  
+ 

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - تاجر | SAWYAN</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../shared/css/variables.css">
+    <link rel="stylesheet" href="../shared/css/logo.css">
+    <link rel="stylesheet" href="../member-dashboard/css/auth.css">
+</head>
+
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div id="logoContainer" class="logo-section"></div>
+
+            <h1>🏪 تسجيل الدخول — بوابة التاجر</h1>
+            <p class="subtitle">أدخل كود التاجر أو البريد الإلكتروني أو الهاتف المسجل</p>
+
+            <form id="loginForm" class="auth-form">
+                <div class="form-group">
+                    <label>كود التاجر أو البريد الإلكتروني أو الهاتف</label>
+                    <input type="text" id="identifier" required class="form-control" placeholder="مثال: M-EG-001 أو email@domain.com">
+                </div>
+
+                <div class="form-group">
+                    <label>كلمة المرور (8 أحرف على الأقل)</label>
+                    <input type="password" id="password" required minlength="8" class="form-control" placeholder="أدخل كلمة المرور المشفرة">
+                </div>
+
+                <button type="submit" id="loginBtn" class="btn btn-primary btn-block">دخول لوحة التاجر ونقطة البيع</button>
+
+                <div id="demoMerchantLoginBox" style="display:none;margin-top:14px;padding:12px;border-radius:12px;background:#fffbeb;border:1.5px dashed #f59e0b;text-align:center;">
+                    <p style="margin:0 0 8px;font-size:0.84rem;color:#92400e;font-weight:700;">🧪 متاح في الموقع الموازي للتجربة فقط (Schema: sawyan_demo)</p>
+                    <div style="display:grid;gap:8px;">
+                        <button type="button" id="demoEgMerchantBtn" class="btn btn-outline btn-block" style="border-color:#d97706;color:#92400e;font-weight:800;">
+                            ⚡ دخول تجريبي — سوبر ماركت النخبة مصر (M-EG-001 • كاشير EMP-01 PIN: 2580)
+                        </button>
+                        <button type="button" id="demoTrMerchantBtn" class="btn btn-outline btn-block" style="border-color:#0284c7;color:#0369a1;font-weight:800;">
+                            ⚡ دخول تجريبي — مطعم إسطنبول الذهبي تركيا (M-TR-001)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="auth-footer">
+                    <p><a href="forgot-password.html" class="forgot-link">نسيت كلمة المرور؟</a></p>
+                    <p>ليس لديك حساب تاجر؟ <a href="register.html">سجل متجرك في 3 دقائق</a></p>
+                    <p style="margin-top: 1rem;"><a href="../index.html">← العودة للرئيسية</a></p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../shared/config/supabase.js"></script>
+    <script src="../shared/api/sawyan-api.js"></script>
+    <script src="../shared/components/logo.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.SAWYAN && window.SAWYAN.Logo) {
+                document.getElementById('logoContainer').innerHTML = window.SAWYAN.Logo.full();
+            }
+
+            async function performMerchantLogin(identifier, password) {
+                const btn = document.getElementById('loginBtn');
+                if (btn) {
+                    btn.disabled = true;
+                    btn.textContent = '⏳ جاري التحقق...';
+                }
+                try {
+                    for (let i = 0; i < 15 && (!window.SAWYAN || !window.SAWYAN.supabase); i++) {
+                        await new Promise(r => setTimeout(r, 100));
+                    }
+                    const res = await window.SAWYAN.API.authenticateMerchantLogin(identifier, password);
+                    if (!res || !res.success || !res.merchant) {
+                        throw new Error('بيانات دخول التاجر غير صحيحة');
+                    }
+                    window.SAWYAN.API.saveMerchantSession(res.merchant, res.session_token);
+                    window.location.href = 'dashboard.html';
+                } catch (err) {
+                    alert('❌ تعذر الدخول: ' + err.message);
+                } finally {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.textContent = 'دخول لوحة التاجر ونقطة البيع';
+                    }
+                }
+            }
+
+            if (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.isDemoMode()) {
+                const box = document.getElementById('demoMerchantLoginBox');
+                if (box) box.style.display = 'block';
+                document.getElementById('demoEgMerchantBtn')?.addEventListener('click', () => performMerchantLogin('M-EG-001', 'Demo@Merchant2026'));
+                document.getElementById('demoTrMerchantBtn')?.addEventListener('click', () => performMerchantLogin('M-TR-001', 'Demo@Merchant2026'));
+            }
+
+            document.getElementById('loginForm').addEventListener('submit', async function (e) {
+                e.preventDefault();
+                await performMerchantLogin(
+                    document.getElementById('identifier').value.trim(),
+                    document.getElementById('password').value
+                );
+            });
+        });
+    </script>
+</body>
+
+</html>

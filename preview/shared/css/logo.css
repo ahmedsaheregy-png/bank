@@ -1,0 +1,50 @@
+/* Logo Styles - خط مميز */
+.logo-link {
+    text-decoration: none;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+}
+
+.logo-link:hover {
+    opacity: 0.8;
+}
+
+.logo-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    text-align: right;
+}
+
+.logo-main {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+/* في الصفحة الرئيسية (Header) - أزرق غامق على خلفية بيضاء */
+.header .logo-text .logo-main {
+    color: #1E40AF;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* في Sidebar - أبيض على خلفية خضراء */
+.sidebar .logo-text .logo-main {
+    color: #FFFFFF;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* في صفحات Auth - أزرق غامق على خلفية بيضاء */
+.auth-container .logo-text .logo-main {
+    color: #1E40AF;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* في Footer - أبيض على خلفية سوداء */
+.footer .logo-text .logo-main {
+    color: #FFFFFF;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}

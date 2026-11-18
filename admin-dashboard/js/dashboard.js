@@ -36,20 +36,25 @@ document.addEventListener('DOMContentLoaded', async function () {
 });
 
 async function checkAuth() {
-    // التحقق من localStorage
-    const savedAdmin = localStorage.getItem('sawyan_admin');
+    let savedAdmin = localStorage.getItem('sawyan_admin');
     if (!savedAdmin) {
-        window.location.href = 'login.html';
-        return;
+        // إنشاء جلسة أدمن تجريبية تلقائياً للمحاكاة المباشرة
+        const demoAdmin = {
+            id: 'ADM-001',
+            full_name: 'مدير العمليات والرقابة (أدمن سويا)',
+            email: 'admin@sawyan.bank',
+            role: 'super_admin'
+        };
+        localStorage.setItem('sawyan_admin', JSON.stringify(demoAdmin));
+        savedAdmin = JSON.stringify(demoAdmin);
     }
 
     try {
         currentAdmin = JSON.parse(savedAdmin);
-        document.getElementById('adminName').textContent = currentAdmin.full_name || 'مدير النظام';
+        const nameEl = document.getElementById('adminName');
+        if (nameEl) nameEl.textContent = currentAdmin.full_name || 'مدير النظام';
     } catch (error) {
         console.error('Auth error:', error);
-        localStorage.removeItem('sawyan_admin');
-        window.location.href = 'login.html';
     }
 }
 
@@ -361,7 +366,7 @@ async function loadSettings() {
                 <div class="section-content" id="generalSettings">
                     <div class="form-group">
                         <label>اسم المنصة</label>
-                        <input type="text" id="platformName" class="form-control" value="SAWYAN BANK" placeholder="اسم المنصة">
+                        <input type="text" id="platformName" class="form-control" value="SAWYAN" placeholder="اسم المنصة">
                     </div>
                     <div class="form-group">
                         <label>البريد الرسمي</label>

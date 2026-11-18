@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>بوابة الإدارة السيادية — SAWYAN</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../shared/css/variables.css">
+    <link rel="stylesheet" href="../shared/css/logo.css">
+    <link rel="stylesheet" href="../member-dashboard/css/auth.css">
+    <style>
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.55);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #e2e8f0;
+            border-top: 5px solid #059669;
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .rbac-sandbox-box {
+            background: #fffbeb;
+            border: 1.5px solid #f59e0b;
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 18px;
+            display: none;
+        }
+
+        .rbac-sandbox-btn {
+            width: 100%;
+            text-align: right;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 9px;
+            padding: 8px 12px;
+            margin-top: 7px;
+            font-family: 'Tajawal', sans-serif;
+            font-size: 0.84rem;
+            font-weight: 800;
+            color: #0f172a;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .rbac-sandbox-btn:hover {
+            border-color: #059669;
+            background: #ecfdf5;
+        }
+
+        .login-alert {
+            display: none;
+            padding: 10px 12px;
+            border-radius: 10px;
+            margin-bottom: 14px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .login-alert.error {
+            display: block;
+            background: #fef2f2;
+            border: 1px solid #fca5a5;
+            color: #991b1b;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <div class="auth-container">
+        <div class="auth-card">
+            <div id="logoContainer" class="logo-section"></div>
+
+            <h1>بوابة الحوكمة والإدارة السيادية</h1>
+            <p class="subtitle">نظام الصلاحيات السبعة (RBAC) والاعتماد المزدوج الإجباري (Maker–Checker)</p>
+
+            <div id="demoSandboxPanel" class="rbac-sandbox-box">
+                <div style="font-size:0.84rem;font-weight:900;color:#92400e;">🧪 بيئة التجربة الموازية (`sawyan_demo`) — اختبار فصل المهام الحقيقي:</div>
+                <div style="font-size:0.76rem;color:#78350f;margin-top:2px;">اختر أحد الأدوار المشفرة بـ Bcrypt لتجربة دورة الإعداد والاعتماد وقفل المدقق:</div>
+                <button type="button" class="rbac-sandbox-btn" onclick="quickDemoLogin('demo.maker@sawyan.local', 'Demo@Maker2026')">
+                    💼 ١. دخول مالي مُنشئ للطلبات (Maker — Role: finance)
+                </button>
+                <button type="button" class="rbac-sandbox-btn" onclick="quickDemoLogin('demo.checker@sawyan.local', 'Demo@Checker2026')">
+                    ✅ ٢. دخول سلطة الاعتماد الثانية (Checker — Role: approver)
+                </button>
+                <button type="button" class="rbac-sandbox-btn" onclick="quickDemoLogin('demo.auditor@sawyan.local', 'Demo@Auditor2026')">
+                    🔍 ٣. دخول مدقّق مستقل للقراءة فقط (Auditor — Role: auditor)
+                </button>
+            </div>
+
+            <div id="loginAlert" class="login-alert"></div>
+
+            <form id="loginForm" class="auth-form" autocomplete="off">
+                <div class="form-group">
+                    <label for="email">البريد المؤسسي للإداري</label>
+                    <input type="email" id="email" required class="form-control" placeholder="name@sawyan.global">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">كلمة المرور المشفرة</label>
+                    <input type="password" id="password" required class="form-control" placeholder="••••••••••••">
+                </div>
+
+                <div class="form-group">
+                    <label for="totpCode">رمز المصادقة الثنائية 2FA (اختياري في الاختبار المحلي)</label>
+                    <input type="text" id="totpCode" class="form-control" inputmode="numeric" maxlength="6" placeholder="000000">
+                </div>
+
+                <button type="submit" id="adminLoginBtn" class="btn btn-primary btn-block">🔐 توثيق الجلسة والدخول</button>
+
+                <div class="auth-footer">
+                    <p style="margin-top: 1rem;"><a href="../index.html">← العودة للبوابة الرئيسية</a></p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../shared/config/supabase.js"></script>
+    <script src="../shared/api/sawyan-api.js"></script>
+    <script src="../shared/components/logo.js"></script>
+    <script>
+        function showLoginError(msg) {
+            const box = document.getElementById('loginAlert');
+            if (!box) return;
+            box.className = 'login-alert error';
+            box.textContent = '⛔ ' + msg;
+        }
+
+        async function executeAdminLogin(email, password, totpCode) {
+            const overlay = document.getElementById('loadingOverlay');
+            const alertBox = document.getElementById('loginAlert');
+            if (alertBox) { alertBox.className = 'login-alert'; alertBox.textContent = ''; }
+            overlay.classList.add('active');
+            try {
+                await window.SAWYAN.API.authenticateAdminLogin({
+                    email: email,
+                    password: password,
+                    totpCode: totpCode || null
+                });
+                overlay.classList.remove('active');
+                window.location.href = 'dashboard.html';
+            } catch (err) {
+                overlay.classList.remove('active');
+                showLoginError(err.message || 'تعذر التحقق من بيانات الدخول الإدارية');
+            }
+        }
+
+        window.quickDemoLogin = function (email, password) {
+            document.getElementById('email').value = email;
+            document.getElementById('password').value = password;
+            executeAdminLogin(email, password, '246810');
+        };
+
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.SAWYAN && window.SAWYAN.Logo) {
+                document.getElementById('logoContainer').innerHTML = window.SAWYAN.Logo.full();
+            }
+
+            if (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.isDemoMode()) {
+                const sb = document.getElementById('demoSandboxPanel');
+                if (sb) sb.style.display = 'block';
+            }
+
+            document.getElementById('loginForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+                const email = document.getElementById('email').value.trim();
+                const password = document.getElementById('password').value;
+                const totpCode = document.getElementById('totpCode').value.trim();
+                executeAdminLogin(email, password, totpCode);
+            });
+        });
+    </script>
+</body>
+
+</html>

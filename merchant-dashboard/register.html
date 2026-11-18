@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تسجيل تاجر - SAWYAN BANK</title>
+    <title>تسجيل تاجر - SAWYAN</title>
     <link
         href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
         rel="stylesheet">
@@ -49,15 +49,49 @@
                     </div>
 
                     <div class="form-group">
-                        <label>رقم الهاتف</label>
-                        <input type="tel" id="phone" class="form-control" placeholder="+20 123 456 7890">
+                        <label>رقم الهاتف النشط (بمفتاح الدولة) *</label>
+                        <input type="tel" id="phone" required class="form-control" placeholder="+201012345678">
                     </div>
 
-                    <div class="form-group">
-                        <label>النسبة المئوية (%)</label>
-                        <input type="number" id="commissionPercentage" class="form-control" step="0.01" min="0"
-                            max="100" placeholder="مثال: 10" value="10">
-                        <small class="form-text">النسبة التي ستمنحها للأعضاء من كل عملية (افتراضي: 10%)</small>
+                    <div class="form-row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+                        <div class="form-group">
+                            <label>دولة النشاط التجاري (بوابة تفعيل الدول D13) *</label>
+                            <select id="countryCodeSelect" required class="form-control">
+                                <option value="EG" selected>🇪🇬 مصر (نشطة — العملة: EGP)</option>
+                                <option value="TR">🇹🇷 تركيا (نشطة — العملة: TRY)</option>
+                                <option value="SA">🇸🇦 السعودية (قريباً — بوابة D13)</option>
+                                <option value="DE">🇩🇪 ألمانيا (قريباً — بوابة D13)</option>
+                                <option value="US">🇺🇸 الولايات المتحدة (قريباً — بوابة D13)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>كود العضو المرشِّح للمتجر (اختياري)</label>
+                            <input type="number" id="onboardedByCode" min="1" class="form-control" placeholder="مثال: 1">
+                        </div>
+                    </div>
+
+                    <div class="form-row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+                        <div class="form-group">
+                            <label>كلمة مرور حساب التاجر (8+ أحرف) *</label>
+                            <input type="password" id="password" required minlength="8" class="form-control" placeholder="أدخل كلمة مرور قوية (يُحظر 123456)">
+                        </div>
+                        <div class="form-group">
+                            <label>تأكيد كلمة المرور *</label>
+                            <input type="password" id="confirmPassword" required minlength="8" class="form-control" placeholder="أعد إدخال كلمة المرور">
+                        </div>
+                    </div>
+
+                    <div class="form-row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+                        <div class="form-group">
+                            <label>نسبة العمولة التعاقدية الإجمالية (%) *</label>
+                            <input type="number" id="commissionPercentage" required class="form-control" step="0.25" min="1" max="40" value="10">
+                            <small class="form-text">النسبة الإجمالية المعتمدة على الفاتورة (من 1% إلى 40%)</small>
+                        </div>
+                        <div class="form-group">
+                            <label>رمز PIN الكاشير الرئيسي (4 أرقام — اختياري D25)</label>
+                            <input type="password" id="initialCashierPin" maxlength="4" pattern="\d{4}" inputmode="numeric" class="form-control" placeholder="مثال: 2580">
+                            <small class="form-text">ينشئ تلقائياً موظف كاشير رئيسي (EMP-01) لتوثيق المبيعات فوراً</small>
+                        </div>
                     </div>
                 </div>
 
@@ -77,21 +111,21 @@
                     <div class="form-group">
                         <label>فئة النشاط</label>
                         <select id="businessCategory" class="form-control">
-                            <option value="أخرى" selected>📦 أخرى</option>
-                            <option value="سوبر ماركت">🛒 سوبر ماركت</option>
-                            <option value="ملابس">👕 ملابس</option>
-                            <option value="أحذية">👟 أحذية</option>
-                            <option value="صيدلية">💊 صيدلية</option>
-                            <option value="مطعم">🍽️ مطعم</option>
-                            <option value="كافيه">☕ كافيه</option>
-                            <option value="جزارة">🥩 جزارة</option>
-                            <option value="كهربائيات">📱 كهربائيات</option>
-                            <option value="أدوات منزلية">🏠 أدوات منزلية</option>
-                            <option value="توصيل">🚚 توصيل</option>
-                            <option value="كوزموتيكس">💄 كوزموتيكس</option>
-                            <option value="عقارات">🏢 عقارات</option>
-                            <option value="ترفيه">🎮 ترفيه</option>
-                            <option value="خدمات تقنية">💻 خدمات تقنية</option>
+                            <option value="supermarket" selected>🛒 سوبر ماركت وبقالة</option>
+                            <option value="pharmacy">💊 صيدليات ورعاية صحية</option>
+                            <option value="restaurant">🍽️ مطاعم ومأكولات</option>
+                            <option value="cafe">☕ كافيهات ومخبوزات</option>
+                            <option value="clothing">👕 ملابس وأزياء</option>
+                            <option value="shoes">👟 أحذية وحقائب</option>
+                            <option value="butcher">🥩 جزارة ولحوم</option>
+                            <option value="electronics">📱 إلكترونيات وهواتف</option>
+                            <option value="home-goods">🏠 أدوات منزلية وأثاث</option>
+                            <option value="delivery">🚚 خدمات التوصيل والشحن</option>
+                            <option value="cosmetics">💄 عطور وتجميل</option>
+                            <option value="real-estate">🏢 خدمات عقارية</option>
+                            <option value="entertainment">🎮 ترفيه وسياحة</option>
+                            <option value="tech-services">💻 خدمات تقنية وتعليم</option>
+                            <option value="other">📦 أخرى</option>
                         </select>
                     </div>
 
@@ -288,13 +322,12 @@
                     </div>
                 </div>
 
-                <div class="form-note">
-                    <p><strong>ملاحظة:</strong> كلمة المرور الافتراضية: <code>123456</code></p>
-                    <p class="info-text">فقط اسم النشاط التجاري إجباري. يمكنك إكمال باقي البيانات لاحقاً من
-                        لوحة التحكم.</p>
+                <div class="form-note" style="background:#f0fdf4;border:1.5px solid #10b981;border-radius:12px;padding:14px;">
+                    <p style="margin:0 0 6px;color:#065f46;"><strong>⚡ التفعيل الذري السريع (3-Minute Onboarding):</strong></p>
+                    <p class="info-text" style="margin:0;color:#047857;">يتم تشفير كلمة مرور المنشأة ورمز <code>PIN</code> الكاشير بـ <code>Bcrypt</code> في الخادم وإنشاء الفرع الرئيسي وطقم المتجر <code>Store Kit</code> فوراً، مع تطبيق قفل الشحن المسبق (<code>D4</code>).</p>
                 </div>
 
-                <button type="submit" class="btn btn-primary btn-block">تسجيل</button>
+                <button type="submit" id="merchantRegBtn" class="btn btn-primary btn-block">✅ تسجيل المتجر وتفعيل نقطة البيع</button>
 
                 <div class="auth-footer">
                     <p>لديك حساب؟ <a href="login.html">تسجيل الدخول</a></p>
@@ -306,6 +339,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../shared/config/supabase.js"></script>
+    <script src="../shared/api/sawyan-api.js"></script>
     <script src="../shared/components/logo.js"></script>
     <script src="js/register.js"></script>
 

@@ -102,17 +102,38 @@ function loadTransactions() {
 function initCalculator() {
     const amountInput = document.getElementById('calc-amount');
     const rateInput = document.getElementById('calc-rate');
+    const teamInput = document.getElementById('calc-team');
     const resultEl = document.getElementById('calc-result');
+    const teamResultEl = document.getElementById('calc-team-result');
+    const targetStatusEl = document.getElementById('calc-target-status');
 
     function calculate() {
         const amount = parseFloat(amountInput.value) || 0;
-        const rate = parseFloat(rateInput.value) || 0;
-        const cashback = (amount * rate / 100).toFixed(2);
-        resultEl.textContent = `${parseFloat(cashback).toLocaleString('en-US')} ر.س`;
+        const netRate = parseFloat(rateInput.value) || 0;
+        const teamCount = parseInt((teamInput && teamInput.value) || '0', 10) || 0;
+
+        const ownReturn = amount * (netRate / 100);
+        const avgTeamSpend = amount * 0.5;
+        const teamReturn = teamCount * avgTeamSpend * (netRate / 100) * 0.10;
+        const targetSar = 92.81; // مرجعي 24.75$ بالريال
+        const coveragePct = Math.min(100, Math.round((ownReturn / targetSar) * 100));
+
+        if (resultEl) {
+            resultEl.textContent = `${ownReturn.toFixed(2)} ر.س`;
+        }
+        if (teamResultEl) {
+            teamResultEl.textContent = `${teamReturn.toFixed(2)} ر.س`;
+        }
+        if (targetStatusEl) {
+            targetStatusEl.textContent = coveragePct >= 100
+                ? '100% مكتمل ✓'
+                : `${coveragePct}% من الهدف الشهري`;
+        }
     }
 
-    amountInput.addEventListener('input', calculate);
-    rateInput.addEventListener('input', calculate);
+    if (amountInput) amountInput.addEventListener('input', calculate);
+    if (rateInput) rateInput.addEventListener('input', calculate);
+    if (teamInput) teamInput.addEventListener('input', calculate);
     calculate();
 }
 

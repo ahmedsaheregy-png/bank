@@ -1,178 +1,141 @@
-// تسجيل تاجر - بدون Supabase Auth
-document.addEventListener('DOMContentLoaded', async function () {
+/**
+ * ============================================================================
+ * SAWYAN ECOSYSTEM — V3.0 MERCHANT REGISTRATION (3-Minute Onboarding + D4/D13/D25)
+ * ============================================================================
+ */
+
+document.addEventListener('DOMContentLoaded', function () {
     if (window.SAWYAN && window.SAWYAN.Logo) {
-        document.getElementById('logoContainer').innerHTML = window.SAWYAN.Logo.full();
+        const logoBox = document.getElementById('logoContainer');
+        if (logoBox) logoBox.innerHTML = window.SAWYAN.Logo.full();
     }
 
-    // إخفاء حقل كود التاجر لأنه سيتم توليده تلقائياً
-    const codeContainer = document.getElementById('merchantCode').parentElement;
+    const codeContainer = document.getElementById('merchantCode')?.parentElement;
     if (codeContainer) codeContainer.style.display = 'none';
 
-    document.getElementById('registerForm').addEventListener('submit', handleRegister);
+    const params = new URLSearchParams(window.location.search);
+    const urlCountry = (params.get('country') || '').trim().toUpperCase();
+    const countrySel = document.getElementById('countryCodeSelect');
+    if (urlCountry && countrySel && Array.from(countrySel.options).some(o => o.value === urlCountry)) {
+        countrySel.value = urlCountry;
+    }
+
+    const physSec = document.getElementById('physicalLocationSection');
+    if (physSec) physSec.style.display = 'block';
+
+    const form = document.getElementById('registerForm');
+    if (form) form.addEventListener('submit', handleMerchantRegister);
 });
 
-async function handleRegister(e) {
+async function handleMerchantRegister(e) {
     e.preventDefault();
 
-    // حقل الكود لم يعد مطلوباً من المستخدم
-    const businessName = document.getElementById('businessName').value;
-    const ownerName = document.getElementById('ownerName').value || businessName;
-    const email = document.getElementById('email').value;
-    const phone = document.getElementById('phone').value;
-    const commissionPercentage = parseFloat(document.getElementById('commissionPercentage').value) || 10;
-    const merchantType = document.getElementById('merchantType').value || 'physical';
-    const businessCategory = document.getElementById('businessCategory').value || 'أخرى';
-    const businessDescription = document.getElementById('businessDescription').value;
+    const btn = document.getElementById('merchantRegBtn');
+    const businessName = (document.getElementById('businessName')?.value || '').trim();
+    const ownerName = (document.getElementById('ownerName')?.value || '').trim() || businessName;
+    const email = (document.getElementById('email')?.value || '').trim() || null;
+    const phoneRaw = (document.getElementById('phone')?.value || '').trim();
+    const countryCode = (document.getElementById('countryCodeSelect')?.value || 'EG').toUpperCase();
+    const onboardedByCode = (document.getElementById('onboardedByCode')?.value || '').trim();
+    const password = document.getElementById('password')?.value || '';
+    const confirmPassword = document.getElementById('confirmPassword')?.value || '';
+    const commissionPercentage = parseFloat(document.getElementById('commissionPercentage')?.value || '10') || 10;
+    const initialCashierPin = (document.getElementById('initialCashierPin')?.value || '').trim();
+    const merchantType = document.getElementById('merchantType')?.value || 'physical';
+    const businessCategory = document.getElementById('businessCategory')?.value || 'supermarket';
+    const businessDescription = (document.getElementById('businessDescription')?.value || '').trim();
+    const city = (document.getElementById('city')?.value || '').trim();
+    const address = (document.getElementById('address')?.value || '').trim();
+    const latitude = document.getElementById('latitude')?.value || null;
+    const longitude = document.getElementById('longitude')?.value || null;
+    const websiteUrl = (document.getElementById('websiteUrl')?.value || '').trim();
+    const whatsapp = (document.getElementById('whatsapp')?.value || '').trim();
 
-    // الموقع الجغرافي
-    const country = document.getElementById('country')?.value || 'مصر';
-    const city = document.getElementById('city')?.value || '';
-    const address = document.getElementById('address')?.value || '';
-    const latitude = parseFloat(document.getElementById('latitude')?.value) || null;
-    const longitude = parseFloat(document.getElementById('longitude')?.value) || null;
-    const googleMapsUrl = document.getElementById('googleMapsUrl')?.value || '';
-
-    // المتجر الإلكتروني
-    const websiteUrl = document.getElementById('websiteUrl')?.value || '';
-    const webhookUrl = document.getElementById('webhookUrl')?.value || '';
-
-    // روابط التواصل
-    const whatsapp = document.getElementById('whatsapp')?.value || '';
-    const facebookUrl = document.getElementById('facebookUrl')?.value || '';
-    const instagramUrl = document.getElementById('instagramUrl')?.value || '';
-    const twitterUrl = document.getElementById('twitterUrl')?.value || '';
-    const tiktokUrl = document.getElementById('tiktokUrl')?.value || '';
-
-    // الصور
-    const logoUrl = document.getElementById('logoUrl')?.value || '';
-    const coverImageUrl = document.getElementById('coverImageUrl')?.value || '';
-
-    // جمع أوقات العمل
-    const workingHours = collectWorkingHours();
-
-    // جمع روابط التواصل في JSON
-    const socialLinks = {
-        facebook: facebookUrl,
-        instagram: instagramUrl,
-        twitter: twitterUrl,
-        tiktok: tiktokUrl,
-        website: websiteUrl
-    };
-
-    // التحقق من الحقل الإلزامي فقط
-    if (!businessName) {
-        alert('اسم النشاط التجاري إجباري');
+    if (businessName.length < 2) {
+        alert('الرجاء إدخال اسم النشاط التجاري.');
+        return;
+    }
+    if (!password || password.length < 8 || password === '123456' || password === '12345678') {
+        alert('يجب إدخال كلمة مرور قوية من 8 أحرف على الأقل (ولا يُسمح بـ 123456).');
+        return;
+    }
+    if (password !== confirmPassword) {
+        alert('كلمة المرور وتأكيدها غير متطابقتين.');
+        return;
+    }
+    if (initialCashierPin && !/^\d{4}$/.test(initialCashierPin)) {
+        alert('رمز PIN الكاشير يجب أن يتكون من 4 أرقام بالضبط.');
         return;
     }
 
+    const dialDefaults = { EG: '+20', TR: '+90', SA: '+966', DE: '+49', US: '+1' };
+    const cleanDigits = phoneRaw.replace(/\D/g, '').replace(/^0+/, '');
+    const fullPhone = phoneRaw.startsWith('+')
+        ? ('+' + phoneRaw.replace(/\D/g, ''))
+        : `${dialDefaults[countryCode] || '+20'}${cleanDigits}`;
+
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ جاري تأسيس المتجر والفرع الرئيسي في الخادم...';
+    }
+
     try {
-        // إنشاء سجل التاجر مباشرة - بدون merchant_code (سيتم توليده تلقائياً)
-        const merchantData = {
-            business_name: businessName,
-            owner_name: ownerName,
-            email: email || undefined, // سيتم توليده لاحقاً إذا كان فارغاً
-            password_hash: '123456',
-            phone: phone || '',
-            merchant_type: merchantType,
-            business_category: businessCategory,
-            business_description: businessDescription || '',
-            commission_percentage: commissionPercentage,
-            is_active: true,
-            // الحقول الجديدة
-            country: country,
-            city: city,
-            address_details: address,
-            latitude: latitude,
-            longitude: longitude,
-            whatsapp: whatsapp,
-            social_links: socialLinks,
-            working_hours: workingHours,
-            logo_url: logoUrl,
-            cover_image_url: coverImageUrl
-        };
+        for (let i = 0; i < 15 && (!window.SAWYAN || !window.SAWYAN.supabase); i++) {
+            await new Promise(r => setTimeout(r, 100));
+        }
+        const res = await window.SAWYAN.API.registerNewMerchant({
+            businessName,
+            ownerName,
+            phone: fullPhone,
+            password,
+            countryCode,
+            category: businessCategory,
+            merchantType,
+            deductionPercent: commissionPercentage,
+            email,
+            address: [city, address].filter(Boolean).join(' - ') || null,
+            latitude,
+            longitude,
+            onboardedByMemberCode: onboardedByCode || null,
+            initialCashierPin: initialCashierPin || null,
+            metadata: {
+                description: businessDescription || null,
+                website_url: websiteUrl || null,
+                whatsapp: whatsapp || null,
+                working_hours: collectWorkingHours()
+            }
+        });
 
-        const { data: newMerchant, error: merchantError } = await window.SAWYAN.supabase
-            .from('merchants')
-            .insert([merchantData])
-            .select() // مهم لاسترجاع الكود المولد
-            .single();
-
-        if (merchantError) throw merchantError;
-
-        // تحديث البريد الإلكتروني إذا كان فارغاً (يعتمد على الكود المولد)
-        let finalEmail = newMerchant.email;
-        if (!email) {
-            finalEmail = `merchant${newMerchant.merchant_code}@sawyan.local`;
-            await window.SAWYAN.supabase
-                .from('merchants')
-                .update({ email: finalEmail })
-                .eq('id', newMerchant.id);
-
-            newMerchant.email = finalEmail;
+        if (!res || !res.success || !res.merchant) {
+            throw new Error('لم يكتمل تسجيل المتجر');
         }
 
-        const merchantCode = newMerchant.merchant_code; // الحصول على الكود من قاعدة البيانات
-
-        // إرسال إشعار ترحيب للتاجر الجديد
-        try {
-            await window.SAWYAN.supabase
-                .from('notifications')
-                .insert([{
-                    user_type: 'merchant',
-                    user_id: newMerchant.id,
-                    title: 'مرحباً بك في SAWYAN 🏪',
-                    message: 'تم تسجيل نشاطك التجاري "' + businessName + '" بنجاح! كود التاجر: ' + merchantCode + '. ابدأ باستقبال العملاء.',
-                    notification_type: 'welcome'
-                }]);
-            console.log('Merchant welcome notification sent');
-        } catch (notifError) {
-            console.log('Notifications table may not exist');
-        }
-
-        // حفظ بيانات التاجر للدخول التلقائي
-        localStorage.setItem('sawyan_merchant', JSON.stringify(newMerchant));
-        localStorage.setItem('sawyan_merchant_id', newMerchant.id);
-
-        alert('تم التسجيل بنجاح! 🎉\n\nكود التاجر: ' + merchantCode + '\nكلمة المرور: 123456');
+        window.SAWYAN.API.saveMerchantSession(res.merchant, res.session_token);
+        alert(`🎉 تم تسجيل متجرك بنجاح!\nكود التاجر الرسمي: ${res.merchant.merchant_code}\nسيتم نقلك الآن للوحة التاجر ونقطة البيع.`);
         window.location.href = 'dashboard.html';
-
-    } catch (error) {
-        console.error('Error:', error);
-        alert('حدث خطأ: ' + error.message);
+    } catch (err) {
+        const msg = String(err.message || '');
+        if (msg.includes('COUNTRY_GATE_INACTIVE_D13')) {
+            alert('⛔ هذه الدولة قيد الإعداد القانوني والضريبي في بوابة تفعيل الدول (D13) ولم تُفتح للتسجيل التجاري بعد.');
+        } else {
+            alert('❌ تعذر تسجيل المتجر: ' + msg);
+        }
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = '✅ تسجيل المتجر وتفعيل نقطة البيع';
+        }
     }
 }
 
-// دالة لجمع أوقات العمل من الفورم
 function collectWorkingHours() {
     const days = ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'];
-    const dayNames = {
-        'sat': 'السبت',
-        'sun': 'الأحد',
-        'mon': 'الإثنين',
-        'tue': 'الثلاثاء',
-        'wed': 'الأربعاء',
-        'thu': 'الخميس',
-        'fri': 'الجمعة'
-    };
-
-    const workingHours = {};
-
+    const out = {};
     days.forEach(day => {
-        const fromInput = document.getElementById(`${day}_from`);
-        const toInput = document.getElementById(`${day}_to`);
-        const closedCheckbox = document.getElementById(`${day}_closed`);
-
-        if (closedCheckbox && closedCheckbox.checked) {
-            workingHours[day] = { closed: true, name: dayNames[day] };
-        } else if (fromInput && toInput && fromInput.value && toInput.value) {
-            workingHours[day] = {
-                from: fromInput.value,
-                to: toInput.value,
-                closed: false,
-                name: dayNames[day]
-            };
-        }
+        const fromVal = document.getElementById(`${day}_from`)?.value;
+        const toVal = document.getElementById(`${day}_to`)?.value;
+        const closed = document.getElementById(`${day}_closed`)?.checked;
+        if (closed) out[day] = { closed: true };
+        else if (fromVal && toVal) out[day] = { from: fromVal, to: toVal, closed: false };
     });
-
-    return Object.keys(workingHours).length > 0 ? workingHours : null;
+    return Object.keys(out).length ? out : null;
 }

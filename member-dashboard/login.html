@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تسجيل الدخول - عضو</title>
+    <title>تسجيل الدخول - عضو | SAWYAN</title>
     <link
         href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
         rel="stylesheet">
@@ -19,21 +19,29 @@
             <div id="logoContainer" class="logo-section"></div>
 
             <h1>تسجيل الدخول</h1>
-            <p class="subtitle">مرحباً بعودتك!</p>
+            <p class="subtitle">ادخل بكود العضوية أو البريد أو الهاتف</p>
 
             <form id="loginForm" class="auth-form">
                 <div class="form-group">
-                    <label>كود العضوية أو البريد الإلكتروني</label>
+                    <label>كود العضوية أو البريد الإلكتروني أو الهاتف</label>
                     <input type="text" id="identifier" required class="form-control"
-                        placeholder="أدخل كود العضوية أو البريد">
+                        placeholder="مثال: 1 أو email@domain.com">
                 </div>
 
                 <div class="form-group">
                     <label>كلمة المرور</label>
-                    <input type="password" id="password" required class="form-control" value="123456">
+                    <input type="password" id="password" required minlength="8" class="form-control"
+                        placeholder="أدخل كلمة المرور (8 أحرف على الأقل)">
                 </div>
 
-                <button type="submit" class="btn btn-primary btn-block">دخول</button>
+                <button type="submit" id="loginBtn" class="btn btn-primary btn-block">دخول</button>
+
+                <div id="demoQuickLoginBox" style="display:none; margin-top:14px; padding:12px; border-radius:12px; background:#fffbeb; border:1.5px dashed #f59e0b; text-align:center;">
+                    <p style="margin:0 0 8px; font-size:0.84rem; color:#92400e; font-weight:700;">🧪 متاح في الموقع الموازي للتجربة فقط (Schema: sawyan_demo)</p>
+                    <button type="button" id="demoQuickLoginBtn" class="btn btn-outline btn-block" style="border-color:#d97706; color:#92400e; font-weight:800;">
+                        ⚡ دخول تجريبي كقائد الشجرة (#1 — أحمد ساهر)
+                    </button>
+                </div>
 
                 <div class="auth-footer">
                     <p><a href="forgot-password.html" class="forgot-link">نسيت كلمة المرور؟</a></p>
@@ -46,6 +54,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../shared/config/supabase.js"></script>
+    <script src="../shared/api/sawyan-api.js"></script>
     <script src="../shared/components/logo.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -53,53 +62,48 @@
                 document.getElementById('logoContainer').innerHTML = window.SAWYAN.Logo.full();
             }
 
-            document.getElementById('loginForm').addEventListener('submit', async function (e) {
-                e.preventDefault();
+            if (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.isDemoMode()) {
+                const demoBox = document.getElementById('demoQuickLoginBox');
+                const demoBtn = document.getElementById('demoQuickLoginBtn');
+                if (demoBox) demoBox.style.display = 'block';
+                if (demoBtn) {
+                    demoBtn.addEventListener('click', async function () {
+                        await performLogin('1', 'Demo@Sawyan2026');
+                    });
+                }
+            }
 
-                const identifier = document.getElementById('identifier').value;
-                const password = document.getElementById('password').value;
-
+            async function performLogin(identifier, password) {
+                const btn = document.getElementById('loginBtn');
+                if (btn) {
+                    btn.disabled = true;
+                    btn.textContent = 'جاري التحقق...';
+                }
                 try {
-                    let query = window.SAWYAN.supabase
-                        .from('members')
-                        .select('*');
-
-                    // البحث بكود العضوية أو البريد
-                    if (identifier.includes('@')) {
-                        query = query.eq('email', identifier);
-                    } else {
-                        query = query.eq('member_code', identifier);
+                    for (let i = 0; i < 15 && (!window.SAWYAN || !window.SAWYAN.supabase); i++) {
+                        await new Promise(r => setTimeout(r, 100));
                     }
-
-                    const { data: member, error: memberError } = await query.single();
-
-                    if (memberError || !member) {
-                        alert('كود العضوية أو البريد غير صحيح');
-                        return;
+                    const res = await window.SAWYAN.API.authenticateMemberLogin(identifier, password);
+                    if (!res || !res.success || !res.member) {
+                        throw new Error('بيانات الدخول غير صحيحة');
                     }
-
-                    // التحقق من كلمة المرور
-                    if (member.password_hash !== password) {
-                        alert('كلمة المرور غير صحيحة');
-                        return;
-                    }
-
-                    // التحقق من حالة الحساب
-                    if (!member.is_active) {
-                        alert('الحساب غير مفعل. تواصل مع الدعم.');
-                        return;
-                    }
-
-                    // حفظ بيانات العضو في localStorage
-                    localStorage.setItem('sawyan_member', JSON.stringify(member));
-                    localStorage.setItem('sawyan_member_id', member.id);
-
-                    // الانتقال للوحة التحكم
+                    window.SAWYAN.API.saveMemberSession(res.member, res.session_token);
                     window.location.href = 'dashboard.html';
                 } catch (error) {
-                    console.error('Login error:', error);
-                    alert('خطأ: ' + error.message);
+                    alert('❌ تعذر الدخول: ' + error.message);
+                } finally {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.textContent = 'دخول';
+                    }
                 }
+            }
+
+            document.getElementById('loginForm').addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const identifier = document.getElementById('identifier').value.trim();
+                const password = document.getElementById('password').value;
+                await performLogin(identifier, password);
             });
         });
     </script>

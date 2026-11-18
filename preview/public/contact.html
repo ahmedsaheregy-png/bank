@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تواصل معنا - SAWYAN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/preview.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            min-height: 100vh;
+        }
+
+        .page-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 120px 20px 60px;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .page-header h1 {
+            font-size: 2.5rem;
+            color: #0f172a;
+            margin-bottom: 1rem;
+        }
+
+        .page-header p {
+            color: #64748b;
+            font-size: 1.1rem;
+        }
+
+        .contact-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .contact-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .contact-info {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+        }
+
+        .contact-info h2 {
+            color: #0f172a;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .contact-item:last-child {
+            border-bottom: none;
+        }
+
+        .contact-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .contact-details h3 {
+            color: #0f172a;
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .contact-details p {
+            color: #64748b;
+            margin: 0;
+        }
+
+        .contact-details a {
+            color: #10b981;
+            text-decoration: none;
+        }
+
+        .contact-details a:hover {
+            color: #059669;
+        }
+
+        .contact-form-card {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+        }
+
+        .contact-form-card h2 {
+            color: #0f172a;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            color: #475569;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-family: 'Tajawal', sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        textarea.form-control {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            font-family: 'Tajawal', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+        }
+
+        .social-links {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .social-link {
+            width: 45px;
+            height: 45px;
+            background: #f1f5f9;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .social-link:hover {
+            background: #10b981;
+            transform: translateY(-3px);
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #10b981;
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 2rem;
+        }
+
+        .back-link:hover {
+            color: #059669;
+        }
+
+        .success-message {
+            display: none;
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            color: #065f46;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="preview-nav" id="navbar">
+        <div class="container">
+            <div class="nav-content">
+                <a href="../index.html" class="nav-logo">
+                    <span>SAWYAN</span>
+                </a>
+                <ul class="nav-links">
+                    <li><a href="../index.html">الرئيسية</a></li>
+                    <li><a href="merchants.html">التجار</a></li>
+                    <li><a href="verify.html">التحقق من الفاتورة</a></li>
+                    <li><a href="../member-demo/index.html">جرّب كعضو</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="page-container">
+        <div class="page-header">
+            <h1>📬 تواصل معنا</h1>
+            <p>نحن هنا للمساعدة! تواصل معنا بأي طريقة تناسبك</p>
+        </div>
+
+        <div class="contact-grid">
+            <div class="contact-info">
+                <h2>معلومات التواصل</h2>
+
+                <div class="contact-item">
+                    <div class="contact-icon">📧</div>
+                    <div class="contact-details">
+                        <h3>البريد الإلكتروني</h3>
+                        <p><a href="mailto:support@sawyan.global">support@sawyan.global</a></p>
+                    </div>
+                </div>
+
+                <div class="contact-item">
+                    <div class="contact-icon">📱</div>
+                    <div class="contact-details">
+                        <h3>واتساب</h3>
+                        <p><a href="https://wa.me/201000000000">+20 10 0000 0000</a></p>
+                    </div>
+                </div>
+
+                <div class="contact-item">
+                    <div class="contact-icon">⏰</div>
+                    <div class="contact-details">
+                        <h3>ساعات العمل</h3>
+                        <p>السبت - الخميس: 9 ص - 6 م</p>
+                    </div>
+                </div>
+
+                <div class="contact-item">
+                    <div class="contact-icon">📍</div>
+                    <div class="contact-details">
+                        <h3>النطاق</h3>
+                        <p>منصة عالمية — دعم متعدد الدول</p>
+                    </div>
+                </div>
+
+                <div class="social-links">
+                    <a href="#" class="social-link" title="Twitter">🐦</a>
+                    <a href="#" class="social-link" title="Instagram">📷</a>
+                    <a href="#" class="social-link" title="LinkedIn">💼</a>
+                    <a href="#" class="social-link" title="YouTube">▶️</a>
+                </div>
+            </div>
+
+            <div class="contact-form-card">
+                <h2>أرسل لنا رسالة</h2>
+
+                <div id="successMessage" class="success-message">
+                    ✅ تم إرسال رسالتك بنجاح! سنتواصل معك قريباً.
+                </div>
+
+                <form id="contactForm">
+                    <div class="form-group">
+                        <label>الاسم الكامل</label>
+                        <input type="text" class="form-control" id="name" required placeholder="أدخل اسمك">
+                    </div>
+
+                    <div class="form-group">
+                        <label>البريد الإلكتروني</label>
+                        <input type="email" class="form-control" id="email" required placeholder="example@email.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label>الموضوع</label>
+                        <select class="form-control" id="subject" required>
+                            <option value="">اختر الموضوع</option>
+                            <option value="general">استفسار عام</option>
+                            <option value="membership">العضوية</option>
+                            <option value="merchant">التجار</option>
+                            <option value="technical">دعم فني</option>
+                            <option value="complaint">شكوى</option>
+                            <option value="suggestion">اقتراح</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>الرسالة</label>
+                        <textarea class="form-control" id="message" required
+                            placeholder="اكتب رسالتك هنا..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn-submit">إرسال الرسالة</button>
+                </form>
+
+                <a href="../index.html" class="back-link">← العودة للرئيسية</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="../shared/config/supabase.js"></script>
+    <script src="../shared/api/sawyan-api.js"></script>
+    <script>
+        document.getElementById('contactForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            // Show success message
+            document.getElementById('successMessage').classList.add('show');
+            this.style.display = 'none';
+
+            // In production, you would send to a backend
+            console.log('Form submitted:', {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                subject: document.getElementById('subject').value,
+                message: document.getElementById('message').value
+            });
+        });
+    </script>
+</body>
+
+</html>

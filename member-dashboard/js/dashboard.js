@@ -1,2422 +1,1276 @@
-// لوحة العضو - مكتملة بكل الميزات
-let currentUser = null;
-let memberData = null;
+/**
+ * ============================================================================
+ * SAWYAN ECOSYSTEM — V3.0 MEMBER DASHBOARD (11 SCREENS + 60FPS VERTICAL TREE)
+ * All financial state & tree analytics originate strictly from PostgreSQL RPCs (D21)
+ * Enforces:
+ *   - D10 Schema-Namespaced Sessions (No / vs /preview/ Collision)
+ *   - Ch. 6.2 #3 Local Currency on Screens 1,2,3,6 & 3-Way USD/Local Reconciliation on Screen 5
+ *   - D24 No P2P + W07 72h Payout Cooldown + D7 KYC Withdrawal
+ *   - D26 2Me-11Me Phone Masking + Aggregated Reserve Team + Non-Crossing Tree Order
+ *   - S10 Price-Gouging Radar Reports + D6 Tri-Party Disputes + GPS Haversine Radar
+ * ============================================================================
+ */
+
+let currentMember = null;
+let memberBundle = null;
+let activeLensCountry = null;
+let liveCatalog = [];
+let radarCatalogOverride = null;
+let merchantFilterState = { q: '', country: 'ALL', category: 'all' };
+
+function esc(val) {
+    return String(val ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function fmtUsd(v) {
+    return `$${Number(v || 0).toFixed(2)}`;
+}
+
+function getMemberFxContext() {
+    const p = (memberBundle && memberBundle.profile) || currentMember || {};
+    const fx = Number(p.fx_rate_to_usd || 1) > 0 ? Number(p.fx_rate_to_usd || 1) : 1;
+    const code = p.currency_code || 'USD';
+    return { fx, code };
+}
+
+function fmtLocalFromUsd(usdVal) {
+    const { fx, code } = getMemberFxContext();
+    const localAmt = Number(usdVal || 0) * fx;
+    return `${localAmt.toLocaleString('ar-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${code}`;
+}
+
+async function waitForApiReady() {
+    for (let i = 0; i < 20; i++) {
+        if (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.supabase) return true;
+        await new Promise(r => setTimeout(r, 100));
+    }
+    return Boolean(window.SAWYAN && window.SAWYAN.API);
+}
 
 document.addEventListener('DOMContentLoaded', async function () {
     if (window.SAWYAN && window.SAWYAN.Logo) {
-        document.getElementById('logoContainer').innerHTML = window.SAWYAN.Logo.icon();
+        const logoBox = document.getElementById('logoContainer');
+        if (logoBox) logoBox.innerHTML = window.SAWYAN.Logo.icon();
     }
 
-    await checkAuth();
-    await loadStats();
-    await generateQRCode();
-    await loadRecentTransactions();
+    await waitForApiReady();
+    const ok = await ensureAuthenticatedSession();
+    if (!ok) return;
 
-    // تفعيل القائمة الجانبية
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.addEventListener('click', handleNavigation);
-    });
-
-    // تفعيل Bottom Navigation للموبايل
-    document.querySelectorAll('.bottom-nav-item').forEach(item => {
-        item.addEventListener('click', handleBottomNav);
-    });
+    wireNavigationHandlers();
+    await refreshDashboardBundle(null);
+    await loadPublicMerchantsCatalogSafe();
 });
 
-async function checkAuth() {
-    // التحقق من localStorage
-    const savedMember = localStorage.getItem('sawyan_member');
-    if (!savedMember) {
+async function ensureAuthenticatedSession() {
+    let saved = (window.SAWYAN && window.SAWYAN.API) ? window.SAWYAN.API.getSavedMember() : null;
+
+    if (!saved || !saved.id || saved.member_code === 0) {
         window.location.href = 'login.html';
-        return;
+        return false;
     }
-
-    try {
-        memberData = JSON.parse(savedMember);
-        currentUser = { id: memberData.id };
-
-        // تحديث واجهة المستخدم
-        document.getElementById('userName').textContent = memberData.full_name || 'عضو';
-        document.getElementById('memberCode').textContent = 'كود العضوية: ' + memberData.member_code;
-    } catch (error) {
-        console.error('Auth error:', error);
-        localStorage.removeItem('sawyan_member');
-        window.location.href = 'login.html';
-    }
+    currentMember = saved;
+    const nameEl = document.getElementById('userName');
+    const codeEl = document.getElementById('memberCode');
+    if (nameEl) nameEl.textContent = saved.full_name || 'عضو';
+    if (codeEl) codeEl.textContent = `كود العضوية: #${saved.member_code}`;
+    return true;
 }
 
-async function loadStats() {
+async function refreshDashboardBundle(lensCountry = activeLensCountry) {
+    activeLensCountry = lensCountry || null;
     try {
-        // رصيد المحفظة
-        const { data: wallet } = await window.SAWYAN.supabase
-            .from('wallets')
-            .select('balance, pending_balance')
-            .eq('member_id', currentUser.id)
-            .single();
+        memberBundle = await window.SAWYAN.API.getMemberDashboardBundle({
+            memberId: currentMember.id,
+            lensCountryCode: activeLensCountry
+        });
+        window.__memberBundleCache = memberBundle;
 
-        if (wallet) {
-            document.getElementById('walletBalance').textContent = wallet.balance.toFixed(2) + ' ج.م';
+        if (memberBundle.profile) {
+            currentMember = { ...currentMember, ...memberBundle.profile };
+            window.SAWYAN.API.saveMemberSession(currentMember, null);
+            const nameEl = document.getElementById('userName');
+            const codeEl = document.getElementById('memberCode');
+            if (nameEl) nameEl.textContent = memberBundle.profile.full_name || 'عضو';
+            if (codeEl) codeEl.textContent = `كود العضوية: #${memberBundle.profile.member_code} • ${memberBundle.profile.country_code}`;
         }
 
-        // إجمالي العمليات
-        const { count: transCount } = await window.SAWYAN.supabase
-            .from('transactions')
-            .select('*', { count: 'exact', head: true })
-            .eq('member_id', currentUser.id);
+        if (window.SAWYAN && window.SAWYAN.Notifications && Array.isArray(memberBundle.notifications)) {
+            window.SAWYAN.Notifications.hydrateFromBundle(memberBundle.notifications);
+        }
 
-        document.getElementById('totalTransactions').textContent = transCount || 0;
-
-        // حجم الفريق
-        const { count: teamCount } = await window.SAWYAN.supabase
-            .from('members')
-            .select('*', { count: 'exact', head: true })
-            .eq('sponsor_id', currentUser.id);
-
-        document.getElementById('teamSize').textContent = teamCount || 0;
-
-    } catch (error) {
-        console.error('Error:', error);
+        renderHomePage();
+        renderActiveTabIfOpen();
+    } catch (err) {
+        console.error('Bundle load error:', err);
+        if (String(err.message || '').includes('UNAUTHORIZED_MEMBER_SESSION')) {
+            window.SAWYAN.API.clearMemberSession();
+            window.location.href = 'login.html';
+        }
     }
 }
 
-async function loadRecentTransactions() {
+async function loadPublicMerchantsCatalogSafe() {
     try {
-        const { data: transactions } = await window.SAWYAN.supabase
-            .from('transactions')
-            .select(`
-                *,
-                merchants(business_name)
-            `)
-            .eq('member_id', currentUser.id)
-            .order('transaction_date', { ascending: false })
-            .limit(5);
-
-        const container = document.getElementById('recentTransactionsList');
-
-        if (!transactions || transactions.length === 0) {
-            container.innerHTML = '<p class="empty-state">لا توجد عمليات بعد</p>';
-            return;
-        }
-
-        container.innerHTML = transactions.map(t => `
-            <div class="transaction-item">
-                <div class="transaction-info">
-                    <div class="transaction-merchant">${t.merchants?.business_name || 'تاجر'}</div>
-                    <div class="transaction-date">${new Date(t.transaction_date).toLocaleDateString('ar-EG')}</div>
-                </div>
-                <div class="transaction-amount">${parseFloat(t.total_amount).toFixed(2)} ج.م</div>
-            </div>
-        `).join('');
-
-    } catch (error) {
-        console.error('Error:', error);
+        const rows = await window.SAWYAN.API.getPublicMerchantsCatalog({});
+        liveCatalog = Array.isArray(rows) ? rows : [];
+    } catch (err) {
+        console.warn('Catalog load warning:', err.message);
+        liveCatalog = [];
     }
 }
 
-async function generateQRCode() {
-    try {
-        if (memberData && window.QRCode) {
-            const qrContainer = document.getElementById('qrCode');
-            qrContainer.innerHTML = '';
-            new QRCode(qrContainer, {
-                text: memberData.member_code,
-                width: 200,
-                height: 200,
-                colorDark: '#10B981',
-                colorLight: '#ffffff'
-            });
-        }
-    } catch (error) {
-        console.error('Error:', error);
-    }
-}
-
-function handleNavigation(e) {
-    e.preventDefault();
-    const page = this.dataset.page;
-
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    this.classList.add('active');
-
-    // إغلاق الـ Sidebar على الموبايل بعد الضغط
-    if (window.innerWidth <= 768) {
-        document.querySelector('.sidebar').classList.remove('open');
-    }
-
-    document.querySelectorAll('.page').forEach(p => {
-        p.classList.remove('active');
-    });
-
-    const pageElement = document.getElementById(page + 'Page');
-    if (pageElement) {
-        pageElement.classList.add('active');
-    }
-
-    document.getElementById('pageTitle').textContent = this.querySelector('span:last-child').textContent;
-
-    // تحميل محتوى الصفحة
-    if (page === 'myPending') loadMyPendingRequests();
-    if (page === 'transactions') loadAllTransactions();
-    if (page === 'tree') loadTree();
-    if (page === 'wallet') loadWalletDetails();
-    if (page === 'academy') loadAcademy();
-    if (page === 'merchants') loadNearbyMerchants();
-    if (page === 'favorites') loadFavorites();
-    if (page === 'crm') loadCRM();
-    if (page === 'referrals') loadReferrals();
-    if (page === 'settings') loadSettings();
-}
-
-// دالة التنقل عبر Bottom Navigation
-function handleBottomNav(e) {
-    e.preventDefault();
-    const page = this.dataset.page;
-
-    // تحديث الأيقونة النشطة في Bottom Nav
-    document.querySelectorAll('.bottom-nav-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    this.classList.add('active');
-
-    // تحديث القائمة الجانبية أيضاً (للتزامن)
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-        if (item.dataset.page === page) {
-            item.classList.add('active');
-        }
-    });
-
-    // تغيير الصفحة
-    document.querySelectorAll('.page').forEach(p => {
-        p.classList.remove('active');
-    });
-
-    const pageElement = document.getElementById(page + 'Page');
-    if (pageElement) {
-        pageElement.classList.add('active');
-    }
-
-    // تحديث العنوان
-    const pageNames = {
-        'home': 'لوحة التحكم',
-        'merchants': 'التجار',
-        'wallet': 'المحفظة',
-        'settings': 'الإعدادات'
-    };
-    document.getElementById('pageTitle').textContent = pageNames[page] || 'لوحة التحكم';
-
-    // تحميل محتوى الصفحة
-    if (page === 'wallet') loadWalletDetails();
-    if (page === 'merchants') loadNearbyMerchants();
-    if (page === 'settings') loadSettings();
-}
-
-// ===== قائمة المزيد (More Menu) =====
-function toggleMoreMenu(e) {
-    e.preventDefault();
-    const menu = document.getElementById('moreMenu');
-    menu.classList.toggle('open');
-
-    // إظهار/إخفاء التراكب
-    let overlay = document.querySelector('.more-menu-overlay');
+// ---------------------------------------------------------------------------
+// Clean In-App Action Modal (Replaces raw browser window.prompt)
+// ---------------------------------------------------------------------------
+function openMemberModal(titleText, bodyHtml, onSubmit) {
+    let overlay = document.getElementById('sawyanMemberModalOverlay');
     if (!overlay) {
         overlay = document.createElement('div');
-        overlay.className = 'more-menu-overlay';
-        overlay.onclick = closeMoreMenu;
+        overlay.id = 'sawyanMemberModalOverlay';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.62);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10000;';
         document.body.appendChild(overlay);
     }
-    overlay.classList.toggle('open');
+    overlay.style.display = 'flex';
+    overlay.innerHTML = `
+        <div style="background:#ffffff;border-radius:18px;max-width:480px;width:100%;padding:22px;box-shadow:0 20px 50px rgba(0,0,0,0.28);direction:rtl;font-family:Tajawal,sans-serif;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                <h3 style="margin:0;color:#0f172a;font-size:1.1rem;">${titleText}</h3>
+                <button type="button" id="sawyanModalCloseX" style="border:none;background:#f1f5f9;border-radius:8px;width:32px;height:32px;cursor:pointer;font-weight:800;">✕</button>
+            </div>
+            <form id="sawyanMemberModalForm" style="display:grid;gap:12px;">
+                ${bodyHtml}
+                <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">
+                    <button type="button" id="sawyanModalCancelBtn" class="btn btn-outline btn-sm">إلغاء</button>
+                    <button type="submit" id="sawyanModalSubmitBtn" class="btn btn-primary btn-sm">تأكيد وإرسال</button>
+                </div>
+            </form>
+        </div>
+    `;
+    const close = () => { overlay.style.display = 'none'; };
+    document.getElementById('sawyanModalCloseX').onclick = close;
+    document.getElementById('sawyanModalCancelBtn').onclick = close;
+    overlay.onclick = (e) => { if (e.target === overlay) close(); };
+
+    const form = document.getElementById('sawyanMemberModalForm');
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('sawyanModalSubmitBtn');
+        btn.disabled = true;
+        btn.textContent = '⏳ جاري الإرسال...';
+        try {
+            await onSubmit(form, close);
+        } catch (err) {
+            alert('❌ ' + err.message);
+            btn.disabled = false;
+            btn.textContent = 'تأكيد وإرسال';
+        }
+    };
 }
 
-function closeMoreMenu() {
-    document.getElementById('moreMenu').classList.remove('open');
-    const overlay = document.querySelector('.more-menu-overlay');
-    if (overlay) overlay.classList.remove('open');
-}
-
-function goToPage(pageName) {
-    closeMoreMenu();
-
-    // تحديث الصفحة
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    const pageElement = document.getElementById(pageName + 'Page');
-    if (pageElement) pageElement.classList.add('active');
-
-    // تحديث الأيقونات
+function wireNavigationHandlers() {
     document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-        if (item.dataset.page === pageName) item.classList.add('active');
+        item.addEventListener('click', function (e) {
+            e.preventDefault();
+            goToPage(this.dataset.page);
+        });
     });
     document.querySelectorAll('.bottom-nav-item').forEach(item => {
-        item.classList.remove('active');
+        item.addEventListener('click', function (e) {
+            const p = this.dataset.page;
+            if (p === 'more') return;
+            e.preventDefault();
+            goToPage(p);
+        });
+    });
+}
+
+function goToPage(page) {
+    if (!page) return;
+    closeMoreMenu();
+
+    document.querySelectorAll('.nav-item, .bottom-nav-item').forEach(el => {
+        el.classList.toggle('active', el.dataset.page === page);
+    });
+    document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+    const targetPage = document.getElementById(page + 'Page');
+    if (targetPage) targetPage.classList.add('active');
+
+    const titleMap = {
+        home: 'لوحة التحكم الرئيسية',
+        myPending: 'طلباتي المعلقة وطابور FIFO',
+        transactions: 'العمليات المكتملة والمراجعة',
+        tree: 'شجرتي الهيكلية وعدسات الدول',
+        wallet: 'المحفظة والسحوبات الموثقة',
+        academy: 'أكاديمية سويا التدريبية',
+        merchants: 'التجار المتاحون حولك',
+        favorites: 'متاجري المفضلة',
+        crm: 'دفتر المعارف الميداني (Mini CRM)',
+        referrals: 'رابط الإحالة والدعوات',
+        settings: 'الملف الشخصي والأمان'
+    };
+    const titleEl = document.getElementById('pageTitle');
+    if (titleEl) titleEl.textContent = titleMap[page] || 'لوحة العضو';
+
+    const loaders = {
+        home: renderHomePage,
+        myPending: loadMyPendingRequests,
+        transactions: loadAllTransactions,
+        tree: loadTree,
+        wallet: loadWalletDetails,
+        academy: loadAcademy,
+        merchants: loadNearbyMerchants,
+        favorites: loadFavorites,
+        crm: loadCRM,
+        referrals: loadReferrals,
+        settings: loadSettings
+    };
+    if (loaders[page]) loaders[page]();
+}
+
+function renderActiveTabIfOpen() {
+    const active = document.querySelector('.page.active');
+    if (!active) return;
+    const id = active.id.replace(/Page$/, '');
+    if (id !== 'home') {
+        const activeNav = document.querySelector(`.nav-item[data-page="${id}"]`);
+        if (activeNav) goToPage(id);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Screen 1: Home (Local Currency Primary per Ch. 6.2 #3 + Static Barcode)
+// ---------------------------------------------------------------------------
+function renderHomePage() {
+    if (!memberBundle) return;
+    const w = memberBundle.wallet || {};
+    const txs = memberBundle.transactions || [];
+    const tree = memberBundle.tree_analytics || {};
+    const boxes = memberBundle.target_boxes || [];
+    const profile = memberBundle.profile || {};
+
+    const balEl = document.getElementById('walletBalance');
+    const txCntEl = document.getElementById('totalTransactions');
+    const teamEl = document.getElementById('teamSize');
+    if (balEl) balEl.textContent = fmtLocalFromUsd(w.balance_usd);
+    if (txCntEl) txCntEl.textContent = txs.length;
+    if (teamEl) teamEl.textContent = Math.max(0, (tree.nodes ? tree.nodes.length - 1 : 0));
+
+    // صندوق الهدف الشهري للعضو بالعملة المحلية لدولة الإقامة (Ch. 6.2 #3)
+    let boxCard = document.getElementById('memberTargetBoxSummary');
+    if (!boxCard) {
+        boxCard = document.createElement('div');
+        boxCard.id = 'memberTargetBoxSummary';
+        const statsGrid = document.querySelector('#homePage .stats-grid');
+        if (statsGrid && statsGrid.parentNode) {
+            statsGrid.parentNode.insertBefore(boxCard, statsGrid.nextSibling);
+        }
+    }
+    const homeBox = boxes.find(b => b.country_code === profile.country_code && b.period_ym === memberBundle.period_ym) || boxes[0];
+    if (homeBox) {
+        const net = Number(homeBox.net_accumulated_usd || 0);
+        const req = Number(homeBox.target_required_usd || 24.75);
+        const pct = Math.max(0, Math.min(100, Math.round((net / req) * 100)));
+        boxCard.innerHTML = `
+            <div style="background:#ffffff;border:1.5px solid ${homeBox.is_qualified ? '#10b981' : '#f59e0b'};border-radius:16px;padding:18px;margin:16px 0;box-shadow:0 4px 12px rgba(15,23,42,0.05);">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+                    <strong style="font-size:1.05rem;color:#0f172a;">🎯 صندوق الهدف الشهري (${esc(homeBox.period_ym)} — ${esc(homeBox.country_code)})</strong>
+                    <span style="padding:4px 10px;border-radius:999px;font-size:0.82rem;font-weight:800;background:${homeBox.is_qualified ? '#d1fae5' : '#fef3c7'};color:${homeBox.is_qualified ? '#065f46' : '#92400e'};">
+                        ${homeBox.is_qualified ? '✅ مؤهل للتوزيع' : `⏳ قيد الاستكمال (${pct}%)`}
+                    </span>
+                </div>
+                <div style="height:10px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-bottom:10px;">
+                    <div style="width:${pct}%;height:100%;background:${homeBox.is_qualified ? '#10b981' : '#f59e0b'};"></div>
+                </div>
+                <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:0.86rem;color:#334155;">
+                    <span>المحقق الصافي: <strong>${esc(fmtLocalFromUsd(net))} / ${esc(fmtLocalFromUsd(req))}</strong></span>
+                    <span>المرحّل (Carry On): <strong>${esc(fmtLocalFromUsd(homeBox.carry_on_in_usd))}</strong></span>
+                    <span>مشتريات الشهر: <strong>${esc(fmtLocalFromUsd(homeBox.current_month_purchases_usd))}</strong></span>
+                    ${Number(homeBox.negative_clawback_usd) < 0 ? `<span style="color:#dc2626;">مقاصة مرتجع بصندوق الهدف: <strong>${esc(fmtLocalFromUsd(homeBox.negative_clawback_usd))}</strong></span>` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    // كود QR الثابت للهوية عند الكاشير (البند المجمّد #1: بدون TOTP 60s)
+    const qrContainer = document.getElementById('qrCode');
+    if (qrContainer && window.QRCode) {
+        qrContainer.innerHTML = '';
+        const barcodePayload = (window.SAWYAN && window.SAWYAN.PaymentService)
+            ? window.SAWYAN.PaymentService.generateOfflineQR(profile.id, profile.member_code)
+            : `SAWYAN:MEMBER:${profile.member_code}`;
+        new QRCode(qrContainer, {
+            text: barcodePayload,
+            width: 180,
+            height: 180,
+            colorDark: '#047857',
+            colorLight: '#ffffff'
+        });
+    }
+
+    // آخر 5 معاملات بالعملة المحلية
+    const list = document.getElementById('recentTransactionsList');
+    if (list) {
+        if (!txs.length) {
+            list.innerHTML = '<p class="empty-state">لا توجد عمليات مسجلة حتى الآن.</p>';
+        } else {
+            list.innerHTML = txs.slice(0, 5).map(t => `
+                <div class="transaction-item">
+                    <div class="transaction-info">
+                        <div class="transaction-merchant">${esc(t.merchant_name)} — <small>${esc(t.sw_short_code)}</small></div>
+                        <div class="transaction-date">${new Date(t.created_at).toLocaleDateString('ar-EG')} • ${esc(t.status)}</div>
+                    </div>
+                    <div class="transaction-amount">${Number(t.total_amount).toFixed(2)} ${esc(t.currency_code)}</div>
+                </div>
+            `).join('');
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Screen 2: My Pending & Awaiting Top-Up (Path B + FIFO)
+// ---------------------------------------------------------------------------
+function loadMyPendingRequests() {
+    const page = document.getElementById('myPendingPage');
+    if (!page || !memberBundle) return;
+    const pending = (memberBundle.transactions || []).filter(t => t.status === 'pending' || t.status === 'awaiting_merchant_topup');
+
+    page.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+            <h2>⏳ طلباتي المعلقة وطابور الشحن (FIFO)</h2>
+            <button type="button" class="btn btn-primary btn-sm" onclick="goToPage('merchants')">+ طلب توثيق فاتورة جديدة</button>
+        </div>
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:12px;margin-bottom:16px;font-size:0.86rem;color:#1e3a8a;">
+            ℹ️ الحد الأقصى للطلبات المعلقة لدى نفس التاجر هو <strong>طلبان (2)</strong>؛ وعند نفاد رصيد التاجر يدخل الطلب في طابور الشحن بالترتيب (<code>FIFO</code>).
+        </div>
+        ${pending.length === 0 ? '<p class="empty-state">لا توجد فواتير معلقة حالياً.</p>' : `
+            <div style="display:grid;gap:12px;">
+                ${pending.map(t => `
+                    <div style="background:#fff;border:1.5px solid ${t.status === 'awaiting_merchant_topup' ? '#ef4444' : '#f59e0b'};border-radius:14px;padding:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                        <div>
+                            <strong style="font-size:1rem;">${esc(t.merchant_name)}</strong> (${esc(t.branch_name)})
+                            <div style="font-size:0.84rem;color:#64748b;">الكود: <code>${esc(t.sw_short_code)}</code> • ${new Date(t.created_at).toLocaleString('ar-EG')}</div>
+                        </div>
+                        <div style="text-align:left;">
+                            <div style="font-weight:900;font-size:1.05rem;">${Number(t.total_amount).toFixed(2)} ${esc(t.currency_code)}</div>
+                            <span style="font-size:0.78rem;font-weight:800;padding:2px 8px;border-radius:999px;background:#fef3c7;color:#92400e;">
+                                ${t.status === 'awaiting_merchant_topup' ? '⏸️ بانتظار شحن التاجر (FIFO)' : '⏳ بانتظار موافقة التاجر'}
+                            </span>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `}
+    `;
+}
+
+// ---------------------------------------------------------------------------
+// Screen 3: Completed & Reversed Transactions + Disputes (D6) + S10 Price Gouging
+// ---------------------------------------------------------------------------
+function loadAllTransactions() {
+    const page = document.getElementById('transactionsPage');
+    if (!page || !memberBundle) return;
+    const txs = memberBundle.transactions || [];
+    const disputes = memberBundle.disputes || [];
+    const gouging = memberBundle.price_gouging_reports || [];
+
+    page.innerHTML = `
+        <h2>💳 سجل العمليات والفواتير (${txs.length})</h2>
+        ${txs.length === 0 ? '<p class="empty-state">لا توجد معاملات مسجلة حتى الآن.</p>' : `
+            <div style="display:grid;gap:12px;margin-top:14px;">
+                ${txs.map(t => `
+                    <div style="background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:16px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                            <div>
+                                <strong>${esc(t.merchant_name)}</strong> — <small>${esc(t.branch_name)}</small>
+                                <div style="font-size:0.82rem;color:#64748b;"><code>${esc(t.sw_short_code)}</code> • ${new Date(t.created_at).toLocaleString('ar-EG')}</div>
+                            </div>
+                            <div style="text-align:left;">
+                                <div style="font-weight:800;">${Number(t.total_amount).toFixed(2)} ${esc(t.currency_code)}</div>
+                                <div style="font-size:0.8rem;color:#047857;">عائد خطة الدخل المضاف: ${Number(t.income_plan_share_local || 0).toFixed(2)} ${esc(t.currency_code)}</div>
+                            </div>
+                        </div>
+                        <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                            <span style="font-size:0.8rem;font-weight:800;padding:3px 10px;border-radius:999px;background:${t.status === 'completed' ? '#d1fae5' : '#fee2e2'};color:${t.status === 'completed' ? '#065f46' : '#991b1b'};">${esc(t.status)}</span>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                ${t.status === 'completed' ? `<button type="button" class="btn btn-outline btn-sm" onclick="openReviewModal('${t.id}', '${esc(t.merchant_name)}')">⭐ تقييم</button>` : ''}
+                                <button type="button" class="btn btn-outline btn-sm" onclick="openDisputeModal('${t.id}', '${esc(t.sw_short_code)}')">⚠️ نزاع ثلاثي (48h)</button>
+                                <button type="button" class="btn btn-outline btn-sm" style="border-color:#dc2626;color:#dc2626;" onclick="openPriceGougingModal('${t.id}', '${esc(t.merchant_name)}', '${Number(t.total_amount).toFixed(2)}')">🚨 بلاغ رفع سعر (S10)</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `}
+        ${disputes.length > 0 ? `
+            <h3 style="margin-top:24px;">⚠️ تذاكر النزاعات المفتوحة (${disputes.length})</h3>
+            <div style="display:grid;gap:8px;margin-top:8px;">
+                ${disputes.map(d => `
+                    <div style="background:#fff7ed;border:1px solid #fdba74;border-radius:10px;padding:12px;">
+                        <strong>${esc(d.merchant_name)}</strong> — <small>${esc(d.status)}</small>
+                        <div style="font-size:0.85rem;color:#7c2d12;">${esc(d.dispute_reason)}</div>
+                    </div>
+                `).join('')}
+            </div>
+        ` : ''}
+        ${gouging.length > 0 ? `
+            <h3 style="margin-top:20px;">🚨 بلاغات رادار رفع الأسعار S10 (${gouging.length})</h3>
+            <div style="display:grid;gap:8px;margin-top:8px;">
+                ${gouging.map(g => `
+                    <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px;">
+                        <strong>${esc(g.merchant_name)}</strong> — <small>${esc(g.verification_status)}</small>
+                        <div style="font-size:0.84rem;color:#991b1b;">سعر الرف المعلن: ${Number(g.declared_price).toFixed(2)} | المحصّل: ${Number(g.charged_price).toFixed(2)}</div>
+                    </div>
+                `).join('')}
+            </div>
+        ` : ''}
+    `;
+}
+
+function openReviewModal(txId, merchantName) {
+    openMemberModal(`⭐ تقييم تجربة الشراء لدى ${esc(merchantName)}`, `
+        <div>
+            <label style="font-weight:700;font-size:0.88rem;">درجة التقييم (من 1 إلى 5 نجوم)</label>
+            <select name="rating" class="form-control" style="margin-top:4px;">
+                <option value="5" selected>⭐⭐⭐⭐⭐ ممتاز (5)</option>
+                <option value="4">⭐⭐⭐⭐ جيد جداً (4)</option>
+                <option value="3">⭐⭐⭐ متوسط (3)</option>
+                <option value="2">⭐⭐ مقبول (2)</option>
+                <option value="1">⭐ ضعيف (1)</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-weight:700;font-size:0.88rem;">تعليقك (اختياري)</label>
+            <textarea name="comment" rows="3" class="form-control" placeholder="اكتب ملاحظتك حول جودة الخدمة..."></textarea>
+        </div>
+    `, async (form, close) => {
+        const rating = parseInt(form.rating.value, 10) || 5;
+        const comment = form.comment.value.trim() || null;
+        await window.SAWYAN.API.submitMemberReview({ memberId: currentMember.id, transactionId: txId, rating, comment });
+        close();
+        await refreshDashboardBundle();
+    });
+}
+
+function openDisputeModal(txId, shortCode) {
+    openMemberModal(`⚠️ فتح تذكرة نزاع ثلاثي للفاتورة ${esc(shortCode)}`, `
+        <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px;font-size:0.82rem;color:#9a3412;">
+            تُمنح مهلة حل ودي <strong>48 ساعة</strong> للتاجر قبل التصعيد التلقائي لفريق التحكيم (<code>D6</code>).
+        </div>
+        <div>
+            <label style="font-weight:700;font-size:0.88rem;">تفاصيل المشكلة *</label>
+            <textarea name="reason" required rows="3" class="form-control" placeholder="اشرح سبب الاعتراض أو خطأ القيمة..."></textarea>
+        </div>
+    `, async (form, close) => {
+        await window.SAWYAN.API.submitMemberDispute({
+            memberId: currentMember.id,
+            transactionId: txId,
+            reason: form.reason.value.trim()
+        });
+        close();
+        await refreshDashboardBundle();
+    });
+}
+
+function openPriceGougingModal(txId, merchantName, txAmount) {
+    openMemberModal(`🚨 بلاغ رفع سعر تمييزي — ${esc(merchantName)} (S10)`, `
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:10px;font-size:0.82rem;color:#991b1b;">
+            يُحظر على التاجر رفع السعر على عضو SAWYAN مقارنة بالسعر المعلن للجمهور (<code>S10</code>). عند توثيق 3 بلاغات يُطلق النظام إشارة رقابية آلية.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+                <label style="font-weight:700;font-size:0.84rem;">السعر المعلن على الرف *</label>
+                <input type="number" step="0.01" min="0.01" name="declaredPrice" required class="form-control" placeholder="مثال: 100.00">
+            </div>
+            <div>
+                <label style="font-weight:700;font-size:0.84rem;">السعر المحصّل منك *</label>
+                <input type="number" step="0.01" min="0.01" name="chargedPrice" required class="form-control" value="${esc(txAmount)}">
+            </div>
+        </div>
+        <div>
+            <label style="font-weight:700;font-size:0.84rem;">رابط صورة سعر الرف المعلن *</label>
+            <input type="url" name="shelfPhotoUrl" required class="form-control" placeholder="https://...">
+        </div>
+        <div>
+            <label style="font-weight:700;font-size:0.84rem;">رابط صورة الإيصال المدفوع *</label>
+            <input type="url" name="receiptUrl" required class="form-control" placeholder="https://...">
+        </div>
+    `, async (form, close) => {
+        await window.SAWYAN.API.submitPriceGougingReport({
+            memberId: currentMember.id,
+            transactionId: txId,
+            declaredPrice: Number(form.declaredPrice.value),
+            chargedPrice: Number(form.chargedPrice.value),
+            shelfPhotoUrl: form.shelfPhotoUrl.value.trim(),
+            receiptUrl: form.receiptUrl.value.trim()
+        });
+        close();
+        await refreshDashboardBundle();
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Screen 4: 60fps Vertical Binary Tree + Non-Crossing Parent Subtree Order + D26
+// ---------------------------------------------------------------------------
+function loadTree() {
+    const page = document.getElementById('treePage');
+    if (!page || !memberBundle) return;
+
+    const tree = memberBundle.tree_analytics || { nodes: [], commission_team_count: 0, reserve_team_aggregated_count: 0, lens_country_code: 'ALL' };
+    const topology = memberBundle.tree_topology || [];
+    const nodes = tree.nodes || [];
+    const topoMap = new Map(topology.map(t => [Number(t.member_code), t]));
+
+    const lensCountries = [
+        { code: 'ALL', label: '🌍 كل الدول' },
+        { code: 'EG', label: '🇪🇬 مصر' },
+        { code: 'TR', label: '🇹🇷 تركيا' },
+        { code: 'SA', label: '🇸🇦 السعودية' },
+        { code: 'DE', label: '🇩🇪 ألمانيا' },
+        { code: 'US', label: '🇺🇸 أمريكا' }
+    ];
+
+    const colorStyles = {
+        GREEN: { bg: '#ecfdf5', border: '#10b981', badge: '#047857', text: '#064e3b', label: 'مؤهل' },
+        ORANGE: { bg: '#fffbeb', border: '#f59e0b', badge: '#d97706', text: '#78350f', label: 'نصف صندوق' },
+        WHITE: { bg: '#ffffff', border: '#94a3b8', badge: '#64748b', text: '#334155', label: 'بدون شراء' },
+        BLACK: { bg: '#1e293b', border: '#475569', badge: '#334155', text: '#e2e8f0', label: 'خارج العدسة' }
+    };
+
+    const visibleNodes = nodes.filter(n => n.team_bucket !== 'RESERVE_TEAM');
+
+    // ترتيب هرمي غير متقاطع (RTL: اليمين أولاً ثم اليسار تحت كل أب) لمنع تقاطع خطوط SVG
+    const childrenByParent = new Map();
+    for (const n of visibleNodes) {
+        const topo = topoMap.get(Number(n.member_code)) || {};
+        const pCode = topo.parent_member_code;
+        if (pCode !== undefined && pCode !== null) {
+            if (!childrenByParent.has(Number(pCode))) childrenByParent.set(Number(pCode), []);
+            childrenByParent.get(Number(pCode)).push(n);
+        }
+    }
+    childrenByParent.forEach(arr => {
+        arr.sort((a, b) => {
+            const rank = (s) => (s === 'right' ? 0 : s === 'left' ? 1 : 2);
+            const rDiff = rank(a.placement_side) - rank(b.placement_side);
+            return rDiff !== 0 ? rDiff : Number(a.member_code) - Number(b.member_code);
+        });
     });
 
-    // تحديث العنوان
-    const titles = {
-        'myPending': 'طلباتي المعلقة',
-        'transactions': 'العمليات المكتملة',
-        'tree': 'شجرتي',
-        'favorites': 'المفضلة',
-        'academy': 'الأكاديمية',
-        'crm': 'قائمة المعارف',
-        'referrals': 'رابط الإحالة',
-        'settings': 'الإعدادات'
-    };
-    document.getElementById('pageTitle').textContent = titles[pageName] || 'لوحة التحكم';
-
-    // تحميل المحتوى
-    if (pageName === 'myPending') loadMyPendingRequests();
-    if (pageName === 'transactions') loadAllTransactions();
-    if (pageName === 'tree') loadTree();
-    if (pageName === 'favorites') loadFavorites();
-    if (pageName === 'academy') loadAcademy();
-    if (pageName === 'crm') loadCRM();
-    if (pageName === 'referrals') loadReferrals();
-    if (pageName === 'settings') loadSettings();
-}
-
-// ===== صفحة طلباتي المعلقة =====
-async function loadMyPendingRequests() {
-    const page = document.getElementById('myPendingPage');
-    page.innerHTML = '<h2>طلباتي المعلقة</h2><p class="page-description">متابعة حالة طلبات التوثيق الخاصة بك</p><div id="myPendingList"><p>جاري التحميل...</p></div>';
-
-    try {
-        const { data: requests, error } = await window.SAWYAN.supabase
-            .from('transactions')
-            .select('*, merchants(business_name)')
-            .eq('member_id', currentUser.id)
-            .in('status', ['pending', 'rejected'])
-            .order('created_at', { ascending: false });
-
-        console.log('My pending requests:', requests);
-
-        const list = document.getElementById('myPendingList');
-
-        if (error) {
-            list.innerHTML = '<p class="empty-state">حدث خطأ في جلب البيانات</p>';
-            return;
-        }
-
-        if (!requests || requests.length === 0) {
-            list.innerHTML = '<p class="empty-state">لا توجد طلبات معلقة 🎉<br><small>جميع طلباتك تمت معالجتها</small></p>';
-            return;
-        }
-
-        var html = '';
-        for (var i = 0; i < requests.length; i++) {
-            var r = requests[i];
-            var statusClass = r.status === 'pending' ? 'status-pending' : 'status-rejected';
-            var statusText = r.status === 'pending' ? '⏳ في انتظار موافقة التاجر' : '❌ تم الرفض';
-            var statusIcon = r.status === 'pending' ? '🟡' : '🔴';
-
-            html += '<div class="pending-request-card ' + statusClass + '">';
-            html += '<div class="request-status">' + statusIcon + ' ' + statusText + '</div>';
-            html += '<div class="request-details">';
-            html += '<p><strong>التاجر:</strong> ' + (r.merchants ? r.merchants.business_name : '-') + '</p>';
-            html += '<p><strong>المبلغ:</strong> ' + parseFloat(r.total_amount).toFixed(2) + ' ج.م</p>';
-            html += '<p><strong>العمولة المتوقعة:</strong> ' + parseFloat(r.commission_amount).toFixed(2) + ' ج.م</p>';
-            html += '<p><strong>التاريخ:</strong> ' + new Date(r.created_at).toLocaleString('ar-EG') + '</p>';
-            html += '<p><strong>كود العملية:</strong> ' + r.transaction_code + '</p>';
-            html += '</div></div>';
-        }
-        list.innerHTML = html;
-
-    } catch (error) {
-        console.error('Error:', error);
-        document.getElementById('myPendingList').innerHTML = '<p class="empty-state">حدث خطأ</p>';
+    const xOrderMap = new Map();
+    let seqCounter = 0;
+    function assignDfsOrder(code) {
+        if (xOrderMap.has(Number(code))) return;
+        xOrderMap.set(Number(code), seqCounter++);
+        const kids = childrenByParent.get(Number(code)) || [];
+        for (const k of kids) assignDfsOrder(Number(k.member_code));
     }
-}
+    const rootNode = visibleNodes.find(n => String(n.structural_me) === '1Me') || visibleNodes[0];
+    if (rootNode) assignDfsOrder(Number(rootNode.member_code));
 
-// ===== صفحة العمليات المكتملة =====
-async function loadAllTransactions() {
-    const page = document.getElementById('transactionsPage');
-    page.innerHTML = '<h2>العمليات المكتملة</h2><p class="page-description">العمليات التي تمت الموافقة عليها وأُضيفت عمولتها لمحفظتك</p><div id="allTransactionsList"></div>';
-
-    const { data: transactions } = await window.SAWYAN.supabase
-        .from('transactions')
-        .select('*, merchants(business_name)')
-        .eq('member_id', currentUser.id)
-        .eq('status', 'completed')
-        .order('transaction_date', { ascending: false });
-
-    const list = document.getElementById('allTransactionsList');
-    if (!transactions || transactions.length === 0) {
-        list.innerHTML = '<p class="empty-state">لا توجد عمليات مكتملة بعد</p>';
-        return;
+    const byDepth = {};
+    for (const n of visibleNodes) {
+        const d = parseInt(String(n.structural_me || '1').replace(/\D/g, ''), 10) || 1;
+        if (!byDepth[d]) byDepth[d] = [];
+        byDepth[d].push(n);
     }
+    Object.values(byDepth).forEach(levelArr => {
+        levelArr.sort((a, b) => {
+            const oa = xOrderMap.has(Number(a.member_code)) ? xOrderMap.get(Number(a.member_code)) : 999999 + Number(a.member_code);
+            const ob = xOrderMap.has(Number(b.member_code)) ? xOrderMap.get(Number(b.member_code)) : 999999 + Number(b.member_code);
+            return oa - ob;
+        });
+    });
+    const depthKeys = Object.keys(byDepth).map(Number).sort((a, b) => a - b);
 
-    var html = '';
-    for (var i = 0; i < transactions.length; i++) {
-        var t = transactions[i];
-        html += '<div class="transaction-card completed">';
-        html += '<div class="transaction-status">✅ مكتملة</div>';
-        html += '<div><strong>التاجر:</strong> ' + (t.merchants ? t.merchants.business_name : '-') + '</div>';
-        html += '<div><strong>المبلغ:</strong> ' + parseFloat(t.total_amount).toFixed(2) + ' ج.م</div>';
-        html += '<div><strong>العمولة:</strong> ' + parseFloat(t.commission_amount).toFixed(2) + ' ج.م</div>';
-        html += '<div><strong>التاريخ:</strong> ' + new Date(t.transaction_date).toLocaleDateString('ar-EG') + '</div>';
-        html += '</div>';
-    }
-    list.innerHTML = html;
-}
-
-async function loadTree() {
-    const page = document.getElementById('treePage');
-    page.innerHTML = '<h2>شجرتي</h2><div id="treeView"><p>جاري تحميل الشجرة...</p></div>';
-
-    const { data: team } = await window.SAWYAN.supabase
-        .from('members')
-        .select('member_code, full_name, created_at')
-        .eq('sponsor_id', currentUser.id);
-
-    const treeView = document.getElementById('treeView');
-    if (!team || team.length === 0) {
-        treeView.innerHTML = '<p class="empty-state">لا يوجد أعضاء في فريقك بعد</p>';
-        return;
-    }
-
-    treeView.innerHTML = `
-        <div class="tree-stats">
-            <p><strong>إجمالي الفريق:</strong> ${team.length} عضو</p>
+    page.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
+            <div>
+                <h2 style="margin:0;">🌳 شجرتي العمودية الثنائية (S01 = 11 مؤهلاً)</h2>
+                <small style="color:#64748b;">العدسة النشطة: <strong>${esc(tree.lens_country_code || 'ALL')}</strong> • ترتيب شجري غير متقاطع (يمين ← يسار)</small>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                ${lensCountries.map(lc => {
+                    const isAct = (tree.lens_country_code || 'ALL') === lc.code;
+                    return `<button type="button" class="btn btn-sm ${isAct ? 'btn-primary' : 'btn-outline'}" onclick="switchTreeCountryLens('${lc.code === 'ALL' ? '' : lc.code}')">${lc.label}</button>`;
+                }).join('')}
+            </div>
         </div>
-        <div class="team-list">
-            ${team.map(m => `
-                <div class="team-member">
-                    <div><strong>الكود:</strong> ${m.member_code}</div>
-                    <div><strong>الاسم:</strong> ${m.full_name || '-'}</div>
-                    <div><strong>تاريخ الانضمام:</strong> ${new Date(m.created_at).toLocaleDateString('ar-EG')}</div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:16px;">
+            <div style="background:#ecfdf5;border:1.5px solid #10b981;border-radius:14px;padding:14px;">
+                <div style="font-size:0.8rem;color:#065f46;">فريق العمولة النشط (1/11 .. 11/11)</div>
+                <strong style="font-size:1.5rem;color:#047857;">${tree.commission_team_count || 0}</strong>
+            </div>
+            <div style="background:#eff6ff;border:1.5px solid #3b82f6;border-radius:14px;padding:14px;">
+                <div style="font-size:0.8rem;color:#1e40af;">الفريق الرديف (D26 إجمالي مجمّع فقط)</div>
+                <strong style="font-size:1.5rem;color:#1d4ed8;">+${tree.reserve_team_aggregated_count || 0} عضو</strong>
+            </div>
+            <div style="background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:14px;padding:14px;">
+                <div style="font-size:0.8rem;color:#475569;">نطاق الهواتف المصرح به (D26)</div>
+                <strong style="font-size:1rem;color:#0f172a;">أول 10 أجيال (2Me–11Me)</strong>
+            </div>
+        </div>
+
+        <div id="verticalTreeViewport" style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:16px;padding:16px;overflow:auto;max-height:620px;position:relative;">
+            <svg id="treeSvgOverlay" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;"></svg>
+            <div id="treeLevelsContainer" style="position:relative;z-index:1;display:flex;flex-direction:column;gap:24px;min-width:max-content;">
+                ${depthKeys.map(d => `
+                    <div class="tree-gen-row" style="display:flex;align-items:center;gap:10px;justify-content:center;flex-wrap:nowrap;">
+                        <span style="background:#0f172a;color:#fff;font-size:0.72rem;font-weight:800;padding:4px 8px;border-radius:8px;min-width:42px;text-align:center;">${d}Me</span>
+                        ${byDepth[d].map(n => {
+                            const st = colorStyles[n.node_color] || colorStyles.WHITE;
+                            const topo = topoMap.get(Number(n.member_code)) || {};
+                            const waPhone = n.phone_visible && n.phone ? String(n.phone).replace(/[^0-9]/g, '') : '';
+                            return `
+                                <div class="tree-node-card" data-code="${n.member_code}" data-parent="${topo.parent_member_code ?? ''}"
+                                     style="background:${st.bg};border:2px solid ${st.border};color:${st.text};border-radius:12px;padding:8px 10px;min-width:168px;max-width:190px;box-shadow:0 2px 6px rgba(0,0,0,0.06);">
+                                    <div style="display:flex;justify-content:space-between;align-items:center;gap:4px;">
+                                        <strong style="font-size:0.84rem;">#${n.member_code} ${topo.residency_country_code ? `[${esc(topo.residency_country_code)}]` : ''}</strong>
+                                        <span style="background:${st.badge};color:#fff;font-size:0.68rem;padding:1px 6px;border-radius:999px;">
+                                            ${n.stopper_slot ? esc(n.stopper_slot) : st.label}
+                                        </span>
+                                    </div>
+                                    <div style="font-size:0.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;">${esc(n.full_name)}</div>
+                                    <div style="font-size:0.72rem;opacity:0.85;display:flex;justify-content:space-between;margin-top:4px;">
+                                        <span>${esc(n.placement_side)}</span>
+                                        <span>${n.phone_visible && n.phone ? `<a href="https://wa.me/${waPhone}" target="_blank" style="color:inherit;font-weight:800;text-decoration:underline;">💬 ${esc(n.phone)}</a>` : '🔒 مقنّع D26'}</span>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+
+    requestAnimationFrame(drawVerticalTreeConnectors);
+}
+
+function drawVerticalTreeConnectors() {
+    const viewport = document.getElementById('verticalTreeViewport');
+    const svg = document.getElementById('treeSvgOverlay');
+    const container = document.getElementById('treeLevelsContainer');
+    if (!viewport || !svg || !container) return;
+
+    svg.setAttribute('width', container.scrollWidth);
+    svg.setAttribute('height', container.scrollHeight);
+    svg.innerHTML = '';
+
+    const vpRect = container.getBoundingClientRect();
+    const cardMap = new Map();
+    container.querySelectorAll('.tree-node-card').forEach(el => {
+        cardMap.set(el.dataset.code, el);
+    });
+
+    const ns = 'http://www.w3.org/2000/svg';
+    cardMap.forEach((el) => {
+        const parentCode = el.dataset.parent;
+        if (!parentCode || !cardMap.has(parentCode)) return;
+        const pEl = cardMap.get(parentCode);
+        const cr = el.getBoundingClientRect();
+        const pr = pEl.getBoundingClientRect();
+        const x1 = pr.left - vpRect.left + pr.width / 2;
+        const y1 = pr.bottom - vpRect.top;
+        const x2 = cr.left - vpRect.left + cr.width / 2;
+        const y2 = cr.top - vpRect.top;
+        const midY = (y1 + y2) / 2;
+
+        const path = document.createElementNS(ns, 'path');
+        path.setAttribute('d', `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`);
+        path.setAttribute('stroke', '#94a3b8');
+        path.setAttribute('stroke-width', '1.6');
+        path.setAttribute('fill', 'none');
+        svg.appendChild(path);
+    });
+}
+
+async function switchTreeCountryLens(countryCode) {
+    await refreshDashboardBundle(countryCode || null);
+    goToPage('tree');
+}
+
+// ---------------------------------------------------------------------------
+// Screen 5: Wallet & 3-Way USD/Local Reconciliation + 72h Payout Methods + D7 KYC Withdrawal
+// ---------------------------------------------------------------------------
+function loadWalletDetails() {
+    const page = document.getElementById('walletPage');
+    if (!page || !memberBundle) return;
+    const w = memberBundle.wallet || {};
+    const wTxs = memberBundle.wallet_transactions || [];
+    const methods = memberBundle.payment_methods || [];
+    const profile = memberBundle.profile || {};
+
+    const grossNetworkUsd = Number(w.total_earned_usd || 0) + Number(w.s03_suspense_balance_usd || 0);
+    const suspenseUsd = Number(w.s03_suspense_balance_usd || 0);
+    const availableUsd = Number(w.balance_usd || 0);
+
+    page.innerHTML = `
+        <div class="wallet-page">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+                <h2 style="margin:0;">💰 المحفظة والمطابقة الثلاثية (Ch. 6.2 #3)</h2>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button type="button" class="btn btn-outline btn-sm" onclick="openAddPayoutMethodModal()">+ إضافة وسيلة استلام (تهدئة 72h)</button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="openRequestWithdrawalModal()">💸 طلب سحب أرباح موثق</button>
+                </div>
+            </div>
+
+            <div class="wallet-main-card">
+                <div class="balance-info">
+                    <span class="balance-label">الرصيد المتاح للسحب بالعملة المحلية (ومرجعه المحاسبي USD)</span>
+                    <span class="balance-amount">${esc(fmtLocalFromUsd(availableUsd))}</span>
+                    <small style="opacity:0.9;">الرصيد المحاسبي المرجعي: <strong>${fmtUsd(availableUsd)}</strong> • حالة KYC: <strong>${esc(profile.kyc_status || 'unverified')}</strong></small>
+                </div>
+            </div>
+
+            <!-- بطاقة المطابقة الثلاثية USD + العملة المحلية + ستوبر S03 -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:16px 0;">
+                <div style="background:#fff;border:1.5px solid #cbd5e1;border-radius:14px;padding:14px;">
+                    <div style="font-size:0.8rem;color:#475569;">1️⃣ إجمالي عائدات الشبكة المحتسبة</div>
+                    <strong style="font-size:1.15rem;color:#0f172a;display:block;margin-top:4px;">${esc(fmtLocalFromUsd(grossNetworkUsd))}</strong>
+                    <small style="color:#64748b;">مرجع الدفتر: ${fmtUsd(grossNetworkUsd)}</small>
+                </div>
+                <div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:14px;padding:14px;">
+                    <div style="font-size:0.8rem;color:#92400e;">2️⃣ تسوية سقف S03 Pro-Rata (حساب 2303)</div>
+                    <strong style="font-size:1.15rem;color:#b45309;display:block;margin-top:4px;">${esc(fmtLocalFromUsd(suspenseUsd))}</strong>
+                    <small style="color:#92400e;">فائض معلق: ${fmtUsd(suspenseUsd)}</small>
+                </div>
+                <div style="background:#ecfdf5;border:1.5px solid #10b981;border-radius:14px;padding:14px;">
+                    <div style="font-size:0.8rem;color:#065f46;">3️⃣ صافي المحفظة القابل للصرف (حساب 2302)</div>
+                    <strong style="font-size:1.15rem;color:#047857;display:block;margin-top:4px;">${esc(fmtLocalFromUsd(availableUsd))}</strong>
+                    <small style="color:#065f46;">الصافي الدولاري: ${fmtUsd(availableUsd)}</small>
+                </div>
+            </div>
+
+            <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:12px;margin:14px 0;font-size:0.85rem;color:#334155;">
+                🛡️ <strong>ضوابط الأمان المالية (D24 / W07 / D7):</strong> يُحظر تماماً التحويل المباشر بين الأعضاء (<code>No P2P</code>)، وتخضع كل وسيلة استلام مضافة لفترة تهدئة إجبارية <code>72 ساعة</code> مع اشتراط توثيق الهوية <code>KYC = verified</code> قبل السحب.
+            </div>
+
+            <h3 style="margin:18px 0 10px;">🏦 وسائل استلام الأرباح المسجلة (${methods.length})</h3>
+            ${methods.length === 0 ? '<p class="empty-state">لم تقم بإضافة وسيلة استلام بعد. أضف حسابك البنكي أو المحفظة لبدء عداد الـ 72 ساعة.</p>' : `
+                <div style="display:grid;gap:8px;margin-bottom:18px;">
+                    ${methods.map(m => `
+                        <div style="background:#fff;border:1px solid #cbd5e1;border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                            <div>
+                                <strong>${esc(String(m.provider || '').toUpperCase())}</strong> — ${esc(m.account_holder_name)} (<code>****${esc(m.last_four)}</code>)
+                                <div style="font-size:0.78rem;color:#64748b;">تاريخ انتهاء التهدئة: ${new Date(m.cooldown_expires_at).toLocaleString('ar-EG')}</div>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <span style="font-size:0.76rem;font-weight:800;padding:3px 9px;border-radius:999px;background:${m.in_cooldown ? '#fef3c7' : '#d1fae5'};color:${m.in_cooldown ? '#92400e' : '#065f46'};">
+                                    ${m.in_cooldown ? '⏳ تهدئة 72 ساعة نشطة' : '✅ جاهزة للسحب'}
+                                </span>
+                                <button type="button" class="btn btn-outline btn-sm" onclick="deletePayoutMethod('${m.id}')">حذف</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `}
+
+            <h3>📋 سجل حركات المحفظة</h3>
+            ${wTxs.length === 0 ? '<p class="empty-state">لا توجد حركات مالية مسجلة حتى الآن.</p>' : `
+                <div style="display:grid;gap:8px;">
+                    ${wTxs.map(t => `
+                        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center;">
+                            <div>
+                                <strong>${esc(t.transaction_type)}</strong>
+                                <div style="font-size:0.78rem;color:#64748b;">${new Date(t.created_at).toLocaleString('ar-EG')} • ${esc(t.status)}</div>
+                            </div>
+                            <div style="text-align:left;">
+                                <strong style="color:${t.transaction_type === 'clawback_reversal' || t.transaction_type === 'withdrawal' ? '#dc2626' : '#047857'};">${esc(fmtLocalFromUsd(t.amount_usd))}</strong>
+                                <div style="font-size:0.75rem;color:#64748b;">${fmtUsd(t.amount_usd)}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `}
+        </div>
+    `;
+}
+
+function openAddPayoutMethodModal() {
+    openMemberModal('🏦 إضافة وسيلة استلام أرباح (تهدئة 72 ساعة — W07)', `
+        <div>
+            <label style="font-weight:700;font-size:0.86rem;">القناة المالية *</label>
+            <select name="provider" class="form-control">
+                <option value="bank_iban">تحويل بنكي رسمي (IBAN)</option>
+                <option value="instapay">InstaPay (مصر)</option>
+                <option value="vodafone_cash">محفظة إلكترونية موثقة</option>
+                <option value="wise">Wise الدولي</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-weight:700;font-size:0.86rem;">اسم صاحب الحساب المطابق للهوية *</label>
+            <input type="text" name="holderName" required class="form-control" value="${esc(currentMember?.full_name || '')}">
+        </div>
+        <div>
+            <label style="font-weight:700;font-size:0.86rem;">رقم الحساب / IBAN / المحفظة (يُشفّر بـ PGP في الخادم) *</label>
+            <input type="text" name="accountIdentifier" required minlength="6" class="form-control" placeholder="EG0000... أو 010...">
+        </div>
+    `, async (form, close) => {
+        await window.SAWYAN.API.manageMemberPayoutMethod({
+            memberId: currentMember.id,
+            action: 'add',
+            provider: form.provider.value,
+            holderName: form.holderName.value.trim(),
+            accountIdentifier: form.accountIdentifier.value.trim()
+        });
+        close();
+        await refreshDashboardBundle();
+    });
+}
+
+async function deletePayoutMethod(methodId) {
+    try {
+        await window.SAWYAN.API.manageMemberPayoutMethod({
+            memberId: currentMember.id,
+            action: 'delete',
+            methodId
+        });
+        await refreshDashboardBundle();
+    } catch (err) {
+        alert('❌ ' + err.message);
+    }
+}
+
+function openRequestWithdrawalModal() {
+    const methods = (memberBundle && memberBundle.payment_methods) || [];
+    const readyMethods = methods.filter(m => !m.in_cooldown);
+    const profile = (memberBundle && memberBundle.profile) || {};
+    const avail = Number(memberBundle?.wallet?.balance_usd || 0);
+
+    if (profile.kyc_status !== 'verified') {
+        alert('⛔ يشترط النظام توثيق الهوية الوطنية (KYC = verified) قبل سحب الأرباح (القرار D7).');
+        return;
+    }
+    if (readyMethods.length === 0) {
+        alert('⏳ يجب وجود وسيلة استلام أرباح واحدة على الأقل أتمت فترة التهدئة الأمنية (72 ساعة — W07).');
+        return;
+    }
+
+    openMemberModal('💸 طلب سحب أرباح موثق (قيد مزدوج Dr 2302 / Cr 1102)', `
+        <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:10px;font-size:0.84rem;color:#065f46;">
+            الرصيد المتاح: <strong>${esc(fmtLocalFromUsd(avail))}</strong> (<code>${fmtUsd(avail)}</code>) • الحد الأدنى للسحب: <code>$10.00</code>
+        </div>
+        <div>
+            <label style="font-weight:700;font-size:0.86rem;">اختر وسيلة الاستلام الجاهزة *</label>
+            <select name="methodId" class="form-control">
+                ${readyMethods.map(m => `<option value="${m.id}">${esc(m.provider.toUpperCase())} — ****${esc(m.last_four)}</option>`).join('')}
+            </select>
+        </div>
+        <div>
+            <label style="font-weight:700;font-size:0.86rem;">المبلغ المطلوب سحبه بالدولار المحاسبي (USD) *</label>
+            <input type="number" step="0.01" min="10" max="${Math.max(10, avail)}" name="amountUsd" required class="form-control" value="${Math.min(avail, 25).toFixed(2)}">
+        </div>
+    `, async (form, close) => {
+        await window.SAWYAN.API.requestMemberWithdrawal({
+            memberId: currentMember.id,
+            paymentMethodId: form.methodId.value,
+            amountUsd: Number(form.amountUsd.value)
+        });
+        close();
+        await refreshDashboardBundle();
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Screen 6: Academy
+// ---------------------------------------------------------------------------
+function loadAcademy() {
+    const page = document.getElementById('academyPage');
+    if (!page || !memberBundle) return;
+    const dbCourses = memberBundle.academy_courses || [];
+    const { code } = getMemberFxContext();
+    const targetLocalTxt = fmtLocalFromUsd(24.75);
+    const defaults = [
+        { slug: 'g01-tree', title_i18n: { ar: 'قواعد الشجرة الثنائية والتسكين التلقائي (G01–G05)' }, content_i18n: { ar: 'شرح كيفية موازنة الذراعين يميناً أولاً والفرق بين الراعي والأب المباشر.' } },
+        { slug: 'd23-box', title_i18n: { ar: `صندوق الهدف الشهري (${targetLocalTxt}) والترحيل المستمر Carry On` }, content_i18n: { ar: `كيف تتراكم العوائد بعملة بلدك (${code}) وتفتح التأهل المحلي والتعويضي الدولي.` } },
+        { slug: 's01-s03', title_i18n: { ar: 'فهم الستوبر العددي (11 جيل) والمالي Pro-Rata (S03)' }, content_i18n: { ar: 'نظام العمل عبر دول متعددة وضبط العدالة الاكتوارية للفريق.' } }
+    ];
+    const items = dbCourses.length > 0 ? dbCourses : defaults;
+
+    page.innerHTML = `
+        <h2>📚 أكاديمية SAWYAN التدريبية</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:16px;">
+            ${items.map(c => `
+                <div style="background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:18px;">
+                    <h3 style="margin:0 0 8px;color:#065f46;font-size:1.05rem;">🎓 ${esc((c.title_i18n && (c.title_i18n.ar || c.title_i18n.en)) || c.slug)}</h3>
+                    <p style="margin:0;color:#475569;font-size:0.9rem;line-height:1.6;">${esc((c.content_i18n && (c.content_i18n.ar || c.content_i18n.en)) || '')}</p>
                 </div>
             `).join('')}
         </div>
     `;
 }
 
-async function loadWalletDetails() {
-    const page = document.getElementById('walletPage');
-
-    // جلب بيانات المحفظة
-    const { data: wallet } = await window.SAWYAN.supabase
-        .from('wallets')
-        .select('*')
-        .eq('member_id', currentUser.id)
-        .single();
-
-    // جلب آخر العمليات
-    const { data: transactions } = await window.SAWYAN.supabase
-        .from('wallet_transactions')
-        .select('*')
-        .eq('wallet_id', wallet?.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-    // جلب طلبات السحب المعلقة
-    const { data: pendingWithdrawals } = await window.SAWYAN.supabase
-        .from('wallet_transactions')
-        .select('*')
-        .eq('wallet_id', wallet?.id)
-        .eq('transaction_type', 'withdrawal')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
-
-    const balance = wallet?.balance || 0;
-    const pendingBalance = wallet?.pending_balance || 0;
-    const totalEarned = wallet?.total_earned || 0;
-    const totalWithdrawn = wallet?.total_withdrawn || 0;
-
-    page.innerHTML = `
-        <div class="wallet-page">
-            <h2 class="page-title-mobile">💰 محفظتي</h2>
-            
-            <!-- بطاقة الرصيد الرئيسية -->
-            <div class="wallet-main-card">
-                <div class="balance-info">
-                    <span class="balance-label">الرصيد المتاح</span>
-                    <span class="balance-amount">${balance.toFixed(2)} <small>ج.م</small></span>
-                </div>
-                <button onclick="openWithdrawModal()" class="btn btn-withdraw" ${balance < 100 ? 'disabled' : ''}>
-                    💸 طلب سحب
-                </button>
-                ${balance < 100 ? '<p class="min-withdraw-note">الحد الأدنى للسحب: 100 ج.م</p>' : ''}
-            </div>
-
-            <!-- إحصائيات سريعة -->
-            <div class="wallet-stats-grid">
-                <div class="wallet-stat-card">
-                    <span class="stat-icon">⏳</span>
-                    <span class="stat-value">${pendingBalance.toFixed(2)}</span>
-                    <span class="stat-label">رصيد معلق</span>
-                </div>
-                <div class="wallet-stat-card">
-                    <span class="stat-icon">📈</span>
-                    <span class="stat-value">${totalEarned.toFixed(2)}</span>
-                    <span class="stat-label">إجمالي الأرباح</span>
-                </div>
-                <div class="wallet-stat-card">
-                    <span class="stat-icon">💵</span>
-                    <span class="stat-value">${totalWithdrawn.toFixed(2)}</span>
-                    <span class="stat-label">إجمالي السحوبات</span>
-                </div>
-            </div>
-
-            <!-- طلبات السحب المعلقة -->
-            ${pendingWithdrawals && pendingWithdrawals.length > 0 ? `
-                <div class="pending-withdrawals-section">
-                    <h3>⏳ طلبات سحب قيد المعالجة</h3>
-                    ${pendingWithdrawals.map(w => `
-                        <div class="pending-withdrawal-item">
-                            <span>${parseFloat(w.amount).toFixed(2)} ج.م</span>
-                            <span class="pending-badge">قيد المراجعة</span>
-                        </div>
-                    `).join('')}
-                </div>
-            ` : ''}
-
-            <!-- سجل العمليات -->
-            <div class="transactions-section">
-                <h3>📋 آخر العمليات</h3>
-                <div class="transactions-list">
-                    ${transactions && transactions.length > 0 ? transactions.map(t => `
-                        <div class="transaction-item ${t.transaction_type}">
-                            <div class="transaction-icon">
-                                ${getTransactionIcon(t.transaction_type)}
-                            </div>
-                            <div class="transaction-info">
-                                <span class="transaction-desc">${t.description || getTransactionTypeLabel(t.transaction_type)}</span>
-                                <span class="transaction-date">${formatDate(t.created_at)}</span>
-                            </div>
-                            <div class="transaction-amount ${t.transaction_type === 'credit' || t.transaction_type === 'commission' ? 'positive' : 'negative'}">
-                                ${t.transaction_type === 'credit' || t.transaction_type === 'commission' ? '+' : '-'}${parseFloat(t.amount).toFixed(2)} ج.م
-                            </div>
-                        </div>
-                    `).join('') : '<p class="empty-state">لا توجد عمليات حتى الآن</p>'}
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal طلب السحب -->
-        <div class="modal" id="withdrawModal">
-            <div class="modal-content withdraw-modal">
-                <button onclick="closeWithdrawModal()" class="close-btn">&times;</button>
-                <h3>💸 طلب سحب أموال</h3>
-                
-                <div class="withdraw-balance-info">
-                    الرصيد المتاح: <strong>${balance.toFixed(2)} ج.م</strong>
-                </div>
-
-                <form id="withdrawForm" onsubmit="submitWithdrawRequest(event)">
-                    <div class="form-group">
-                        <label>المبلغ المراد سحبه</label>
-                        <input type="number" id="withdrawAmount" class="form-control" 
-                            min="100" max="${balance}" step="0.01" required
-                            placeholder="أدخل المبلغ (الحد الأدنى 100 ج.م)">
-                    </div>
-
-                    <div class="form-group">
-                        <label>طريقة السحب</label>
-                        <select id="withdrawMethod" class="form-control" required>
-                            <option value="">اختر طريقة السحب...</option>
-                            <option value="vodafone_cash">فودافون كاش</option>
-                            <option value="instapay">انستاباي</option>
-                            <option value="bank_transfer">تحويل بنكي</option>
-                            <option value="mobile_wallet">محفظة إلكترونية أخرى</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>رقم الحساب / المحفظة</label>
-                        <input type="text" id="withdrawAccount" class="form-control" required
-                            placeholder="أدخل رقم الهاتف أو رقم الحساب">
-                    </div>
-
-                    <div class="form-group">
-                        <label>ملاحظات (اختياري)</label>
-                        <textarea id="withdrawNotes" class="form-control" rows="2"
-                            placeholder="أي ملاحظات إضافية..."></textarea>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary btn-block" id="submitWithdrawBtn">
-                        تأكيد طلب السحب
-                    </button>
-                </form>
-            </div>
-        </div>
-    `;
-}
-
-// فتح modal السحب
-function openWithdrawModal() {
-    document.getElementById('withdrawModal').classList.add('open');
-}
-
-// إغلاق modal السحب
-function closeWithdrawModal() {
-    document.getElementById('withdrawModal').classList.remove('open');
-}
-
-// إرسال طلب السحب - نسخة آمنة
-async function submitWithdrawRequest(e) {
-    e.preventDefault();
-
-    const amount = parseFloat(document.getElementById('withdrawAmount').value);
-    const method = document.getElementById('withdrawMethod').value;
-    const account = document.getElementById('withdrawAccount').value;
-    const notes = document.getElementById('withdrawNotes').value;
-
-    if (amount < 100) {
-        alert('الحد الأدنى للسحب هو 100 ج.م');
-        return;
-    }
-
-    if (!method) {
-        alert('الرجاء اختيار طريقة السحب');
-        return;
-    }
-
-    if (!account) {
-        alert('الرجاء إدخال رقم الحساب/المحفظة');
-        return;
-    }
-
-    const btn = document.getElementById('submitWithdrawBtn');
-    btn.innerHTML = '⏳ جاري الإرسال...';
-    btn.disabled = true;
-
-    try {
-        // استخدام RPC function للسحب الآمن (إذا كانت متاحة)
-        const { data: rpcResult, error: rpcError } = await window.SAWYAN.supabase
-            .rpc('deduct_wallet_balance', {
-                p_member_id: currentUser.id,
-                p_amount: amount,
-                p_description: `طلب سحب - ${getMethodLabel(method)} - ${account}`,
-                p_metadata: {
-                    method: method,
-                    account: account,
-                    notes: notes
-                }
-            });
-
-        // إذا كانت الـ RPC function موجودة وعملت
-        if (!rpcError && rpcResult && rpcResult.success) {
-            alert('✅ تم إرسال طلب السحب بنجاح!\nسيتم مراجعته خلال 24-48 ساعة');
-            closeWithdrawModal();
-            loadWalletDetails();
-            return;
-        }
-
-        // الطريقة البديلة (fallback) إذا لم تكن RPC موجودة
-        console.log('RPC not available, using fallback method');
-
-        // جلب المحفظة
-        const { data: wallet } = await window.SAWYAN.supabase
-            .from('wallets')
-            .select('id, balance, pending_balance')
-            .eq('member_id', currentUser.id)
-            .single();
-
-        if (!wallet) {
-            throw new Error('لم يتم العثور على المحفظة');
-        }
-
-        if (wallet.balance < amount) {
-            throw new Error('الرصيد غير كافي');
-        }
-
-        // إنشاء طلب السحب
-        const { data: transaction, error: insertError } = await window.SAWYAN.supabase
-            .from('wallet_transactions')
-            .insert([{
-                wallet_id: wallet.id,
-                transaction_type: 'withdrawal',
-                amount: amount,
-                status: 'pending',
-                description: `طلب سحب - ${getMethodLabel(method)} - ${account}`,
-                metadata: {
-                    method: method,
-                    account: account,
-                    notes: notes
-                }
-            }])
-            .select()
-            .single();
-
-        if (insertError) throw insertError;
-
-        // خصم المبلغ من الرصيد المتاح وإضافته للرصيد المعلق
-        const { error: updateError } = await window.SAWYAN.supabase
-            .from('wallets')
-            .update({
-                balance: wallet.balance - amount,
-                pending_balance: (wallet.pending_balance || 0) + amount,
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', wallet.id);
-
-        if (updateError) throw updateError;
-
-        alert('✅ تم إرسال طلب السحب بنجاح!\nسيتم مراجعته خلال 24-48 ساعة');
-        closeWithdrawModal();
-        loadWalletDetails();
-
-    } catch (error) {
-        console.error('Withdraw error:', error);
-        alert('❌ حدث خطأ: ' + error.message);
-    } finally {
-        btn.innerHTML = 'تأكيد طلب السحب';
-        btn.disabled = false;
-    }
-}
-
-// دوال مساعدة
-function getTransactionIcon(type) {
-    const icons = {
-        'credit': '➕',
-        'commission': '💰',
-        'withdrawal': '💸',
-        'transfer': '↔️',
-        'refund': '↩️',
-        'deposit': '💵'
-    };
-    return icons[type] || '📋';
-}
-
-function getTransactionTypeLabel(type) {
-    const labels = {
-        'credit': 'إيداع',
-        'commission': 'عمولة',
-        'withdrawal': 'سحب',
-        'transfer': 'تحويل',
-        'refund': 'استرداد',
-        'deposit': 'إيداع'
-    };
-    return labels[type] || type;
-}
-
-function getMethodLabel(method) {
-    const labels = {
-        'vodafone_cash': 'فودافون كاش',
-        'instapay': 'انستاباي',
-        'bank_transfer': 'تحويل بنكي',
-        'mobile_wallet': 'محفظة إلكترونية'
-    };
-    return labels[method] || method;
-}
-
-function formatDate(dateStr) {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('ar-EG', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-}
-
-async function loadAcademy() {
-    const page = document.getElementById('academyPage');
-    page.innerHTML = `
-        <h2>الأكاديمية</h2>
-        <p class="empty-state">الدورات التدريبية قريباً...</p>
-    `;
-}
-
-// متغيرات البحث
-let allMerchants = [];
-let filteredMerchants = [];
-let searchFilters = {
-    query: '',
-    category: 'all',
-    country: 'all',
-    city: 'all',
-    type: 'all',
-    sortBy: 'name'
-};
-
+// ---------------------------------------------------------------------------
+// Screen 7 & 8: Nearby Merchants + Search/Filters + GPS Radar + Path B Modal
+// ---------------------------------------------------------------------------
 async function loadNearbyMerchants() {
     const page = document.getElementById('merchantsPage');
-    page.innerHTML = `
-        <h2>التجار المتاحين</h2>
-        <p class="page-description">ابحث واختر تاجر لإنشاء عملية توثيق شراء</p>
-        
-        <!-- شريط البحث المتقدم -->
-        <div class="search-advanced-container">
-            <div class="search-row">
-                <div class="search-input-wrapper">
-                    <input type="text" id="merchantSearchInput" class="form-control search-input" 
-                        placeholder="🔍 ابحث بالاسم أو الوصف..." autocomplete="off">
-                    <div id="searchSuggestions" class="search-suggestions"></div>
-                </div>
-            </div>
-            
-            <div class="filters-row">
-                <select id="filterCategory" class="form-control filter-select">
-                    <option value="all">📁 كل المجالات</option>
-                </select>
-                
-                <select id="filterCountry" class="form-control filter-select">
-                    <option value="all">🌍 كل الدول</option>
-                </select>
-                
-                <select id="filterCity" class="form-control filter-select">
-                    <option value="all">🏙️ كل المدن</option>
-                </select>
-                
-                <select id="filterType" class="form-control filter-select">
-                    <option value="all">🏪 كل الأنواع</option>
-                    <option value="physical">🏪 محل</option>
-                    <option value="online">🌐 أونلاين</option>
-                    <option value="both">🏪🌐 كلاهما</option>
-                </select>
-                
-                <select id="sortMerchants" class="form-control filter-select">
-                    <option value="name">🔤 الاسم</option>
-                    <option value="cashback">💰 أعلى كاشباك</option>
-                    <option value="rating">⭐ الأعلى تقييماً</option>
-                    <option value="newest">🆕 الأحدث</option>
-                </select>
-            </div>
-            
-            <div class="search-stats" id="searchStats">
-                <span id="merchantCount">0</span> تاجر
-                <button class="location-sort-btn" onclick="sortMerchantsByDistance()">📍 القريبين مني</button>
-                <button class="btn-reset-filters" onclick="resetFilters()">🔄 إعادة تعيين</button>
-            </div>
-        </div>
-        
-        <div id="merchantsList" class="merchants-grid"></div>
-        
-        <!-- Modal لإنشاء العملية -->
-        <div id="transactionModal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <span class="close-btn" onclick="closeTransactionModal()">&times;</span>
-                <h3>إنشاء عملية توثيق</h3>
-                
-                <div id="selectedMerchantInfo" class="merchant-info-box"></div>
-                
-                <form id="createTransactionForm">
-                    <div class="form-group">
-                        <label>المبلغ (ج.م) *</label>
-                        <input type="number" id="transAmount" required class="form-control" 
-                            step="0.01" min="1" placeholder="أدخل مبلغ الشراء" oninput="calculateCommission()">
-                    </div>
-                    
-                    <div id="commissionPreview" class="commission-preview" style="display: none;">
-                        <div class="preview-row">
-                            <span>التوقيت:</span>
-                            <span id="previewTime"></span>
-                        </div>
-                        <div class="preview-row">
-                            <span>نسبة العمولة:</span>
-                            <span id="previewPercentage"></span>
-                        </div>
-                        <div class="preview-row highlight">
-                            <span>مبلغ العمولة:</span>
-                            <span id="previewCommission"></span>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>صورة الفاتورة (اختياري)</label>
-                        <div class="invoice-upload-wrapper">
-                            <input type="file" id="transInvoiceFile" accept="image/*" 
-                                class="form-control" onchange="previewInvoiceImage(this)">
-                            <div id="invoicePreview" class="invoice-preview" style="display: none;">
-                                <img id="invoicePreviewImg" src="" alt="معاينة الفاتورة">
-                                <button type="button" class="btn-remove-image" onclick="removeInvoicePreview()">✕</button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>ملاحظات (اختياري)</label>
-                        <textarea id="transNotes" class="form-control" rows="2" 
-                            placeholder="وصف المشتريات..."></textarea>
-                    </div>
-                    
-                    <div class="form-note">
-                        <p>⏳ العملية ستكون <strong>معلقة</strong> حتى يوافق عليها التاجر</p>
-                    </div>
-                    
-                    <!-- نوع العملية -->
-                    <div class="form-group">
-                        <label>نوع العملية</label>
-                        <div class="transaction-type-options">
-                            <label class="radio-option">
-                                <input type="radio" name="memberTransactionType" value="documentation" checked>
-                                <span class="radio-label">توثيق فقط</span>
-                            </label>
-                            <label class="radio-option disabled-option">
-                                <input type="radio" name="memberTransactionType" value="wallet_payment" disabled>
-                                <span class="radio-label">توثيق + دفع من المحفظة</span>
-                                <span class="coming-soon-badge">قريباً بإذن الله</span>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-primary btn-block">إرسال طلب التوثيق</button>
-                </form>
-            </div>
-        </div>
-    `;
-
-    // تحميل بيانات التجار
-    await loadMerchantsData();
-
-    // تهيئة الفلاتر
-    initSearchFilters();
-
-    // إضافة event listener للفورم
-    document.getElementById('createTransactionForm').addEventListener('submit', submitMemberTransaction);
-}
-
-async function loadMerchantsData() {
-    try {
-        const { data: merchants, error } = await window.SAWYAN.supabase
-            .from('merchants')
-            .select('*')
-            .eq('is_active', true)
-            .order('business_name');
-
-        if (error) throw error;
-
-        allMerchants = merchants || [];
-        filteredMerchants = [...allMerchants];
-
-        // تحميل قوائم الفلاتر
-        populateFilterOptions();
-
-        // عرض التجار
-        renderMerchants();
-
-    } catch (err) {
-        console.error('Error loading merchants:', err);
-        document.getElementById('merchantsList').innerHTML = '<p class="empty-state">حدث خطأ في تحميل التجار</p>';
-    }
-}
-
-function populateFilterOptions() {
-    // استخراج المجالات الفريدة
-    const categories = [...new Set(allMerchants.map(m => m.business_category).filter(Boolean))];
-    const categorySelect = document.getElementById('filterCategory');
-    categories.forEach(cat => {
-        categorySelect.innerHTML += `<option value="${cat}">${cat}</option>`;
-    });
-
-    // استخراج الدول الفريدة
-    const countries = [...new Set(allMerchants.map(m => m.country || 'مصر').filter(Boolean))];
-    const countrySelect = document.getElementById('filterCountry');
-    countries.forEach(country => {
-        countrySelect.innerHTML += `<option value="${country}">${country}</option>`;
-    });
-
-    // استخراج المدن الفريدة
-    const cities = [...new Set(allMerchants.map(m => m.city).filter(Boolean))];
-    const citySelect = document.getElementById('filterCity');
-    cities.forEach(city => {
-        citySelect.innerHTML += `<option value="${city}">${city}</option>`;
-    });
-}
-
-function initSearchFilters() {
-    // البحث بالنص مع Autocomplete
-    const searchInput = document.getElementById('merchantSearchInput');
-    let searchTimeout;
-
-    searchInput.addEventListener('input', function () {
-        clearTimeout(searchTimeout);
-        const query = this.value.trim();
-
-        // عرض اقتراحات البحث
-        if (query.length >= 2) {
-            showSearchSuggestions(query);
-        } else {
-            hideSearchSuggestions();
-        }
-
-        // تطبيق الفلتر بعد توقف الكتابة
-        searchTimeout = setTimeout(() => {
-            searchFilters.query = query;
-            applyFilters();
-        }, 300);
-    });
-
-    // إخفاء الاقتراحات عند النقر خارجها
-    document.addEventListener('click', function (e) {
-        if (!e.target.closest('.search-input-wrapper')) {
-            hideSearchSuggestions();
-        }
-    });
-
-    // فلتر المجال
-    document.getElementById('filterCategory').addEventListener('change', function () {
-        searchFilters.category = this.value;
-        applyFilters();
-    });
-
-    // فلتر الدولة
-    document.getElementById('filterCountry').addEventListener('change', function () {
-        searchFilters.country = this.value;
-        // تحديث المدن بناءً على الدولة
-        updateCitiesFilter(this.value);
-        applyFilters();
-    });
-
-    // فلتر المدينة
-    document.getElementById('filterCity').addEventListener('change', function () {
-        searchFilters.city = this.value;
-        applyFilters();
-    });
-
-    // فلتر النوع
-    document.getElementById('filterType').addEventListener('change', function () {
-        searchFilters.type = this.value;
-        applyFilters();
-    });
-
-    // الترتيب
-    document.getElementById('sortMerchants').addEventListener('change', function () {
-        searchFilters.sortBy = this.value;
-        applyFilters();
-    });
-}
-
-function showSearchSuggestions(query) {
-    const suggestions = allMerchants.filter(m =>
-        m.business_name.toLowerCase().includes(query.toLowerCase()) ||
-        (m.business_description && m.business_description.toLowerCase().includes(query.toLowerCase()))
-    ).slice(0, 5);
-
-    const container = document.getElementById('searchSuggestions');
-
-    if (suggestions.length === 0) {
-        container.innerHTML = '<div class="suggestion-item no-results">لا توجد نتائج</div>';
-    } else {
-        container.innerHTML = suggestions.map(m => `
-            <div class="suggestion-item" onclick="selectSuggestion('${m.business_name}')">
-                <span class="suggestion-name">${m.business_name}</span>
-                <span class="suggestion-category">${m.business_category || ''}</span>
-            </div>
-        `).join('');
+    if (!page) return;
+    if (liveCatalog.length === 0) {
+        await loadPublicMerchantsCatalogSafe();
     }
 
-    container.style.display = 'block';
-}
-
-function hideSearchSuggestions() {
-    document.getElementById('searchSuggestions').style.display = 'none';
-}
-
-function selectSuggestion(name) {
-    document.getElementById('merchantSearchInput').value = name;
-    searchFilters.query = name;
-    hideSearchSuggestions();
-    applyFilters();
-}
-
-function updateCitiesFilter(country) {
-    const citySelect = document.getElementById('filterCity');
-    citySelect.innerHTML = '<option value="all">🏙️ كل المدن</option>';
-
-    if (country === 'all') {
-        const cities = [...new Set(allMerchants.map(m => m.city).filter(Boolean))];
-        cities.forEach(city => {
-            citySelect.innerHTML += `<option value="${city}">${city}</option>`;
-        });
-    } else {
-        const cities = [...new Set(
-            allMerchants
-                .filter(m => (m.country || 'مصر') === country)
-                .map(m => m.city)
-                .filter(Boolean)
-        )];
-        cities.forEach(city => {
-            citySelect.innerHTML += `<option value="${city}">${city}</option>`;
-        });
-    }
-
-    searchFilters.city = 'all';
-}
-
-function applyFilters() {
-    filteredMerchants = allMerchants.filter(m => {
-        // فلتر البحث النصي
-        if (searchFilters.query) {
-            const query = searchFilters.query.toLowerCase();
-            const matchName = m.business_name.toLowerCase().includes(query);
-            const matchDesc = m.business_description && m.business_description.toLowerCase().includes(query);
-            if (!matchName && !matchDesc) return false;
+    const baseSource = Array.isArray(radarCatalogOverride) ? radarCatalogOverride : liveCatalog;
+    const filtered = baseSource.filter(m => {
+        if (merchantFilterState.country !== 'ALL' && String(m.country_code || '').toUpperCase() !== merchantFilterState.country) return false;
+        if (merchantFilterState.category !== 'all' && String(m.category_code || '') !== merchantFilterState.category) return false;
+        if (merchantFilterState.q) {
+            const hay = `${m.business_name || ''} ${m.branch_name || ''} ${m.address || ''} ${m.merchant_code || ''}`.toLowerCase();
+            if (!hay.includes(merchantFilterState.q.toLowerCase())) return false;
         }
-
-        // فلتر المجال
-        if (searchFilters.category !== 'all' && m.business_category !== searchFilters.category) {
-            return false;
-        }
-
-        // فلتر الدولة
-        if (searchFilters.country !== 'all' && (m.country || 'مصر') !== searchFilters.country) {
-            return false;
-        }
-
-        // فلتر المدينة
-        if (searchFilters.city !== 'all' && m.city !== searchFilters.city) {
-            return false;
-        }
-
-        // فلتر النوع
-        if (searchFilters.type !== 'all' && m.merchant_type !== searchFilters.type) {
-            return false;
-        }
-
         return true;
     });
 
-    // الترتيب
-    sortMerchants();
+    const favIds = new Set(((memberBundle?.profile?.metadata?.favorite_merchant_ids) || []).map(String));
 
-    // عرض النتائج
-    renderMerchants();
-}
-
-function sortMerchants() {
-    switch (searchFilters.sortBy) {
-        case 'name':
-            filteredMerchants.sort((a, b) => a.business_name.localeCompare(b.business_name, 'ar'));
-            break;
-        case 'cashback':
-            filteredMerchants.sort((a, b) => (b.commission_percentage || 0) - (a.commission_percentage || 0));
-            break;
-        case 'rating':
-            filteredMerchants.sort((a, b) => (b.avg_rating || 0) - (a.avg_rating || 0));
-            break;
-        case 'newest':
-            filteredMerchants.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-            break;
-    }
-}
-
-function renderMerchants() {
-    const merchantsList = document.getElementById('merchantsList');
-    const countElement = document.getElementById('merchantCount');
-
-    countElement.textContent = filteredMerchants.length;
-
-    if (filteredMerchants.length === 0) {
-        merchantsList.innerHTML = `
-            <div class="empty-state">
-                <span style="font-size: 3rem;">🔍</span>
-                <p>لا توجد نتائج مطابقة</p>
-                <button class="btn btn-secondary" onclick="resetFilters()">إعادة تعيين البحث</button>
+    page.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+            <div>
+                <h2 style="margin:0;">🏪 التجار المعتمدون المتاحون (${filtered.length})</h2>
+                <small style="color:#64748b;">يعرض هذا الدليل صافي كاشباك خطة الدخل لعضوية فريقك فقط وفق قواعد الشفافية (F01 / S01).</small>
             </div>
-        `;
-        return;
-    }
-
-    merchantsList.innerHTML = filteredMerchants.map(m => `
-        <div class="merchant-card clickable" onclick="openTransactionModal('${m.id}', '${escapeHtml(m.business_name)}', ${m.commission_percentage || 0}, '${escapeHtml(m.business_category || '')}')">
-            <div class="merchant-header">
-                ${m.logo_url ? `<img src="${m.logo_url}" alt="${m.business_name}" class="merchant-logo">` : ''}
-                <div class="merchant-title">
-                    <h4>${m.business_name}</h4>
-                    ${m.is_verified ? '<span class="verified-badge" title="تاجر موثق">✓</span>' : ''}
-                </div>
-                <span class="commission-badge">${m.commission_percentage || 0}%</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="btn btn-primary btn-sm" onclick="triggerGpsRadarSearch()">📍 القريبين مني (GPS Haversine)</button>
+                ${radarCatalogOverride ? `<button type="button" class="btn btn-outline btn-sm" onclick="resetRadarFilter()">إلغاء فلتر المسافة</button>` : ''}
             </div>
-            <p class="merchant-category">📁 ${m.business_category || 'غير محدد'}</p>
-            ${m.city ? `<p class="merchant-location">📍 ${m.city}${m.country && m.country !== 'مصر' ? ', ' + m.country : ''}</p>` : ''}
-            <p class="merchant-type">${getMerchantTypeIcon(m.merchant_type)}</p>
-            ${m.avg_rating ? `<div class="merchant-rating">⭐ ${m.avg_rating} (${m.total_reviews || 0})</div>` : ''}
-            <button class="btn btn-primary btn-sm">توثيق عملية</button>
         </div>
-    `).join('');
+
+        <div style="background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:12px;margin-bottom:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;">
+            <input type="search" id="memberMerchSearch" class="form-control" placeholder="ابحث باسم المتجر أو العنوان..." value="${esc(merchantFilterState.q)}">
+            <select id="memberMerchCountry" class="form-control">
+                <option value="ALL" ${merchantFilterState.country === 'ALL' ? 'selected' : ''}>🌍 كل الدول</option>
+                <option value="EG" ${merchantFilterState.country === 'EG' ? 'selected' : ''}>🇪🇬 مصر</option>
+                <option value="TR" ${merchantFilterState.country === 'TR' ? 'selected' : ''}>🇹🇷 تركيا</option>
+                <option value="SA" ${merchantFilterState.country === 'SA' ? 'selected' : ''}>🇸🇦 السعودية</option>
+            </select>
+            <select id="memberMerchCategory" class="form-control">
+                <option value="all" ${merchantFilterState.category === 'all' ? 'selected' : ''}>📂 كل الفئات</option>
+                <option value="supermarket" ${merchantFilterState.category === 'supermarket' ? 'selected' : ''}>🛒 سوبرماركت</option>
+                <option value="restaurants" ${merchantFilterState.category === 'restaurants' ? 'selected' : ''}>🍽️ مطاعم</option>
+                <option value="fashion" ${merchantFilterState.category === 'fashion' ? 'selected' : ''}>👗 أزياء</option>
+                <option value="electronics" ${merchantFilterState.category === 'electronics' ? 'selected' : ''}>📱 إلكترونيات</option>
+            </select>
+        </div>
+
+        ${filtered.length === 0 ? '<p class="empty-state">لا توجد متاجر نشطة مطابقة لخيارات البحث الحالية.</p>' : `
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px;">
+                ${filtered.map(m => {
+                    const isFav = favIds.has(String(m.merchant_id));
+                    return `
+                        <div style="background:#fff;border:1.5px solid #cbd5e1;border-radius:16px;padding:16px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                                <strong>${esc(m.business_name)}</strong>
+                                <button type="button" onclick="toggleMerchantFavorite('${m.merchant_id}')" style="border:none;background:transparent;font-size:1.25rem;cursor:pointer;" title="المفضلة">${isFav ? '❤️' : '🤍'}</button>
+                            </div>
+                            <div style="font-size:0.84rem;color:#475569;margin-top:4px;">🏢 ${esc(m.branch_name)} • ${esc(m.country_code || '')}</div>
+                            <div style="font-size:0.8rem;color:#64748b;margin-top:2px;">📍 ${esc(m.address)} ${m.distance_km !== undefined ? `• <strong>${Number(m.distance_km).toFixed(2)} كم</strong>` : ''}</div>
+                            <div style="margin:10px 0;display:flex;justify-content:space-between;align-items:center;">
+                                <span style="background:#ecfdf5;color:#047857;font-weight:800;font-size:0.82rem;padding:4px 10px;border-radius:999px;">✨ عائدات خطة الدخل: ${Number(m.plan_cashback_pct).toFixed(2)}%</span>
+                                <small>${esc(m.currency_code || '')}</small>
+                            </div>
+                            <button type="button" class="btn btn-primary btn-block btn-sm" onclick="submitPendingPurchasePrompt('${m.merchant_id}', '${m.branch_id}', '${esc(m.business_name)}', '${esc(m.currency_code || '')}')">
+                                📝 تقديم طلب توثيق شراء معلق
+                            </button>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `}
+    `;
+
+    const sInput = document.getElementById('memberMerchSearch');
+    const cSel = document.getElementById('memberMerchCountry');
+    const catSel = document.getElementById('memberMerchCategory');
+    if (sInput) sInput.oninput = (e) => { merchantFilterState.q = e.target.value; loadNearbyMerchants(); };
+    if (cSel) cSel.onchange = (e) => { merchantFilterState.country = e.target.value; loadNearbyMerchants(); };
+    if (catSel) catSel.onchange = (e) => { merchantFilterState.category = e.target.value; loadNearbyMerchants(); };
 }
 
-function getMerchantTypeIcon(type) {
-    switch (type) {
-        case 'physical': return '🏪 محل';
-        case 'online': return '🌐 أونلاين';
-        case 'both': return '🏪🌐 كلاهما';
-        default: return '🏪 محل';
-    }
-}
+async function triggerGpsRadarSearch() {
+    const fallbackCoords = (memberBundle?.profile?.country_code === 'TR')
+        ? { lat: 41.0082, lng: 28.9784 }
+        : { lat: 30.0444, lng: 31.2357 };
 
-function escapeHtml(text) {
-    if (!text) return '';
-    return text.replace(/'/g, "\\'").replace(/"/g, '\\"');
-}
-
-function resetFilters() {
-    searchFilters = {
-        query: '',
-        category: 'all',
-        country: 'all',
-        city: 'all',
-        type: 'all',
-        sortBy: 'name'
+    const runWithCoords = async (lat, lng) => {
+        try {
+            const rows = await window.SAWYAN.API.getMerchantsRadar({ lat, lng, radiusKm: 50 });
+            radarCatalogOverride = Array.isArray(rows) ? rows : [];
+            await loadNearbyMerchants();
+        } catch (err) {
+            alert('❌ تعذر تشغيل الرادار الجغرافي: ' + err.message);
+        }
     };
 
-    document.getElementById('merchantSearchInput').value = '';
-    document.getElementById('filterCategory').value = 'all';
-    document.getElementById('filterCountry').value = 'all';
-    document.getElementById('filterCity').value = 'all';
-    document.getElementById('filterType').value = 'all';
-    document.getElementById('sortMerchants').value = 'name';
-
-    filteredMerchants = [...allMerchants];
-    renderMerchants();
-}
-
-// معاينة صورة الفاتورة
-function previewInvoiceImage(input) {
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            document.getElementById('invoicePreviewImg').src = e.target.result;
-            document.getElementById('invoicePreview').style.display = 'block';
-        };
-        reader.readAsDataURL(input.files[0]);
-    }
-}
-
-function removeInvoicePreview() {
-    document.getElementById('transInvoiceFile').value = '';
-    document.getElementById('invoicePreview').style.display = 'none';
-}
-
-// متغيرات للـ Modal
-let selectedMerchantId = null;
-let selectedMerchantName = '';
-let selectedCommissionPercentage = 0;
-
-function openTransactionModal(merchantId, merchantName, commissionPercentage, category) {
-    selectedMerchantId = merchantId;
-    selectedMerchantName = merchantName;
-    selectedCommissionPercentage = commissionPercentage;
-
-    document.getElementById('selectedMerchantInfo').innerHTML = `
-        <h4>${merchantName}</h4>
-        <p>📁 ${category} | نسبة العمولة: <strong>${commissionPercentage}%</strong></p>
-    `;
-
-    // إعادة تعيين الفورم
-    document.getElementById('createTransactionForm').reset();
-    document.getElementById('commissionPreview').style.display = 'none';
-
-    document.getElementById('transactionModal').style.display = 'flex';
-}
-
-function closeTransactionModal() {
-    document.getElementById('transactionModal').style.display = 'none';
-    selectedMerchantId = null;
-}
-
-function calculateCommission() {
-    const amount = parseFloat(document.getElementById('transAmount').value) || 0;
-
-    if (amount > 0) {
-        const commissionAmount = amount * (selectedCommissionPercentage / 100);
-        const now = new Date();
-
-        document.getElementById('previewTime').textContent = now.toLocaleString('ar-EG');
-        document.getElementById('previewPercentage').textContent = selectedCommissionPercentage + '%';
-        document.getElementById('previewCommission').textContent = commissionAmount.toFixed(2) + ' ج.م';
-
-        document.getElementById('commissionPreview').style.display = 'block';
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (pos) => runWithCoords(pos.coords.latitude, pos.coords.longitude),
+            () => runWithCoords(fallbackCoords.lat, fallbackCoords.lng),
+            { timeout: 4000 }
+        );
     } else {
-        document.getElementById('commissionPreview').style.display = 'none';
+        await runWithCoords(fallbackCoords.lat, fallbackCoords.lng);
     }
 }
 
-async function submitMemberTransaction(e) {
-    e.preventDefault();
+function resetRadarFilter() {
+    radarCatalogOverride = null;
+    loadNearbyMerchants();
+}
 
-    const amount = parseFloat(document.getElementById('transAmount').value);
-    const invoiceUrl = document.getElementById('transInvoiceUrl').value;
-    const notes = document.getElementById('transNotes').value;
-
-    if (!amount || amount <= 0) {
-        alert('الرجاء إدخال مبلغ صحيح');
-        return;
-    }
-
-    try {
-        // حساب العمولات
-        const commissionAmount = amount * (selectedCommissionPercentage / 100);
-        const companyShare = commissionAmount * 0.25;
-        const planShare = commissionAmount * 0.75;
-
-        const transactionCode = 'TM' + Date.now(); // TM = Transaction by Member
-
-        console.log('Creating transaction with data:', {
-            member_id: memberData.id,
-            merchant_id: selectedMerchantId,
-            amount: amount,
-            status: 'pending'
+function submitPendingPurchasePrompt(merchantId, branchId, name, currencyCode = '') {
+    openMemberModal(`📝 توثيق فاتورة مشتريات — ${esc(name)}`, `
+        <div>
+            <label style="font-weight:700;font-size:0.86rem;">قيمة الفاتورة الإجمالية ${currencyCode ? `(${esc(currencyCode)})` : ''} *</label>
+            <input type="number" step="0.01" min="1" name="amount" required class="form-control" placeholder="مثال: 500.00">
+        </div>
+        <div>
+            <label style="font-weight:700;font-size:0.86rem;">طريقة الدفع للتاجر *</label>
+            <select name="paymentType" class="form-control">
+                <option value="cash">نقدي عند الكاشير (Cash)</option>
+                <option value="pos_card">بطاقة بنكية (POS Card)</option>
+                <option value="instant_transfer">تحويل فوري / محفظة</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-weight:700;font-size:0.86rem;">رابط صورة الإيصال الورقي (اختياري للتسريع)</label>
+            <input type="url" name="receiptUrl" class="form-control" placeholder="https://...">
+        </div>
+    `, async (form, close) => {
+        const res = await window.SAWYAN.API.submitMemberPendingPurchase({
+            memberId: currentMember.id,
+            merchantId,
+            branchId,
+            amount: Number(form.amount.value),
+            paymentType: form.paymentType.value,
+            receiptUrl: form.receiptUrl.value.trim() || null
         });
+        close();
+        alert(`✅ تم إرسال الطلب بنجاح!\nكود الفاتورة: ${res.sw_short_code}\nالحالة: ${res.status}`);
+        await refreshDashboardBundle();
+    });
+}
 
-        // إنشاء العملية بحالة pending
-        const { data: newTransaction, error } = await window.SAWYAN.supabase
-            .from('transactions')
-            .insert([{
-                transaction_code: transactionCode,
-                member_id: memberData.id,
-                merchant_id: selectedMerchantId,
-                total_amount: amount,
-                commission_percentage: selectedCommissionPercentage,
-                commission_amount: commissionAmount,
-                company_share: companyShare,
-                plan_share: planShare,
-                status: 'pending' // معلقة حتى يوافق التاجر
-            }])
-            .select()
-            .single();
-
-        console.log('Transaction result:', newTransaction, 'Error:', error);
-
-        if (error) throw error;
-
-        // إنشاء إشعار للتاجر (اختياري - إذا كان جدول الإشعارات موجود)
-        try {
-            console.log('Creating notification for merchant:', selectedMerchantId);
-            const { data: notifData, error: notifError } = await window.SAWYAN.supabase
-                .from('notifications')
-                .insert([{
-                    user_type: 'merchant',
-                    user_id: selectedMerchantId,
-                    title: 'طلب توثيق عملية جديد 📝',
-                    message: memberData.full_name + ' طلب توثيق عملية بمبلغ ' + amount.toFixed(2) + ' ج.م',
-                    notification_type: 'transaction_request'
-                }])
-                .select();
-
-            if (notifError) {
-                console.error('Notification error:', notifError);
-            } else {
-                console.log('Notification created:', notifData);
-            }
-        } catch (notifErr) {
-            console.error('Notification exception:', notifErr);
-        }
-
-        closeTransactionModal();
-
-        alert(`✅ تم إرسال طلب التوثيق بنجاح!\n\nكود العملية: ${transactionCode}\nالمبلغ: ${amount.toFixed(2)} ج.م\nالعمولة المتوقعة: ${commissionAmount.toFixed(2)} ج.م\n\n⏳ في انتظار موافقة التاجر`);
-
-    } catch (error) {
-        console.error('Error:', error);
-        alert('حدث خطأ: ' + error.message);
+async function toggleMerchantFavorite(merchantId) {
+    try {
+        await window.SAWYAN.API.updateMemberProfileSettings({
+            memberId: currentMember.id,
+            favoriteMerchantId: merchantId,
+            favoriteAction: 'toggle'
+        });
+        await refreshDashboardBundle();
+    } catch (e) {
+        alert('❌ تعذر تحديث المفضلة: ' + e.message);
     }
 }
 
-async function loadCRM() {
-    const page = document.getElementById('crmPage');
+function loadFavorites() {
+    const page = document.getElementById('favoritesPage');
+    if (!page) return;
+    const favIds = new Set(((memberBundle?.profile?.metadata?.favorite_merchant_ids) || []).map(String));
+    const favMerchants = liveCatalog.filter(m => favIds.has(String(m.merchant_id)));
+
     page.innerHTML = `
-        <h2>قائمة المعارف</h2>
-        <p class="empty-state">إدارة جهات الاتصال قريباً...</p>
+        <h2>❤️ متاجري المفضلة (${favMerchants.length})</h2>
+        ${favMerchants.length === 0 ? `
+            <p class="empty-state">لم تضف أي متاجر للمفضلة بعد. استعرض التجار واضغط على ❤️ للحفظ السريع.</p>
+            <button type="button" class="btn btn-primary btn-sm" onclick="goToPage('merchants')">استعراض التجار</button>
+        ` : `
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-top:12px;">
+                ${favMerchants.map(m => `
+                    <div style="background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:14px;">
+                        <strong>${esc(m.business_name)}</strong> (${esc(m.branch_name)})
+                        <div style="margin:8px 0;color:#047857;font-weight:700;">عائدات خطة الدخل: ${Number(m.plan_cashback_pct).toFixed(2)}%</div>
+                        <div style="display:flex;gap:8px;">
+                            <button type="button" class="btn btn-primary btn-sm" onclick="submitPendingPurchasePrompt('${m.merchant_id}', '${m.branch_id}', '${esc(m.business_name)}', '${esc(m.currency_code || '')}')">توثيق</button>
+                            <button type="button" class="btn btn-outline btn-sm" onclick="toggleMerchantFavorite('${m.merchant_id}')">إزالة</button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `}
     `;
 }
 
-async function loadReferrals() {
-    const page = document.getElementById('referralsPage');
+// ---------------------------------------------------------------------------
+// Screen 9: Field Mini CRM (Point 10)
+// ---------------------------------------------------------------------------
+function loadCRM() {
+    const page = document.getElementById('crmPage');
+    if (!page || !memberBundle) return;
+    const contacts = memberBundle.contacts || [];
+    const refLink = buildReferralUrl();
+
     page.innerHTML = `
-        <h2>رابط الإحالة الخاص بك</h2>
-        <div class="referral-link">
-            <input type="text" value="${window.location.origin}/member-dashboard/register.html?ref=${memberData?.member_code}" readonly>
-            <button onclick="copyReferralLink()">نسخ</button>
+        <h2>📇 دفتر المعارف الميداني (Mini CRM — Point 10)</h2>
+        <form id="crmAddForm" style="background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:16px;margin:14px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;">
+            <input type="text" id="crmName" required class="form-control" placeholder="اسم الشخص المرشح *">
+            <input type="tel" id="crmPhone" class="form-control" placeholder="رقم الواتساب (+20...)">
+            <input type="text" id="crmNotes" class="form-control" placeholder="ملاحظة (صديق / قريب / جار)">
+            <button type="submit" class="btn btn-primary">+ إضافة لقائمة المعارف</button>
+        </form>
+        ${contacts.length === 0 ? '<p class="empty-state">لا يوجد جهات اتصال مضافة في قائمة معارفك حتى الآن.</p>' : `
+            <div style="display:grid;gap:10px;">
+                ${contacts.map(c => {
+                    const waNum = String(c.contact_phone_e164 || '').replace(/[^0-9]/g, '');
+                    const waMsg = encodeURIComponent(`أهلاً ${c.contact_name}، أدعوك للانضمام معي في منصة SAWYAN عبر رابطي: ${refLink}`);
+                    return `
+                        <div style="background:#fff;border:1px solid #cbd5e1;border-radius:12px;padding:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                            <div>
+                                <strong>${esc(c.contact_name)}</strong>
+                                ${c.registered_member_id ? '<span style="background:#d1fae5;color:#065f46;font-size:0.74rem;padding:2px 8px;border-radius:999px;font-weight:800;">✅ مسجل بالفعل</span>' : ''}
+                                ${c.opted_out ? '<span style="background:#fee2e2;color:#991b1b;font-size:0.74rem;padding:2px 8px;border-radius:999px;font-weight:800;">🔕 غير راغب (Opt-out)</span>' : ''}
+                                <div style="font-size:0.82rem;color:#64748b;">${esc(c.contact_phone_e164 || 'بدون هاتف')} • ${esc(c.notes || '')}</div>
+                            </div>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                ${waNum && !c.opted_out ? `<a href="https://wa.me/${waNum}?text=${waMsg}" target="_blank" onclick="crmAction('mark_reminded','${c.id}')" class="btn btn-primary btn-sm">💬 دعوة واتساب</a>` : ''}
+                                <button type="button" class="btn btn-outline btn-sm" onclick="crmAction('toggle_opt_out','${c.id}')">${c.opted_out ? 'تفعيل التذكير' : 'إيقاف (Opt-out)'}</button>
+                                <button type="button" class="btn btn-outline btn-sm" onclick="crmAction('delete','${c.id}')">حذف</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `}
+    `;
+
+    const form = document.getElementById('crmAddForm');
+    if (form) {
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            try {
+                await window.SAWYAN.API.manageMemberCrmContact({
+                    memberId: currentMember.id,
+                    action: 'add',
+                    contactName: document.getElementById('crmName').value.trim(),
+                    contactPhone: document.getElementById('crmPhone').value.trim(),
+                    notes: document.getElementById('crmNotes').value.trim()
+                });
+                await refreshDashboardBundle();
+            } catch (err) {
+                alert('❌ خطأ: ' + err.message);
+            }
+        });
+    }
+}
+
+async function crmAction(action, contactId) {
+    try {
+        await window.SAWYAN.API.manageMemberCrmContact({ memberId: currentMember.id, action, contactId });
+        await refreshDashboardBundle();
+    } catch (err) {
+        alert('❌ خطأ: ' + err.message);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Screen 10: Referral Link (Auto-routed for Original / vs Parallel /preview/)
+// ---------------------------------------------------------------------------
+function buildReferralUrl() {
+    const base = window.location.href.split('/member-dashboard/')[0];
+    return `${base}/member-dashboard/register.html?ref=${currentMember?.member_code || ''}`;
+}
+
+function loadReferrals() {
+    const page = document.getElementById('referralsPage');
+    if (!page) return;
+    const url = buildReferralUrl();
+    page.innerHTML = `
+        <h2>🔗 رابط الإحالة الشخصي المباشر</h2>
+        <div style="background:#fff;border:1.5px solid #10b981;border-radius:16px;padding:20px;margin-top:14px;">
+            <p style="margin:0 0 10px;">كود الراعي الخاص بك: <strong>#${esc(currentMember.member_code)}</strong> — كل من يسجل عبر هذا الرابط يتأكد من اسمك الثلاثي قبل التسكين الذري التلقائي في أضعف ذراع (G01–G05).</p>
+            <div class="referral-link" style="display:flex;gap:8px;flex-wrap:wrap;">
+                <input type="text" id="myReferralLinkInput" class="form-control" style="flex:1;direction:ltr;" value="${esc(url)}" readonly>
+                <button type="button" class="btn btn-primary" onclick="copyReferralLink()">📋 نسخ الرابط</button>
+                <a href="https://wa.me/?text=${encodeURIComponent('سجل مجاناً في SAWYAN مع فريقي: ' + url)}" target="_blank" class="btn btn-outline">💬 مشاركة واتساب</a>
+            </div>
         </div>
     `;
 }
 
 function copyReferralLink() {
-    const input = document.querySelector('.referral-link input');
+    const input = document.getElementById('myReferralLinkInput');
+    if (!input) return;
     input.select();
-    document.execCommand('copy');
-    alert('تم نسخ الرابط!');
+    navigator.clipboard?.writeText(input.value).catch(() => document.execCommand('copy'));
+    alert('✅ تم نسخ رابط الإحالة!');
 }
 
-async function loadSettings() {
+// ---------------------------------------------------------------------------
+// Screen 11: Settings & Strong Password Update
+// ---------------------------------------------------------------------------
+function loadSettings() {
     const page = document.getElementById('settingsPage');
-
-    // تحميل أحدث بيانات العضو
-    try {
-        const { data: freshData } = await window.SAWYAN.supabase
-            .from('members')
-            .select('*')
-            .eq('id', currentUser.id)
-            .single();
-
-        if (freshData) memberData = freshData;
-    } catch (e) {
-        console.log('Using cached data');
-    }
-
-    const m = memberData || {};
+    if (!page || !memberBundle) return;
+    const p = memberBundle.profile || currentMember;
 
     page.innerHTML = `
-        <div class="profile-page">
-            <h2 class="page-title-mobile">الملف الشخصي</h2>
-            
-            <!-- البروفايل الحالي -->
-            <div class="profile-header-card member-profile">
-                <div class="profile-avatar-container">
-                    <div class="profile-avatar" id="profileAvatarPreview">
-                        ${m.profile_image_url ? `<img src="${m.profile_image_url}" alt="Profile">` : `<span class="avatar-placeholder">👤</span>`}
-                    </div>
-                    <button class="btn-change-avatar" onclick="document.getElementById('avatarInput').click()">
-                        📷 تغيير الصورة
-                    </button>
-                    <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="previewAvatar(this)">
-                </div>
-                <div class="profile-info-brief">
-                    <h3>${m.full_name || 'اسم العضو'}</h3>
-                    <p class="member-code-badge">كود العضوية: ${m.member_code || '-'}</p>
-                    <p class="subscription-badge">${getSubscriptionBadge(m.subscription_plan)}</p>
-                </div>
+        <h2>⚙️ الملف الشخصي وإعدادات الأمان</h2>
+        <form id="memberSettingsForm" style="background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:20px;margin-top:14px;display:grid;gap:14px;">
+            <div>
+                <label>الاسم الكامل</label>
+                <input type="text" id="setFullName" class="form-control" value="${esc(p.full_name || '')}" required>
             </div>
-
-            <!-- أقسام الإعدادات -->
-            <div class="settings-sections">
-                
-                <!-- المعلومات الشخصية -->
-                <div class="settings-section-card">
-                    <div class="section-header" onclick="toggleSection('personalInfo')">
-                        <span>👤 المعلومات الشخصية</span>
-                        <span class="toggle-icon" id="personalInfoIcon">▼</span>
-                    </div>
-                    <div class="section-content" id="personalInfo">
-                        <div class="form-group">
-                            <label>الاسم الكامل</label>
-                            <input type="text" id="settingsFullName" class="form-control" value="${m.full_name || ''}" placeholder="أدخل اسمك الكامل">
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>تاريخ الميلاد</label>
-                                <input type="date" id="settingsBirthDate" class="form-control" value="${m.date_of_birth || ''}">
-                            </div>
-                            <div class="form-group">
-                                <label>الجنس</label>
-                                <select id="settingsGender" class="form-control">
-                                    <option value="">اختر...</option>
-                                    <option value="male" ${m.gender === 'male' ? 'selected' : ''}>ذكر</option>
-                                    <option value="female" ${m.gender === 'female' ? 'selected' : ''}>أنثى</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>الحالة الاجتماعية</label>
-                            <select id="settingsMaritalStatus" class="form-control">
-                                <option value="">اختر...</option>
-                                <option value="single" ${m.marital_status === 'single' ? 'selected' : ''}>أعزب</option>
-                                <option value="married" ${m.marital_status === 'married' ? 'selected' : ''}>متزوج</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>رقم الهوية</label>
-                            <input type="text" id="settingsNationalId" class="form-control" value="${m.national_id || ''}" placeholder="رقم الهوية الوطنية">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- معلومات التواصل -->
-                <div class="settings-section-card">
-                    <div class="section-header" onclick="toggleSection('contactInfo')">
-                        <span>📞 معلومات التواصل</span>
-                        <span class="toggle-icon" id="contactInfoIcon">▼</span>
-                    </div>
-                    <div class="section-content" id="contactInfo">
-                        <div class="form-group">
-                            <label>📧 البريد الإلكتروني</label>
-                            <input type="email" id="settingsEmail" class="form-control" value="${m.email || ''}" placeholder="email@example.com">
-                        </div>
-                        <div class="form-group">
-                            <label>📱 رقم الهاتف</label>
-                            <input type="tel" id="settingsPhone" class="form-control" value="${m.phone || ''}" placeholder="+20 123 456 7890">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- العنوان -->
-                <div class="settings-section-card">
-                    <div class="section-header" onclick="toggleSection('addressInfo')">
-                        <span>📍 العنوان</span>
-                        <span class="toggle-icon" id="addressInfoIcon">▼</span>
-                    </div>
-                    <div class="section-content collapsed" id="addressInfo">
-                        <div class="form-group">
-                            <label>الجنسية</label>
-                            <input type="text" id="settingsNationality" class="form-control" value="${m.nationality || ''}" placeholder="مثال: مصري">
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>الدولة</label>
-                                <input type="text" id="settingsCountry" class="form-control" value="${m.country || ''}" placeholder="مثال: مصر">
-                            </div>
-                            <div class="form-group">
-                                <label>المدينة</label>
-                                <input type="text" id="settingsCity" class="form-control" value="${m.city || ''}" placeholder="مثال: القاهرة">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>العنوان التفصيلي</label>
-                            <textarea id="settingsAddress" class="form-control" rows="2" placeholder="الشارع، الحي، المنطقة...">${m.address || ''}</textarea>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- رابط الإحالة -->
-                <div class="settings-section-card">
-                    <div class="section-header" onclick="toggleSection('referralInfo')">
-                        <span>🔗 رابط الإحالة</span>
-                        <span class="toggle-icon" id="referralInfoIcon">▼</span>
-                    </div>
-                    <div class="section-content collapsed" id="referralInfo">
-                        <div class="referral-link-box">
-                            <p>رابط الإحالة الخاص بك:</p>
-                            <div class="referral-link-input">
-                                <input type="text" readonly value="${window.location.origin}/member-dashboard/register.html?ref=${m.member_code}" id="referralLinkInput" class="form-control">
-                                <button onclick="copyReferralLinkFromSettings()" class="btn btn-secondary">📋 نسخ</button>
-                            </div>
-                            <p class="form-text">شارك هذا الرابط مع أصدقائك لدعوتهم للانضمام</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- تغيير كلمة المرور -->
-                <div class="settings-section-card">
-                    <div class="section-header" onclick="toggleSection('passwordSection')">
-                        <span>🔐 تغيير كلمة المرور</span>
-                        <span class="toggle-icon" id="passwordSectionIcon">▼</span>
-                    </div>
-                    <div class="section-content collapsed" id="passwordSection">
-                        <div class="form-group">
-                            <label>كلمة المرور الحالية</label>
-                            <input type="password" id="settingsCurrentPassword" class="form-control" placeholder="أدخل كلمة المرور الحالية">
-                        </div>
-                        <div class="form-group">
-                            <label>كلمة المرور الجديدة</label>
-                            <input type="password" id="settingsNewPassword" class="form-control" placeholder="أدخل كلمة المرور الجديدة">
-                        </div>
-                        <div class="form-group">
-                            <label>تأكيد كلمة المرور</label>
-                            <input type="password" id="settingsConfirmPassword" class="form-control" placeholder="أعد إدخال كلمة المرور الجديدة">
-                        </div>
-                    </div>
-                </div>
-
+            <div>
+                <label>البريد الإلكتروني</label>
+                <input type="email" id="setEmail" class="form-control" value="${esc(p.email || '')}">
             </div>
-
-            <!-- أزرار الحفظ -->
-            <div class="settings-actions-fixed">
-                <button onclick="saveSettings()" class="btn btn-primary btn-block btn-save-profile">
-                    💾 حفظ جميع التغييرات
-                </button>
+            <div>
+                <label>الحي / المنطقة</label>
+                <input type="text" id="setDistrict" class="form-control" value="${esc(p.manual_district_fallback || '')}">
             </div>
-        </div>
-    `;
-}
-
-// الحصول على شارة الاشتراك
-function getSubscriptionBadge(plan) {
-    const badges = {
-        'free': '🆓 مجاني',
-        'bronze': '🥉 برونزي',
-        'silver': '🥈 فضي',
-        'gold': '🥇 ذهبي'
-    };
-    return badges[plan] || '🆓 مجاني';
-}
-
-// تبديل إظهار/إخفاء قسم
-function toggleSection(sectionId) {
-    const section = document.getElementById(sectionId);
-    const icon = document.getElementById(sectionId + 'Icon');
-
-    if (section.classList.contains('collapsed')) {
-        section.classList.remove('collapsed');
-        if (icon) icon.textContent = '▼';
-    } else {
-        section.classList.add('collapsed');
-        if (icon) icon.textContent = '▶';
-    }
-}
-
-// معاينة الصورة الشخصية
-let pendingAvatarFile = null;
-
-async function previewAvatar(input) {
-    if (input.files && input.files[0]) {
-        const file = input.files[0];
-
-        // التحقق من حجم الملف (5 ميجابايت كحد أقصى)
-        if (file.size > 5 * 1024 * 1024) {
-            alert('حجم الصورة يتجاوز 5 ميجابايت');
-            input.value = '';
-            return;
-        }
-
-        // التحقق من نوع الملف
-        if (!file.type.startsWith('image/')) {
-            alert('الرجاء اختيار ملف صورة');
-            input.value = '';
-            return;
-        }
-
-        // حفظ الملف للرفع لاحقاً
-        pendingAvatarFile = file;
-
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            document.getElementById('profileAvatarPreview').innerHTML =
-                `<img src="${e.target.result}" alt="Avatar Preview">`;
-        };
-        reader.readAsDataURL(file);
-    }
-}
-
-// رفع صورة البروفايل إلى Supabase Storage
-async function uploadAvatar() {
-    if (!pendingAvatarFile) return null;
-
-    try {
-        // استخدام مكون رفع الصور إذا كان متاحاً
-        if (window.SAWYAN && window.SAWYAN.ImageUpload) {
-            const result = await window.SAWYAN.ImageUpload.uploadImage(
-                pendingAvatarFile,
-                'avatars',
-                `members/${currentUser.id}`
-            );
-
-            if (result.success) {
-                pendingAvatarFile = null;
-                return result.url;
-            } else {
-                console.error('Upload error:', result.error);
-                // fallback: إذا فشل الرفع، نستمر بدون صورة
-                return null;
-            }
-        }
-        return null;
-    } catch (err) {
-        console.error('Avatar upload error:', err);
-        return null;
-    }
-}
-
-// نسخ رابط الإحالة
-function copyReferralLinkFromSettings() {
-    const input = document.getElementById('referralLinkInput');
-    input.select();
-    document.execCommand('copy');
-    alert('✅ تم نسخ الرابط!');
-}
-
-async function saveSettings() {
-    // جمع البيانات
-    const fullName = document.getElementById('settingsFullName')?.value;
-    const birthDate = document.getElementById('settingsBirthDate')?.value;
-    const gender = document.getElementById('settingsGender')?.value;
-    const maritalStatus = document.getElementById('settingsMaritalStatus')?.value;
-    const nationalId = document.getElementById('settingsNationalId')?.value;
-
-    const email = document.getElementById('settingsEmail')?.value;
-    const phone = document.getElementById('settingsPhone')?.value;
-
-    const nationality = document.getElementById('settingsNationality')?.value;
-    const country = document.getElementById('settingsCountry')?.value;
-    const city = document.getElementById('settingsCity')?.value;
-    const address = document.getElementById('settingsAddress')?.value;
-
-    const currentPassword = document.getElementById('settingsCurrentPassword')?.value;
-    const newPassword = document.getElementById('settingsNewPassword')?.value;
-    const confirmPassword = document.getElementById('settingsConfirmPassword')?.value;
-
-    // التحقق من كلمة المرور
-    if (newPassword) {
-        if (newPassword !== confirmPassword) {
-            alert('كلمة المرور الجديدة غير متطابقة!');
-            return;
-        }
-        if (newPassword.length < 6) {
-            alert('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
-            return;
-        }
-    }
-
-    // إظهار رسالة تحميل
-    const saveBtn = document.querySelector('.btn-save-profile');
-    const originalText = saveBtn.innerHTML;
-    saveBtn.innerHTML = '⏳ جاري الحفظ...';
-    saveBtn.disabled = true;
-
-    try {
-        // رفع الصورة إذا تم اختيار صورة جديدة
-        let profileImageUrl = memberData.profile_image_url;
-        if (pendingAvatarFile) {
-            saveBtn.innerHTML = '⏳ جاري رفع الصورة...';
-            const uploadedUrl = await uploadAvatar();
-            if (uploadedUrl) {
-                profileImageUrl = uploadedUrl;
-            }
-        }
-
-        // تحديث البيانات
-        const updateData = {
-            full_name: fullName,
-            date_of_birth: birthDate || null,
-            gender: gender || null,
-            marital_status: maritalStatus || null,
-            national_id: nationalId,
-            email: email,
-            phone: phone,
-            nationality: nationality,
-            country: country,
-            city: city,
-            address: address,
-            profile_image_url: profileImageUrl,
-            updated_at: new Date().toISOString()
-        };
-
-        saveBtn.innerHTML = '⏳ جاري الحفظ...';
-
-        const { error } = await window.SAWYAN.supabase
-            .from('members')
-            .update(updateData)
-            .eq('id', currentUser.id);
-
-        if (error) throw error;
-
-        // تحديث كلمة المرور إذا تم إدخالها
-        if (newPassword && currentPassword) {
-            // التحقق من كلمة المرور الحالية
-            if (memberData.password_hash !== currentPassword) {
-                throw new Error('كلمة المرور الحالية غير صحيحة');
-            }
-
-            await window.SAWYAN.supabase
-                .from('members')
-                .update({ password_hash: newPassword })
-                .eq('id', currentUser.id);
-        }
-
-        // تحديث البيانات المحلية
-        memberData = { ...memberData, ...updateData };
-        localStorage.setItem('sawyan_member', JSON.stringify(memberData));
-
-        // تحديث الواجهة
-        const userNameEl = document.getElementById('userName');
-        if (userNameEl) userNameEl.textContent = fullName || 'عضو';
-
-        alert('✅ تم حفظ التغييرات بنجاح!');
-
-    } catch (error) {
-        console.error('Error saving settings:', error);
-        alert('❌ حدث خطأ: ' + error.message);
-    } finally {
-        saveBtn.innerHTML = originalText;
-        saveBtn.disabled = false;
-    }
-}
-
-async function logout() {
-    localStorage.removeItem('sawyan_member');
-    localStorage.removeItem('sawyan_member_id');
-    window.location.href = '../landing-page/index.html';
-}
-
-// ===== نظام المفضلة =====
-
-// تحميل صفحة المفضلة
-async function loadFavorites() {
-    const page = document.getElementById('favoritesPage');
-    page.innerHTML = `
-        <h2>❤️ التجار المفضلين</h2>
-        <p class="page-description">التجار الذين أضفتهم للمفضلة</p>
-        <div id="favoritesList" class="merchants-grid"></div>
+            <hr>
+            <h3 style="margin:0;font-size:1rem;">🔐 تغيير كلمة المرور (اختياري — يُحظر 123456)</h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
+                <input type="password" id="setCurrPass" class="form-control" placeholder="كلمة المرور الحالية">
+                <input type="password" id="setNewPass" class="form-control" minlength="8" placeholder="كلمة المرور الجديدة (8+ أحرف)">
+            </div>
+            <button type="submit" class="btn btn-primary">💾 حفظ الإعدادات في الخادم</button>
+        </form>
     `;
 
-    try {
-        const { data: favorites, error } = await window.SAWYAN.supabase
-            .from('member_favorites')
-            .select(`
-                id,
-                created_at,
-                merchants (
-                    id,
-                    business_name,
-                    business_category,
-                    commission_percentage,
-                    merchant_type,
-                    logo_url,
-                    city,
-                    country,
-                    is_verified,
-                    avg_rating,
-                    total_reviews
-                )
-            `)
-            .eq('member_id', currentUser.id)
-            .order('created_at', { ascending: false });
-
-        const list = document.getElementById('favoritesList');
-
-        if (error) {
-            console.log('Favorites table may not exist:', error);
-            list.innerHTML = '<p class="empty-state">جدول المفضلة غير متاح حالياً. سيتم تفعيله قريباً.</p>';
-            return;
-        }
-
-        if (!favorites || favorites.length === 0) {
-            list.innerHTML = `
-                <div class="empty-state" style="grid-column: 1/-1;">
-                    <span style="font-size: 4rem;">❤️</span>
-                    <h3>لا يوجد تجار في المفضلة</h3>
-                    <p>اضغط على ❤️ في صفحة التجار لإضافتهم للمفضلة</p>
-                    <button class="btn btn-primary" onclick="navigateToPage('merchants')">استعرض التجار</button>
-                </div>
-            `;
-            return;
-        }
-
-        list.innerHTML = favorites.map(fav => {
-            const m = fav.merchants;
-            if (!m) return '';
-            return `
-            <div class="merchant-card">
-                <button class="favorite-btn active" onclick="removeFromFavorites('${fav.id}')" title="إزالة من المفضلة">
-                    ❤️
-                </button>
-                <div class="merchant-header">
-                    ${m.logo_url ? `<img src="${m.logo_url}" alt="${m.business_name}" class="merchant-logo">` : ''}
-                    <div class="merchant-title">
-                        <h4>${m.business_name}</h4>
-                        ${m.is_verified ? '<span class="verified-badge" title="تاجر موثق">✓</span>' : ''}
-                    </div>
-                    <span class="commission-badge">${m.commission_percentage || 0}%</span>
-                </div>
-                <p class="merchant-category">📁 ${m.business_category || 'غير محدد'}</p>
-                ${m.city ? `<p class="merchant-location">📍 ${m.city}</p>` : ''}
-                ${m.avg_rating ? `<div class="merchant-rating">⭐ ${m.avg_rating} (${m.total_reviews || 0})</div>` : ''}
-                <button class="btn btn-primary btn-sm" onclick="openTransactionModal('${m.id}', '${escapeHtml(m.business_name)}', ${m.commission_percentage || 0}, '${escapeHtml(m.business_category || '')}')">توثيق عملية</button>
-            </div>
-        `}).join('');
-
-    } catch (err) {
-        console.error('Error loading favorites:', err);
-        document.getElementById('favoritesList').innerHTML = '<p class="empty-state">حدث خطأ في تحميل المفضلة</p>';
-    }
-}
-
-// إضافة للمفضلة
-async function addToFavorites(merchantId) {
-    try {
-        const { data, error } = await window.SAWYAN.supabase
-            .from('member_favorites')
-            .insert([{
-                member_id: currentUser.id,
-                merchant_id: merchantId
-            }])
-            .select()
-            .single();
-
-        if (error) {
-            if (error.code === '23505') { // Duplicate
-                alert('هذا التاجر موجود بالفعل في المفضلة');
-            } else {
-                throw error;
+    const form = document.getElementById('memberSettingsForm');
+    if (form) {
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            try {
+                await window.SAWYAN.API.updateMemberProfileSettings({
+                    memberId: currentMember.id,
+                    fullName: document.getElementById('setFullName').value,
+                    email: document.getElementById('setEmail').value,
+                    manualDistrict: document.getElementById('setDistrict').value,
+                    currentPassword: document.getElementById('setCurrPass').value || null,
+                    newPassword: document.getElementById('setNewPass').value || null
+                });
+                alert('✅ تم حفظ التحديثات بنجاح!');
+                await refreshDashboardBundle();
+            } catch (err) {
+                alert('❌ تعذر الحفظ: ' + err.message);
             }
-            return false;
-        }
-
-        return true;
-    } catch (err) {
-        console.error('Error adding to favorites:', err);
-        alert('حدث خطأ في إضافة التاجر للمفضلة');
-        return false;
-    }
-}
-
-// إزالة من المفضلة
-async function removeFromFavorites(favoriteId) {
-    if (!confirm('هل تريد إزالة هذا التاجر من المفضلة؟')) return;
-
-    try {
-        const { error } = await window.SAWYAN.supabase
-            .from('member_favorites')
-            .delete()
-            .eq('id', favoriteId);
-
-        if (error) throw error;
-
-        // إعادة تحميل الصفحة
-        loadFavorites();
-    } catch (err) {
-        console.error('Error removing from favorites:', err);
-        alert('حدث خطأ في إزالة التاجر من المفضلة');
-    }
-}
-
-// Toggle favorite من صفحة التجار
-async function toggleFavorite(merchantId, button) {
-    const isActive = button.classList.contains('active');
-
-    if (isActive) {
-        // إزالة من المفضلة
-        try {
-            const { error } = await window.SAWYAN.supabase
-                .from('member_favorites')
-                .delete()
-                .eq('member_id', currentUser.id)
-                .eq('merchant_id', merchantId);
-
-            if (!error) {
-                button.classList.remove('active');
-                button.textContent = '🤍';
-            }
-        } catch (err) {
-            console.error('Error:', err);
-        }
-    } else {
-        // إضافة للمفضلة
-        const success = await addToFavorites(merchantId);
-        if (success) {
-            button.classList.add('active');
-            button.textContent = '❤️';
-        }
-    }
-}
-
-// التنقل لصفحة معينة
-function navigateToPage(pageName) {
-    const navItem = document.querySelector(`[data-page="${pageName}"]`);
-    if (navItem) {
-        navItem.click();
-    }
-}
-
-// ===== نظام التقييمات =====
-
-// إضافة تقييم لتاجر
-async function addReview(merchantId, transactionId, rating, comment) {
-    try {
-        const { data, error } = await window.SAWYAN.supabase
-            .from('merchant_reviews')
-            .insert([{
-                merchant_id: merchantId,
-                member_id: currentUser.id,
-                transaction_id: transactionId,
-                rating: rating,
-                comment: comment,
-                is_verified_purchase: transactionId ? true : false
-            }])
-            .select()
-            .single();
-
-        if (error) throw error;
-
-        alert('تم إضافة تقييمك بنجاح! شكراً لمشاركتك.');
-        return data;
-    } catch (err) {
-        console.error('Error adding review:', err);
-        if (err.message.includes('duplicate')) {
-            alert('لقد قمت بتقييم هذا التاجر من قبل');
-        } else {
-            alert('حدث خطأ في إضافة التقييم');
-        }
-        return null;
-    }
-}
-
-// تحميل تقييمات تاجر
-async function loadMerchantReviews(merchantId) {
-    try {
-        const { data: reviews, error } = await window.SAWYAN.supabase
-            .from('merchant_reviews')
-            .select(`
-                *,
-                members (full_name, member_code)
-            `)
-            .eq('merchant_id', merchantId)
-            .eq('status', 'active')
-            .order('created_at', { ascending: false })
-            .limit(10);
-
-        if (error) throw error;
-
-        return reviews || [];
-    } catch (err) {
-        console.error('Error loading reviews:', err);
-        return [];
-    }
-}
-
-// عرض نموذج التقييم
-function showReviewForm(merchantId, merchantName, transactionId = null) {
-    const formHTML = `
-        <div class="review-form-modal" id="reviewFormModal">
-            <div class="review-form-content">
-                <button class="close-btn" onclick="closeReviewForm()">&times;</button>
-                <h3>⭐ تقييم ${merchantName}</h3>
-                
-                <div class="form-group">
-                    <label>تقييمك بالنجوم</label>
-                    <div class="star-rating" id="starRating">
-                        <span class="star" data-rating="1" onclick="setRating(1)">☆</span>
-                        <span class="star" data-rating="2" onclick="setRating(2)">☆</span>
-                        <span class="star" data-rating="3" onclick="setRating(3)">☆</span>
-                        <span class="star" data-rating="4" onclick="setRating(4)">☆</span>
-                        <span class="star" data-rating="5" onclick="setRating(5)">☆</span>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label>تعليقك</label>
-                    <textarea id="reviewComment" class="form-control" rows="3" 
-                        placeholder="شاركنا تجربتك مع هذا التاجر..."></textarea>
-                </div>
-                
-                <button class="btn btn-primary btn-block" onclick="submitReview('${merchantId}', '${transactionId || ''}')">
-                    إرسال التقييم
-                </button>
-            </div>
-        </div>
-    `;
-
-    document.body.insertAdjacentHTML('beforeend', formHTML);
-}
-
-let currentRating = 0;
-
-function setRating(rating) {
-    currentRating = rating;
-    const stars = document.querySelectorAll('#starRating .star');
-    stars.forEach((star, index) => {
-        star.textContent = index < rating ? '★' : '☆';
-        star.classList.toggle('active', index < rating);
-    });
-}
-
-async function submitReview(merchantId, transactionId) {
-    if (currentRating === 0) {
-        alert('الرجاء اختيار تقييم بالنجوم');
-        return;
-    }
-
-    const comment = document.getElementById('reviewComment').value;
-    if (!comment.trim()) {
-        alert('الرجاء كتابة تعليق');
-        return;
-    }
-
-    const result = await addReview(merchantId, transactionId || null, currentRating, comment);
-    if (result) {
-        closeReviewForm();
-        currentRating = 0;
-    }
-}
-
-function closeReviewForm() {
-    const modal = document.getElementById('reviewFormModal');
-    if (modal) modal.remove();
-}
-
-// ===== نظام الموقع الجغرافي =====
-
-let userLocation = null;
-
-// الحصول على موقع المستخدم
-async function getUserLocation() {
-    return new Promise((resolve, reject) => {
-        if (!navigator.geolocation) {
-            reject(new Error('المتصفح لا يدعم تحديد الموقع'));
-            return;
-        }
-
-        navigator.geolocation.getCurrentPosition(
-            position => {
-                userLocation = {
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude
-                };
-                resolve(userLocation);
-            },
-            error => {
-                let message = 'فشل في تحديد الموقع';
-                switch (error.code) {
-                    case error.PERMISSION_DENIED:
-                        message = 'تم رفض إذن الموقع. الرجاء السماح بتحديد الموقع من إعدادات المتصفح.';
-                        break;
-                    case error.POSITION_UNAVAILABLE:
-                        message = 'معلومات الموقع غير متاحة';
-                        break;
-                    case error.TIMEOUT:
-                        message = 'انتهى وقت طلب الموقع';
-                        break;
-                }
-                reject(new Error(message));
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 300000 // 5 دقائق
-            }
-        );
-    });
-}
-
-// حساب المسافة بين نقطتين (Haversine formula)
-function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371; // نصف قطر الأرض بالكيلومتر
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-}
-
-// ترتيب التجار حسب القرب
-async function sortMerchantsByDistance() {
-    try {
-        if (!userLocation) {
-            await getUserLocation();
-        }
-
-        if (!userLocation) {
-            alert('لم يتم تحديد موقعك. الرجاء السماح بتحديد الموقع.');
-            return;
-        }
-
-        // حساب المسافة لكل تاجر
-        filteredMerchants = filteredMerchants.map(m => {
-            if (m.latitude && m.longitude) {
-                m.distance = calculateDistance(
-                    userLocation.latitude,
-                    userLocation.longitude,
-                    parseFloat(m.latitude),
-                    parseFloat(m.longitude)
-                );
-            } else {
-                m.distance = 999999; // بعيد جداً إذا لا يوجد موقع
-            }
-            return m;
-        });
-
-        // ترتيب حسب المسافة
-        filteredMerchants.sort((a, b) => a.distance - b.distance);
-
-        // عرض النتائج مع المسافة
-        renderMerchantsWithDistance();
-
-    } catch (err) {
-        console.error('Location error:', err);
-        alert(err.message);
-    }
-}
-
-// عرض التجار مع المسافة
-function renderMerchantsWithDistance() {
-    const merchantsList = document.getElementById('merchantsList');
-    const countElement = document.getElementById('merchantCount');
-
-    countElement.textContent = filteredMerchants.length;
-
-    if (filteredMerchants.length === 0) {
-        merchantsList.innerHTML = `
-            <div class="empty-state">
-                <span style="font-size: 3rem;">🔍</span>
-                <p>لا توجد نتائج مطابقة</p>
-            </div>
-        `;
-        return;
-    }
-
-    merchantsList.innerHTML = filteredMerchants.map(m => `
-        <div class="merchant-card clickable" onclick="openTransactionModal('${m.id}', '${escapeHtml(m.business_name)}', ${m.commission_percentage || 0}, '${escapeHtml(m.business_category || '')}')">
-            <div class="merchant-header">
-                ${m.logo_url ? `<img src="${m.logo_url}" alt="${m.business_name}" class="merchant-logo">` : ''}
-                <div class="merchant-title">
-                    <h4>${m.business_name}</h4>
-                    ${m.is_verified ? '<span class="verified-badge" title="تاجر موثق">✓</span>' : ''}
-                </div>
-                <span class="commission-badge">${m.commission_percentage || 0}%</span>
-            </div>
-            <p class="merchant-category">📁 ${m.business_category || 'غير محدد'}</p>
-            ${m.distance && m.distance < 999999 ? `
-                <p class="merchant-distance">📍 ${m.distance < 1 ? Math.round(m.distance * 1000) + ' متر' : m.distance.toFixed(1) + ' كم'}</p>
-            ` : m.city ? `<p class="merchant-location">📍 ${m.city}</p>` : ''}
-            ${m.avg_rating ? `<div class="merchant-rating">⭐ ${m.avg_rating} (${m.total_reviews || 0})</div>` : ''}
-            ${m.latitude && m.longitude ? `
-                <a href="https://www.google.com/maps?q=${m.latitude},${m.longitude}" target="_blank" class="btn btn-secondary btn-xs" onclick="event.stopPropagation()">
-                    🗺️ عرض على الخريطة
-                </a>
-            ` : ''}
-            <button class="btn btn-primary btn-sm">توثيق عملية</button>
-        </div>
-    `).join('');
-}
-
-// فتح الموقع على Google Maps
-function openInGoogleMaps(lat, lng) {
-    window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
-}
-
-// ===== نظام النزاعات =====
-
-// فتح نزاع على عملية
-async function openDispute(transactionId, merchantId, merchantName) {
-    const formHTML = `
-        <div class="dispute-modal" id="disputeModal">
-            <div class="dispute-content">
-                <button class="close-btn" onclick="closeDisputeModal()">&times;</button>
-                <h3>⚠️ فتح نزاع</h3>
-                <p class="dispute-warning">سيتم إرسال هذا النزاع للتاجر والإدارة للمراجعة</p>
-                
-                <div class="dispute-transaction-info">
-                    <p><strong>التاجر:</strong> ${merchantName}</p>
-                    <p><strong>كود العملية:</strong> ${transactionId}</p>
-                </div>
-                
-                <form id="disputeForm">
-                    <div class="form-group">
-                        <label>نوع المشكلة *</label>
-                        <select id="disputeType" class="form-control" required>
-                            <option value="">اختر نوع المشكلة</option>
-                            <option value="transaction_not_received">لم أستلم المنتج/الخدمة</option>
-                            <option value="wrong_amount">المبلغ خاطئ</option>
-                            <option value="service_issue">مشكلة في الخدمة</option>
-                            <option value="wrong_cashback">العمولة خاطئة</option>
-                            <option value="other">أخرى</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>تفاصيل المشكلة *</label>
-                        <textarea id="disputeReason" class="form-control" rows="4" required
-                            placeholder="اشرح المشكلة بالتفصيل..."></textarea>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>رابط دليل (صورة/فيديو) - اختياري</label>
-                        <input type="url" id="disputeEvidence" class="form-control" 
-                            placeholder="https://example.com/evidence.jpg">
-                    </div>
-                    
-                    <button type="submit" class="btn btn-warning btn-block">📤 إرسال النزاع</button>
-                </form>
-            </div>
-        </div>
-    `;
-
-    document.body.insertAdjacentHTML('beforeend', formHTML);
-
-    document.getElementById('disputeForm').addEventListener('submit', async function (e) {
-        e.preventDefault();
-        await submitDispute(transactionId, merchantId);
-    });
-}
-
-// إرسال النزاع
-async function submitDispute(transactionId, merchantId) {
-    const disputeType = document.getElementById('disputeType').value;
-    const reason = document.getElementById('disputeReason').value;
-    const evidence = document.getElementById('disputeEvidence').value;
-
-    if (!disputeType || !reason) {
-        alert('الرجاء ملء جميع الحقول المطلوبة');
-        return;
-    }
-
-    try {
-        const disputeCode = 'D' + Date.now();
-        const evidenceUrls = evidence ? [evidence] : [];
-
-        const { data, error } = await window.SAWYAN.supabase
-            .from('disputes')
-            .insert([{
-                dispute_code: disputeCode,
-                transaction_id: transactionId,
-                member_id: currentUser.id,
-                merchant_id: merchantId,
-                dispute_type: disputeType,
-                reason: reason,
-                evidence_urls: evidenceUrls,
-                status: 'open'
-            }])
-            .select()
-            .single();
-
-        if (error) throw error;
-
-        // إرسال إشعار للتاجر
-        try {
-            await window.SAWYAN.supabase
-                .from('notifications')
-                .insert([{
-                    user_type: 'merchant',
-                    user_id: merchantId,
-                    title: '⚠️ نزاع جديد',
-                    message: `تم فتح نزاع على عملية. كود النزاع: ${disputeCode}`,
-                    notification_type: 'dispute'
-                }]);
-        } catch (notifErr) {
-            console.log('Notification error:', notifErr);
-        }
-
-        closeDisputeModal();
-        alert(`✅ تم إرسال النزاع بنجاح!\n\nكود النزاع: ${disputeCode}\n\nسيتم مراجعته من قبل التاجر والإدارة.`);
-
-    } catch (err) {
-        console.error('Dispute error:', err);
-        if (err.message.includes('disputes')) {
-            alert('جدول النزاعات غير متاح. الرجاء تشغيل SQL أولاً.');
-        } else {
-            alert('حدث خطأ: ' + err.message);
-        }
-    }
-}
-
-function closeDisputeModal() {
-    const modal = document.getElementById('disputeModal');
-    if (modal) modal.remove();
-}
-
-// عرض نزاعاتي
-async function loadMyDisputes() {
-    try {
-        const { data: disputes, error } = await window.SAWYAN.supabase
-            .from('disputes')
-            .select(`
-                *,
-                merchants (business_name),
-                transactions (transaction_code, total_amount)
-            `)
-            .eq('member_id', currentUser.id)
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            console.log('Disputes table may not exist');
-            return [];
-        }
-
-        return disputes || [];
-    } catch (err) {
-        console.error('Error loading disputes:', err);
-        return [];
-    }
-}
-
-// عرض زر النزاع في العمليات المكتملة
-function getDisputeButton(transaction) {
-    // يمكن فتح نزاع على العمليات المكتملة فقط خلال 30 يوم
-    const transactionDate = new Date(transaction.transaction_date);
-    const daysSince = (new Date() - transactionDate) / (1000 * 60 * 60 * 24);
-
-    if (daysSince > 30) {
-        return '<span class="dispute-expired">انتهت مدة النزاع</span>';
-    }
-
-    return `<button class="btn btn-warning btn-xs" onclick="openDispute('${transaction.id}', '${transaction.merchant_id}', '${escapeHtml(transaction.merchants?.business_name || 'تاجر')}')">⚠️ فتح نزاع</button>`;
-}
-
-// ===== تحسينات الإشعارات =====
-
-// طلب إذن الإشعارات
-async function requestNotificationPermission() {
-    if (!('Notification' in window)) {
-        console.log('This browser does not support notifications');
-        return false;
-    }
-
-    if (Notification.permission === 'granted') {
-        return true;
-    }
-
-    if (Notification.permission !== 'denied') {
-        const permission = await Notification.requestPermission();
-        return permission === 'granted';
-    }
-
-    return false;
-}
-
-// إرسال إشعار محلي
-function sendLocalNotification(title, body, icon = '🔔') {
-    if (Notification.permission === 'granted') {
-        new Notification(title, {
-            body: body,
-            icon: icon,
-            badge: '/shared/icons/badge.png',
-            tag: 'sawyan-notification',
-            renotify: true
         });
     }
 }
 
-// التحقق من إشعارات جديدة كل 30 ثانية
-let notificationCheckInterval = null;
-
-function startNotificationPolling() {
-    if (!currentUser) return;
-
-    // طلب إذن الإشعارات
-    requestNotificationPermission();
-
-    // التحقق كل 30 ثانية
-    notificationCheckInterval = setInterval(checkNewNotifications, 30000);
+function toggleMoreMenu(e) {
+    if (e) e.preventDefault();
+    const menu = document.getElementById('moreMenu');
+    if (menu) menu.classList.toggle('open');
 }
 
-async function checkNewNotifications() {
-    try {
-        const { data: notifications, error } = await window.SAWYAN.supabase
-            .from('notifications')
-            .select('*')
-            .eq('user_id', currentUser.id)
-            .eq('user_type', 'member')
-            .eq('is_read', false)
-            .order('created_at', { ascending: false })
-            .limit(5);
-
-        if (!error && notifications && notifications.length > 0) {
-            // إظهار إشعار للإشعار الأخير
-            const latest = notifications[0];
-            sendLocalNotification(latest.title, latest.message);
-
-            // تحديث العداد
-            updateNotificationBadge(notifications.length);
-        }
-    } catch (err) {
-        console.log('Notification check error:', err);
-    }
+function closeMoreMenu() {
+    const menu = document.getElementById('moreMenu');
+    if (menu) menu.classList.remove('open');
 }
 
-function updateNotificationBadge(count) {
-    let badge = document.getElementById('notificationBadge');
-    if (!badge) {
-        // إنشاء العداد إذا لم يكن موجوداً
-        const bellIcon = document.querySelector('.notification-bell');
-        if (bellIcon) {
-            badge = document.createElement('span');
-            badge.id = 'notificationBadge';
-            badge.className = 'notification-badge';
-            bellIcon.appendChild(badge);
-        }
+function logout() {
+    if (window.SAWYAN && window.SAWYAN.API) {
+        window.SAWYAN.API.clearMemberSession();
     }
-
-    if (badge) {
-        badge.textContent = count > 9 ? '9+' : count;
-        badge.style.display = count > 0 ? 'flex' : 'none';
-    }
+    window.location.href = '../index.html';
 }
-
-// إيقاف التحقق عند مغادرة الصفحة
-window.addEventListener('beforeunload', () => {
-    if (notificationCheckInterval) {
-        clearInterval(notificationCheckInterval);
-    }
-});
-
-// بدء التحقق من الإشعارات بعد الدخول
-document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(startNotificationPolling, 5000);
-});

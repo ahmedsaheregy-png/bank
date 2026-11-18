@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>بوابة التحقق العام من الفواتير | SAWYAN</title>
+    <meta name="description" content="تحقق علنياً وفوراً من توثيق فاتورتك لدى تجار SAWYAN وقيمة عائدات الاستهلاك الاستثماري المضافة، مع حماية خصوصية بيانات العضو ومنع كشف أرقام الهواتف.">
+    <script>
+        (function () {
+            try {
+                var savedTheme = localStorage.getItem('sawyan-theme') || 'light';
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            } catch (e) {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/preview.css">
+    <link rel="stylesheet" href="../shared/css/logo.css">
+    <style>
+        .verify-hero {
+            background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 50%, #ecfdf5 100%);
+            padding: 44px 0 60px;
+        }
+        .verify-card {
+            max-width: 780px;
+            margin: 0 auto;
+            background: #ffffff;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 22px;
+            padding: 30px;
+            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+            color: #0f172a;
+        }
+        [data-theme="dark"] .verify-hero {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        }
+        [data-theme="dark"] .verify-card {
+            background: #1e293b;
+            border-color: #334155;
+            color: #f8fafc;
+        }
+        .verify-form-row {
+            display: flex;
+            gap: 10px;
+            margin: 18px 0 12px;
+        }
+        .verify-form-row input {
+            flex: 1;
+            padding: 13px 16px;
+            border-radius: 12px;
+            border: 1.5px solid #cbd5e1;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #0f172a;
+            background: #f8fafc;
+            direction: ltr;
+            text-align: center;
+        }
+        @media (max-width: 600px) {
+            .verify-form-row { flex-direction: column; }
+        }
+        .rate-limit-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #f1f5f9;
+            color: #334155;
+            border: 1px solid #cbd5e1;
+            border-radius: 999px;
+            padding: 4px 12px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            margin-top: 10px;
+        }
+        .cert-box {
+            margin-top: 22px;
+            border-radius: 16px;
+            padding: 22px;
+            border: 2px solid #10b981;
+            background: #ecfdf5;
+            color: #0f172a;
+        }
+        .cert-box.pending {
+            border-color: #f59e0b;
+            background: #fffbeb;
+        }
+        .cert-box.not-found {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+        .cert-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .cert-cell {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px 14px;
+        }
+        .cert-cell span {
+            display: block;
+            font-size: 0.78rem;
+            color: #64748b;
+            margin-bottom: 4px;
+            font-weight: 700;
+        }
+        .cert-cell strong {
+            font-size: 0.98rem;
+            color: #0f172a;
+            word-break: break-word;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-geo-trust-bar">
+        <div class="container top-bar-flex">
+            <div class="top-geo-status">
+                <span>🛡️ بوابة التحقق العلني من المعاملات — متوافقة مع خصوصية الهواتف (D26)</span>
+            </div>
+            <div class="top-trust-chips">
+                <span>✅ تقنيع إجباري للهوية</span>
+                <a href="merchants.html">🏪 دليل التجار المعتمدين</a>
+            </div>
+        </div>
+    </div>
+
+    <nav class="preview-nav portal-nav">
+        <div class="container nav-content">
+            <a href="../index.html" class="nav-logo" id="navBrandLogo" aria-label="SAWYAN الرئيسية">
+                <strong style="font-size:1.35rem; color:#047857; font-weight:900;">SAWYAN</strong>
+            </a>
+
+            <div class="nav-links">
+                <a href="../index.html">الرئيسية</a>
+                <a href="merchants.html">دليل التجار</a>
+                <a href="verify.html" class="active">التحقق من الفاتورة</a>
+                <a href="../member-demo/index.html" class="demo-link">ديمو العضو</a>
+            </div>
+
+            <div class="nav-right-controls">
+                <button type="button" class="theme-toggle" id="themeToggleBtn" aria-label="تبديل المظهر">🌙</button>
+                <a href="../member-dashboard/register.html" class="mobile-quick-join">انضم مجاناً</a>
+                <div class="nav-cta">
+                    <a href="../auth-gateway.html" class="btn btn-outline btn-sm">تسجيل الدخول</a>
+                    <a href="../member-dashboard/register.html" class="btn btn-primary btn-sm">انضم مجاناً</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="verify-hero">
+        <div class="container">
+            <div class="verify-card">
+                <div style="text-align:center;">
+                    <div style="font-size:2.4rem; margin-bottom:6px;">🔎</div>
+                    <h1 style="margin:0 0 8px; font-size:1.85rem;">التحقق العلني من <span class="text-gradient">صحة الفاتورة</span></h1>
+                    <p style="margin:0; color:#475569; line-height:1.7;">
+                        أدخل كود الفاتورة المرجعي للتأكد من تسجيلها في دفتر معاملات SAWYAN واحتساب عائدات فريقك من التاجر، مع إخفاء الأسماء الكاملة وأرقام الهواتف.
+                    </p>
+                </div>
+
+                <form id="verifyForm" class="verify-form-row">
+                    <input type="text" id="verifyCodeInput" placeholder="أدخل كود الفاتورة مثل: SW-8821" value="SW-8821" aria-label="كود الفاتورة" required>
+                    <button type="submit" id="verifySubmitBtn" class="btn btn-primary">فحص الكود الآن 🔎</button>
+                </form>
+
+                <div style="display:flex; justify-content:center; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.86rem;">
+                    <span style="font-weight:700; color:#475569;">أكواد موثقة للتجربة:</span>
+                    <button type="button" class="geo-city-chip sample-code-btn" data-code="SW-1001">SW-1001 (فاتورة قاعدة البيانات الحية • مصر)</button>
+                    <button type="button" class="geo-city-chip sample-code-btn" data-code="SW-8821">SW-8821 (عينة واجهة • مصر)</button>
+                    <button type="button" class="geo-city-chip sample-code-btn" data-code="T178001">T178001 (عينة واجهة • السعودية)</button>
+                    <button type="button" class="geo-city-chip sample-code-btn" data-code="SW-4910">SW-4910 (معلقة • تركيا)</button>
+                </div>
+
+                <div style="text-align:center;">
+                    <span class="rate-limit-pill" id="rateLimitBadge">🛡️ حد الحماية: متبقي 10 من 10 فحوصات خلال الدقيقة</span>
+                </div>
+
+                <div id="verifyResultArea" aria-live="polite"></div>
+
+                <div style="margin-top:24px; padding:14px 16px; border-radius:12px; background:#f8fafc; border:1px solid #e2e8f0; color:#334155; font-size:0.84rem; line-height:1.65;">
+                    <strong>ضوابط التحقق والحوكمة (D08 / D26):</strong>
+                    لا تكشف هذه الصفحة رقم هاتف العضو أو عنوانه أو بياناته المصرفية مطلقاً. كما تخضع الفواتير لفترة مراجعة <code>14 يوماً</code> لحماية حق الاسترجاع قبل الترحيل للصرف يوم 15 شهرياً.
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="preview-footer">
+        <div class="container">
+            <div class="footer-content">
+                <div>
+                    <div id="footerBrandLogo" style="margin-bottom:8px;">
+                        <strong style="font-size:1.3rem; color:#10b981;">SAWYAN</strong>
+                    </div>
+                    <p style="color:#94a3b8; font-size:0.88rem;">منظومة تحقق شفافة ومقاومة للتلاعب لفواتير المتسوقين.</p>
+                </div>
+                <div class="footer-links">
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <a href="../index.html">الصفحة الرئيسية</a>
+                        <a href="merchants.html">دليل التجار</a>
+                        <a href="../member-dashboard/register.html">انضم كعضو مجاناً</a>
+                        <a href="../merchant-dashboard/register.html">سجّل متجرك</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-y06-disclaimer">
+                <strong>إفصاح الأرباح والحوكمة (Y06):</strong> منصة SAWYAN منصة استهلاك استثماري وتجارة تشاركية مرتبطة حصراً بالمشتريات الفعلية ولا تقدم خدمات مصرفية حالياً. كافة النسب المعلنة تمثل عائدات فريقك في خطة الدخل.
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../shared/config/supabase.js"></script>
+    <script src="../shared/api/sawyan-api.js"></script>
+    <script src="../shared/components/logo.js"></script>
+    <script src="../js/demo-data.js"></script>
+    <script>
+        (function () {
+            'use strict';
+
+            var MAX_LOOKUPS_PER_MIN = 10;
+            var lookupTimestamps = [];
+
+            function byId(id) { return document.getElementById(id); }
+            function esc(str) {
+                return String(str || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function hydrateLogoAndTheme() {
+                if (window.SAWYAN && window.SAWYAN.Logo && typeof window.SAWYAN.Logo.svg === 'function') {
+                    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                    if (byId('navBrandLogo')) byId('navBrandLogo').innerHTML = window.SAWYAN.Logo.svg(isDark ? 'light-on-dark' : 'default');
+                    if (byId('footerBrandLogo')) byId('footerBrandLogo').innerHTML = window.SAWYAN.Logo.svg('light-on-dark');
+                }
+                var btn = byId('themeToggleBtn');
+                if (btn) {
+                    var sync = function () {
+                        var t = document.documentElement.getAttribute('data-theme') || 'light';
+                        btn.textContent = t === 'dark' ? '☀️' : '🌙';
+                        if (window.SAWYAN && window.SAWYAN.Logo && byId('navBrandLogo')) {
+                            byId('navBrandLogo').innerHTML = window.SAWYAN.Logo.svg(t === 'dark' ? 'light-on-dark' : 'default');
+                        }
+                    };
+                    sync();
+                    btn.addEventListener('click', function () {
+                        var curr = document.documentElement.getAttribute('data-theme') || 'light';
+                        var next = curr === 'dark' ? 'light' : 'dark';
+                        document.documentElement.setAttribute('data-theme', next);
+                        try { localStorage.setItem('sawyan-theme', next); } catch (e) {}
+                        sync();
+                    });
+                }
+            }
+
+            function refreshRateLimitBadge() {
+                var now = Date.now();
+                lookupTimestamps = lookupTimestamps.filter(function (ts) { return now - ts < 60000; });
+                var remaining = Math.max(0, MAX_LOOKUPS_PER_MIN - lookupTimestamps.length);
+                var badge = byId('rateLimitBadge');
+                if (badge) {
+                    badge.textContent = '🛡️ حد الحماية: متبقي ' + remaining + ' من ' + MAX_LOOKUPS_PER_MIN + ' فحوصات خلال الدقيقة';
+                }
+                return remaining;
+            }
+
+            async function renderVerifyResult(codeRaw) {
+                var out = byId('verifyResultArea');
+                if (!out) return;
+
+                var remainingBefore = refreshRateLimitBadge();
+                if (remainingBefore <= 0) {
+                    out.innerHTML = '<div class="cert-box not-found"><strong>⏸️ تم تجاوز حد الاستعلامات المؤقت (Rate Limit)</strong><p style="margin:8px 0 0;">لحماية البيانات من المسح الآلي، يرجى الانتظار دقيقة واحدة قبل إرسال استعلام جديد.</p></div>';
+                    return;
+                }
+
+                lookupTimestamps.push(Date.now());
+                refreshRateLimitBadge();
+
+                var code = String(codeRaw || '').trim().toUpperCase();
+                if (!code) return;
+
+                try {
+                    var url = new URL(window.location.href);
+                    url.searchParams.set('code', code);
+                    window.history.replaceState({}, '', url.toString());
+                } catch (e) {}
+
+                var isDemo = !(window.SAWYAN && window.SAWYAN.API) || window.SAWYAN.API.isDemoMode();
+                var rec = null;
+
+                // أولوية التحقق الحي من PostgreSQL via public_verify_transaction (D26 Masked)
+                if (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.supabase) {
+                    out.innerHTML = '<div class="cert-box pending"><strong>⏳ جاري التحقق من دفتر المعاملات الحي...</strong></div>';
+                    try {
+                        var liveRes = await window.SAWYAN.API.publicVerifyTransaction(code);
+                        if (liveRes && liveRes.found) {
+                            var stMap = {
+                                completed: '✅ شهادة تحقق موثقة ومكتملة (دفتر SAWYAN الحي)',
+                                pending: '⏳ فاتورة معلقة قيد تأكيد التاجر',
+                                awaiting_merchant_topup: '⏸️ بانتظار شحن التاجر (FIFO)',
+                                reversed: '↩️ فاتورة ملغاة / مسترجعة'
+                            };
+                            rec = {
+                                status: liveRes.status,
+                                statusText: stMap[liveRes.status] || liveRes.status,
+                                code: liveRes.short_code,
+                                merchantName: liveRes.merchant_name,
+                                merchantCode: liveRes.branch_name || liveRes.merchant_category,
+                                country: liveRes.currency_code || '—',
+                                memberMasked: liveRes.masked_member_name,
+                                amountLocal: Number(liveRes.total_amount).toFixed(2) + ' ' + (liveRes.currency_code || ''),
+                                planRatePct: 'موثق وفق سجل الدفع',
+                                targetAddedLocal: 'بدون كشف نسب داخلية (D26)',
+                                paymentMethod: liveRes.payment_type || 'POS',
+                                recordedAt: new Date(liveRes.created_at).toLocaleString('ar-EG')
+                            };
+                        }
+                    } catch (err) {
+                        console.warn('Live DB verify check error:', err.message);
+                    }
+                }
+
+                if (!rec && isDemo) {
+                    var db = window.demoVerifyTransactions || {};
+                    rec = db[code] || null;
+                }
+
+                if (!rec) {
+                    out.innerHTML =
+                        '<div class="cert-box not-found">' +
+                            '<strong style="color:#991b1b; font-size:1.08rem;">❌ لم يتم العثور على الفاتورة: ' + esc(code) + '</strong>' +
+                            '<p style="margin:8px 0 0; color:#7f1d1d;">تأكد من كتابة الكود الصحيح (أو جرّب الكود الحي بالبيئة الموازية: <code>SW-1001</code>).</p>' +
+                        '</div>';
+                    return;
+                }
+
+                var isPending = rec.status !== 'completed';
+                out.innerHTML =
+                    '<div class="cert-box ' + (isPending ? 'pending' : '') + '">' +
+                        '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">' +
+                            '<strong style="font-size:1.1rem; color:' + (isPending ? '#92400e' : '#065f46') + ';">' + esc(rec.statusText) + '</strong>' +
+                            '<code style="background:#ffffff; border:1px solid #cbd5e1; padding:4px 10px; border-radius:8px; font-weight:900;">' + esc(rec.code) + '</code>' +
+                        '</div>' +
+                        '<div class="cert-grid">' +
+                            '<div class="cert-cell"><span>التاجر المعتمد / الفرع</span><strong>' + esc(rec.merchantName) + ' (' + esc(rec.merchantCode) + ')</strong></div>' +
+                            '<div class="cert-cell"><span>النطاق / العملة</span><strong>' + esc(rec.country) + '</strong></div>' +
+                            '<div class="cert-cell"><span>هوية العضو (مقنّعة D26 — بلا هاتف)</span><strong>' + esc(rec.memberMasked) + '</strong></div>' +
+                            '<div class="cert-cell"><span>قيمة الفاتورة الموثقة</span><strong>' + esc(rec.amountLocal) + '</strong></div>' +
+                            '<div class="cert-cell"><span>توثيق خطة الدخل</span><strong style="color:#047857;">' + esc(rec.planRatePct) + ' (' + esc(rec.targetAddedLocal) + ')</strong></div>' +
+                            '<div class="cert-cell"><span>طريقة التوثيق والتوقيت</span><strong>' + esc(rec.paymentMethod) + '<br><small style="color:#64748b;">' + esc(rec.recordedAt) + '</small></strong></div>' +
+                        '</div>' +
+                    '</div>';
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                hydrateLogoAndTheme();
+
+                var params = new URLSearchParams(window.location.search);
+                var defaultCode = (window.SAWYAN && window.SAWYAN.API && !window.SAWYAN.API.isDemoMode()) ? '' : 'SW-1001';
+                var initialCode = (params.get('code') || defaultCode).trim().toUpperCase();
+                var input = byId('verifyCodeInput');
+                if (input && initialCode) input.value = initialCode;
+
+                var form = byId('verifyForm');
+                if (form) {
+                    form.addEventListener('submit', function (e) {
+                        e.preventDefault();
+                        if (input) renderVerifyResult(input.value);
+                    });
+                }
+
+                document.querySelectorAll('.sample-code-btn').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var c = btn.getAttribute('data-code') || 'SW-1001';
+                        if (input) input.value = c;
+                        renderVerifyResult(c);
+                    });
+                });
+
+                if (initialCode) {
+                    setTimeout(function () { renderVerifyResult(initialCode); }, 200);
+                }
+            });
+        })();
+    </script>
+</body>
+</html>

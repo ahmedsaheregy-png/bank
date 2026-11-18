@@ -157,7 +157,7 @@ async function loadSettings() {
         if (settings) {
             document.getElementById('defaultCommission').value = settings.default_commission_percentage || 0;
             document.getElementById('minCommission').value = settings.min_commission_amount || 0;
-            document.getElementById('systemName').value = settings.system_name || 'SAWYAN BANK';
+            document.getElementById('systemName').value = settings.system_name || 'SAWYAN';
             document.getElementById('supportEmail').value = settings.support_email || '';
             document.getElementById('supportPhone').value = settings.support_phone || '';
         }

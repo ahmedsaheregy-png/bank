@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم العضو - SAWYAN</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../shared/css/variables.css">
+    <link rel="stylesheet" href="../shared/css/logo.css">
+    <link rel="stylesheet" href="../shared/css/notifications.css">
+    <link rel="stylesheet" href="../shared/css/image-upload.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div id="logoContainer"></div>
+            </div>
+
+            <div class="user-profile">
+                <h3 id="userName">عضو</h3>
+                <p id="memberCode" class="member-code">كود العضوية: -</p>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-page="home">
+                    <span class="icon">🏠</span>
+                    <span>الرئيسية</span>
+                </a>
+                <a href="#" class="nav-item" data-page="myPending">
+                    <span class="icon">⏳</span>
+                    <span>طلباتي المعلقة</span>
+                </a>
+                <a href="#" class="nav-item" data-page="transactions">
+                    <span class="icon">💳</span>
+                    <span>العمليات المكتملة</span>
+                </a>
+                <a href="#" class="nav-item" data-page="tree">
+                    <span class="icon">🌳</span>
+                    <span>شجرتي</span>
+                </a>
+                <a href="#" class="nav-item" data-page="wallet">
+                    <span class="icon">💰</span>
+                    <span>المحفظة</span>
+                </a>
+                <a href="#" class="nav-item" data-page="academy">
+                    <span class="icon">📚</span>
+                    <span>الأكاديمية</span>
+                </a>
+                <a href="#" class="nav-item" data-page="merchants">
+                    <span class="icon">🏪</span>
+                    <span>التجار حولي</span>
+                </a>
+                <a href="#" class="nav-item" data-page="favorites">
+                    <span class="icon">❤️</span>
+                    <span>المفضلة</span>
+                </a>
+                <a href="#" class="nav-item" data-page="crm">
+                    <span class="icon">📇</span>
+                    <span>قائمة المعارف</span>
+                </a>
+                <a href="#" class="nav-item" data-page="referrals">
+                    <span class="icon">🔗</span>
+                    <span>رابط الإحالة</span>
+                </a>
+                <a href="#" class="nav-item" data-page="settings">
+                    <span class="icon">⚙️</span>
+                    <span>الإعدادات</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="btn btn-outline btn-block" onclick="logout()">تسجيل الخروج</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="dashboard-header">
+                <h1 id="pageTitle">لوحة التحكم</h1>
+            </header>
+
+            <div class="content-area">
+                <!-- Home Page -->
+                <div id="homePage" class="page active">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">💰</div>
+                            <div class="stat-info">
+                                <div class="stat-label">رصيد المحفظة</div>
+                                <div class="stat-value" id="walletBalance">0.00 ج.م</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon">💳</div>
+                            <div class="stat-info">
+                                <div class="stat-label">إجمالي العمليات</div>
+                                <div class="stat-value" id="totalTransactions">0</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon">👥</div>
+                            <div class="stat-info">
+                                <div class="stat-label">حجم الفريق</div>
+                                <div class="stat-value" id="teamSize">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="qr-section">
+                        <h2>QR Code الخاص بك</h2>
+                        <div id="qrCode" class="qr-code"></div>
+                        <p>اعرض هذا الكود للتاجر لتوثيق الفاتورة وتفعيل عائدات الاستهلاك الاستثماري</p>
+                    </div>
+
+                    <!-- حاسبة عائدات الاستهلاك الاستثماري والفريق داخل لوحة العضو -->
+                    <div class="investment-calculator-card" style="background:#ffffff; border:1px solid #cbd5e1; border-radius:16px; padding:20px; margin:20px 0; box-shadow:0 4px 16px rgba(15,23,42,0.05);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
+                            <h2 style="margin:0; font-size:1.15rem; color:#065f46;">🧮 حاسبة عائدات الاستهلاك الاستثماري والفريق</h2>
+                        </div>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:14px;">
+                            <div>
+                                <label for="dashCalcSpend" style="display:block; font-size:0.84rem; font-weight:700; margin-bottom:4px;">قيمة مشترياتك الشهرية (ج.م / ر.س)</label>
+                                <input type="number" id="dashCalcSpend" value="1500" min="1" style="width:100%; padding:10px; border:1.5px solid #cbd5e1; border-radius:10px;">
+                            </div>
+                            <div>
+                                <label for="dashCalcRate" style="display:block; font-size:0.84rem; font-weight:700; margin-bottom:4px;">نسبة عائدات فريقك من هذا التاجر (%)</label>
+                                <input type="number" id="dashCalcRate" value="9" min="1" max="30" style="width:100%; padding:10px; border:1.5px solid #cbd5e1; border-radius:10px;">
+                            </div>
+                            <div>
+                                <label for="dashCalcTeam" style="display:block; font-size:0.84rem; font-weight:700; margin-bottom:4px;">عدد الأعضاء الفاعلين في فريقك</label>
+                                <input type="number" id="dashCalcTeam" value="12" min="0" max="500" style="width:100%; padding:10px; border:1.5px solid #cbd5e1; border-radius:10px;">
+                            </div>
+                        </div>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; background:linear-gradient(135deg,#0f2744,#065f46); color:#ffffff; padding:14px; border-radius:12px;">
+                            <div><span style="display:block; font-size:0.78rem; color:#cbd5e1;">عائدات مشترياتك المباشرة</span><strong id="dashCalcOwnOut" style="font-size:1.15rem; color:#6ee7b7;">135.00</strong></div>
+                            <div><span style="display:block; font-size:0.78rem; color:#cbd5e1;">عائدات فريقك التقديرية</span><strong id="dashCalcTeamOut" style="font-size:1.15rem; color:#6ee7b7;">81.00</strong></div>
+                            <div><span style="display:block; font-size:0.78rem; color:#cbd5e1;">تغطية صندوق الهدف (24.75$ مرجعي)</span><strong id="dashCalcTargetOut" style="font-size:1.05rem; color:#fef08a;">100% مكتمل ✓</strong></div>
+                        </div>
+                    </div>
+
+                    <div class="recent-transactions">
+                        <h2>آخر العمليات</h2>
+                        <div id="recentTransactionsList"></div>
+                    </div>
+                </div>
+
+                <!-- Other Pages -->
+                <div id="myPendingPage" class="page"></div>
+                <div id="transactionsPage" class="page"></div>
+                <div id="treePage" class="page"></div>
+                <div id="walletPage" class="page"></div>
+                <div id="academyPage" class="page"></div>
+                <div id="merchantsPage" class="page"></div>
+                <div id="favoritesPage" class="page"></div>
+                <div id="crmPage" class="page"></div>
+                <div id="referralsPage" class="page"></div>
+                <div id="settingsPage" class="page"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Bottom Navigation للموبايل -->
+    <nav class="bottom-nav">
+        <a href="#" class="bottom-nav-item active" data-page="home">
+            <span class="bottom-nav-icon">🏠</span>
+            <span class="bottom-nav-label">الرئيسية</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-page="merchants">
+            <span class="bottom-nav-icon">🏪</span>
+            <span class="bottom-nav-label">التجار</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-page="wallet">
+            <span class="bottom-nav-icon">💰</span>
+            <span class="bottom-nav-label">المحفظة</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-page="more" onclick="toggleMoreMenu(event)">
+            <span class="bottom-nav-icon">☰</span>
+            <span class="bottom-nav-label">المزيد</span>
+        </a>
+    </nav>
+
+    <!-- قائمة المزيد -->
+    <div class="more-menu" id="moreMenu">
+        <div class="more-menu-header">
+            <h3>المزيد</h3>
+            <button onclick="closeMoreMenu()" class="close-btn">&times;</button>
+        </div>
+        <div class="more-menu-items">
+            <a href="#" class="more-menu-item" data-page="myPending" onclick="goToPage('myPending')">
+                <span>⏳</span> طلباتي المعلقة
+            </a>
+            <a href="#" class="more-menu-item" data-page="transactions" onclick="goToPage('transactions')">
+                <span>💳</span> العمليات المكتملة
+            </a>
+            <a href="#" class="more-menu-item" data-page="tree" onclick="goToPage('tree')">
+                <span>🌳</span> شجرتي
+            </a>
+            <a href="#" class="more-menu-item" data-page="favorites" onclick="goToPage('favorites')">
+                <span>❤️</span> المفضلة
+            </a>
+            <a href="#" class="more-menu-item" data-page="academy" onclick="goToPage('academy')">
+                <span>📚</span> الأكاديمية
+            </a>
+            <a href="#" class="more-menu-item" data-page="crm" onclick="goToPage('crm')">
+                <span>📇</span> قائمة المعارف
+            </a>
+            <a href="#" class="more-menu-item" data-page="referrals" onclick="goToPage('referrals')">
+                <span>🔗</span> رابط الإحالة
+            </a>
+            <a href="#" class="more-menu-item" data-page="settings" onclick="goToPage('settings')">
+                <span>⚙️</span> الإعدادات
+            </a>
+            <a href="#" class="more-menu-item logout" onclick="logout()">
+                <span>🚪</span> تسجيل الخروج
+            </a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="../shared/config/supabase.js"></script>
+    <script src="../shared/api/sawyan-api.js"></script>
+    <script src="../shared/components/logo.js"></script>
+    <script src="../shared/components/notifications.js"></script>
+    <script src="../shared/components/image-upload.js"></script>
+    <script src="../shared/payments/payment-provider.js"></script>
+    <script src="../shared/payments/providers/stripe-provider.js"></script>
+    <script src="../shared/payments/providers/adyen-provider.js"></script>
+    <script src="../shared/payments/providers/paypal-wise-provider.js"></script>
+    <script src="../shared/payments/payment-service.js"></script>
+    <script src="../shared/payments/mock-provider.js"></script>
+    <script src="../shared/payments/payment-init.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script>
+        // تهيئة الإشعارات وحاسبة الاستهلاك الاستثماري بعد تحميل البيانات
+        document.addEventListener('DOMContentLoaded', function () {
+            (function initDashCalculator() {
+                const spendEl = document.getElementById('dashCalcSpend');
+                const rateEl = document.getElementById('dashCalcRate');
+                const teamEl = document.getElementById('dashCalcTeam');
+                const ownOut = document.getElementById('dashCalcOwnOut');
+                const teamOut = document.getElementById('dashCalcTeamOut');
+                const targetOut = document.getElementById('dashCalcTargetOut');
+                if (!spendEl || !rateEl || !teamEl) return;
+
+                function recalc() {
+                    const spend = parseFloat(spendEl.value) || 0;
+                    const netRate = parseFloat(rateEl.value) || 0;
+                    const teamCount = parseInt(teamEl.value, 10) || 0;
+
+                    const ownVal = spend * (netRate / 100);
+                    const teamVal = teamCount * (spend * 0.5) * (netRate / 100) * 0.10;
+                    const pct = Math.min(100, Math.round((ownVal / 24.75) * 100));
+
+                    if (ownOut) ownOut.textContent = `${ownVal.toFixed(2)}`;
+                    if (teamOut) teamOut.textContent = `${teamVal.toFixed(2)}`;
+                    if (targetOut) targetOut.textContent = pct >= 100 ? '100% مكتمل ✓' : `${pct}% من الهدف`;
+                }
+
+                spendEl.addEventListener('input', recalc);
+                rateEl.addEventListener('input', recalc);
+                teamEl.addEventListener('input', recalc);
+                recalc();
+            })();
+
+            setTimeout(() => {
+                const member = JSON.parse(localStorage.getItem('sawyan_member') || '{}');
+                if (member.id && window.SAWYAN && window.SAWYAN.Notifications) {
+                    window.SAWYAN.Notifications.init('member', member.id);
+                    if (window.__memberBundleCache && Array.isArray(window.__memberBundleCache.notifications)) {
+                        window.SAWYAN.Notifications.hydrateFromBundle(window.__memberBundleCache.notifications);
+                    }
+                }
+            }, 900);
+        });
+    </script>
+</body>
+
+</html>

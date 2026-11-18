@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-theme="dark">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>جرّب النظام كعضو - SAWYAN BANK</title>
-    <meta name="description" content="اختبر لوحة تحكم العضو في SAWYAN BANK قبل التسجيل">
+    <title>جرّب النظام كعضو - SAWYAN</title>
+    <meta name="description" content="اختبر لوحة تحكم العضو وحاسبة الاستهلاك الاستثماري في SAWYAN قبل التسجيل">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,6 +16,15 @@
     <link rel="stylesheet" href="../css/preview.css">
     <link rel="stylesheet" href="../css/bidi-support.css">
     <link rel="stylesheet" href="member-demo.css">
+    <style>
+        [data-theme="dark"] .demo-nav .nav-logo span,
+        [data-theme="dark"] .calculator-card h3,
+        [data-theme="dark"] .calculator-card label,
+        [data-theme="dark"] .demo-section h2,
+        [data-theme="dark"] .demo-section h3 { color: #f8fafc !important; }
+        [data-theme="dark"] .calculator-card .result-label { color: #cbd5e1 !important; }
+        [data-theme="dark"] .calculator-card .result-value { color: #6ee7b7 !important; font-weight: 800; }
+    </style>
 </head>
 
 <body>
@@ -32,7 +41,7 @@
     <nav class="demo-nav">
         <div class="nav-content">
             <a href="../index.html" class="nav-logo">
-                <span>SAWYAN BANK</span>
+                <span>SAWYAN</span>
             </a>
 
             <div class="demo-user">
@@ -135,20 +144,34 @@
                 <!-- Calculator -->
                 <div class="content-card calculator-card">
                     <div class="card-header">
-                        <h3>🧮 حاسبة الكاشباك</h3>
+                        <h3>🧮 حاسبة عائدات الاستهلاك الاستثماري والفريق</h3>
                     </div>
                     <div class="calculator-body">
                         <div class="calc-input-group">
-                            <label>قيمة المشتريات (ريال)</label>
+                            <label for="calc-amount">قيمة مشترياتك الشهرية (ر.س)</label>
                             <input type="number" id="calc-amount" value="500" min="1">
                         </div>
                         <div class="calc-input-group">
-                            <label>نسبة الكاشباك (%)</label>
-                            <input type="number" id="calc-rate" value="10" min="1" max="25">
+                            <label for="calc-rate">نسبة عائدات فريقك من هذا التاجر (%)</label>
+                            <input type="number" id="calc-rate" value="7.5" step="0.5" min="1" max="30">
                         </div>
-                        <div class="calc-result">
-                            <span class="result-label">الكاشباك المتوقع:</span>
-                            <span class="result-value" id="calc-result">50.00 ر.س</span>
+                        <div class="calc-input-group">
+                            <label for="calc-team">عدد الأعضاء الفاعلين في فريقك</label>
+                            <input type="number" id="calc-team" value="10" min="0" max="500">
+                        </div>
+                        <div class="calc-result" style="display:flex; flex-direction:column; gap:8px; align-items:flex-start;">
+                            <div>
+                                <span class="result-label">عائدات مشترياتك المباشرة:</span>
+                                <span class="result-value" id="calc-result">37.50 ر.س</span>
+                            </div>
+                            <div>
+                                <span class="result-label">عائدات مشتريات فريقك التقديرية:</span>
+                                <span class="result-value" id="calc-team-result">18.75 ر.س</span>
+                            </div>
+                            <div>
+                                <span class="result-label">تغطية صندوق الهدف الشهري ($24.75 مرجعي):</span>
+                                <span class="result-value" id="calc-target-status">40% من الهدف الشهري</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -237,19 +260,19 @@
                 <div class="content-card referral-card">
                     <h3>🔗 رابط الإحالة الخاص بك</h3>
                     <div class="referral-link-box">
-                        <input type="text" readonly value="https://sawyan.bank/ref/DEMO1234" id="referral-link">
+                        <input type="text" readonly value="https://sawyan.app/ref/DEMO1234" id="referral-link">
                         <button class="btn btn-primary" onclick="copyReferralLink()">
                             📋 نسخ
                         </button>
                     </div>
-                    <p class="referral-hint">شارك هذا الرابط لدعوة أعضاء جدد واكسب عمولات من مشترياتهم</p>
+                    <p class="referral-hint">شارك هذا الرابط لدعوة أعضاء جدد واكسب عائدات من مشترياتهم</p>
                 </div>
             </section>
 
             <!-- QR Code Section -->
             <section class="demo-section" id="section-qrcode">
                 <h2>📱 QR Code</h2>
-                <p class="section-subtitle">استخدم كود QR الخاص بك عند الشراء</p>
+                <p class="section-subtitle">كود هويتك لتوثيق الفاتورة وتفعيل عائدات الاستهلاك الاستثماري</p>
 
                 <div class="qr-card">
                     <div class="qr-display">
@@ -268,7 +291,7 @@
                         <ol class="qr-steps">
                             <li>عند الشراء من أي تاجر معتمد</li>
                             <li>اطلب من التاجر مسح الكود</li>
-                            <li>سيتم إضافة الكاشباك تلقائياً</li>
+                            <li>سيتم توثيق الفاتورة وتفعيل عائدات الاستهلاك الاستثماري تلقائياً</li>
                         </ol>
                         <button class="btn btn-primary btn-lg" style="margin-top: 1rem;">
                             📥 تحميل الكود

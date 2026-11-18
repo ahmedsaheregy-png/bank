@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تواصل معنا - SAWYAN BANK</title>
+    <title>تواصل معنا - SAWYAN</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -229,11 +229,12 @@
         <div class="container">
             <div class="nav-content">
                 <a href="../index.html" class="nav-logo">
-                    <span>SAWYAN BANK</span>
+                    <span>SAWYAN</span>
                 </a>
                 <ul class="nav-links">
                     <li><a href="../index.html">الرئيسية</a></li>
                     <li><a href="merchants.html">التجار</a></li>
+                    <li><a href="verify.html">التحقق من الفاتورة</a></li>
                     <li><a href="../member-demo/index.html">جرّب كعضو</a></li>
                 </ul>
             </div>
@@ -254,7 +255,7 @@
                     <div class="contact-icon">📧</div>
                     <div class="contact-details">
                         <h3>البريد الإلكتروني</h3>
-                        <p><a href="mailto:support@sawyanbank.com">support@sawyanbank.com</a></p>
+                        <p><a href="mailto:support@sawyan.global">support@sawyan.global</a></p>
                     </div>
                 </div>
 
@@ -262,7 +263,7 @@
                     <div class="contact-icon">📱</div>
                     <div class="contact-details">
                         <h3>واتساب</h3>
-                        <p><a href="https://wa.me/966500000000">+966 50 000 0000</a></p>
+                        <p><a href="https://wa.me/201000000000">+20 10 0000 0000</a></p>
                     </div>
                 </div>
 
@@ -277,8 +278,8 @@
                 <div class="contact-item">
                     <div class="contact-icon">📍</div>
                     <div class="contact-details">
-                        <h3>الموقع</h3>
-                        <p>المملكة العربية السعودية</p>
+                        <h3>النطاق</h3>
+                        <p>منصة عالمية — دعم متعدد الدول</p>
                     </div>
                 </div>
 
@@ -335,6 +336,8 @@
         </div>
     </div>
 
+    <script src="../shared/config/supabase.js"></script>
+    <script src="../shared/api/sawyan-api.js"></script>
     <script>
         document.getElementById('contactForm').addEventListener('submit', function (e) {
             e.preventDefault();
