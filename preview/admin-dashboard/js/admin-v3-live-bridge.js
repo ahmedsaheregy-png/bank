@@ -357,7 +357,6 @@
                 '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px;margin-bottom:10px;">' +
                     '<div><label style="font-size:0.78rem;font-weight:700;">عتبة الاعتماد المزدوج للسحب W05 ($)</label><input id="svSetWhtUsd" type="number" step="10" value="' + Number(curSettings.wht_threshold_usd || 200) + '" class="form-control"></div>' +
                     '<div><label style="font-size:0.78rem;font-weight:700;">ساعات تهدئة وسيلة الدفع W07</label><input id="svSetCooldownHrs" type="number" step="1" value="' + Number(curSettings.withdrawal_cooldown_hours || 72) + '" class="form-control"></div>' +
-                    '<div><label style="font-size:0.78rem;font-weight:700;">احتياطي المرتجعات الدوار S02 (0-5%)</label><input id="svSetRollingPct" type="number" step="0.5" min="0" max="5" value="' + Number(curSettings.rolling_reserve_pct || 2) + '" class="form-control"></div>' +
                     '<div><label style="font-size:0.78rem;font-weight:700;">سبب التعديل الإلزامي للتدقيق</label><input id="svSetReason" type="text" value="تحديث رقابي معتمد وفق مراجعة المخاطر" class="form-control"></div>' +
                 '</div>' +
                 '<button type="button" id="svSubmitSettingsMcBtn" onclick="svSubmitSettingsMc()" class="btn btn-primary">' + (isSovereignFounder(adm) ? '👑 حفظ واعتماد سيادي فوري (صلاحية المؤسس المطلقة)' : '📤 إرسال الطلب لطابور الاعتماد المزدوج (Maker)') + '</button>' +
@@ -491,6 +490,7 @@
                         '<td>' + (c.is_active ? '<span class="badge badge-success">🟢 نشطة</span>' : '<span class="badge badge-warning">⚪ غير نشطة</span>') + '</td>' +
                         '<td><div style="display:flex;gap:5px;flex-wrap:wrap;">' +
                             '<button type="button" class="btn-sm" style="background:#0f172a;color:#ffffff;border:none;padding:5px 10px;border-radius:7px;font-family:Tajawal,sans-serif;font-weight:800;cursor:pointer;" onclick="svOpenCountryEditModal(\'' + esc(c.country_code) + '\')">⚙️ تعديل المدخلات</button>' +
+                            '<button type="button" class="btn-sm" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:5px 9px;border-radius:7px;font-family:Tajawal,sans-serif;font-weight:800;cursor:pointer;" onclick="if(window.svQuickSelectCityCc){window.svQuickSelectCityCc(\'' + esc(c.country_code) + '\');window.openSovereignOpsCenter(\'cities\');}">🏙️ المدن</button>' +
                             (!c.is_active
                                 ? '<button type="button" class="btn-sm btn-primary" onclick="svSubmitCountryGate(\'' + esc(c.country_code) + '\')">' + (founder ? '👑 تفعيل فوري' : '📤 طلب تفعيل D13') + '</button>'
                                 : (founder ? '<button type="button" class="btn-sm" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:5px 9px;border-radius:7px;font-family:Tajawal,sans-serif;font-weight:800;cursor:pointer;" onclick="svToggleCountryActive(\'' + esc(c.country_code) + '\',false)">⏸️ إيقاف</button>' : '<span style="font-size:0.74rem;color:#059669;font-weight:800;">مفعلة</span>')) +
@@ -548,7 +548,7 @@
 
         return '<div style="display:grid;gap:14px;">' +
             '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
-                '<h3 style="margin:0 0 10px 0;font-size:1rem;color:#0f172a;">⚖️ ميزان المراجعة الحي لدليل الحسابات الموحد (22 حساباً قياسياً — S02 / D23)</h3>' +
+                '<h3 style="margin:0 0 10px 0;font-size:1rem;color:#0f172a;">⚖️ ميزان المراجعة الحي لدليل الحسابات الموحد (19 حساباً قياسياً — صفر مسؤولية خزانة D5 / D23)</h3>' +
                 '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>كود الحساب</th><th>اسم الحساب المحاسبي</th><th>الطبيعة</th><th>إجمالي مدين ($)</th><th>إجمالي دائن ($)</th><th>الرصيد الصافي ($)</th></tr></thead><tbody>' +
                 tb.map(function (r) {
                     return '<tr>' +
@@ -699,8 +699,7 @@
         try {
             const payload = {
                 wht_threshold_usd: Number(document.getElementById('svSetWhtUsd').value || 200),
-                withdrawal_cooldown_hours: Number(document.getElementById('svSetCooldownHrs').value || 72),
-                rolling_reserve_pct: Number(document.getElementById('svSetRollingPct').value || 2)
+                withdrawal_cooldown_hours: Number(document.getElementById('svSetCooldownHrs').value || 72)
             };
             const reason = document.getElementById('svSetReason').value.trim();
             const res = await window.SAWYAN.API.adminSubmitGovernanceRequest({

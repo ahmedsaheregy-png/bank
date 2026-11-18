@@ -270,7 +270,7 @@
         try {
             const existing = getStoredReviews(merchantId);
             existing.unshift(review);
-            localStorage.setItem('sawyan_reviews_' + merchantId, JSON.stringify(existing));
+            if (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.isDemoMode()) { localStorage.setItem('sawyan_reviews_' + merchantId, JSON.stringify(existing)); }
         } catch (e) {}
     }
 

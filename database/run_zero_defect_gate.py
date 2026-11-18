@@ -15,7 +15,8 @@ PREVIEW_DIR = os.path.join(REPO_DIR, "preview")
 INTERNAL_ONLY_FUNCTIONS = {
     "feed_monthly_target_box",
     "process_merchant_topup_fifo",
-    "process_pos_refund_reversal",
+    "process_transaction_reversal_clawback",
+    "recalculate_target_box_and_cascade",
     "run_monthly_settlement_engine",
     "finalize_settlement_payout_step5_6",
     "process_payment_webhook",

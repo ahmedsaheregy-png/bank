@@ -618,7 +618,7 @@ function loadSettings() {
                         <div style="font-weight:900; font-size:0.9rem; color:#065f46;">🔒 نسبة العمولة التعاقدية الرسمية:</div>
                         <span style="background:#10b981; color:white; font-size:0.75rem; font-weight:800; padding:2px 6px; border-radius:4px;">معتمدة بالعقد</span>
                     </div>
-                    <div style="font-size:1.8rem; font-weight:900; color:#047857; font-family:monospace;">10.0% <span style="font-size:0.85rem; font-family:'Tajawal'; color:#065f46;">(كاش باك وعمولة شبكة)</span></div>
+                    <div style="font-size:1.8rem; font-weight:900; color:#047857; font-family:monospace;">10.0% <span style="font-size:0.85rem; font-family:'Tajawal'; color:#065f46;">(عائدات خطة الدخل وعمولة الشبكة)</span></div>
                     <div style="font-size:0.75rem; color:#047857; margin-top:4px; line-height:1.4;">
                         تُخصم آلياً من رصيد الشحن المسبق مع إصدار فاتورة ضريبية مزدوجة B2B رسمية.<br>
                         <span style="color:#64748b;">(تعديل النسبة التعاقدية محصور باعتماد Maker–Checker لدى إدارة المنصة).</span>
@@ -1997,7 +1997,7 @@ async function loadAllTransactions(periodFilter = activeShiftPeriod) {
     const curr = merchantBundle?.profile?.currency_code || 'EGP';
 
     const rowsHtml = txs.length === 0
-        ? `<tr><td colspan="7" style="padding:20px;text-align:center;color:#64748b;">لا توجد عمليات مسجلة بعد في هذا المتجر.</td></tr>`
+        ? `<tr><td colspan="8" style="padding:20px;text-align:center;color:#64748b;">لا توجد عمليات مسجلة بعد في هذا المتجر.</td></tr>`
         : txs.map(tx => `
             <tr style="border-bottom:1px solid #f1f5f9;">
                 <td style="padding:12px;font-weight:800;font-family:monospace;direction:ltr;color:#2563eb;">${escM(tx.sw_short_code)}</td>
@@ -2007,10 +2007,18 @@ async function loadAllTransactions(periodFilter = activeShiftPeriod) {
                 <td style="padding:12px;font-weight:800;color:#059669;">${fmtMerchantMoney(tx.merchant_net_amount, tx.currency_code || curr)}</td>
                 <td style="padding:12px;font-size:0.8rem;color:#64748b;">${new Date(tx.created_at).toLocaleString('ar-EG')}</td>
                 <td style="padding:12px;font-size:0.76rem;"><span style="background:#ecfdf5;color:#047857;padding:2px 8px;border-radius:6px;font-weight:800;">${escM(tx.branch_name || '-')} • ${escM(tx.cashier_name || '')}</span></td>
+                <td style="padding:12px;font-size:0.76rem;">
+                    ${tx.status === 'completed'
+                        ? `<button type="button" onclick="handleMerchantPosReturn('${tx.id}','${escM(tx.sw_short_code)}')" style="background:#fff7ed;color:#c2410c;border:1px solid #fdba74;padding:5px 10px;border-radius:6px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;">↩️ مرتجع (قبل يوم 15)</button>`
+                        : `<span style="color:#64748b;font-weight:800;">↩️ مسترجعة</span>`}
+                </td>
             </tr>
         `).join('');
 
     page.innerHTML = `
+        <div style="background:#fff7ed;border:1.5px solid #fb923c;border-radius:12px;padding:12px 16px;margin-bottom:14px;font-size:0.84rem;color:#9a3412;line-height:1.65;">
+            🛑 <strong>القاعدة التعاقدية الحاكمة للمرتجعات (D5):</strong> يُقبل استرداد العمولة عبر النظام خلال الشهر المفتوح وحتى نهاية اليوم <strong>14</strong> من الشهر التالي فقط (قبل يوم الصرف 15). <strong>وبعد يوم الصرف (يوم 15) يُقفل الشهر نهائياً ويرفض السيستم أي مرتجع يخصه؛ فإن وافق البائع على قبول المرتجع بعد يوم 15 يتحمله البائع وحده بالكامل (100%) خارج نظام سوياً.</strong>
+        </div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
             <div>
                 <h2 style="margin:0;font-size:1.3rem;font-weight:900;color:#0f172a;">💳 سجل العمليات وتقفيل الوردية المحاسبي (Point 13)</h2>
@@ -2058,12 +2066,33 @@ async function loadAllTransactions(periodFilter = activeShiftPeriod) {
                         <th style="padding:12px;">صافي الدرج</th>
                         <th style="padding:12px;">التوقيت</th>
                         <th style="padding:12px;">الفرع والكاشير</th>
+                        <th style="padding:12px;">إجراء المرتجع</th>
                     </tr>
                 </thead>
                 <tbody>${rowsHtml}</tbody>
             </table>
         </div>
     `;
+}
+
+async function handleMerchantPosReturn(transactionId, shortCode) {
+    const reason = prompt(`تنفيذ مرتجع للفاتورة (${shortCode}) قبل يوم الصرف (يوم 15):\n⚠️ تنبيه: لا تُسلّم النقد للعميل قبل إتمام الإلغاء، وبعد يوم الصرف 15 يرفض النظام أي مرتجع ويتحمله المتجر وحده.\n\nسبب الإرجاع:`, 'مرتجع بضاعة بموافقة العميل قبل يوم الصرف');
+    if (reason === null) return;
+    try {
+        const res = await window.SAWYAN.API.merchantProcessPosReturn({
+            merchantId: currentMerchant.id,
+            transactionId,
+            reason: reason.trim() || 'مرتجع قبل يوم الصرف'
+        });
+        alert(`✅ تم إلغاء الفاتورة (${shortCode}) واسترداد العمولة لرصيد المتجر بنجاح!\n• الإشعار الدائن: ${res?.credit_note_number || 'تم القيد'}`);
+        await loadAllTransactions(activeShiftPeriod);
+    } catch (err) {
+        if (String(err.message || '').includes('POST_PAYOUT_RETURN_FORBIDDEN')) {
+            alert('🛑 مرفوض برمجياً وتعاقدياً (POST_PAYOUT_RETURN_FORBIDDEN):\nتم إغلاق هذا الشهر وصرف عمولاته في اليوم 15! لا يقبل نظام سوياً أي مرتجع بعد يوم الصرف، وفي حال موافقتك على قبول المرتجع بعد يوم 15 يتحمله المتجر وحده بالكامل (100%) خارج النظام.');
+        } else {
+            alert('❌ تعذر تنفيذ المرتجع: ' + err.message);
+        }
+    }
 }
 
 // حقن البيانات الحية في الموقف المالي ذي التبويبات الثلاثة (مع الحفاظ الكامل على تبويباته وتصميمه!)

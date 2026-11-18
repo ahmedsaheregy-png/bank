@@ -291,7 +291,6 @@ function renderHomePage() {
                     <span>المحقق الصافي: <strong>${esc(fmtLocalFromUsd(net))} / ${esc(fmtLocalFromUsd(req))}</strong></span>
                     <span>المرحّل (Carry On): <strong>${esc(fmtLocalFromUsd(homeBox.carry_on_in_usd))}</strong></span>
                     <span>مشتريات الشهر: <strong>${esc(fmtLocalFromUsd(homeBox.current_month_purchases_usd))}</strong></span>
-                    ${Number(homeBox.negative_clawback_usd) < 0 ? `<span style="color:#dc2626;">مقاصة مرتجع بصندوق الهدف: <strong>${esc(fmtLocalFromUsd(homeBox.negative_clawback_usd))}</strong></span>` : ''}
                 </div>
             </div>
         `;
@@ -587,6 +586,11 @@ function loadTree() {
         });
     });
     const depthKeys = Object.keys(byDepth).map(Number).sort((a, b) => a - b);
+    const orangeFilterOnly = Boolean(window.__treeOrangeFilterOnly);
+    const orangeRadarTargets = visibleNodes.filter(n => {
+        const d = parseInt(String(n.structural_me || '1').replace(/\D/g, ''), 10) || 1;
+        return n.node_color === 'ORANGE' && d >= 2 && d <= 11;
+    });
 
     page.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
@@ -594,7 +598,12 @@ function loadTree() {
                 <h2 style="margin:0;">🌳 شجرتي العمودية الثنائية (S01 = 11 مؤهلاً)</h2>
                 <small style="color:#64748b;">العدسة النشطة: <strong>${esc(tree.lens_country_code || 'ALL')}</strong> • ترتيب شجري غير متقاطع (يمين ← يسار)</small>
             </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                <button type="button" class="btn btn-sm ${orangeFilterOnly ? 'btn-primary' : 'btn-outline'}"
+                        style="${orangeFilterOnly ? 'background:#d97706;border-color:#d97706;' : 'border-color:#f59e0b;color:#b45309;'}"
+                        onclick="toggleTreeOrangeFilter()">
+                    🔥 الأقرب لإغلاق الهدف (🟠 برتقالي 2Me–11Me: ${orangeRadarTargets.length})
+                </button>
                 ${lensCountries.map(lc => {
                     const isAct = (tree.lens_country_code || 'ALL') === lc.code;
                     return `<button type="button" class="btn btn-sm ${isAct ? 'btn-primary' : 'btn-outline'}" onclick="switchTreeCountryLens('${lc.code === 'ALL' ? '' : lc.code}')">${lc.label}</button>`;
@@ -617,6 +626,29 @@ function loadTree() {
             </div>
         </div>
 
+        ${(orangeFilterOnly || orangeRadarTargets.length > 0) ? `
+            <div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:14px;padding:12px 14px;margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+                    <strong style="color:#92400e;font-size:0.9rem;">🎯 رادار القائد (N01/N02): الأعضاء البرتقاليون الأقرب لإغلاق الهدف (2Me–11Me)</strong>
+                    <small style="color:#b45309;">${orangeRadarTargets.length} عضو مرشح للتشجيع الفوري</small>
+                </div>
+                ${orangeRadarTargets.length ? `
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        ${orangeRadarTargets.map(n => {
+                            const waPhone = n.phone_visible && n.phone ? String(n.phone).replace(/[^0-9]/g, '') : '';
+                            const msg = encodeURIComponent(`أهلاً ${n.full_name} 🌟 أنت قريب جداً من إغلاق هدفك الشهري في سويًا وتحويل حالتك للأخضر! تواصل معي لأي مساعدة في متاجر منطقتك.`);
+                            return `
+                                <div style="background:#fff;border:1px solid #fcd34d;border-radius:10px;padding:6px 10px;display:flex;align-items:center;gap:8px;font-size:0.8rem;">
+                                    <span><strong>#${n.member_code}</strong> ${esc(n.full_name)} <small style="color:#b45309;">(${esc(n.structural_me || '')})</small></span>
+                                    ${waPhone ? `<a href="https://wa.me/${waPhone}?text=${msg}" target="_blank" style="background:#16a34a;color:#fff;padding:2px 8px;border-radius:6px;text-decoration:none;font-weight:700;">💬 شجّعه واتساب</a>` : '<span style="color:#64748b;">🔒 مقنّع</span>'}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                ` : '<div style="font-size:0.82rem;color:#92400e;">لا يوجد أعضاء بحالة برتقالية ضمن أجيال المتابعة (2Me–11Me) في هذه العدسة حالياً.</div>'}
+            </div>
+        ` : ''}
+
         <div id="verticalTreeViewport" style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:16px;padding:16px;overflow:auto;max-height:620px;position:relative;">
             <svg id="treeSvgOverlay" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;"></svg>
             <div id="treeLevelsContainer" style="position:relative;z-index:1;display:flex;flex-direction:column;gap:24px;min-width:max-content;">
@@ -627,9 +659,13 @@ function loadTree() {
                             const st = colorStyles[n.node_color] || colorStyles.WHITE;
                             const topo = topoMap.get(Number(n.member_code)) || {};
                             const waPhone = n.phone_visible && n.phone ? String(n.phone).replace(/[^0-9]/g, '') : '';
+                            const isOrangeHighlight = n.node_color === 'ORANGE' && d >= 2 && d <= 11;
+                            const cardFilterStyle = orangeFilterOnly
+                                ? (isOrangeHighlight ? 'box-shadow:0 0 0 3px #f59e0b;' : 'opacity:0.35;')
+                                : '';
                             return `
                                 <div class="tree-node-card" data-code="${n.member_code}" data-parent="${topo.parent_member_code ?? ''}"
-                                     style="background:${st.bg};border:2px solid ${st.border};color:${st.text};border-radius:12px;padding:8px 10px;min-width:168px;max-width:190px;box-shadow:0 2px 6px rgba(0,0,0,0.06);">
+                                     style="background:${st.bg};border:2px solid ${st.border};color:${st.text};border-radius:12px;padding:8px 10px;min-width:168px;max-width:190px;box-shadow:0 2px 6px rgba(0,0,0,0.06);${cardFilterStyle}">
                                     <div style="display:flex;justify-content:space-between;align-items:center;gap:4px;">
                                         <strong style="font-size:0.84rem;">#${n.member_code} ${topo.residency_country_code ? `[${esc(topo.residency_country_code)}]` : ''}</strong>
                                         <span style="background:${st.badge};color:#fff;font-size:0.68rem;padding:1px 6px;border-radius:999px;">
@@ -651,6 +687,11 @@ function loadTree() {
     `;
 
     requestAnimationFrame(drawVerticalTreeConnectors);
+}
+
+function toggleTreeOrangeFilter() {
+    window.__treeOrangeFilterOnly = !window.__treeOrangeFilterOnly;
+    loadTree();
 }
 
 function drawVerticalTreeConnectors() {
@@ -782,7 +823,7 @@ function loadWalletDetails() {
                                 <div style="font-size:0.78rem;color:#64748b;">${new Date(t.created_at).toLocaleString('ar-EG')} • ${esc(t.status)}</div>
                             </div>
                             <div style="text-align:left;">
-                                <strong style="color:${t.transaction_type === 'clawback_reversal' || t.transaction_type === 'withdrawal' ? '#dc2626' : '#047857'};">${esc(fmtLocalFromUsd(t.amount_usd))}</strong>
+                                <strong style="color:${t.transaction_type === 'withdrawal' ? '#dc2626' : '#047857'};">${esc(fmtLocalFromUsd(t.amount_usd))}</strong>
                                 <div style="font-size:0.75rem;color:#64748b;">${fmtUsd(t.amount_usd)}</div>
                             </div>
                         </div>
@@ -934,7 +975,7 @@ async function loadNearbyMerchants() {
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
             <div>
                 <h2 style="margin:0;">🏪 التجار المعتمدون المتاحون (${filtered.length})</h2>
-                <small style="color:#64748b;">يعرض هذا الدليل صافي كاشباك خطة الدخل لعضوية فريقك فقط وفق قواعد الشفافية (F01 / S01).</small>
+                <small style="color:#64748b;">يعرض هذا الدليل صافي عائدات خطة الدخل لعضوية فريقك فقط وفق قواعد الشفافية (F01 / S01).</small>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <button type="button" class="btn btn-primary btn-sm" onclick="triggerGpsRadarSearch()">📍 القريبين مني (GPS Haversine)</button>
@@ -1172,23 +1213,52 @@ async function crmAction(action, contactId) {
 // ---------------------------------------------------------------------------
 // Screen 10: Referral Link (Auto-routed for Original / vs Parallel /preview/)
 // ---------------------------------------------------------------------------
-function buildReferralUrl() {
+function buildReferralUrl(targetCountry = null) {
     const base = window.location.href.split('/member-dashboard/')[0];
-    return `${base}/member-dashboard/register.html?ref=${currentMember?.member_code || ''}`;
+    const baseUrl = `${base}/member-dashboard/register.html?ref=${currentMember?.member_code || ''}`;
+    if (!targetCountry || targetCountry === 'ALL') return baseUrl;
+    return `${baseUrl}&country=${encodeURIComponent(targetCountry)}`;
+}
+
+function updateReferralTargetCountry(countryCode) {
+    window.__referralTargetCountry = countryCode || '';
+    const url = buildReferralUrl(window.__referralTargetCountry);
+    const input = document.getElementById('myReferralLinkInput');
+    if (input) input.value = url;
+    const waLink = document.getElementById('myReferralWaLink');
+    if (waLink) {
+        waLink.href = `https://wa.me/?text=${encodeURIComponent('سجل مجاناً في SAWYAN مع فريقي: ' + url)}`;
+    }
 }
 
 function loadReferrals() {
     const page = document.getElementById('referralsPage');
     if (!page) return;
-    const url = buildReferralUrl();
+    const selectedCountry = window.__referralTargetCountry || '';
+    const url = buildReferralUrl(selectedCountry);
+    const countryChoices = [
+        { code: '', label: '🌍 تلقائي (يختاره المدعو عند التسجيل)' },
+        { code: 'EG', label: '🇪🇬 مصر (EG)' },
+        { code: 'TR', label: '🇹🇷 تركيا (TR)' },
+        { code: 'SA', label: '🇸🇦 السعودية (SA)' },
+        { code: 'DE', label: '🇩🇪 ألمانيا (DE)' },
+        { code: 'US', label: '🇺🇸 أمريكا (US)' },
+        { code: 'GB', label: '🇬🇧 بريطانيا (GB)' }
+    ];
     page.innerHTML = `
-        <h2>🔗 رابط الإحالة الشخصي المباشر</h2>
+        <h2>🔗 رابط الإحالة الشخصي المباشر (دولي N01/N02)</h2>
         <div style="background:#fff;border:1.5px solid #10b981;border-radius:16px;padding:20px;margin-top:14px;">
-            <p style="margin:0 0 10px;">كود الراعي الخاص بك: <strong>#${esc(currentMember.member_code)}</strong> — كل من يسجل عبر هذا الرابط يتأكد من اسمك الثلاثي قبل التسكين الذري التلقائي في أضعف ذراع (G01–G05).</p>
+            <p style="margin:0 0 12px;">كود الراعي الخاص بك: <strong>#${esc(currentMember.member_code)}</strong> — كل من يسجل عبر هذا الرابط يتأكد من اسمك الثلاثي قبل التسكين الذري التلقائي في أضعف ذراع (G01–G05).</p>
+            <div style="margin-bottom:12px;">
+                <label for="referralTargetCountrySelect" style="display:block;font-weight:700;font-size:0.85rem;margin-bottom:6px;color:#065f46;">🌍 الدولة المستهدفة للمدعو (توجيه الرابط لدولة أخرى):</label>
+                <select id="referralTargetCountrySelect" class="form-control" style="max-width:340px;" onchange="updateReferralTargetCountry(this.value)">
+                    ${countryChoices.map(c => `<option value="${c.code}" ${selectedCountry === c.code ? 'selected' : ''}>${c.label}</option>`).join('')}
+                </select>
+            </div>
             <div class="referral-link" style="display:flex;gap:8px;flex-wrap:wrap;">
                 <input type="text" id="myReferralLinkInput" class="form-control" style="flex:1;direction:ltr;" value="${esc(url)}" readonly>
                 <button type="button" class="btn btn-primary" onclick="copyReferralLink()">📋 نسخ الرابط</button>
-                <a href="https://wa.me/?text=${encodeURIComponent('سجل مجاناً في SAWYAN مع فريقي: ' + url)}" target="_blank" class="btn btn-outline">💬 مشاركة واتساب</a>
+                <a id="myReferralWaLink" href="https://wa.me/?text=${encodeURIComponent('سجل مجاناً في SAWYAN مع فريقي: ' + url)}" target="_blank" class="btn btn-outline">💬 مشاركة واتساب</a>
             </div>
         </div>
     `;

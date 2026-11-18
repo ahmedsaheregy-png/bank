@@ -183,10 +183,10 @@
         }
         if (id === 'D5') {
             return '<div class="lab-sim-box" id="sim_D5">' +
-                '<div style="font-weight:900;color:#312e81;margin-bottom:8px;">↩️ محاكي المرتجع بعد صرف يوم 10 (Clawback Cascade)</div>' +
+                '<div style="font-weight:900;color:#312e81;margin-bottom:8px;">↩️ محاكي المرتجعات: درع الكاري أون (أيام 1–14) والحظر القاطع بعد يوم الصرف 15 (0.00$ خزانة)</div>' +
                 '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">' +
-                    '<label>قيمة العمولة الموزعة ($): <input id="d5_amt" type="number" value="24.75" min="2" max="500" step="2.25" style="width:80px;padding:4px;border:1px solid #cbd5e1;border-radius:6px;" oninput="SAWYAN_SIM.calcD5()"></label>' +
-                    '<label>تاريخ الاسترداد: <select id="d5_when" style="padding:4px;border:1px solid #cbd5e1;border-radius:6px;" onchange="SAWYAN_SIM.calcD5()"><option value="after10">يوم 11 (بعد سحب الأرباح يوم 10)</option><option value="before10">يوم 5 (قبل صرف يوم 10)</option></select></label>' +
+                    '<label>رصيد الكاري أون المرحّل ($): <input id="d5_amt" type="number" value="30.00" min="0" max="500" step="2.5" style="width:80px;padding:4px;border:1px solid #cbd5e1;border-radius:6px;" oninput="SAWYAN_SIM.calcD5()"></label>' +
+                    '<label>توقيت محاولة المرتجع: <select id="d5_when" style="padding:4px;border:1px solid #cbd5e1;border-radius:6px;" onchange="SAWYAN_SIM.calcD5()"><option value="before15">يوم 10 (خلال الـ 14 يوماً قبل صرف يوم 15)</option><option value="after15">يوم 16 (بعد يوم الصرف 15 — مرفوض برمجياً)</option></select></label>' +
                 '</div>' +
                 '<div class="lab-sim-out" id="simOut_D5"></div>' +
             '</div>';
@@ -404,14 +404,17 @@
                 (bal >= 500 ? '<b style="color:#059669;">مغطاة بالكامل</b>' : (canApprove500 ? '<b style="color:#b45309;">⚠️ رصيد سالب (-' + fmt(500 - bal) + ' ج.م دين غير مضمون!)</b>' : '<b style="color:#dc2626;">🛡️ محجوبة لعدم كفاية الشحن المسبق</b>')) + '</div>';
         },
         calcD5: function () {
-            var amt = parseFloat((document.getElementById('d5_amt') || {}).value || 24.75);
-            var when = (document.getElementById('d5_when') || {}).value || 'after10';
+            var carry = Math.max(0, parseFloat((document.getElementById('d5_amt') || {}).value || 0));
+            var when = (document.getElementById('d5_when') || {}).value || 'before15';
             var out = document.getElementById('simOut_D5');
             if (!out) return;
-            var each = amt / 11;
-            out.innerHTML = when === 'before10'
-                ? '<b style="color:#059669;">✅ يوم 5 (قبل صرف يوم 10):</b> الأموال ما زالت Pending؛ تُلغى الحصص (' + fmt(each) + '$ لكل من الـ 11) قبل الصرف دون رصيد سالب.'
-                : '<b style="color:#b45309;">⚠️ يوم 11 (بعد سحب الأرباح):</b> يُفعّل قيد Clawback عكسي في الفترة المفتوحة (<b>-' + fmt(each) + '$</b> لكل مستفيد من الـ 11 مع تغطية مؤقتة من مخصص الاحتياطي Reserve).';
+            if (when === 'after15') {
+                out.innerHTML = '<b style="color:#dc2626;">🛑 مرفوض برمجياً وتعاقدياً (POST_PAYOUT_RETURN_FORBIDDEN):</b> لا يقبل السيستم أي مرتجع لشهر مغلق بعد يوم صرفه (يوم 15). الخزانة تتحمل <b>0.00$</b>، الآباء العشرة لا يُمسّون، ولا يوضع أي سالب في صندوق العضو؛ <b>فإن وافق البائع على قبوله يتحمله البائع وحده 100%</b> خارج نظام سوياً.';
+            } else if (carry >= 24.75) {
+                out.innerHTML = '<b style="color:#059669;">🛡️ درع الكاري أون يحمي التأهل (0.00$ خزانة):</b> تُلغى الفاتورة وتعود عمولتها للتاجر؛ وبما أن الكاري أون (<b>' + fmt(carry) + '$</b>) يغطي الهدف الشهري (24.75$)، يُخصم العجز من الكاري أون لصالح الهدف، <b>ويظل العضو مؤهلاً 🟢</b> وتبقى عمولات من فوقه، ويتحدث الكاري أون للشهر الجديد إلى <b>' + fmt(carry - 24.75) + '$</b>.';
+            } else {
+                out.innerHTML = '<b style="color:#b45309;">⚠️ سقوط التأهل قبل الصرف (0.00$ خزانة):</b> الكاري أون (<b>' + fmt(carry) + '$</b>) أقل من الهدف (24.75$)؛ يسقط تأهل العضو عن ذلك الشهر وتُلغى العمولات الموزعة بسببه مع إعادة حساب الـ Roll-up قبل يوم 15، ويبقى له <b>' + fmt(carry) + '$</b> كاري أون للشهر الجديد (بلا أي رصيد سالب).';
+            }
         },
         calcD6: function () {
             var hrs = parseInt((document.getElementById('d6_hrs') || {}).value || 50, 10);

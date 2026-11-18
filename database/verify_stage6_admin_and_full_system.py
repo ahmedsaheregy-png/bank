@@ -222,7 +222,7 @@ def main():
             "p_action_type": "BITEMPORAL_SETTINGS_UPDATE",
             "p_target_entity": "settings",
             "p_target_id": "GLOBAL",
-            "p_payload_after": {"wht_threshold_usd": 200.00, "rolling_reserve_pct": 2.00},
+            "p_payload_after": {"wht_threshold_usd": 200.00, "withdrawal_cooldown_hours": 72},
             "p_reason": "Constitutional Stage 6 Maker-Checker Verification",
         },
         "sawyan_demo",

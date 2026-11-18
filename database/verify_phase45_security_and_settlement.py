@@ -109,8 +109,8 @@ def main():
                'feed_monthly_target_box', 'run_monthly_settlement_engine',
                'finalize_settlement_payout_step5_6', 'process_payment_webhook',
                'submit_maker_checker_request', 'decide_maker_checker_request',
-               'verify_member_session', 'process_pos_refund_reversal',
-               'process_merchant_topup_fifo'
+               'verify_member_session', 'process_transaction_reversal_clawback',
+               'recalculate_target_box_and_cascade', 'process_merchant_topup_fifo'
            );
     """, token)
     leaked = [r["proname"] for r in priv_res if r["anon_can_exec"]]

@@ -96,7 +96,7 @@
                 { id: 'TXN-9841', memberCode: '#210', memberName: 'منى علي', phoneLast4: '9921', merchantCode: 'EG-PHR-102', merchantName: 'صيدلية الشفاء الحديثة', amount: 340, commPct: 12, commAmt: 40.80, fx: 50, date: '2026-11-14 17:20', route: 'أ (QR)', status: 'completed', note: 'أدوية وعناية', payoutMonth: '2026-11 (مفتوح)' },
                 { id: 'TXN-9840', memberCode: '#125', memberName: 'خالد حسن', phoneLast4: '4412', merchantCode: 'EG-MKT-101', merchantName: 'سوبر ماركت الفارق المركزي', amount: 1250, commPct: 10, commAmt: 125, fx: 50, date: '2026-11-14 16:30', route: 'ب (PIN)', status: 'completed', note: 'شراء منزلي', payoutMonth: '2026-11 (مفتوح)' },
                 { id: 'TXN-PEND-771', memberCode: '#210', memberName: 'منى علي', phoneLast4: '9921', merchantCode: 'EG-ELC-104', merchantName: 'تك ستور للإلكترونيات', amount: 1800, commPct: 8, commAmt: 144, fx: 50, date: '2026-11-12 11:10', route: 'ب (معلق 55س > 48س)', status: 'escalated', note: 'تجاوز مهلة التاجر 48 ساعة — متصاعد للإدارة (D6)', payoutMonth: '2026-11 (مفتوح)' },
-                { id: 'TXN-OCT-410', memberCode: '#125', memberName: 'خالد حسن', phoneLast4: '4412', merchantCode: 'EG-ELC-104', merchantName: 'تك ستور للإلكترونيات', amount: 2200, commPct: 8, commAmt: 176, fx: 50, date: '2026-10-27 14:15', route: 'أ (POS)', status: 'completed', note: 'فاتورة شهر مغلق ومصروف عمولاتها يوم 10 نوفمبر (اختبار Clawback D5)', payoutMonth: '2026-10 (مصروف)' },
+                { id: 'TXN-OCT-410', memberCode: '#125', memberName: 'خالد حسن', phoneLast4: '4412', merchantCode: 'EG-ELC-104', merchantName: 'تك ستور للإلكترونيات', amount: 2200, commPct: 8, commAmt: 176, fx: 50, date: '2026-10-27 14:15', route: 'أ (POS)', status: 'completed', note: 'فاتورة شهر مغلق ومصروف عمولاتها يوم 15 نوفمبر — محظور استردادها برمجياً (D5)', payoutMonth: '2026-10 (مصروف — مقفل نهائياً)' },
                 { id: 'TXN-DUP-804', memberCode: '#124', memberName: 'أحمد مصطفى', phoneLast4: '5678', merchantCode: 'EG-MKT-101', merchantName: 'سوبر ماركت الفارق المركزي', amount: 500, commPct: 10, commAmt: 50, fx: 50, date: '2026-11-14 18:49', route: 'ب (اشتباه تكرار)', status: 'flagged_dup', note: 'نفس العضو والمبلغ خلال 4 دقائق — محتجز آلياً للمراجعة (M11)', payoutMonth: '2026-11 (مفتوح)' }
             ],
             disputes: [
@@ -120,7 +120,7 @@
                 { id: 'WD-702', memberCode: '#125', memberName: 'خالد حسن', usdAmount: 45.00, fxUsed: 50.00, feePct: 1.5, whtPct: 0, method: 'instapay', account: 'khaled@instapay', date: '2026-11-14', kycOk: true, cooldownHoursLeft: 58, dualRequired: false, checker1Approved: false, status: 'pending', note: 'تغيّر الحساب المستلم قبل 14 ساعة — فترة تهدئة 72س سارية (W07)' },
                 { id: 'WD-703', memberCode: '#124', memberName: 'أحمد مصطفى', usdAmount: 30.00, fxUsed: 50.00, feePct: 1.5, whtPct: 0, method: 'vodafone_cash', account: '01012345678', date: '2026-11-14', kycOk: false, cooldownHoursLeft: 0, dualRequired: false, checker1Approved: false, status: 'pending', note: 'الـ KYC لم يُعتمد بعد — محجوب لحين مراجعة الهوية (D7)' },
                 { id: 'WD-704', memberCode: '#318', memberName: 'يوسف كمال', usdAmount: 82.00, fxUsed: 50.00, feePct: 1.5, whtPct: 0, method: 'bank_transfer', account: 'TR3300061005...1109', date: '2026-11-13', kycOk: true, cooldownHoursLeft: 0, dualRequired: false, checker1Approved: false, status: 'pending', note: 'جاهز للصرف (مصر/تركيا مسجل TR)' },
-                { id: 'WD-705', memberCode: '#112', memberName: 'سعيد محمود', usdAmount: 110.00, fxUsed: 50.00, feePct: 1.5, whtPct: 0, method: 'instapay', account: 'saeed@instapay', date: '2026-11-10', kycOk: true, cooldownHoursLeft: 0, dualRequired: false, checker1Approved: true, status: 'approved', note: 'تم التحويل يوم 10 نوفمبر' }
+                { id: 'WD-705', memberCode: '#112', memberName: 'سعيد محمود', usdAmount: 110.00, fxUsed: 50.00, feePct: 1.5, whtPct: 0, method: 'instapay', account: 'saeed@instapay', date: '2026-11-15', kycOk: true, cooldownHoursLeft: 0, dualRequired: false, checker1Approved: true, status: 'approved', note: 'تم التحويل يوم 15 نوفمبر' }
             ],
             fraudQueue: [
                 { id: 'FRD-01', severity: 'حرج', title: 'تواتر فواتير مشبوه لثنائي واحد (Member #290 + MER-103)', detail: '6 فواتير في 35 دقيقة بمجموع 8,400 ج.م دون صور إيصال — خرق للمقترح M15/M16', status: 'open', control: 'M15 سقف الثنائي + M16 إلزام الصورة' },
@@ -595,18 +595,20 @@
         if (!t) return;
         var planAmt = t.commAmt * 0.75;
         var postPayout = t.payoutMonth.indexOf('مصروف') !== -1;
-        openModal('↩️ محاكي وتنفيذ الاسترداد العكسي (Clawback — قرار D5)',
-            '<div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:12px;margin-bottom:12px;font-size:0.86rem;line-height:1.75;">' +
+        openModal('↩️ محاكي وتنفيذ إلغاء المرتجع قبل الصرف وحظر ما بعد يوم 15 (قرار المؤسس D5)',
+            '<div style="background:' + (postPayout ? '#fef2f2;border:1.5px solid #ef4444' : '#ecfdf5;border:1.5px solid #10b981') + ';border-radius:10px;padding:12px;margin-bottom:12px;font-size:0.86rem;line-height:1.75;">' +
                 '<b>الفاتورة:</b> ' + esc(t.id) + ' (' + fmt(t.amount) + ' ج.م • حصة خطة الدخل: ' + fmt(planAmt) + ' ج.م)<br>' +
                 '<b>حالة الشهر:</b> ' + esc(t.payoutMonth) + '<br>' +
                 (postPayout
-                    ? '<b>⚠️ تنبيه حرج (بعد صرف يوم 10):</b> هذه الفاتورة ضمن شهر تم إغلاقه وصرف عمولاته للأبلاينز!<br>• الخيار أ: يُقيّد رصيد سالب على المستفيدين + سحب من حساب الاحتياطي (Reserve) + رد العمولة (' + fmt(t.commAmt) + ' ج.م) لرصيد التاجر.<br>• الخيار ب: إغلاق الاسترداد الآلي بعد يوم 10 والتسوية خارج المنصة.'
-                    : '<b>✅ داخل الشهر المفتوح:</b> يُعكس القيد فوراً، وتعود العمولة (' + fmt(t.commAmt) + ' ج.م) للتاجر، ويُنقص صندوق الهدف للعضو بمقدار ' + fmt(planAmt) + ' ج.م مع إرسال تنبيه تلقائي بالمتبقي.') +
+                    ? '<b style="color:#b91c1c;">🛑 مرفوض برمجياً وتعاقدياً (POST_PAYOUT_RETURN_FORBIDDEN):</b> هذه الفاتورة تخص شهراً تم إغلاقه وصرف عمولاته في اليوم 15! الخزانة لا تتحمل 0.00$، ولا يُمسّ الآباء العشرة، ولا يوضع أي رصيد سالب في صندوق العضو؛ فإن وافق البائع على قبول المرتجع بعد يوم 15 يتحمله البائع وحده بالكامل (100%) خارج نظام سوياً.'
+                    : '<b>✅ مسموح قبل يوم الصرف (0.00$ على الخزانة + درع الكاري أون):</b> تُلغى العملية وتعود العمولة (' + fmt(t.commAmt) + ' ج.م) للتاجر؛ فإن كان رصيد الكاري أون للعضو يغطي الهدف الشهري يُخصم العجز من الكاري أون ويحتفظ بتأهله، وإن لم يغطِّ يسقط تأهله وتُلغى عمولات تأهله الموزعة مع إعادة حساب الـ Roll-up.') +
             '</div>' +
-            '<div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:10px;margin-bottom:12px;font-size:0.82rem;">' +
-                '<b>📩 مسودة إشعار العضو:</b> "تم إلغاء الفاتورة ' + esc(t.id) + ' بمبلغ ' + fmt(t.amount) + ' ج.م، وانخفض صندوق هدفك بمقدار ' + fmt(planAmt) + ' ج.م (' + fmt(planAmt / t.fx) + '$)."' +
-            '</div>' +
-            '<button onclick="opsTxnResolve(\'' + t.id + '\',\'refunded\')" style="background:#dc2626;color:white;border:none;padding:9px 18px;border-radius:8px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;">↩️ تنفيذ القيد العكسي الموثق</button>');
+            (postPayout
+                ? '<button onclick="closeModal()" style="background:#475569;color:white;border:none;padding:9px 18px;border-radius:8px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;">🔒 إغلاق — العملية مقفلة نهائياً بعد الصرف</button>'
+                : '<div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:10px;margin-bottom:12px;font-size:0.82rem;">' +
+                    '<b>📩 مسودة إشعار العضو:</b> "تم إلغاء الفاتورة ' + esc(t.id) + ' بمبلغ ' + fmt(t.amount) + ' ج.م قبل الصرف، وتم تحديث صندوق هدفك والكاري أون آلياً."' +
+                  '</div>' +
+                  '<button onclick="opsTxnResolve(\'' + t.id + '\',\'refunded\')" style="background:#dc2626;color:white;border:none;padding:9px 18px;border-radius:8px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;">↩️ تنفيذ إلغاء ما قبل الصرف الموثق</button>'));
     };
     window.exportTransactions = function () {
         downloadCsv('sawyan_transactions.csv', ['الكود', 'العضو', 'التاجر', 'المبلغ', 'العمولة', 'التاريخ', 'الحالة'],
@@ -1013,7 +1015,7 @@
         { s: 3, title: 'حسم نافذة التصحيح والطلبات المعلقة (D3 & D6)', desc: 'إغلاق كافة العمليات المتصاعدة بعد 48 ساعة وحسم أي استثناء إداري موثق قبل التوزيع.' },
         { s: 4, title: 'حساب مسودة التوزيع والتأهل التعويضي ولقطة المعاملات (Hash)', desc: 'تثبيت parameters_snapshot وتطبيق الستوبر العددي ⬅️ السقف والـ Roll-up ⬅️ الستوبر المالي ⬅️ التعويضي دون سالب.' },
         { s: 5, title: 'الاعتماد المزدوج للإقفال الشامل (Odoo Total Lock)', desc: 'مراجعة المحاسب والمراقب وإقفال القيود المحاسبية نهائياً للشهر.' },
-        { s: 6, title: 'إصدار دفعة صرف العمولات — يوم 10 من الشهر التالي', desc: 'ترحيل الأرباح المؤكدة إلى الأرصدة المتاحة للسحب وفق fx_rate_used لشهر الاستحقاق.' }
+        { s: 6, title: 'إصدار دفعة صرف العمولات — يوم 15 من الشهر التالي', desc: 'ترحيل الأرباح المؤكدة إلى الأرصدة المتاحة للسحب وفق fx_rate_used لشهر الاستحقاق.' }
     ];
 
     function govNavHtml() {
@@ -1203,7 +1205,7 @@
     window.govAdvanceClose = function () {
         if (OPS.reconDiffInjected) { alert('الإقفال محظور لوجود فرق محاسبي!'); return; }
         if (OPS.closeStep < 6) { OPS.closeStep++; saveOps(); renderGovernanceOps(); }
-        else { alert('✅ اكتملت مراحل الإقفال الشهري الست حتى أمر صرف يوم 10.'); }
+        else { alert('✅ اكتملت مراحل الإقفال الشهري الست وصرف يوم 15 والقفل النهائي (Hard Lock).'); }
     };
     window.govResetClose = function () { OPS.closeStep = 1; OPS.breakGlassOpenUntil = null; OPS.breakGlassReason = ''; saveOps(); renderGovernanceOps(); };
     window.govBreakGlassReopen = function () {

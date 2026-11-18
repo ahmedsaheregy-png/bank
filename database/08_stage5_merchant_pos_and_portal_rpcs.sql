@@ -821,6 +821,37 @@ BEGIN
 END;
 $$;
 
+-- 9-ب. تنفيذ مرتجع نقطة بيع محمي للتاجر (يُقبل قبل يوم الصرف 15 مع درع الكاري أون، ويُرفض قطعياً بعد يوم 15 — D5)
+CREATE OR REPLACE FUNCTION sawyan.merchant_process_pos_return(
+    p_merchant_id     UUID,
+    p_transaction_id  UUID,
+    p_reason          TEXT DEFAULT NULL,
+    p_idempotency_key UUID DEFAULT NULL,
+    p_session_token   TEXT DEFAULT NULL
+) RETURNS JSONB
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $$
+DECLARE
+    v_merch sawyan.merchants%ROWTYPE;
+    v_tx    sawyan.transactions%ROWTYPE;
+BEGIN
+    v_merch := sawyan.verify_merchant_session(p_merchant_id, p_session_token);
+    SELECT * INTO v_tx FROM sawyan.transactions WHERE id = p_transaction_id AND merchant_id = v_merch.id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'TX_NOT_FOUND_OR_UNAUTHORIZED';
+    END IF;
+    RETURN sawyan.process_transaction_reversal_clawback(
+        v_tx.id,
+        v_merch.id,
+        COALESCE(NULLIF(trim(p_reason), ''), 'Merchant POS return before payout'),
+        p_idempotency_key
+    );
+END;
+$$;
+
 -- 10. الحزمة الموحدة الشاملة للوحة التاجر (Zero 25%/75% Split Exposed — F01 & Ch. 7.2 #5)
 CREATE OR REPLACE FUNCTION sawyan.get_merchant_dashboard_bundle(
     p_merchant_id   UUID,
@@ -1040,6 +1071,7 @@ REVOKE ALL ON FUNCTION sawyan.merchant_initiate_topup(UUID, NUMERIC, VARCHAR, VA
 REVOKE ALL ON FUNCTION sawyan.merchant_shift_closing_guarded(UUID, TEXT, UUID, VARCHAR, VARCHAR) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION sawyan.merchant_submit_flash_offer_guarded(UUID, VARCHAR, TEXT, VARCHAR, TEXT) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION sawyan.merchant_radar_density_guarded(UUID, UUID, NUMERIC, TEXT) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION sawyan.merchant_process_pos_return(UUID, UUID, TEXT, UUID, TEXT) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION sawyan.get_merchant_dashboard_bundle(UUID, TEXT, VARCHAR, UUID) FROM PUBLIC, anon, authenticated;
 
 -- دالة داخلية محصورة بـ service_role فقط
@@ -1056,4 +1088,5 @@ GRANT EXECUTE ON FUNCTION sawyan.merchant_initiate_topup(UUID, NUMERIC, VARCHAR,
 GRANT EXECUTE ON FUNCTION sawyan.merchant_shift_closing_guarded(UUID, TEXT, UUID, VARCHAR, VARCHAR) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.merchant_submit_flash_offer_guarded(UUID, VARCHAR, TEXT, VARCHAR, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.merchant_radar_density_guarded(UUID, UUID, NUMERIC, TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION sawyan.merchant_process_pos_return(UUID, UUID, TEXT, UUID, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.get_merchant_dashboard_bundle(UUID, TEXT, VARCHAR, UUID) TO anon, authenticated, service_role;

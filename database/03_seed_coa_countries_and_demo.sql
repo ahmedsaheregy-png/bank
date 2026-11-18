@@ -3,12 +3,11 @@
 -- Applied cleanly to BOTH `sawyan` (Production) and `sawyan_demo` (Parallel)
 -- ============================================================================
 
--- 1. دليل الحسابات المرقم (22 حساباً قياسياً — COA)
+-- 1. دليل الحسابات المرقم (19 حساباً قياسياً — COA — صفر مسؤولية خزانة وبلا حسابات سالبة أو احتياطي مرتجعات D5)
 INSERT INTO sawyan.chart_of_accounts (account_code, account_name_ar, account_name_en, normal_balance) VALUES
 ('1101', 'نقدية بالحسابات البنكية الفعلية للشركة', 'Corporate Bank Accounts — Confirmed Cash', 'D'),
 ('1102', 'نقدية قيد التحصيل والتسوية لدى بوابات الدفع', 'PSP Settlement Clearing Account', 'D'),
 ('1201', 'ذمم مدينين — استثناء التاجر الآجل', 'Merchant Deferred AR', 'D'),
-('1301', 'ذمم مقاصة الأهداف السالبة', 'Member Negative Clawback AR', 'D'),
 ('2101', 'التزامات أرصدة شحن التجار المسبقة', 'Merchant Prepaid Float', 'C'),
 ('2102', 'التزامات حجوزات مؤقتة', 'Merchant Soft Hold Liability', 'C'),
 ('2201', 'التزامات صناديق الأهداف والـ Carry On', 'Target Box & Carry On Pool', 'C'),
@@ -18,14 +17,12 @@ INSERT INTO sawyan.chart_of_accounts (account_code, account_name_ar, account_nam
 ('2304', 'حساب الأرصدة الخاملة المجمّدة (W11)', 'Dormant Balances Liability', 'C'),
 ('2401', 'التزامات ضريبة المنبع والمستحقات الضريبية', 'WHT & Tax Payable', 'C'),
 ('2402', 'التزامات ضريبة القيمة المضافة B2B', 'B2B Output VAT Payable', 'C'),
-('3101', 'احتياطي تغطية المرتجعات الدوار (S02)', 'Rolling Reserve (0%-5%)', 'C'),
 ('4101', 'إيرادات خزينة الشركة الأساسية (25%)', 'Core 25% Treasury Revenue', 'C'),
 ('4102', 'إيرادات الخزانة المقابلة من الأهداف التعويضية', 'Compensatory Treasury Share', 'C'),
 ('4103', 'إيرادات إدارية من الأهداف التعويضية (T03)', 'Compensatory Admin Fee', 'C'),
 ('4201', 'إيرادات رسوم السحب ومعاملات الشركاء', 'Withdrawal Fees & Partner Pool', 'C'),
 ('4301', 'حساب فروق التقريب (F07 / D11)', 'Rounding Differences Account', 'C'),
 ('5101', 'مصروفات توزيعات خطة الدخل والـ Roll-up', 'Commission Distribution Expense', 'D'),
-('5201', 'مصروفات امتصاص مرتجعات ما بعد الصرف', 'Post-Payout Clawback Expense', 'D'),
 ('5301', 'مصروفات رسوم وعمولات بوابات الدفع والتحصيل البنكي', 'PSP Gateway & Banking Processing Fees Expense', 'D')
 ON CONFLICT (account_code) DO NOTHING;
 
@@ -79,11 +76,11 @@ INSERT INTO sawyan.settings (
     country_id, brand_display_title, company_percent, generations_count,
     numerical_stopper_s01, upline_ceiling_s02, cap_auto_calc, monthly_target_usd,
     payout_day, merchant_warn1_pct, merchant_warn2_pct, merchant_isolate_pct,
-    unsecured_queue_cap, unconfirmed_soft_hold_cap_pct, rolling_reserve_pct,
+    unsecured_queue_cap, unconfirmed_soft_hold_cap_pct,
     wht_threshold_usd, withdrawal_cooldown_hours, dormancy_months,
     effective_from, change_reason
 )
-SELECT NULL, 'SAWYAN', 25.00, 11, 11, 11, true, 24.75, 15, 30.00, 20.00, 10.00, 3, 20.00, 2.00, 200.00, 72, 0,
+SELECT NULL, 'SAWYAN', 25.00, 11, 11, 11, true, 24.75, 15, 30.00, 20.00, 10.00, 3, 20.00, 200.00, 72, 0,
        '2026-01-01 00:00:00+00'::timestamptz, 'Constitutional Global Defaults V3.0'
 WHERE NOT EXISTS (SELECT 1 FROM sawyan.settings WHERE country_id IS NULL);
 

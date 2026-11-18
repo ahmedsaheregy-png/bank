@@ -215,6 +215,7 @@ CREATE TABLE sawyan.settlement_cycles (
     maker_admin_id                UUID REFERENCES sawyan.admins(id),
     checker_admin_id              UUID REFERENCES sawyan.admins(id),
     is_hard_locked                BOOLEAN NOT NULL DEFAULT false,
+    payout_executed_at            TIMESTAMPTZ,
     break_glass_expires_at        TIMESTAMPTZ,
     UNIQUE (country_id, period_ym),
     CONSTRAINT chk_cycle_maker_checker CHECK (
@@ -222,19 +223,18 @@ CREATE TABLE sawyan.settlement_cycles (
     )
 );
 
--- 11. sawyan.monthly_target_boxes (صندوق الهدف الشهري لكل عضو ولكل دولة وشهر — D23 + D5)
+-- 11. sawyan.monthly_target_boxes (صندوق الهدف الشهري لكل عضو ولكل دولة وشهر — D23 + D5 — ممنوع السالب بنيوياً)
 CREATE TABLE sawyan.monthly_target_boxes (
     id                          BIGSERIAL PRIMARY KEY,
     member_id                   UUID NOT NULL REFERENCES sawyan.members(id),
     country_id                  INT NOT NULL REFERENCES sawyan.countries(id),
     period_ym                   CHAR(7) NOT NULL CHECK (period_ym ~ '^\d{4}-\d{2}$'),
-    carry_on_in_usd             NUMERIC(18,6) NOT NULL DEFAULT 0.000000,
-    current_month_purchases_usd NUMERIC(18,6) NOT NULL DEFAULT 0.000000,
-    compensatory_incoming_usd   NUMERIC(18,6) NOT NULL DEFAULT 0.000000,
+    carry_on_in_usd             NUMERIC(18,6) NOT NULL DEFAULT 0.000000 CHECK (carry_on_in_usd >= 0),
+    current_month_purchases_usd NUMERIC(18,6) NOT NULL DEFAULT 0.000000 CHECK (current_month_purchases_usd >= 0),
+    compensatory_incoming_usd   NUMERIC(18,6) NOT NULL DEFAULT 0.000000 CHECK (compensatory_incoming_usd >= 0),
     target_required_usd         NUMERIC(18,2) NOT NULL CHECK (target_required_usd > 0),
     target_consumed_usd         NUMERIC(18,2) NOT NULL DEFAULT 0.00 CHECK (target_consumed_usd >= 0),
-    negative_clawback_usd       NUMERIC(18,2) NOT NULL DEFAULT 0.00 CHECK (negative_clawback_usd <= 0),
-    carry_on_out_usd            NUMERIC(18,6) NOT NULL DEFAULT 0.000000,
+    carry_on_out_usd            NUMERIC(18,6) NOT NULL DEFAULT 0.000000 CHECK (carry_on_out_usd >= 0),
     is_qualified                BOOLEAN NOT NULL DEFAULT false,
     qualification_source        VARCHAR(20) NOT NULL DEFAULT 'none' CHECK (qualification_source IN (
         'none', 'local_purchases', 'carry_on', 'compensatory'
@@ -354,7 +354,6 @@ CREATE TABLE sawyan.settings (
     merchant_isolate_pct          NUMERIC(5,2) NOT NULL DEFAULT 10.00,
     unsecured_queue_cap           SMALLINT NOT NULL DEFAULT 3 CHECK (unsecured_queue_cap >= 1),
     unconfirmed_soft_hold_cap_pct NUMERIC(5,2) NOT NULL DEFAULT 20.00 CHECK (unconfirmed_soft_hold_cap_pct BETWEEN 1.00 AND 100.00),
-    rolling_reserve_pct           NUMERIC(5,2) NOT NULL DEFAULT 0.00 CHECK (rolling_reserve_pct BETWEEN 0.00 AND 5.00),
     wht_threshold_usd             NUMERIC(18,2) NOT NULL DEFAULT 200.00 CHECK (wht_threshold_usd >= 0),
     withdrawal_cooldown_hours     INTEGER NOT NULL DEFAULT 72 CHECK (withdrawal_cooldown_hours >= 0),
     dormancy_months               INTEGER NOT NULL DEFAULT 0 CHECK (dormancy_months >= 0),
@@ -431,12 +430,12 @@ CREATE TABLE sawyan.wallets (
     updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 22. sawyan.wallet_transactions (حركات المحفظة — محظور فيها transfer_p2p بقرار D24)
+-- 22. sawyan.wallet_transactions (حركات المحفظة — محظور فيها transfer_p2p وclawback_reversal بقرار D24 + D5)
 CREATE TABLE sawyan.wallet_transactions (
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     wallet_id        UUID NOT NULL REFERENCES sawyan.wallets(id),
     transaction_type VARCHAR(30) NOT NULL CHECK (transaction_type IN (
-        'commission', 'cashback', 'withdrawal', 'withdrawal_fee', 'wht_tax', 'clawback_reversal', 's03_release'
+        'commission', 'cashback', 'withdrawal', 'withdrawal_fee', 'wht_tax', 's03_release'
     )),
     amount_usd       NUMERIC(18,2) NOT NULL,
     local_amount     NUMERIC(18,2),

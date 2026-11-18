@@ -67,6 +67,20 @@ BEGIN
         RAISE EXCEPTION 'NO_STEP4_OPEN_CYCLES_FOR_PERIOD: %', p_period_ym;
     END IF;
 
+    -- التحقق من عدم وجود تذاكر نزاع مفتوحة على فواتير مكتملة تخص هذه الدورة قبل القفل الصلب (T06)
+    IF EXISTS (
+        SELECT 1
+          FROM sawyan.dispute_tickets d
+          JOIN sawyan.transactions t ON t.id = d.transaction_id
+          JOIN sawyan.countries c ON c.id = t.country_id
+         WHERE d.status IN ('awaiting_merchant_friendly', 'escalated_to_admin')
+           AND t.status = 'completed'
+           AND COALESCE(t.commission_snapshot->>'effective_period_ym',
+                        to_char(t.created_at AT TIME ZONE c.iana_timezone, 'YYYY-MM')) = p_period_ym
+    ) THEN
+        RAISE EXCEPTION 'OPEN_PRE_PAYOUT_DISPUTES_EXIST: Resolve open disputes for period % before finalizing Step 5-6 payout.', p_period_ym;
+    END IF;
+
     SELECT * INTO v_settings FROM sawyan.settings
      WHERE country_id IS NULL AND effective_from <= now()
      ORDER BY effective_from DESC, recorded_at DESC LIMIT 1;
@@ -228,14 +242,15 @@ BEGIN
         END IF;
     END LOOP;
 
-    -- القفل النهائي غير القابل للكسر إلا بـ Break-Glass (Step 6 Hard Lock — D28)
+    -- القفل النهائي وختم الصرف القطعي غير القابل للإلغاء على المرتجعات (Step 6 Hard Lock — D5 + D28)
     UPDATE sawyan.settlement_cycles
        SET step_status                   = 6,
            zero_discrepancy_passed       = true,
            ias21_fx_revaluation_entry_id = COALESCE(v_ias_entry_id, ias21_fx_revaluation_entry_id),
            maker_admin_id                = p_maker_admin_id,
            checker_admin_id              = p_checker_admin_id,
-           is_hard_locked                = true
+           is_hard_locked                = true,
+           payout_executed_at            = COALESCE(payout_executed_at, now())
      WHERE period_ym = p_period_ym AND is_hard_locked = false;
 
     PERFORM sawyan.append_audit_log(

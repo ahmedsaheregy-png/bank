@@ -336,23 +336,67 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../shared/config/supabase.js"></script>
     <script src="../shared/api/sawyan-api.js"></script>
     <script>
-        document.getElementById('contactForm').addEventListener('submit', function (e) {
+        document.addEventListener('DOMContentLoaded', function () {
+            const params = new URLSearchParams(window.location.search);
+            const topic = params.get('topic') || '';
+            const memCode = params.get('member_code') || '';
+            const emailGroup = document.getElementById('email')?.parentElement;
+            if (emailGroup && !document.getElementById('contactPhone')) {
+                const phDiv = document.createElement('div');
+                phDiv.className = 'form-group';
+                phDiv.innerHTML = '<label>رقم الهاتف المسجل بالواتساب (للتحقق السريع)</label><input type="text" class="form-control" id="contactPhone" placeholder="+2010...">';
+                emailGroup.parentElement.insertBefore(phDiv, emailGroup.nextSibling);
+            }
+            const subj = document.getElementById('subject');
+            if (subj && !Array.from(subj.options).some(o => o.value === 'password_recovery')) {
+                const opt = document.createElement('option');
+                opt.value = 'password_recovery';
+                opt.textContent = '🔑 استعادة كلمة المرور الموثقة';
+                subj.appendChild(opt);
+            }
+            if (topic.includes('password_recovery') && subj) {
+                subj.value = 'password_recovery';
+                const msg = document.getElementById('message');
+                if (msg && memCode) msg.value = 'طلب استعادة كلمة المرور للعضوية رقم #' + memCode + ' — مستعد لتأكيد ملكية الهاتف المسجل.';
+            }
+        });
+
+        document.getElementById('contactForm').addEventListener('submit', async function (e) {
             e.preventDefault();
+            const btn = this.querySelector('button[type="submit"]');
+            if (btn) { btn.disabled = true; btn.textContent = '⏳ جاري تسجيل التذكرة في النظام...'; }
+            try {
+                for (let i = 0; i < 20 && (!window.SAWYAN || !window.SAWYAN.API || !window.SAWYAN.supabase); i++) {
+                    await new Promise(r => setTimeout(r, 100));
+                }
+                const name = document.getElementById('name').value.trim();
+                const email = document.getElementById('email').value.trim();
+                const phone = (document.getElementById('contactPhone')?.value || '').trim();
+                const cat = document.getElementById('subject').value || 'general';
+                const message = document.getElementById('message').value.trim();
 
-            // Show success message
-            document.getElementById('successMessage').classList.add('show');
-            this.style.display = 'none';
+                const res = await window.SAWYAN.API.submitSupportOrRecoveryTicket({
+                    requesterType: 'public',
+                    category: cat,
+                    subject: cat === 'password_recovery' ? 'طلب استعادة كلمة مرور موثق' : ('رسالة تواصل: ' + cat),
+                    message: message,
+                    contactName: name,
+                    contactPhone: phone,
+                    contactEmail: email
+                });
 
-            // In production, you would send to a backend
-            console.log('Form submitted:', {
-                name: document.getElementById('name').value,
-                email: document.getElementById('email').value,
-                subject: document.getElementById('subject').value,
-                message: document.getElementById('message').value
-            });
+                const okBox = document.getElementById('successMessage');
+                okBox.innerHTML = '✅ تم تسجيل تذكرتك رسمياً في قاعدة البيانات برقم مرجعي: <strong style="font-size:1.05rem;">' + res.ticket_ref + '</strong><br>سيقوم فريق الدعم بالرد ومتابعة طلبك خلال مهلة الاستجابة.';
+                okBox.classList.add('show');
+                this.style.display = 'none';
+            } catch (err) {
+                alert('تعذر إرسال التذكرة: ' + err.message);
+                if (btn) { btn.disabled = false; btn.textContent = 'إرسال الرسالة'; }
+            }
         });
     </script>
 </body>

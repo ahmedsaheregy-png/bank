@@ -1,14 +1,23 @@
 /**
  * ============================================================================
- * SAWYAN ECOSYSTEM — V3.0 MEMBER REGISTRATION (Workflow 1 + G01-G05)
- * Real-time Sponsor Confirmation, Root #0 Block, Strict Password Policy (>=8, no 123456)
+ * SAWYAN ECOSYSTEM — V3.0 MEMBER REGISTRATION (Workflow 1 + G01-G05 + Stage 7)
+ * - Live Active Countries & Cities from PostgreSQL (`get_public_active_countries_and_cities`)
+ * - Manual City / District Fallback ("مدينة أخرى") so zero customers are blocked
+ * - Sovereign Founder One-Time Root #0 Invite Token (`?root_token=...`)
  * ============================================================================
  */
 
 let sponsorLookupTimeout = null;
 let verifiedSponsorRecord = null;
+let activeRootInviteToken = null;
+let liveCountriesCache = [];
 
-document.addEventListener('DOMContentLoaded', function () {
+const DIAL_MAP = {
+    EG: '+20', SA: '+966', TR: '+90', AE: '+971', KW: '+965', QA: '+974',
+    BH: '+973', OM: '+968', JO: '+962', MA: '+212', DE: '+49', US: '+1', GB: '+44'
+};
+
+document.addEventListener('DOMContentLoaded', async function () {
     const logoEl = document.getElementById('logoContainer');
     if (logoEl && window.SAWYAN && window.SAWYAN.Logo) {
         logoEl.innerHTML = window.SAWYAN.Logo.full();
@@ -19,26 +28,18 @@ document.addEventListener('DOMContentLoaded', function () {
     const params = new URLSearchParams(window.location.search);
     const urlCountry = (params.get('country') || '').trim().toUpperCase();
     const urlCity = (params.get('city') || '').trim().toLowerCase();
-    const countrySelectEl = document.getElementById('countryOfResidence');
-    if (urlCountry && countrySelectEl && Array.from(countrySelectEl.options).some(o => o.value === urlCountry)) {
-        countrySelectEl.value = urlCountry;
-        const natEl = document.getElementById('nationality');
-        if (natEl && Array.from(natEl.options).some(o => o.value === urlCountry)) {
-            natEl.value = urlCountry;
-        }
-        if (typeof window.handleCountryChange === 'function') {
-            window.handleCountryChange(urlCountry, urlCity && urlCity !== 'all' ? urlCity : undefined);
-        }
-    }
-
+    const rootToken = (params.get('root_token') || '').trim();
     const urlRef = (params.get('ref') || params.get('sponsor') || '').trim();
-    const sponsorInput = document.getElementById('sponsorCode');
 
-    if (urlRef && sponsorInput) {
+    await loadLiveCountriesAndCities(urlCountry, urlCity);
+
+    const sponsorInput = document.getElementById('sponsorCode');
+    if (rootToken) {
+        await verifyFounderRootToken(rootToken);
+    } else if (urlRef && sponsorInput) {
         sponsorInput.value = urlRef;
-        setTimeout(() => lookupSponsor(urlRef), 250);
+        setTimeout(() => lookupSponsor(urlRef), 200);
     } else if (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.isDemoMode() && sponsorInput && !sponsorInput.value) {
-        // في البيئة الموازية فقط، اقتراح الكود التجريبي #1 دون كتم التعديل
         sponsorInput.placeholder = 'للتجربة في الموقع الموازي استخدم كود القائد: 1';
     }
 
@@ -48,15 +49,144 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
+async function waitForSawyanApi() {
+    for (let i = 0; i < 20 && (!window.SAWYAN || !window.SAWYAN.API || !window.SAWYAN.supabase); i++) {
+        await new Promise(r => setTimeout(r, 100));
+    }
+}
+
+async function loadLiveCountriesAndCities(preferredCountry, preferredCity) {
+    try {
+        await waitForSawyanApi();
+        if (!(window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.getPublicActiveCountriesAndCities)) return;
+        const pub = await window.SAWYAN.API.getPublicActiveCountriesAndCities();
+        const countries = (pub && pub.countries) || [];
+        if (!countries.length) return;
+        liveCountriesCache = countries;
+
+        const resSel = document.getElementById('countryOfResidence');
+        const natSel = document.getElementById('nationality');
+        const citySel = document.getElementById('citySelect');
+
+        if (resSel) {
+            const curVal = preferredCountry || resSel.value || countries[0].country_code;
+            resSel.innerHTML = countries.map(c => {
+                const nameAr = (c.country_name_i18n && c.country_name_i18n.ar) || c.country_code;
+                return `<option value="${c.country_code}">${nameAr} (${c.currency_code})</option>`;
+            }).join('');
+            resSel.value = countries.some(c => c.country_code === curVal) ? curVal : countries[0].country_code;
+
+            resSel.onchange = function () {
+                populateLiveCities(this.value, null);
+                const dialEl = document.getElementById('countryDialCode');
+                if (dialEl && DIAL_MAP[this.value]) dialEl.textContent = DIAL_MAP[this.value];
+            };
+        }
+
+        if (natSel) {
+            const natVal = preferredCountry || natSel.value || (resSel ? resSel.value : countries[0].country_code);
+            natSel.innerHTML = countries.map(c => {
+                const nameAr = (c.country_name_i18n && c.country_name_i18n.ar) || c.country_code;
+                return `<option value="${c.country_code}">${nameAr}</option>`;
+            }).join('');
+            if (countries.some(c => c.country_code === natVal)) natSel.value = natVal;
+        }
+
+        if (resSel) {
+            const dialEl = document.getElementById('countryDialCode');
+            if (dialEl && DIAL_MAP[resSel.value]) dialEl.textContent = DIAL_MAP[resSel.value];
+            populateLiveCities(resSel.value, preferredCity);
+        }
+
+        // Ensure manual city input fallback exists
+        if (citySel && !document.getElementById('manualCityInputWrap')) {
+            const wrap = document.createElement('div');
+            wrap.id = 'manualCityInputWrap';
+            wrap.style.cssText = 'display:none;margin-top:8px;';
+            wrap.innerHTML = '<input type="text" id="manualCityCustomInput" class="form-control" placeholder="اكتب اسم مدينتك أو منطقتك هنا...">';
+            citySel.parentNode.appendChild(wrap);
+            citySel.addEventListener('change', function () {
+                wrap.style.display = this.value === 'OTHER_MANUAL' ? 'block' : 'none';
+            });
+        }
+    } catch (e) {
+        console.warn('Live countries fallback:', e.message);
+    }
+}
+
+function populateLiveCities(countryCode, preferredCity) {
+    const citySel = document.getElementById('citySelect');
+    if (!citySel || !liveCountriesCache.length) return;
+    const cty = liveCountriesCache.find(c => c.country_code === countryCode);
+    const cities = (cty && cty.cities) || [];
+    let html = cities.map(g => `<option value="GEO_${g.geoname_id}">${g.city_name}</option>`).join('');
+    html += '<option value="OTHER_MANUAL">📍 مدينة / منطقة أخرى (كتابة يدوية)</option>';
+    citySel.innerHTML = html;
+
+    const wrap = document.getElementById('manualCityInputWrap');
+    if (cities.length === 0) {
+        citySel.value = 'OTHER_MANUAL';
+        if (wrap) wrap.style.display = 'block';
+    } else {
+        if (wrap) wrap.style.display = 'none';
+        if (preferredCity) {
+            const found = Array.from(citySel.options).find(o => o.textContent.toLowerCase().includes(preferredCity));
+            if (found) citySel.value = found.value;
+        }
+    }
+}
+
+async function verifyFounderRootToken(token) {
+    const display = document.getElementById('sponsorNameDisplay');
+    const text = document.getElementById('sponsorNameText');
+    const icon = document.getElementById('sponsorStatusIcon');
+    const sponsorInput = document.getElementById('sponsorCode');
+    const confirmRow = document.getElementById('sponsorConfirmRow');
+    const confirmBox = document.getElementById('sponsorConfirmCheckbox');
+
+    try {
+        await waitForSawyanApi();
+        const res = await window.SAWYAN.API.verifyRootInviteToken(token);
+        if (res && res.valid) {
+            activeRootInviteToken = token;
+            verifiedSponsorRecord = { found: true, member_code: 0, full_name: res.display_name, is_root_token: true };
+            if (sponsorInput) {
+                sponsorInput.value = '0';
+                sponsorInput.readOnly = true;
+                sponsorInput.style.background = '#ecfdf5';
+                sponsorInput.style.fontWeight = '900';
+            }
+            if (display) display.className = 'sponsor-name-display valid';
+            if (text) text.textContent = res.display_name + (res.leader_note ? ` — (${res.leader_note})` : '');
+            if (icon) icon.textContent = '👑';
+            if (confirmRow) confirmRow.style.display = 'none';
+            if (confirmBox) confirmBox.checked = true;
+            if (res.country_code) {
+                const resSel = document.getElementById('countryOfResidence');
+                if (resSel && Array.from(resSel.options).some(o => o.value === res.country_code)) {
+                    resSel.value = res.country_code;
+                    populateLiveCities(res.country_code, null);
+                }
+            }
+        } else {
+            if (display) display.className = 'sponsor-name-display invalid';
+            if (text) text.textContent = '⛔ رابط الدعوة التأسيسي غير صالح أو تم استخدامه مسبقاً.';
+            if (icon) icon.textContent = '⛔';
+        }
+    } catch (err) {
+        if (text) text.textContent = '⚠️ ' + err.message;
+    }
+}
+
 function initSponsorLookup() {
     const sponsorCodeInput = document.getElementById('sponsorCode');
     if (!sponsorCodeInput) return;
 
     sponsorCodeInput.addEventListener('input', function (e) {
+        if (activeRootInviteToken) return;
         const code = e.target.value.trim();
         verifiedSponsorRecord = null;
         if (sponsorLookupTimeout) clearTimeout(sponsorLookupTimeout);
-
         if (!code) {
             resetSponsorDisplay();
             return;
@@ -65,12 +195,14 @@ function initSponsorLookup() {
     });
 
     sponsorCodeInput.addEventListener('blur', function (e) {
+        if (activeRootInviteToken) return;
         const code = e.target.value.trim();
         if (code) lookupSponsor(code);
     });
 }
 
 function resetSponsorDisplay() {
+    if (activeRootInviteToken) return;
     const display = document.getElementById('sponsorNameDisplay');
     const text = document.getElementById('sponsorNameText');
     const icon = document.getElementById('sponsorStatusIcon');
@@ -88,6 +220,7 @@ function resetSponsorDisplay() {
 }
 
 async function lookupSponsor(codeRaw) {
+    if (activeRootInviteToken) return;
     const display = document.getElementById('sponsorNameDisplay');
     const text = document.getElementById('sponsorNameText');
     const icon = document.getElementById('sponsorStatusIcon');
@@ -107,14 +240,7 @@ async function lookupSponsor(codeRaw) {
     if (icon) icon.textContent = '⏳';
 
     try {
-        // انتظار جاهزية عميل Supabase
-        for (let i = 0; i < 15 && (!window.SAWYAN || !window.SAWYAN.supabase); i++) {
-            await new Promise(r => setTimeout(r, 100));
-        }
-        if (!(window.SAWYAN && window.SAWYAN.API && window.SAWYAN.supabase)) {
-            throw new Error('لم يتم الاتصال بخادم التحقق بعد، أعد المحاولة.');
-        }
-
+        await waitForSawyanApi();
         const res = await window.SAWYAN.API.lookupSponsorByCode(numericCode);
         if (!res || !res.found) {
             verifiedSponsorRecord = null;
@@ -141,7 +267,7 @@ async function lookupSponsor(codeRaw) {
         if (display) display.className = 'sponsor-name-display invalid';
         if (text) {
             text.textContent = isRootBlock
-                ? '⛔ الجذر #0 مقيد للإدارة فقط — يرجى استخدام كود راعٍ نشط'
+                ? '⛔ الجذر #0 مقيد لدعوات المؤسس فقط — يرجى استخدام كود راعٍ نشط'
                 : ('⚠️ ' + err.message);
         }
         if (icon) icon.textContent = '⛔';
@@ -155,13 +281,15 @@ async function handleRegister(e) {
 
     const submitBtn = document.getElementById('submitBtn');
     const fullName = (document.getElementById('fullName')?.value || '').trim();
-    const sponsorCode = (document.getElementById('sponsorCode')?.value || '').trim();
+    const sponsorCode = activeRootInviteToken ? '0' : (document.getElementById('sponsorCode')?.value || '').trim();
     const phoneRaw = (document.getElementById('phone')?.value || '').trim();
     const dialCode = (document.getElementById('countryDialCode')?.textContent || '+20').trim();
     const countryRes = (document.getElementById('countryOfResidence')?.value || 'EG').toUpperCase();
     const nationality = (document.getElementById('nationality')?.value || countryRes).toUpperCase();
     const citySel = document.getElementById('citySelect');
-    const cityName = citySel && citySel.selectedOptions[0] ? citySel.selectedOptions[0].textContent : '';
+    const cityVal = citySel ? citySel.value : '';
+    const customCity = (document.getElementById('manualCityCustomInput')?.value || '').trim();
+    const cityName = cityVal === 'OTHER_MANUAL' ? customCity : (citySel && citySel.selectedOptions[0] ? citySel.selectedOptions[0].textContent : '');
     const districtVal = (document.getElementById('districtSelect')?.value || '').trim();
     const email = (document.getElementById('email')?.value || '').trim() || null;
     const gender = document.getElementById('gender')?.value || '';
@@ -174,8 +302,8 @@ async function handleRegister(e) {
         return;
     }
 
-    if (!sponsorCode || sponsorCode === '0') {
-        alert('⛔ يجب إدخال كود راعٍ صالح (الجذر #0 مقيد للإدارة فقط).');
+    if ((!sponsorCode || sponsorCode === '0') && !activeRootInviteToken) {
+        alert('⛔ يجب إدخال كود راعٍ صالح (الجذر #0 مخصص للروابط التأسيسية الصادرة من المؤسس فقط).');
         return;
     }
 
@@ -188,7 +316,7 @@ async function handleRegister(e) {
     }
 
     const confirmBox = document.getElementById('sponsorConfirmCheckbox');
-    if (confirmBox && !confirmBox.checked) {
+    if (!activeRootInviteToken && confirmBox && !confirmBox.checked) {
         const proceed = confirm(`أنت تسجل الآن في فريق: ${verifiedSponsorRecord.full_name} (#${verifiedSponsorRecord.member_code}) — هل تؤكد؟`);
         if (!proceed) return;
         confirmBox.checked = true;
@@ -209,24 +337,25 @@ async function handleRegister(e) {
     const fullPhone = phoneRaw.startsWith('+')
         ? ('+' + phoneRaw.replace(/\D/g, ''))
         : `${cleanDial === '+' ? '+' : cleanDial}${nationalDigits}`;
-    const geoMap = {
-        cairo: 360630,
-        alex: 361058,
-        giza: 360995,
-        istanbul: 745044,
-        ankara: 323786,
-        riyadh: 108410,
-        jeddah: 105343,
-        berlin: 2950159,
-        new_york: 5128581
-    };
-    const cityKey = citySel ? citySel.value : '';
+
+    let parsedGeonameId = null;
+    if (cityVal && cityVal.startsWith('GEO_')) {
+        parsedGeonameId = parseInt(cityVal.replace('GEO_', ''), 10) || null;
+    }
 
     submitBtn.classList.add('btn-loading');
     submitBtn.textContent = 'جاري إنشاء الحساب والتسكين الذري...';
     submitBtn.disabled = true;
 
     try {
+        const metaPayload = {
+            gender: gender || null,
+            national_id_masked: nationalId ? nationalId.slice(-4) : null
+        };
+        if (activeRootInviteToken) {
+            metaPayload.root_invite_token = activeRootInviteToken;
+        }
+
         const res = await window.SAWYAN.API.registerNewMember({
             fullName,
             phone: fullPhone,
@@ -234,23 +363,24 @@ async function handleRegister(e) {
             password,
             residencyCountryCode: countryRes,
             nationalityCountryCode: nationality,
-            cityGeonameId: geoMap[cityKey] || null,
-            manualDistrict: [cityName, districtVal].filter(Boolean).join(' - '),
+            cityGeonameId: parsedGeonameId,
+            manualDistrict: [cityName, districtVal].filter(Boolean).join(' - ') || null,
             email,
-            metadata: {
-                gender: gender || null,
-                national_id_masked: nationalId ? nationalId.slice(-4) : null
-            }
+            metadata: metaPayload
         });
 
-        if (!res || !res.success || !res.member) {
+        if (!res || !res.member) {
             throw new Error('لم يكتمل التسجيل في الخادم');
         }
 
         window.SAWYAN.API.saveMemberSession(res.member, res.session_token);
 
-        document.getElementById('generatedCode').textContent = res.member.member_code;
-        document.getElementById('memberCodeDisplay').classList.add('show');
+        if (document.getElementById('generatedCode')) {
+            document.getElementById('generatedCode').textContent = res.member.member_code;
+        }
+        if (document.getElementById('memberCodeDisplay')) {
+            document.getElementById('memberCodeDisplay').classList.add('show');
+        }
         document.getElementById('registerForm').style.display = 'none';
 
         const card = document.querySelector('.auth-card');
@@ -259,8 +389,8 @@ async function handleRegister(e) {
         box.innerHTML = `
             <h2 style="margin:0 0 12px;">🎉 تم التسجيل والتسكين بنجاح!</h2>
             <p style="margin:6px 0;">كود عضويتك الدائم: <strong>#${res.member.member_code}</strong></p>
-            <p style="margin:6px 0;">الراعي: <strong>${res.member.sponsor_name}</strong> | الذراع: <strong>${res.member.placement_side}</strong> (الجيل ${res.member.generation_in_tree})</p>
-            <a href="dashboard.html" class="btn btn-primary btn-block" style="margin-top:16px;display:inline-block;">الدخول إلى لوحة العضو (11 شاشة) ←</a>
+            <p style="margin:6px 0;">الراعي: <strong>${res.member.sponsor_name || 'الشركة (#0)'}</strong> | الذراع: <strong>${res.member.placement_side}</strong> (الجيل ${res.member.generation_in_tree})</p>
+            <a href="dashboard.html" class="btn btn-primary btn-block" style="margin-top:16px;display:inline-block;">الدخول إلى لوحة العضو ←</a>
         `;
         if (card) card.appendChild(box);
     } catch (error) {

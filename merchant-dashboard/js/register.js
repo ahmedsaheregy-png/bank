@@ -15,10 +15,31 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const params = new URLSearchParams(window.location.search);
     const urlCountry = (params.get('country') || '').trim().toUpperCase();
-    const countrySel = document.getElementById('countryCodeSelect');
-    if (urlCountry && countrySel && Array.from(countrySel.options).some(o => o.value === urlCountry)) {
-        countrySel.value = urlCountry;
-    }
+    (async function syncLiveMerchantCountriesAndCategories() {
+        try {
+            for (let i = 0; i < 20 && (!window.SAWYAN || !window.SAWYAN.API || !window.SAWYAN.supabase); i++) {
+                await new Promise(r => setTimeout(r, 100));
+            }
+            if (!(window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.getPublicActiveCountriesAndCities)) return;
+            const pub = await window.SAWYAN.API.getPublicActiveCountriesAndCities();
+            const countrySel = document.getElementById('countryCodeSelect');
+            if (countrySel && pub.countries && pub.countries.length) {
+                const cur = urlCountry || countrySel.value || pub.countries[0].country_code;
+                countrySel.innerHTML = pub.countries.map(c => {
+                    const ar = (c.country_name_i18n && c.country_name_i18n.ar) || c.country_code;
+                    return `<option value="${c.country_code}">${ar} (${c.currency_code})</option>`;
+                }).join('');
+                if (pub.countries.some(c => c.country_code === cur)) countrySel.value = cur;
+            }
+            const catSel = document.getElementById('businessCategory');
+            if (catSel && pub.categories && pub.categories.length) {
+                catSel.innerHTML = pub.categories.map(ct => {
+                    const ar = (ct.name_i18n && ct.name_i18n.ar) || ct.slug;
+                    return `<option value="${ct.slug}">${ar}</option>`;
+                }).join('');
+            }
+        } catch (e) {}
+    })();
 
     const physSec = document.getElementById('physicalLocationSection');
     if (physSec) physSec.style.display = 'block';

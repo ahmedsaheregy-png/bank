@@ -344,7 +344,7 @@ BEGIN
         to_char(now() AT TIME ZONE COALESCE(v_country.iana_timezone, 'UTC'), 'YYYY-MM')
     );
 
-    -- 1) صناديق الأهداف الشهرية (24.75$ + Carry On + السالب)
+    -- 1) صناديق الأهداف الشهرية (24.75$ + Carry On — ممنوع السالب D5)
     SELECT COALESCE(jsonb_agg(jsonb_build_object(
         'country_code', c.country_code,
         'currency_code', c.currency_code,
@@ -352,8 +352,8 @@ BEGIN
         'period_ym', b.period_ym,
         'carry_on_in_usd', ROUND(b.carry_on_in_usd::numeric, 2),
         'current_month_purchases_usd', ROUND(b.current_month_purchases_usd::numeric, 2),
-        'negative_clawback_usd', ROUND(b.negative_clawback_usd::numeric, 2),
-        'net_accumulated_usd', ROUND((b.carry_on_in_usd + b.current_month_purchases_usd + b.negative_clawback_usd)::numeric, 2),
+        'carry_on_out_usd', ROUND(b.carry_on_out_usd::numeric, 2),
+        'net_accumulated_usd', ROUND((b.carry_on_in_usd + b.current_month_purchases_usd)::numeric, 2),
         'target_required_usd', b.target_required_usd,
         'is_qualified', b.is_qualified,
         'qualification_source', b.qualification_source
@@ -658,6 +658,35 @@ BEGIN
 
     IF trim(COALESCE(p_dispute_reason, '')) = '' THEN
         RAISE EXCEPTION 'DISPUTE_REASON_REQUIRED';
+    END IF;
+
+    -- حظر فتح تذكرة نزاع استردادي على فاتورة تم إغلاق شهرها وصرف عمولاتها يوم 15 (D5 + T06)
+    IF EXISTS (
+        SELECT 1
+          FROM sawyan.countries c
+          LEFT JOIN sawyan.settlement_cycles sc
+                 ON sc.country_id = c.id
+                AND sc.period_ym = COALESCE(v_tx.commission_snapshot->>'effective_period_ym',
+                                            to_char(v_tx.created_at AT TIME ZONE c.iana_timezone, 'YYYY-MM'))
+         WHERE c.id = v_tx.country_id
+           AND (
+               (sc.id IS NOT NULL AND (sc.is_hard_locked IS TRUE OR sc.step_status >= 5 OR sc.payout_executed_at IS NOT NULL))
+               OR ((now() AT TIME ZONE c.iana_timezone) >= (
+                   (to_date(COALESCE(v_tx.commission_snapshot->>'effective_period_ym',
+                                     to_char(v_tx.created_at AT TIME ZONE c.iana_timezone, 'YYYY-MM')) || '-01', 'YYYY-MM-DD') + interval '1 month')::timestamp
+                   + (c.return_cutoff_day || ' days')::interval
+               ))
+           )
+    ) THEN
+        RAISE EXCEPTION 'POST_PAYOUT_RETURN_FORBIDDEN: Dispute/return window for this period is permanently closed after Day 15 payout.';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM sawyan.dispute_tickets
+         WHERE transaction_id = v_tx.id
+           AND status IN ('awaiting_merchant_friendly', 'escalated_to_admin')
+    ) THEN
+        RAISE EXCEPTION 'OPEN_DISPUTE_ALREADY_EXISTS';
     END IF;
 
     INSERT INTO sawyan.dispute_tickets (

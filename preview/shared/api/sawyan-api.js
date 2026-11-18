@@ -172,7 +172,7 @@
         },
 
         /**
-         * رادار المتاجر القريبة للعضو (Haversine + كاشباك العضو الصافي فقط بدون 25%)
+         * رادار المتاجر القريبة للعضو (Haversine + عائدات العضو الصافية فقط بدون 25%)
          */
         async getMerchantsRadar({ lat, lng, radiusKm = 10, countryCode = null, category = null }) {
             return await callRpc('get_merchants_radar', {
@@ -799,6 +799,26 @@
             });
         },
 
+        async merchantProcessPosReturn({
+            merchantId,
+            transactionId,
+            reason = null,
+            idempotencyKey = null,
+            sessionToken = null
+        }) {
+            const tok = sessionToken || SawyanAPI.getMerchantSessionToken();
+            return await callRpc('merchant_manage_branches_and_refunds', {
+                p_merchant_id: merchantId,
+                p_session_token: tok,
+                p_action: 'voluntary_tx_refund',
+                p_payload: {
+                    transaction_id: transactionId,
+                    reason: reason || 'مرتجع فاتورة من نقطة البيع',
+                    idempotency_key: idempotencyKey || generateIdempotencyKey()
+                }
+            });
+        },
+
         async getMerchantDashboardBundle({
             merchantId,
             shiftFilter = 'today',
@@ -951,6 +971,321 @@
                 p_decision: decision,
                 p_notes: notes,
                 p_reversal_phase: reversalPhase
+            });
+        },
+
+        // =====================================================================
+        // Stage 7: End-to-End Operational Completeness RPCs (Gaps 1–12)
+        // =====================================================================
+
+        async getPublicActiveCountriesAndCities() {
+            return await callRpc('get_public_active_countries_and_cities', {});
+        },
+
+        async verifyRootInviteToken(token) {
+            return await callRpc('verify_root_invite_token', {
+                p_token: String(token || '').trim()
+            });
+        },
+
+        async adminManageCountryCities({
+            adminId = null,
+            sessionToken = null,
+            action = 'list',
+            countryCode,
+            cityNameAr = null,
+            cityNameEn = null,
+            geonameId = null
+        }) {
+            const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id);
+            const tok = sessionToken || SawyanAPI.getAdminSessionToken();
+            return await callRpc('admin_manage_country_cities', {
+                p_admin_id: adm,
+                p_session_token: tok,
+                p_action: action,
+                p_country_code: countryCode,
+                p_city_name_ar: cityNameAr,
+                p_city_name_en: cityNameEn,
+                p_geoname_id: geonameId ? Number(geonameId) : null
+            });
+        },
+
+        async adminManageRootLeaders({
+            adminId = null,
+            sessionToken = null,
+            action = 'list',
+            leaderName = null,
+            leaderPhone = null,
+            countryCode = 'EG',
+            initialPassword = null,
+            leaderEmail = null,
+            tokenToRevoke = null
+        } = {}) {
+            const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id);
+            const tok = sessionToken || SawyanAPI.getAdminSessionToken();
+            return await callRpc('admin_manage_root_leaders', {
+                p_admin_id: adm,
+                p_session_token: tok,
+                p_action: action,
+                p_leader_name: leaderName,
+                p_leader_phone: leaderPhone,
+                p_country_code: countryCode,
+                p_initial_password: initialPassword,
+                p_leader_email: leaderEmail,
+                p_token_to_revoke: tokenToRevoke
+            });
+        },
+
+        async adminManageStaffAccounts({
+            adminId = null,
+            sessionToken = null,
+            action = 'list',
+            targetId = null,
+            fullName = null,
+            email = null,
+            role = null,
+            password = null,
+            countryScope = 'GLOBAL'
+        } = {}) {
+            const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id);
+            const tok = sessionToken || SawyanAPI.getAdminSessionToken();
+            return await callRpc('admin_manage_staff_accounts', {
+                p_admin_id: adm,
+                p_session_token: tok,
+                p_action: action,
+                p_target_id: targetId,
+                p_full_name: fullName,
+                p_email: email,
+                p_role: role,
+                p_password: password,
+                p_country_scope: countryScope
+            });
+        },
+
+        async submitSupportOrRecoveryTicket({
+            requesterType = 'public',
+            category = 'general',
+            subject,
+            message,
+            contactName = null,
+            contactPhone = null,
+            contactEmail = null,
+            requesterId = null
+        }) {
+            return await callRpc('submit_support_or_recovery_ticket', {
+                p_requester_type: requesterType,
+                p_category: category,
+                p_subject: subject,
+                p_message: message,
+                p_contact_name: contactName,
+                p_contact_phone: contactPhone,
+                p_contact_email: contactEmail,
+                p_requester_id: requesterId
+            });
+        },
+
+        async getMySupportTickets({ actorType, actorId, sessionToken }) {
+            return await callRpc('get_my_support_tickets', {
+                p_actor_type: actorType,
+                p_actor_id: actorId,
+                p_session_token: sessionToken
+            });
+        },
+
+        async adminResetUserPassword({
+            adminId = null,
+            sessionToken = null,
+            userType,
+            userIdentifier,
+            tempPassword,
+            reason = 'استعادة موثقة عبر التحقق من ملكية الهاتف'
+        }) {
+            const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id);
+            const tok = sessionToken || SawyanAPI.getAdminSessionToken();
+            return await callRpc('admin_reset_user_password', {
+                p_admin_id: adm,
+                p_session_token: tok,
+                p_user_type: userType,
+                p_user_identifier: String(userIdentifier || '').trim(),
+                p_temp_password: tempPassword,
+                p_reason: reason
+            });
+        },
+
+        async changeOwnPassword({ actorType, actorId, sessionToken, oldPassword, newPassword }) {
+            return await callRpc('change_own_password', {
+                p_actor_type: actorType,
+                p_actor_id: actorId,
+                p_session_token: sessionToken,
+                p_old_password: oldPassword,
+                p_new_password: newPassword
+            });
+        },
+
+        async adminDecideWithdrawalV3({
+            adminId = null,
+            sessionToken = null,
+            walletTxId,
+            decision,
+            payoutRef = null,
+            rejectReason = null
+        }) {
+            const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id);
+            const tok = sessionToken || SawyanAPI.getAdminSessionToken();
+            return await callRpc('admin_decide_withdrawal_v3', {
+                p_admin_id: adm,
+                p_session_token: tok,
+                p_wallet_tx_id: walletTxId,
+                p_decision: decision,
+                p_payout_ref: payoutRef,
+                p_reject_reason: rejectReason
+            });
+        },
+
+        async submitMemberKycOrResidencyMove({
+            memberId,
+            sessionToken = null,
+            requestKind = 'kyc_verification',
+            legalFullName,
+            documentType = 'national_id',
+            documentNumber,
+            documentImageData = null,
+            targetCountryCode = null
+        }) {
+            const tok = sessionToken || SawyanAPI.getMemberSessionToken();
+            return await callRpc('submit_member_kyc_or_residency_move', {
+                p_member_id: memberId,
+                p_session_token: tok,
+                p_request_kind: requestKind,
+                p_legal_full_name: legalFullName,
+                p_document_type: documentType,
+                p_document_number: documentNumber,
+                p_document_image_data: documentImageData,
+                p_target_country_code: targetCountryCode
+            });
+        },
+
+        async adminReviewKycOrResidency({
+            adminId = null,
+            sessionToken = null,
+            memberId,
+            reviewType = 'kyc',
+            decision,
+            notes = null
+        }) {
+            const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id);
+            const tok = sessionToken || SawyanAPI.getAdminSessionToken();
+            return await callRpc('admin_review_kyc_or_residency', {
+                p_admin_id: adm,
+                p_session_token: tok,
+                p_member_id: memberId,
+                p_review_type: reviewType,
+                p_decision: decision,
+                p_notes: notes
+            });
+        },
+
+        async merchantManageBranchesAndRefunds({
+            merchantId,
+            sessionToken = null,
+            action = 'list_branches',
+            payload = {}
+        }) {
+            const tok = sessionToken || SawyanAPI.getMerchantSessionToken();
+            return await callRpc('merchant_manage_branches_and_refunds', {
+                p_merchant_id: merchantId,
+                p_session_token: tok,
+                p_action: action,
+                p_payload: payload
+            });
+        },
+
+        async adminManageMerchantContract({
+            adminId = null,
+            sessionToken = null,
+            merchantId,
+            action = 'update_contract',
+            deductionPercent = null,
+            category = null,
+            creditLimit = null,
+            isActive = null,
+            isIsolated = null,
+            topupAmountLocal = null,
+            topupBankRef = null,
+            topupProofNotifId = null,
+            reason = 'تحديث تعاقدي معتمد من إدارة علاقات التجار'
+        }) {
+            const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id);
+            const tok = sessionToken || SawyanAPI.getAdminSessionToken();
+            return await callRpc('admin_manage_merchant_contract', {
+                p_admin_id: adm,
+                p_session_token: tok,
+                p_merchant_id: merchantId,
+                p_action: action,
+                p_deduction_percent: deductionPercent !== null ? Number(deductionPercent) : null,
+                p_category: category,
+                p_credit_limit: creditLimit !== null ? Number(creditLimit) : null,
+                p_is_active: isActive,
+                p_is_isolated: isIsolated,
+                p_topup_amount_local: topupAmountLocal !== null ? Number(topupAmountLocal) : null,
+                p_topup_bank_ref: topupBankRef,
+                p_topup_proof_notif_id: topupProofNotifId,
+                p_reason: reason
+            });
+        },
+
+        async adminManageAcademyAndCategories({
+            adminId = null,
+            sessionToken = null,
+            domain = 'academy',
+            action = 'list',
+            payload = {}
+        }) {
+            const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id);
+            const tok = sessionToken || SawyanAPI.getAdminSessionToken();
+            return await callRpc('admin_manage_academy_and_categories', {
+                p_admin_id: adm,
+                p_session_token: tok,
+                p_domain: domain,
+                p_action: action,
+                p_payload: payload
+            });
+        },
+
+        async getLeader10GenFollowupRadar({
+            memberId,
+            sessionToken = null,
+            filterMode = 'all'
+        }) {
+            const tok = sessionToken || SawyanAPI.getMemberSessionToken();
+            return await callRpc('get_leader_10gen_followup_radar', {
+                p_member_id: memberId,
+                p_session_token: tok,
+                p_filter_mode: filterMode
+            });
+        },
+
+        async adminSearchAndReplyOps({
+            adminId = null,
+            sessionToken = null,
+            action = 'search',
+            entity = 'members',
+            query = null,
+            recordId = null,
+            replyText = null,
+            newStatus = 'closed'
+        }) {
+            const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id);
+            const tok = sessionToken || SawyanAPI.getAdminSessionToken();
+            return await callRpc('admin_search_and_reply_ops', {
+                p_admin_id: adm,
+                p_session_token: tok,
+                p_action: action,
+                p_entity: entity,
+                p_query: query,
+                p_record_id: recordId,
+                p_reply_text: replyText,
+                p_new_status: newStatus
             });
         },
 

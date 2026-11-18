@@ -515,7 +515,7 @@ BEGIN
                  COALESCE(w.s03_suspense_balance_usd, 0.00) AS s03_suspense_usd,
                  COALESCE(tb.current_month_purchases_usd, 0.000000) AS current_purchases_usd,
                  COALESCE(tb.carry_on_in_usd, 0.000000) AS carry_on_in_usd,
-                 COALESCE(tb.negative_clawback_usd, 0.00) AS negative_clawback_usd,
+                 COALESCE(tb.carry_on_out_usd, 0.000000) AS carry_on_out_usd,
                  COALESCE(tb.is_qualified, false) AS is_qualified_period
             FROM sawyan.members m
             JOIN sawyan.countries c ON c.id = m.residency_country_id
@@ -983,7 +983,7 @@ BEGIN
                 numerical_stopper_s01, upline_ceiling_s02, cap_auto_calc, cap_amount,
                 monthly_target_usd, payout_day, merchant_warn1_pct, merchant_warn2_pct,
                 merchant_isolate_pct, unsecured_queue_cap, unconfirmed_soft_hold_cap_pct,
-                rolling_reserve_pct, wht_threshold_usd, withdrawal_cooldown_hours, dormancy_months,
+                wht_threshold_usd, withdrawal_cooldown_hours, dormancy_months,
                 effective_from, created_by_admin_id, approved_by_admin_id, change_reason
             ) VALUES (
                 NULL,
@@ -1001,7 +1001,6 @@ BEGIN
                 COALESCE((v_req.payload_after->>'merchant_isolate_pct')::numeric, v_cur_settings.merchant_isolate_pct),
                 COALESCE((v_req.payload_after->>'unsecured_queue_cap')::smallint, v_cur_settings.unsecured_queue_cap),
                 COALESCE((v_req.payload_after->>'unconfirmed_soft_hold_cap_pct')::numeric, v_cur_settings.unconfirmed_soft_hold_cap_pct),
-                COALESCE((v_req.payload_after->>'rolling_reserve_pct')::numeric, v_cur_settings.rolling_reserve_pct),
                 COALESCE((v_req.payload_after->>'wht_threshold_usd')::numeric, v_cur_settings.wht_threshold_usd),
                 COALESCE((v_req.payload_after->>'withdrawal_cooldown_hours')::int, v_cur_settings.withdrawal_cooldown_hours),
                 COALESCE((v_req.payload_after->>'dormancy_months')::int, v_cur_settings.dormancy_months),
@@ -1300,9 +1299,9 @@ BEGIN
                    appeal_deadline_at = now() + interval '72 hours'
              WHERE id = v_dispute.id;
 
-            IF v_dec = 'resolved_member_clawback' AND v_tx.status = 'completed' THEN
-                -- القفل الدستوري D5: عكس الفاتورة بعد الصرف يسجل في صندوق الهدف فقط ولا يخصم المحفظة النقدية أبداً
-                v_claw_res := sawyan.process_transaction_reversal_clawback(v_tx.id, COALESCE(p_reversal_phase, 'in_month'), p_admin_id);
+            IF v_dec IN ('resolved_member', 'resolved_member_clawback') AND v_tx.status = 'completed' THEN
+                -- القفل الدستوري D5: عكس الفاتورة مسموح قبل يوم الصرف 15 فقط مع درع الكاري أون، ومرفوض قطعياً بعد الصرف
+                v_claw_res := sawyan.process_transaction_reversal_clawback(v_tx.id, p_admin_id, COALESCE(p_notes, 'Admin dispute reversal before payout'));
             ELSIF v_tx.status = 'pending' THEN
                 v_claw_res := sawyan.feed_monthly_target_box(v_tx.id, v_tx.member_id);
             END IF;

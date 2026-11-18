@@ -239,12 +239,15 @@ def main():
         END IF;
 
         -- ====================================================================
-        -- TEST V2 / GV09 & V9: Zaid Post-Payout Return (Day 16) + Multi-Branch + PSP + B2B Tax + Credit Note
+        -- TEST V2 / GV09 & V9: Carry-On Shield (Days 1-14) + Hard Post-Day-15 Block + Multi-Branch + PSP + Credit Note
         -- ====================================================================
+        IF (SELECT COUNT(*) FROM sawyan_qa.chart_of_accounts WHERE account_code IN ('1301', '3101', '5201')) <> 0 THEN
+            RAISE EXCEPTION 'COA_CLEANUP_FAILED: Legacy accounts 1301/3101/5201 must not exist';
+        END IF;
+
         INSERT INTO sawyan_qa.members (member_code, full_name, phone, residency_country_id, city_geoname_id, auth_user_id, sponsor_id)
         VALUES (100, 'Zaid', '+201299990100', v_eg_id, 360630, gen_random_uuid(), v_m[16]) RETURNING id INTO v_zaid;
 
-        -- Make EG VAT = 14% temporarily? Wait: check V2 with VAT 0% first, and V6/V9 with VAT 14%!
         INSERT INTO sawyan_qa.merchants (merchant_code, country_id, business_name, owner_name, email, phone, category, merchant_type, deduction_percent, package_base_amount, actual_cash_balance, is_active)
         VALUES ('M-V2', v_eg_id, 'متجر زيد', 'زيد', 'mv2@qa.local', '+201200000100', 'supermarket', 'physical', 10.00, 1000.00, 0.00, true)
         RETURNING id INTO v_merch_zaid;
@@ -261,27 +264,53 @@ def main():
             RAISE EXCEPTION 'V9_PSP_RECON_FAILED';
         END IF;
 
-        -- Give Zaid $5.00 Carry On in 2026-11 and purchase $33.00 USD equiv = 1,650 EGP commission (16,500 EGP sale at 10%) -> $24.75 plan
-        UPDATE sawyan_qa.merchants SET actual_cash_balance = 5000.00, package_base_amount = 5000.00 WHERE id = v_merch_zaid;
-        INSERT INTO sawyan_qa.monthly_target_boxes (member_id, country_id, period_ym, carry_on_in_usd, target_required_usd)
-        VALUES (v_zaid, v_eg_id, '2026-11', 5.00, 24.75);
+        -- GV09-A: Carry-On ($30.00) covers pre-payout return -> Zaid stays qualified & Carry-On deducts!
+        UPDATE sawyan_qa.merchants SET actual_cash_balance = 10000.00, package_base_amount = 10000.00 WHERE id = v_merch_zaid;
+        INSERT INTO sawyan_qa.monthly_target_boxes (member_id, country_id, period_ym, carry_on_in_usd, target_required_usd, is_qualified, qualification_source)
+        VALUES (v_zaid, v_eg_id, to_char(now() AT TIME ZONE 'Africa/Cairo', 'YYYY-MM'), 30.00, 24.75, true, 'carry_on')
+        ON CONFLICT (member_id, country_id, period_ym) DO UPDATE SET carry_on_in_usd = 30.00, is_qualified = true, qualification_source = 'carry_on';
 
         v_res := sawyan_qa.submit_pos_transaction(v_zaid, v_merch_zaid, v_br_zaid, 16500.00, 'cash', 'ZAID-REF-1', 'SW-ZAID1', gen_random_uuid(), NULL, true, NULL);
         v_tx := (v_res->>'transaction_id')::uuid;
 
-        -- Simulate Day 15 payout passed -> Zaid enters 2026-12 with $5.00 Carry On
-        INSERT INTO sawyan_qa.monthly_target_boxes (member_id, country_id, period_ym, carry_on_in_usd, target_required_usd)
-        VALUES (v_zaid, v_eg_id, '2026-12', 5.00, 24.75);
-
-        -- Zaid returns on Day 16 -> negative clawback = -19.75$, Credit Note issued, uplines untouched!
-        v_res := sawyan_qa.process_transaction_reversal_clawback(v_tx, 'post_payout_day_15', v_a1, '2026-12');
-        SELECT (carry_on_in_usd + negative_clawback_usd) INTO v_zaid_box_neg
-          FROM sawyan_qa.monthly_target_boxes WHERE member_id = v_zaid AND country_id = v_eg_id AND period_ym = '2026-12';
-        IF v_zaid_box_neg <> -19.75 THEN
-            RAISE EXCEPTION 'V2_ZAID_CLAWBACK_FAILED: Expected -19.75, got %', v_zaid_box_neg;
+        v_res := sawyan_qa.process_transaction_reversal_clawback(v_tx, v_a1, 'GV09-A pre-payout return with Carry-On shield');
+        IF NOT (SELECT is_qualified FROM sawyan_qa.monthly_target_boxes WHERE member_id = v_zaid AND country_id = v_eg_id AND period_ym = to_char(now() AT TIME ZONE 'Africa/Cairo', 'YYYY-MM')) THEN
+            RAISE EXCEPTION 'GV09A_CARRY_ON_SHIELD_FAILED: Zaid should remain qualified via $30 Carry-On';
         END IF;
         IF (SELECT COUNT(*) FROM sawyan_qa.b2b_tax_invoices WHERE transaction_id = v_tx AND document_type = 'credit_note') <> 1 THEN
             RAISE EXCEPTION 'V9_CREDIT_NOTE_MISSING';
+        END IF;
+
+        -- GV09-B: Carry-On ($5.00) does NOT cover return -> loses qualification, preserves $5.00, ZERO negative!
+        UPDATE sawyan_qa.monthly_target_boxes SET carry_on_in_usd = 5.00, is_qualified = false, qualification_source = 'none'
+         WHERE member_id = v_zaid AND country_id = v_eg_id AND period_ym = to_char(now() AT TIME ZONE 'Africa/Cairo', 'YYYY-MM');
+        v_res := sawyan_qa.submit_pos_transaction(v_zaid, v_merch_zaid, v_br_zaid, 16500.00, 'cash', 'ZAID-REF-2', 'SW-ZAID2', gen_random_uuid(), NULL, true, NULL);
+        v_tx := (v_res->>'transaction_id')::uuid;
+        v_res := sawyan_qa.process_transaction_reversal_clawback(v_tx, v_a1, 'GV09-B pre-payout return without Carry-On coverage');
+        SELECT (carry_on_in_usd + current_month_purchases_usd) INTO v_zaid_box_neg
+          FROM sawyan_qa.monthly_target_boxes WHERE member_id = v_zaid AND country_id = v_eg_id AND period_ym = to_char(now() AT TIME ZONE 'Africa/Cairo', 'YYYY-MM');
+        IF v_zaid_box_neg <> 5.00 OR (SELECT is_qualified FROM sawyan_qa.monthly_target_boxes WHERE member_id = v_zaid AND country_id = v_eg_id AND period_ym = to_char(now() AT TIME ZONE 'Africa/Cairo', 'YYYY-MM')) THEN
+            RAISE EXCEPTION 'GV09B_DISQUALIFICATION_FAILED: Expected $5.00 unqualified, got %', v_zaid_box_neg;
+        END IF;
+
+        -- GV09-C: Post-Day-15 / Hard-Locked Return MUST raise POST_PAYOUT_RETURN_FORBIDDEN!
+        v_res := sawyan_qa.submit_pos_transaction(v_zaid, v_merch_zaid, v_br_zaid, 16500.00, 'cash', 'ZAID-REF-3', 'SW-ZAID3', gen_random_uuid(), NULL, true, NULL);
+        v_tx := (v_res->>'transaction_id')::uuid;
+        UPDATE sawyan_qa.transactions SET commission_snapshot = commission_snapshot || '{"effective_period_ym":"2026-01"}'::jsonb WHERE id = v_tx;
+        INSERT INTO sawyan_qa.settlement_cycles (country_id, period_ym, closure_utc_instant, step_status, is_hard_locked, payout_executed_at)
+        VALUES (v_eg_id, '2026-01', '2026-01-31 21:59:59+00', 6, true, now())
+        ON CONFLICT (country_id, period_ym) DO UPDATE SET step_status = 6, is_hard_locked = true, payout_executed_at = now();
+
+        v_err_caught := false;
+        BEGIN
+            PERFORM sawyan_qa.process_transaction_reversal_clawback(v_tx, v_a1, 'Post-payout return attempt');
+        EXCEPTION WHEN OTHERS THEN
+            IF SQLERRM LIKE '%POST_PAYOUT_RETURN_FORBIDDEN%' THEN
+                v_err_caught := true;
+            END IF;
+        END;
+        IF NOT v_err_caught THEN
+            RAISE EXCEPTION 'GV09C_POST_PAYOUT_BLOCK_FAILED: Expected POST_PAYOUT_RETURN_FORBIDDEN';
         END IF;
 
         -- ====================================================================

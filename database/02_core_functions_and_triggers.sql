@@ -368,7 +368,16 @@ BEGIN
     v_plan_local  := v_tx.commission_amount - v_company_amt;
     v_plan_usd    := v_plan_local / v_tx.fx_rate_used;
 
+    -- تحديد الشهر المحاسبي الفعلي: إذا تحررت فاتورة FIFO قديمة بعد قفل شهر إنشائها تدخل الشهر المفتوح الحالي (T16)
     v_period_ym := to_char(v_tx.created_at AT TIME ZONE v_country.iana_timezone, 'YYYY-MM');
+    IF EXISTS (
+        SELECT 1 FROM sawyan.settlement_cycles sc
+         WHERE sc.country_id = v_country.id
+           AND sc.period_ym = v_period_ym
+           AND (sc.is_hard_locked IS TRUE OR sc.step_status >= 5 OR sc.payout_executed_at IS NOT NULL)
+    ) THEN
+        v_period_ym := to_char(now() AT TIME ZONE v_country.iana_timezone, 'YYYY-MM');
+    END IF;
 
     -- 6. خصم الرصيد من التاجر الأم + فحص العزل بالنسب المئوية فقط (30/20/10 — D15)
     v_vat_rate      := COALESCE(v_country.vat_rate, 0.0000);
@@ -391,7 +400,7 @@ BEGIN
         END IF;
     END IF;
 
-    -- 7. تغذية صندوق الهدف الشهري للعضو وتحديث حالة التأهل لحظياً (D23 + Real-Time S01)
+    -- 7. تغذية صندوق الهدف الشهري للعضو وتحديث حالة التأهل لحظياً (D23 + Real-Time S01 — ممنوع السالب D5)
     INSERT INTO sawyan.monthly_target_boxes (
         member_id, country_id, period_ym, current_month_purchases_usd, target_required_usd,
         is_qualified, qualification_source
@@ -402,9 +411,9 @@ BEGIN
     )
     ON CONFLICT (member_id, country_id, period_ym) DO UPDATE
        SET current_month_purchases_usd = sawyan.monthly_target_boxes.current_month_purchases_usd + EXCLUDED.current_month_purchases_usd,
-           is_qualified = ((sawyan.monthly_target_boxes.carry_on_in_usd + sawyan.monthly_target_boxes.current_month_purchases_usd + EXCLUDED.current_month_purchases_usd + sawyan.monthly_target_boxes.negative_clawback_usd) >= sawyan.monthly_target_boxes.target_required_usd),
+           is_qualified = ((sawyan.monthly_target_boxes.carry_on_in_usd + sawyan.monthly_target_boxes.current_month_purchases_usd + EXCLUDED.current_month_purchases_usd) >= sawyan.monthly_target_boxes.target_required_usd),
            qualification_source = CASE
-               WHEN (sawyan.monthly_target_boxes.carry_on_in_usd + sawyan.monthly_target_boxes.current_month_purchases_usd + EXCLUDED.current_month_purchases_usd + sawyan.monthly_target_boxes.negative_clawback_usd) >= sawyan.monthly_target_boxes.target_required_usd
+               WHEN (sawyan.monthly_target_boxes.carry_on_in_usd + sawyan.monthly_target_boxes.current_month_purchases_usd + EXCLUDED.current_month_purchases_usd) >= sawyan.monthly_target_boxes.target_required_usd
                THEN CASE WHEN sawyan.monthly_target_boxes.carry_on_in_usd >= sawyan.monthly_target_boxes.target_required_usd THEN 'carry_on' ELSE 'local_purchases' END
                ELSE 'none'
            END;
@@ -438,7 +447,8 @@ BEGIN
         VALUES (v_journal_id, '4301', 'treasury', NULL, ABS(v_fx_diff_usd), 0.00, ROUND((ABS(v_fx_diff_usd) * v_tx.fx_rate_used)::numeric, 2), v_tx.currency_code);
     END IF;
 
-    -- 9. إصدار الفاتورة الضريبية المزدوجة B2B Tax-Exclusive (D19)
+    -- 9. إصدار الفاتورة الضريبية المزدوجة B2B Tax-Exclusive بقفل تسلسلي ذري (D19 + T04)
+    PERFORM pg_advisory_xact_lock(hashtext('sawyan_tax_seq_' || v_country.id::text));
     SELECT COUNT(*) + 1 INTO v_tax_seq FROM sawyan.b2b_tax_invoices WHERE country_id = v_country.id;
     v_tax_inv_num := 'SAWYAN-TAX-' || v_country.country_code || '-' || replace(v_period_ym, '-', '') || '-' || LPAD(v_tax_seq::text, 6, '0');
 
@@ -458,7 +468,8 @@ BEGIN
            company_share           = v_company_amt,
            income_plan_share_local = v_plan_local,
            income_plan_share_usd   = v_plan_usd,
-           vat_amount              = v_vat_amt_local
+           vat_amount              = v_vat_amt_local,
+           commission_snapshot     = COALESCE(commission_snapshot, '{}'::jsonb) || jsonb_build_object('effective_period_ym', v_period_ym)
      WHERE id = v_tx.id;
 
     RETURN jsonb_build_object(
@@ -625,145 +636,483 @@ END;
 $$;
 
 -- ============================================================================
--- 5. TRANSACTION REVERSAL & POST-PAYOUT CLAWBACK ENGINE (D5 + V2 + GV09 + V9)
+-- 5. ZERO-LIABILITY PRE-PAYOUT REVERSAL, CARRY-ON SHIELD & DAY-15 HARD BLOCK (D5)
 -- ============================================================================
 
-CREATE OR REPLACE FUNCTION sawyan.process_transaction_reversal_clawback(
-    p_transaction_id UUID,
-    p_reversal_phase VARCHAR, -- 'in_month' | 'window_1_14' | 'post_payout_day_15'
-    p_actor_id       UUID,
-    p_open_period_ym CHAR(7) DEFAULT NULL
+CREATE OR REPLACE FUNCTION sawyan.recalculate_target_box_and_cascade(
+    p_member_id       UUID,
+    p_country_id      INT,
+    p_from_period_ym  CHAR(7),
+    p_curr_period_ym  CHAR(7)
 ) RETURNS JSONB
 LANGUAGE plpgsql
+VOLATILE
 SECURITY DEFINER
 SET search_path = pg_catalog, pg_temp
 AS $$
 DECLARE
-    v_tx             sawyan.transactions%ROWTYPE;
-    v_merchant       sawyan.merchants%ROWTYPE;
-    v_country        sawyan.countries%ROWTYPE;
-    v_orig_tax       sawyan.b2b_tax_invoices%ROWTYPE;
-    v_box            sawyan.monthly_target_boxes%ROWTYPE;
-    v_tx_period_ym   CHAR(7);
-    v_target_ym      CHAR(7);
-    v_journal_id     UUID;
-    v_total_comm_usd NUMERIC(18,2);
-    v_comp_usd       NUMERIC(18,2);
-    v_plan_usd       NUMERIC(18,2);
-    v_carry_absorbed NUMERIC(18,2);
-    v_neg_clawback   NUMERIC(18,2);
-    v_cn_num         VARCHAR(50);
-    v_tax_seq        BIGINT;
-    v_vat_usd        NUMERIC(18,2);
+    v_country       sawyan.countries%ROWTYPE;
+    v_member        sawyan.members%ROWTYPE;
+    v_box           sawyan.monthly_target_boxes%ROWTYPE;
+    v_cur_ym        CHAR(7) := p_from_period_ym;
+    v_next_ym       CHAR(7);
+    v_purchases_sum NUMERIC(18,6);
+    v_net_accum     NUMERIC(18,6);
+    v_is_qual       BOOLEAN;
+    v_qual_src      VARCHAR(20);
+    v_carry_out     NUMERIC(18,6);
+    v_consumed      NUMERIC(18,2);
+    v_m_was_qual    BOOLEAN := false;
+    v_m_now_qual    BOOLEAN := false;
+    v_m_carry_out   NUMERIC(18,6) := 0.000000;
+    v_m1_was_qual   BOOLEAN := false;
+    v_m1_now_qual   BOOLEAN := false;
+    v_m1_carry_in   NUMERIC(18,6) := 0.000000;
+    v_step_idx      INT := 0;
 BEGIN
+    SELECT * INTO v_country FROM sawyan.countries WHERE id = p_country_id;
+    SELECT * INTO v_member  FROM sawyan.members   WHERE id = p_member_id;
+
+    PERFORM 1
+      FROM sawyan.monthly_target_boxes
+     WHERE member_id = p_member_id
+       AND country_id = p_country_id
+       AND period_ym >= p_from_period_ym
+     ORDER BY period_ym ASC
+     FOR UPDATE;
+
+    LOOP
+        v_step_idx := v_step_idx + 1;
+
+        SELECT COALESCE(SUM(t.income_plan_share_usd), 0.000000)
+          INTO v_purchases_sum
+          FROM sawyan.transactions t
+         WHERE t.member_id = p_member_id
+           AND t.country_id = p_country_id
+           AND t.status = 'completed'
+           AND COALESCE(t.commission_snapshot->>'effective_period_ym',
+                        to_char(t.created_at AT TIME ZONE v_country.iana_timezone, 'YYYY-MM')) = v_cur_ym;
+
+        INSERT INTO sawyan.monthly_target_boxes (
+            member_id, country_id, period_ym, current_month_purchases_usd, target_required_usd
+        ) VALUES (
+            p_member_id, p_country_id, v_cur_ym, v_purchases_sum, v_country.monthly_target_usd
+        )
+        ON CONFLICT (member_id, country_id, period_ym) DO NOTHING;
+
+        SELECT * INTO v_box
+          FROM sawyan.monthly_target_boxes
+         WHERE member_id = p_member_id AND country_id = p_country_id AND period_ym = v_cur_ym
+         FOR UPDATE;
+
+        IF v_step_idx = 1 THEN
+            v_m_was_qual := v_box.is_qualified;
+        ELSIF v_step_idx = 2 THEN
+            v_m1_was_qual := v_box.is_qualified;
+        END IF;
+
+        v_net_accum := v_box.carry_on_in_usd + v_purchases_sum;
+
+        IF v_net_accum >= v_box.target_required_usd AND NOT v_member.is_tombstone_banned THEN
+            v_is_qual   := true;
+            v_qual_src  := CASE WHEN v_box.carry_on_in_usd >= v_box.target_required_usd
+                                THEN 'carry_on' ELSE 'local_purchases' END;
+            v_consumed  := CASE WHEN v_cur_ym < p_curr_period_ym THEN v_box.target_required_usd ELSE 0.00 END;
+            v_carry_out := v_net_accum - v_box.target_required_usd;
+        ELSE
+            v_is_qual   := false;
+            v_qual_src  := 'none';
+            v_consumed  := 0.00;
+            v_carry_out := GREATEST(0.000000, v_net_accum);
+        END IF;
+
+        UPDATE sawyan.monthly_target_boxes
+           SET current_month_purchases_usd = v_purchases_sum,
+               target_consumed_usd         = v_consumed,
+               carry_on_out_usd            = CASE WHEN v_cur_ym < p_curr_period_ym THEN v_carry_out ELSE 0.000000 END,
+               is_qualified                = v_is_qual,
+               qualification_source        = v_qual_src
+         WHERE id = v_box.id;
+
+        IF v_step_idx = 1 THEN
+            v_m_now_qual  := v_is_qual;
+            v_m_carry_out := v_carry_out;
+        ELSIF v_step_idx = 2 THEN
+            v_m1_now_qual := v_is_qual;
+            v_m1_carry_in := v_box.carry_on_in_usd;
+        END IF;
+
+        IF v_cur_ym < p_curr_period_ym OR EXISTS (
+            SELECT 1 FROM sawyan.monthly_target_boxes
+             WHERE member_id = p_member_id AND country_id = p_country_id
+               AND period_ym = to_char((to_date(v_cur_ym || '-01', 'YYYY-MM-DD') + interval '1 month'), 'YYYY-MM')
+        ) THEN
+            IF v_cur_ym < p_curr_period_ym THEN
+                v_next_ym := to_char((to_date(v_cur_ym || '-01', 'YYYY-MM-DD') + interval '1 month'), 'YYYY-MM');
+                INSERT INTO sawyan.monthly_target_boxes (
+                    member_id, country_id, period_ym, carry_on_in_usd, target_required_usd
+                ) VALUES (
+                    p_member_id, p_country_id, v_next_ym, v_carry_out, v_country.monthly_target_usd
+                )
+                ON CONFLICT (member_id, country_id, period_ym) DO UPDATE
+                   SET carry_on_in_usd = EXCLUDED.carry_on_in_usd;
+                v_cur_ym := v_next_ym;
+            ELSE
+                EXIT;
+            END IF;
+        ELSE
+            EXIT;
+        END IF;
+    END LOOP;
+
+    RETURN jsonb_build_object(
+        'period_m_was_qualified', v_m_was_qual,
+        'period_m_is_qualified', v_m_now_qual,
+        'period_m_carry_on_out_usd', ROUND(v_m_carry_out::numeric, 6),
+        'period_m1_was_qualified', v_m1_was_qual,
+        'period_m1_is_qualified', v_m1_now_qual,
+        'period_m1_carry_on_in_usd', ROUND(v_m1_carry_in::numeric, 6)
+    );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION sawyan.process_transaction_reversal_clawback(
+    p_transaction_id  UUID,
+    p_actor_id        UUID,
+    p_reason          TEXT DEFAULT 'Statutory return within pre-payout window',
+    p_idempotency_key UUID DEFAULT NULL
+) RETURNS JSONB
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $$
+DECLARE
+    v_existing_idem    sawyan.idempotency_keys%ROWTYPE;
+    v_tx_peek          RECORD;
+    v_tx               sawyan.transactions%ROWTYPE;
+    v_merchant         sawyan.merchants%ROWTYPE;
+    v_member           sawyan.members%ROWTYPE;
+    v_country          sawyan.countries%ROWTYPE;
+    v_settings         sawyan.settings%ROWTYPE;
+    v_cycle            sawyan.settlement_cycles%ROWTYPE;
+    v_orig_je          sawyan.journal_entries%ROWTYPE;
+    v_orig_tax         sawyan.b2b_tax_invoices%ROWTYPE;
+    v_tx_period_ym     CHAR(7);
+    v_curr_period_ym   CHAR(7);
+    v_local_now        TIMESTAMP;
+    v_next_month_start TIMESTAMP;
+    v_cutoff_local_ts  TIMESTAMP;
+    v_derived_phase    VARCHAR(20);
+    v_journal_id       UUID;
+    v_cn_num           VARCHAR(50);
+    v_tax_seq          BIGINT;
+    v_cascade_res      JSONB;
+    v_remaining_q      INT := 0;
+    v_free_pct         NUMERIC(6,2) := 0.00;
+    v_foreign_cyc      RECORD;
+    v_res_body         JSONB;
+BEGIN
+    IF p_idempotency_key IS NOT NULL THEN
+        SELECT * INTO v_existing_idem
+          FROM sawyan.idempotency_keys
+         WHERE idempotency_key = p_idempotency_key;
+        IF FOUND AND v_existing_idem.response_body IS NOT NULL THEN
+            RETURN v_existing_idem.response_body;
+        END IF;
+
+        INSERT INTO sawyan.idempotency_keys (idempotency_key, actor_id, endpoint, request_hash)
+        VALUES (
+            p_idempotency_key,
+            p_actor_id,
+            'process_transaction_reversal_clawback',
+            encode(extensions.digest(p_transaction_id::text, 'sha256'), 'hex')
+        )
+        ON CONFLICT (idempotency_key) DO NOTHING;
+    END IF;
+
+    SELECT t.country_id, t.created_at, t.commission_snapshot
+      INTO v_tx_peek
+      FROM sawyan.transactions t
+     WHERE t.id = p_transaction_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'TX_NOT_FOUND: %', p_transaction_id;
+    END IF;
+
+    SELECT * INTO v_country FROM sawyan.countries WHERE id = v_tx_peek.country_id;
+    v_tx_period_ym := COALESCE(
+        v_tx_peek.commission_snapshot->>'effective_period_ym',
+        to_char(v_tx_peek.created_at AT TIME ZONE v_country.iana_timezone, 'YYYY-MM')
+    );
+
+    PERFORM pg_advisory_xact_lock(hashtext('sawyan_period_lock_' || v_country.id::text || '_' || v_tx_period_ym));
+
+    SELECT * INTO v_cycle
+      FROM sawyan.settlement_cycles
+     WHERE country_id = v_country.id AND period_ym = v_tx_period_ym
+     FOR UPDATE;
+
     SELECT * INTO v_tx FROM sawyan.transactions WHERE id = p_transaction_id FOR UPDATE;
-    IF NOT FOUND OR v_tx.status <> 'completed' THEN
-        RAISE EXCEPTION 'TX_NOT_REVERSIBLE: status=%', COALESCE(v_tx.status, 'missing');
+    IF v_tx.status = 'reversed' THEN
+        RAISE EXCEPTION 'TX_ALREADY_REVERSED: %', p_transaction_id;
+    END IF;
+    IF v_tx.status <> 'completed' THEN
+        RAISE EXCEPTION 'TX_NOT_REVERSIBLE: status=%', v_tx.status;
+    END IF;
+
+    v_local_now        := now() AT TIME ZONE v_country.iana_timezone;
+    v_curr_period_ym   := to_char(v_local_now, 'YYYY-MM');
+    v_next_month_start := (to_date(v_tx_period_ym || '-01', 'YYYY-MM-DD') + interval '1 month')::timestamp;
+    v_cutoff_local_ts  := v_next_month_start + (v_country.return_cutoff_day || ' days')::interval;
+
+    -- الحظر البرمجي القاطع لأي مرتجع بعد يوم الصرف (يوم 15) أو بعد تنفيذ الصرف الفعلي (D5 + T16)
+    IF (v_cycle.id IS NOT NULL AND (
+            v_cycle.is_hard_locked IS TRUE
+            OR v_cycle.step_status >= 5
+            OR v_cycle.payout_executed_at IS NOT NULL
+            OR EXISTS (
+                SELECT 1
+                  FROM sawyan.commission_distributions cd
+                  JOIN sawyan.pool_transactions pt ON pt.id = cd.pool_transaction_id
+                 WHERE pt.settlement_cycle_id = v_cycle.id
+                   AND cd.added_to_wallet IS TRUE
+            )
+       ))
+       OR (v_local_now >= v_cutoff_local_ts)
+    THEN
+        RAISE EXCEPTION 'POST_PAYOUT_RETURN_FORBIDDEN: Returns for period % in country % are strictly prohibited after Day % cutoff / payout. Any commercial return accepted after Day % is borne 100%% by the merchant outside SAWYAN.',
+            v_tx_period_ym, v_country.country_code, v_country.return_cutoff_day, v_country.payout_day;
+    END IF;
+
+    IF v_local_now < v_next_month_start THEN
+        v_derived_phase := 'in_month';
+    ELSE
+        v_derived_phase := 'window_1_14';
     END IF;
 
     SELECT * INTO v_merchant FROM sawyan.merchants WHERE id = v_tx.merchant_id FOR UPDATE;
-    SELECT * INTO v_country  FROM sawyan.countries WHERE id = v_tx.country_id;
-    SELECT * INTO v_orig_tax FROM sawyan.b2b_tax_invoices WHERE transaction_id = v_tx.id AND document_type = 'tax_invoice' LIMIT 1;
+    SELECT * INTO v_member   FROM sawyan.members   WHERE id = v_tx.member_id;
+    SELECT * INTO v_settings FROM sawyan.settings
+     WHERE (country_id = v_country.id OR country_id IS NULL) AND effective_from <= now()
+     ORDER BY country_id NULLS LAST, effective_from DESC, recorded_at DESC LIMIT 1;
 
-    v_tx_period_ym   := to_char(v_tx.created_at AT TIME ZONE v_country.iana_timezone, 'YYYY-MM');
-    v_total_comm_usd := ROUND((v_tx.commission_amount / v_tx.fx_rate_used)::numeric, 2);
-    v_comp_usd       := ROUND((v_tx.company_share / v_tx.fx_rate_used)::numeric, 2);
-    v_plan_usd       := v_total_comm_usd - v_comp_usd;
-    v_vat_usd        := ROUND((v_tx.vat_amount / v_tx.fx_rate_used)::numeric, 2);
-
-    -- استرداد العمولة + الضريبة للتاجر
     UPDATE sawyan.merchants
        SET actual_cash_balance = actual_cash_balance + v_tx.commission_amount + v_tx.vat_amount
-     WHERE id = v_merchant.id;
+     WHERE id = v_merchant.id
+    RETURNING * INTO v_merchant;
+
+    SELECT COUNT(*) INTO v_remaining_q
+      FROM sawyan.transactions
+     WHERE merchant_id = v_merchant.id AND status = 'awaiting_merchant_topup';
+
+    IF v_merchant.is_isolated AND v_remaining_q = 0 AND GREATEST(v_merchant.package_base_amount, v_merchant.credit_limit) > 0 THEN
+        v_free_pct := ((v_merchant.actual_cash_balance - v_merchant.soft_hold_balance + v_merchant.credit_limit)
+                       / GREATEST(v_merchant.package_base_amount, v_merchant.credit_limit)) * 100.0;
+        IF v_free_pct > COALESCE(v_settings.merchant_isolate_pct, 10.00) THEN
+            UPDATE sawyan.merchants SET is_isolated = false WHERE id = v_merchant.id;
+        END IF;
+    END IF;
 
     UPDATE sawyan.transactions SET status = 'reversed' WHERE id = v_tx.id;
 
-    INSERT INTO sawyan.journal_entries (source_type, source_id, country_id, fx_rate_used, description)
-    VALUES ('CLAWBACK_REVERSAL', v_tx.id, v_country.id, v_tx.fx_rate_used, 'Reversal Phase: ' || p_reversal_phase)
-    RETURNING id INTO v_journal_id;
+    -- قيد عكسي مرآوي متطابق 100% مع قيد الفاتورة الأصلي (صفر تحمّل للخزانة 0.00$)
+    SELECT * INTO v_orig_je
+      FROM sawyan.journal_entries
+     WHERE source_type = 'INVOICE' AND source_id = v_tx.id
+     ORDER BY posted_at ASC LIMIT 1;
 
-    IF p_reversal_phase IN ('in_month', 'window_1_14') THEN
-        -- إلغاء مباشر من الشهر الجاري أو الشهر المغلق قبل الصرف (D5 / GV09)
-        UPDATE sawyan.monthly_target_boxes
-           SET current_month_purchases_usd = GREATEST(0, current_month_purchases_usd - v_tx.income_plan_share_usd),
-               target_consumed_usd = CASE WHEN p_reversal_phase = 'window_1_14' THEN 0 ELSE target_consumed_usd END,
-               is_qualified = ((carry_on_in_usd + GREATEST(0, current_month_purchases_usd - v_tx.income_plan_share_usd) + negative_clawback_usd) >= target_required_usd)
-         WHERE member_id = v_tx.member_id AND country_id = v_tx.country_id AND period_ym = v_tx_period_ym;
+    INSERT INTO sawyan.journal_entries (
+        settlement_cycle_id, source_type, source_id, country_id, fx_rate_used, reverses_entry_id, description
+    ) VALUES (
+        v_cycle.id, 'CLAWBACK_REVERSAL', v_tx.id, v_country.id, v_tx.fx_rate_used, v_orig_je.id,
+        'Pre-Payout Invoice Reversal (' || v_derived_phase || '): ' || COALESCE(NULLIF(trim(p_reason), ''), v_tx.sw_short_code)
+    ) RETURNING id INTO v_journal_id;
 
-        INSERT INTO sawyan.journal_lines (journal_entry_id, account_code, entity_type, entity_id, debit_usd, credit_usd, amount_local, currency_code)
-        VALUES
-            (v_journal_id, '4101', 'treasury', NULL, v_comp_usd, 0.00, v_tx.company_share, v_tx.currency_code),
-            (v_journal_id, '2201', 'member', v_tx.member_id, v_plan_usd, 0.00, v_tx.income_plan_share_local, v_tx.currency_code),
-            (v_journal_id, '2101', 'merchant', v_merchant.id, 0.00, v_total_comm_usd + v_vat_usd, v_tx.commission_amount + v_tx.vat_amount, v_tx.currency_code);
-
-    ELSIF p_reversal_phase = 'post_payout_day_15' THEN
-        -- بعد يوم الصرف 15 (V2 / GV09):
-        -- 1. محافظ الآباء العشرة ومحفظة المشتري النقدية لا تمس نهائياً (Delta = 0.00$)
-        -- 2. السالب يوضع حصراً في صندوق هدف المشتري للشهر المفتوح
-        v_target_ym := COALESCE(p_open_period_ym, to_char((to_date(v_tx_period_ym || '-01', 'YYYY-MM-DD') + interval '1 month'), 'YYYY-MM'));
-
-        INSERT INTO sawyan.monthly_target_boxes (member_id, country_id, period_ym, target_required_usd)
-        VALUES (v_tx.member_id, v_tx.country_id, v_target_ym, v_country.monthly_target_usd)
-        ON CONFLICT (member_id, country_id, period_ym) DO NOTHING;
-
-        SELECT * INTO v_box FROM sawyan.monthly_target_boxes
-         WHERE member_id = v_tx.member_id AND country_id = v_tx.country_id AND period_ym = v_target_ym
-         FOR UPDATE;
-
-        v_carry_absorbed := LEAST(v_box.carry_on_in_usd, v_plan_usd);
-        v_neg_clawback   := v_plan_usd - v_carry_absorbed; -- مثال زيد: 24.75 - 5.00 = 19.75 -> سالب -19.75$
-
-        UPDATE sawyan.monthly_target_boxes
-           SET carry_on_in_usd       = carry_on_in_usd - v_carry_absorbed,
-               negative_clawback_usd = negative_clawback_usd - v_neg_clawback,
-               is_qualified          = false
-         WHERE id = v_box.id;
-
-        INSERT INTO sawyan.journal_lines (journal_entry_id, account_code, entity_type, entity_id, debit_usd, credit_usd, amount_local, currency_code)
-        VALUES
-            (v_journal_id, '4101', 'treasury', NULL, v_comp_usd, 0.00, v_tx.company_share, v_tx.currency_code),
-            (v_journal_id, '2101', 'merchant', v_merchant.id, 0.00, v_total_comm_usd + v_vat_usd, v_tx.commission_amount + v_tx.vat_amount, v_tx.currency_code);
-
-        IF v_carry_absorbed > 0 THEN
-            INSERT INTO sawyan.journal_lines (journal_entry_id, account_code, entity_type, entity_id, debit_usd, credit_usd, amount_local, currency_code)
-            VALUES (v_journal_id, '2201', 'member', v_tx.member_id, v_carry_absorbed, 0.00, ROUND((v_carry_absorbed * v_tx.fx_rate_used)::numeric, 2), v_tx.currency_code);
-        END IF;
-
-        IF v_neg_clawback > 0 THEN
-            INSERT INTO sawyan.journal_lines (journal_entry_id, account_code, entity_type, entity_id, debit_usd, credit_usd, amount_local, currency_code)
-            VALUES (v_journal_id, '1301', 'member', v_tx.member_id, v_neg_clawback, 0.00, ROUND((v_neg_clawback * v_tx.fx_rate_used)::numeric, 2), v_tx.currency_code);
-        END IF;
+    IF v_orig_je.id IS NOT NULL THEN
+        INSERT INTO sawyan.journal_lines (
+            journal_entry_id, account_code, entity_type, entity_id, debit_usd, credit_usd, amount_local, currency_code
+        )
+        SELECT v_journal_id, jl.account_code, jl.entity_type, jl.entity_id,
+               jl.credit_usd, jl.debit_usd, jl.amount_local, jl.currency_code
+          FROM sawyan.journal_lines jl
+         WHERE jl.journal_entry_id = v_orig_je.id;
     ELSE
-        RAISE EXCEPTION 'INVALID_REVERSAL_PHASE: %', p_reversal_phase;
+        DECLARE
+            v_tot_usd  NUMERIC(18,2) := ROUND((v_tx.commission_amount / v_tx.fx_rate_used)::numeric, 2);
+            v_comp_usd NUMERIC(18,2) := ROUND((v_tx.company_share / v_tx.fx_rate_used)::numeric, 2);
+            v_plan_usd NUMERIC(18,2) := ROUND(v_tx.income_plan_share_usd::numeric, 2);
+            v_vat_usd  NUMERIC(18,2) := ROUND((v_tx.vat_amount / v_tx.fx_rate_used)::numeric, 2);
+            v_fx_diff  NUMERIC(18,2) := v_tot_usd - (v_comp_usd + v_plan_usd);
+        BEGIN
+            INSERT INTO sawyan.journal_lines (journal_entry_id, account_code, entity_type, entity_id, debit_usd, credit_usd, amount_local, currency_code) VALUES
+                (v_journal_id, '4101', 'treasury', NULL, v_comp_usd, 0.00, v_tx.company_share, v_tx.currency_code),
+                (v_journal_id, '2201', 'member', v_tx.member_id, v_plan_usd, 0.00, v_tx.income_plan_share_local, v_tx.currency_code),
+                (v_journal_id, '2101', 'merchant', v_merchant.id, 0.00, v_tot_usd + v_vat_usd, v_tx.commission_amount + v_tx.vat_amount, v_tx.currency_code);
+            IF v_vat_usd > 0 THEN
+                INSERT INTO sawyan.journal_lines (journal_entry_id, account_code, entity_type, debit_usd, credit_usd, amount_local, currency_code)
+                VALUES (v_journal_id, '2402', 'treasury', v_vat_usd, 0.00, v_tx.vat_amount, v_tx.currency_code);
+            END IF;
+            IF v_fx_diff > 0 THEN
+                INSERT INTO sawyan.journal_lines (journal_entry_id, account_code, entity_type, debit_usd, credit_usd, amount_local, currency_code)
+                VALUES (v_journal_id, '4301', 'treasury', v_fx_diff, 0.00, ROUND((v_fx_diff * v_tx.fx_rate_used)::numeric, 2), v_tx.currency_code);
+            ELSIF v_fx_diff < 0 THEN
+                INSERT INTO sawyan.journal_lines (journal_entry_id, account_code, entity_type, debit_usd, credit_usd, amount_local, currency_code)
+                VALUES (v_journal_id, '4301', 'treasury', 0.00, ABS(v_fx_diff), ROUND((ABS(v_fx_diff) * v_tx.fx_rate_used)::numeric, 2), v_tx.currency_code);
+            END IF;
+        END;
     END IF;
 
-    IF v_vat_usd > 0 THEN
-        INSERT INTO sawyan.journal_lines (journal_entry_id, account_code, entity_type, entity_id, debit_usd, credit_usd, amount_local, currency_code)
-        VALUES (v_journal_id, '2402', 'treasury', NULL, v_vat_usd, 0.00, v_tx.vat_amount, v_tx.currency_code);
+    -- درع الكاري أون والمزامنة المتسلسلة مع الشهر الجديد (Carry-On Shield M -> M+1)
+    v_cascade_res := sawyan.recalculate_target_box_and_cascade(
+        v_tx.member_id,
+        v_tx.country_id,
+        v_tx_period_ym,
+        GREATEST(v_curr_period_ym, CASE WHEN v_derived_phase = 'window_1_14'
+            THEN to_char(v_next_month_start, 'YYYY-MM') ELSE v_tx_period_ym END)
+    );
+
+    -- إعادة حساب مسودة التسوية والـ Roll-up إن شُغلت مسبقاً قبل الصرف
+    IF v_cycle.id IS NOT NULL AND EXISTS (SELECT 1 FROM sawyan.pool_transactions WHERE settlement_cycle_id = v_cycle.id) THEN
+        DELETE FROM sawyan.surplus_distributions
+         WHERE pool_transaction_id IN (SELECT id FROM sawyan.pool_transactions WHERE settlement_cycle_id = v_cycle.id);
+        DELETE FROM sawyan.commission_distributions
+         WHERE pool_transaction_id IN (SELECT id FROM sawyan.pool_transactions WHERE settlement_cycle_id = v_cycle.id);
+        DELETE FROM sawyan.pool_transactions WHERE settlement_cycle_id = v_cycle.id;
+        DELETE FROM sawyan.compensatory_settlements WHERE settlement_cycle_id = v_cycle.id;
+
+        PERFORM sawyan.run_monthly_settlement_engine(v_cycle.id);
     END IF;
 
-    -- إصدار إشعار دائن ضريبي Credit Note مرتبط بالفاتورة الأصلية (D19 + V2 + V9)
-    IF v_orig_tax.id IS NOT NULL THEN
+    -- إعادة حساب الدورات الأجنبية المفتوحة إذا سقط تأهل الدولة الأم (D1 Gate)
+    IF v_tx.country_id = v_member.residency_country_id
+       AND COALESCE((v_cascade_res->>'period_m_was_qualified')::boolean, false) IS TRUE
+       AND COALESCE((v_cascade_res->>'period_m_is_qualified')::boolean, false) IS FALSE
+    THEN
+        FOR v_foreign_cyc IN
+            SELECT sc.id, sc.country_id
+              FROM sawyan.settlement_cycles sc
+             WHERE sc.period_ym = v_tx_period_ym
+               AND sc.country_id <> v_tx.country_id
+               AND sc.is_hard_locked IS FALSE
+               AND sc.step_status < 5
+               AND sc.payout_executed_at IS NULL
+               AND EXISTS (SELECT 1 FROM sawyan.pool_transactions pt WHERE pt.settlement_cycle_id = sc.id)
+             ORDER BY sc.country_id ASC
+        LOOP
+            PERFORM pg_advisory_xact_lock(hashtext('sawyan_period_lock_' || v_foreign_cyc.country_id::text || '_' || v_tx_period_ym));
+            DELETE FROM sawyan.surplus_distributions
+             WHERE pool_transaction_id IN (SELECT id FROM sawyan.pool_transactions WHERE settlement_cycle_id = v_foreign_cyc.id);
+            DELETE FROM sawyan.commission_distributions
+             WHERE pool_transaction_id IN (SELECT id FROM sawyan.pool_transactions WHERE settlement_cycle_id = v_foreign_cyc.id);
+            DELETE FROM sawyan.pool_transactions WHERE settlement_cycle_id = v_foreign_cyc.id;
+            DELETE FROM sawyan.compensatory_settlements WHERE settlement_cycle_id = v_foreign_cyc.id;
+
+            PERFORM sawyan.run_monthly_settlement_engine(v_foreign_cyc.id);
+        END LOOP;
+    END IF;
+
+    SELECT * INTO v_orig_tax
+      FROM sawyan.b2b_tax_invoices
+     WHERE transaction_id = v_tx.id AND document_type = 'tax_invoice'
+     LIMIT 1;
+
+    IF v_orig_tax.id IS NOT NULL AND NOT EXISTS (
+        SELECT 1 FROM sawyan.b2b_tax_invoices WHERE original_tax_invoice_id = v_orig_tax.id AND document_type = 'credit_note'
+    ) THEN
+        PERFORM pg_advisory_xact_lock(hashtext('sawyan_tax_seq_' || v_country.id::text));
         SELECT COUNT(*) + 1 INTO v_tax_seq FROM sawyan.b2b_tax_invoices WHERE country_id = v_country.id;
-        v_cn_num := 'SAWYAN-CN-' || v_country.country_code || '-' || replace(v_tx_period_ym, '-', '') || '-' || LPAD(v_tax_seq::text, 6, '0');
+        v_cn_num := 'SAWYAN-CN-' || v_country.country_code || '-' || replace(v_curr_period_ym, '-', '') || '-' || LPAD(v_tax_seq::text, 6, '0');
+
         INSERT INTO sawyan.b2b_tax_invoices (
             invoice_number, document_type, original_tax_invoice_id, merchant_id, branch_id, country_id,
-            transaction_id, merchant_tax_reg_no, net_commission_amount, vat_rate_applied, vat_amount,
-            gross_invoice_total, currency_code, fx_rate_used, journal_entry_id
+            transaction_id, settlement_cycle_id, merchant_tax_reg_no, net_commission_amount, vat_rate_applied,
+            vat_amount, gross_invoice_total, currency_code, fx_rate_used, journal_entry_id
         ) VALUES (
             v_cn_num, 'credit_note', v_orig_tax.id, v_merchant.id, v_tx.branch_id, v_country.id,
-            v_tx.id, v_merchant.tax_registration_no, -v_orig_tax.net_commission_amount, v_orig_tax.vat_rate_applied,
+            v_tx.id, v_cycle.id, v_merchant.tax_registration_no, -v_orig_tax.net_commission_amount, v_orig_tax.vat_rate_applied,
             -v_orig_tax.vat_amount, -v_orig_tax.gross_invoice_total, v_tx.currency_code, v_tx.fx_rate_used, v_journal_id
         );
     END IF;
 
-    RETURN jsonb_build_object(
-        'status', 'reversed',
-        'phase', p_reversal_phase,
-        'credit_note_number', v_cn_num,
-        'member_negative_clawback_usd', COALESCE(-v_neg_clawback, 0.00),
-        'uplines_delta_usd', 0.00
+    INSERT INTO sawyan.notifications (recipient_type, recipient_id, event_name, channel, payload)
+    VALUES (
+        'member',
+        v_tx.member_id,
+        'InvoiceReversedTargetBoxUpdated',
+        'in_app',
+        jsonb_build_object(
+            'transaction_id', v_tx.id,
+            'sw_short_code', v_tx.sw_short_code,
+            'period_ym', v_tx_period_ym,
+            'phase', v_derived_phase,
+            'deducted_plan_usd', ROUND(v_tx.income_plan_share_usd::numeric, 2),
+            'deducted_plan_local', ROUND(v_tx.income_plan_share_local::numeric, 2),
+            'currency_code', v_tx.currency_code,
+            'cascade', v_cascade_res
+        )
     );
+
+    IF COALESCE((v_cascade_res->>'period_m1_was_qualified')::boolean, false) IS TRUE
+       AND COALESCE((v_cascade_res->>'period_m1_is_qualified')::boolean, false) IS FALSE
+    THEN
+        INSERT INTO sawyan.notifications (recipient_type, recipient_id, event_name, channel, payload)
+        VALUES (
+            'member',
+            v_tx.member_id,
+            'NextMonthCarryOnDepletedAlert',
+            'in_app',
+            jsonb_build_object(
+                'current_period_ym', v_curr_period_ym,
+                'new_carry_on_in_usd', (v_cascade_res->>'period_m1_carry_on_in_usd')::numeric,
+                'message_ar', 'تنبيه هام: استُهلك جزء من رصيد الكاري أون لتغطية مرتجع الشهر السابق، فأصبح صندوق الشهر الحالي بحاجة لاستكمال الهدف الشهري.'
+            )
+        );
+    END IF;
+
+    INSERT INTO sawyan.notifications (recipient_type, recipient_id, event_name, channel, payload)
+    VALUES (
+        'merchant',
+        v_merchant.id,
+        'PosReturnCreditNoteIssued',
+        'in_app',
+        jsonb_build_object(
+            'transaction_id', v_tx.id,
+            'sw_short_code', v_tx.sw_short_code,
+            'refunded_commission_local', v_tx.commission_amount + v_tx.vat_amount,
+            'credit_note_number', v_cn_num
+        )
+    );
+
+    PERFORM sawyan.append_audit_log(
+        'system',
+        p_actor_id,
+        'transaction_reversed_' || v_derived_phase,
+        'transactions',
+        v_tx.id::text,
+        jsonb_build_object('status', 'completed'),
+        jsonb_build_object('status', 'reversed', 'phase', v_derived_phase, 'credit_note', v_cn_num, 'cascade', v_cascade_res)
+    );
+
+    v_res_body := jsonb_build_object(
+        'status', 'reversed',
+        'phase', v_derived_phase,
+        'period_ym', v_tx_period_ym,
+        'journal_entry_id', v_journal_id,
+        'credit_note_number', v_cn_num,
+        'treasury_loss_usd', 0.00,
+        'member_negative_balance_usd', 0.00,
+        'uplines_delta_usd', 0.00,
+        'box_cascade', v_cascade_res
+    );
+
+    IF p_idempotency_key IS NOT NULL THEN
+        UPDATE sawyan.idempotency_keys
+           SET response_status = 200, response_body = v_res_body
+         WHERE idempotency_key = p_idempotency_key;
+    END IF;
+
+    RETURN v_res_body;
 END;
 $$;
 
@@ -812,8 +1161,9 @@ BEGIN
     IF NOT FOUND THEN
         RAISE EXCEPTION 'SETTLEMENT_CYCLE_NOT_FOUND';
     END IF;
-    IF v_cycle.is_hard_locked THEN
-        RAISE EXCEPTION 'HARD_LOCK_VIOLATION: Cycle % is permanently locked.', v_cycle.period_ym;
+    PERFORM pg_advisory_xact_lock(hashtext('sawyan_period_lock_' || v_cycle.country_id::text || '_' || v_cycle.period_ym));
+    IF v_cycle.is_hard_locked OR v_cycle.payout_executed_at IS NOT NULL THEN
+        RAISE EXCEPTION 'HARD_LOCK_VIOLATION: Cycle % is permanently locked / paid out.', v_cycle.period_ym;
     END IF;
 
     SELECT * INTO v_country FROM sawyan.countries WHERE id = v_cycle.country_id;
@@ -852,7 +1202,7 @@ BEGIN
            AND m.member_code > 0
          FOR UPDATE OF b
     LOOP
-        v_net_box := v_box.carry_on_in_usd + v_box.current_month_purchases_usd + v_box.negative_clawback_usd;
+        v_net_box := v_box.carry_on_in_usd + v_box.current_month_purchases_usd;
 
         IF v_net_box >= v_box.target_required_usd AND NOT v_box.is_tombstone_banned THEN
             v_qual_src := CASE WHEN v_box.carry_on_in_usd >= v_box.target_required_usd THEN 'carry_on' ELSE 'local_purchases' END;
@@ -864,12 +1214,26 @@ BEGIN
                    qualification_source = v_qual_src
              WHERE id = v_box.id;
 
-            -- ترحيل الـ Carry On الفائض للشهر التالي
-            IF (v_net_box - v_box.target_required_usd) > 0 THEN
-                INSERT INTO sawyan.monthly_target_boxes (member_id, country_id, period_ym, carry_on_in_usd, target_required_usd)
-                VALUES (v_box.member_id, v_cycle.country_id, v_next_ym, v_net_box - v_box.target_required_usd, v_country.monthly_target_usd)
+            -- ترحيل ومزامنة الـ Carry On للشهر التالي (حتى لو صار صفراً بعد استهلاك الكاري أون في مرتجع)
+            IF (v_net_box - v_box.target_required_usd) > 0 OR EXISTS (
+                SELECT 1 FROM sawyan.monthly_target_boxes
+                 WHERE member_id = v_box.member_id AND country_id = v_cycle.country_id AND period_ym = v_next_ym
+            ) THEN
+                INSERT INTO sawyan.monthly_target_boxes (member_id, country_id, period_ym, carry_on_in_usd, target_required_usd, is_qualified, qualification_source)
+                VALUES (
+                    v_box.member_id, v_cycle.country_id, v_next_ym,
+                    v_net_box - v_box.target_required_usd, v_country.monthly_target_usd,
+                    ((v_net_box - v_box.target_required_usd) >= v_country.monthly_target_usd),
+                    CASE WHEN (v_net_box - v_box.target_required_usd) >= v_country.monthly_target_usd THEN 'carry_on' ELSE 'none' END
+                )
                 ON CONFLICT (member_id, country_id, period_ym) DO UPDATE
-                   SET carry_on_in_usd = EXCLUDED.carry_on_in_usd;
+                   SET carry_on_in_usd      = EXCLUDED.carry_on_in_usd,
+                       is_qualified         = ((EXCLUDED.carry_on_in_usd + sawyan.monthly_target_boxes.current_month_purchases_usd) >= sawyan.monthly_target_boxes.target_required_usd),
+                       qualification_source = CASE
+                           WHEN (EXCLUDED.carry_on_in_usd + sawyan.monthly_target_boxes.current_month_purchases_usd) >= sawyan.monthly_target_boxes.target_required_usd
+                           THEN CASE WHEN EXCLUDED.carry_on_in_usd >= sawyan.monthly_target_boxes.target_required_usd THEN 'carry_on' ELSE 'local_purchases' END
+                           ELSE 'none'
+                       END;
             END IF;
 
             -- إنشاء توزيعة الوعاء ومنح الصانع الحصة الأولى (1/11) ثم صعود 10 حصص لـ parent
@@ -895,7 +1259,7 @@ BEGIN
                 INSERT INTO _tmp_dag_packets VALUES (v_pool_id, v_box.parent_member_id, v_s02_slots - 1, v_share_orig, 2);
             END IF;
         ELSE
-            -- غير مؤهل محلياً: ترحيل الـ Carry On الموجب أو السالب للشهر التالي (GV01 / V2)
+            -- غير مؤهل محلياً: ترحيل الـ Carry On الموجب للشهر التالي بلا أي قيم سالبة (GV01 / GV09)
             UPDATE sawyan.monthly_target_boxes
                SET target_consumed_usd  = 0.00,
                    carry_on_out_usd     = GREATEST(0, v_net_box),
@@ -903,16 +1267,19 @@ BEGIN
                    qualification_source = 'none'
              WHERE id = v_box.id;
 
-            IF v_net_box > 0 THEN
+            IF v_net_box > 0 OR EXISTS (
+                SELECT 1 FROM sawyan.monthly_target_boxes
+                 WHERE member_id = v_box.member_id AND country_id = v_cycle.country_id AND period_ym = v_next_ym
+            ) THEN
                 INSERT INTO sawyan.monthly_target_boxes (member_id, country_id, period_ym, carry_on_in_usd, target_required_usd)
-                VALUES (v_box.member_id, v_cycle.country_id, v_next_ym, v_net_box, v_country.monthly_target_usd)
+                VALUES (v_box.member_id, v_cycle.country_id, v_next_ym, GREATEST(0, v_net_box), v_country.monthly_target_usd)
                 ON CONFLICT (member_id, country_id, period_ym) DO UPDATE
-                   SET carry_on_in_usd = EXCLUDED.carry_on_in_usd;
-            ELSIF v_net_box < 0 THEN
-                INSERT INTO sawyan.monthly_target_boxes (member_id, country_id, period_ym, negative_clawback_usd, target_required_usd)
-                VALUES (v_box.member_id, v_cycle.country_id, v_next_ym, v_net_box, v_country.monthly_target_usd)
-                ON CONFLICT (member_id, country_id, period_ym) DO UPDATE
-                   SET negative_clawback_usd = EXCLUDED.negative_clawback_usd;
+                   SET carry_on_in_usd      = EXCLUDED.carry_on_in_usd,
+                       is_qualified         = ((EXCLUDED.carry_on_in_usd + sawyan.monthly_target_boxes.current_month_purchases_usd) >= sawyan.monthly_target_boxes.target_required_usd),
+                       qualification_source = CASE
+                           WHEN (EXCLUDED.carry_on_in_usd + sawyan.monthly_target_boxes.current_month_purchases_usd) >= sawyan.monthly_target_boxes.target_required_usd
+                           THEN 'local_purchases' ELSE 'none'
+                       END;
             END IF;
         END IF;
     END LOOP;
@@ -959,7 +1326,7 @@ BEGIN
                        SET compensatory_incoming_usd = EXCLUDED.compensatory_incoming_usd,
                            is_qualified              = true,
                            qualification_source      = 'compensatory',
-                           carry_on_out_usd          = sawyan.monthly_target_boxes.carry_on_in_usd; -- حفظ الكاري أون القديم دون دمج
+                           carry_on_out_usd          = sawyan.monthly_target_boxes.carry_on_in_usd + sawyan.monthly_target_boxes.current_month_purchases_usd; -- حفظ الكاري أون والمشتريات الجزئية دون دمج
 
                     -- قيد التسوية التعويضية وحسابَي الخزانة (D1)
                     INSERT INTO sawyan.compensatory_settlements (
@@ -1369,8 +1736,8 @@ BEGIN
                tc.depth AS rel_depth,
                COALESCE(bool_or(b.is_qualified), false) AS any_qual,
                COALESCE(MAX(b_lens.is_qualified::int), 0) = 1 AS lens_qual,
-               COALESCE(MAX((b_lens.carry_on_in_usd + b_lens.current_month_purchases_usd + b_lens.negative_clawback_usd)), 0) AS lens_val,
-               COALESCE(MAX((b.carry_on_in_usd + b.current_month_purchases_usd + b.negative_clawback_usd)), 0) AS any_val
+               COALESCE(MAX((b_lens.carry_on_in_usd + b_lens.current_month_purchases_usd)), 0) AS lens_val,
+               COALESCE(MAX((b.carry_on_in_usd + b.current_month_purchases_usd)), 0) AS any_val
           FROM sawyan.tree_closure tc
           JOIN sawyan.members m ON m.id = tc.descendant_id
           LEFT JOIN sawyan.monthly_target_boxes b
