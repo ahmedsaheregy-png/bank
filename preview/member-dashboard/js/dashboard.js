@@ -135,7 +135,9 @@ async function waitForApiReady() {
 document.addEventListener('DOMContentLoaded', async function () {
     if (window.SAWYAN && window.SAWYAN.Logo) {
         const logoBox = document.getElementById('logoContainer');
-        if (logoBox) logoBox.innerHTML = window.SAWYAN.Logo.icon();
+        if (logoBox) {
+            logoBox.innerHTML = `<a href="../index.html" class="logo-link" style="text-decoration:none;">${window.SAWYAN.Logo.svg('light-on-dark')}</a>`;
+        }
     }
 
     await waitForApiReady();
@@ -870,11 +872,11 @@ function loadTree() {
     ];
 
     const visualPalette = {
-        GREEN: { bg: '#10b981', softBg: '#ecfdf5', border: '#047857', text: '#064e3b', circleText: '#ffffff', icon: '🟢', label: 'مؤهل' },
-        ORANGE: { bg: '#f59e0b', softBg: '#fffbeb', border: '#d97706', text: '#78350f', circleText: '#ffffff', icon: '🟠', label: 'نصف صندوق' },
-        WHITE: { bg: '#ffffff', softBg: '#ffffff', border: '#64748b', text: '#1e293b', circleText: '#1e293b', icon: '⚪', label: 'بدون شراء' },
-        GRAY: { bg: '#94a3b8', softBg: '#f1f5f9', border: '#475569', text: '#334155', circleText: '#ffffff', icon: '🔘', label: 'فريق رديف' },
-        BLACK: { bg: '#1e293b', softBg: '#0f172a', border: '#334155', text: '#e2e8f0', circleText: '#e2e8f0', icon: '⬛', label: 'خارج العدسة' }
+        GREEN: { bg: '#059669', softBg: '#ecfdf5', border: '#10b981', text: '#064e3b', circleText: '#ffffff', icon: '🟢', label: 'مؤهل' },
+        ORANGE: { bg: '#d97706', softBg: '#fffbeb', border: '#f59e0b', text: '#78350f', circleText: '#ffffff', icon: '🟠', label: 'كاري أون' },
+        WHITE: { bg: '#ffffff', softBg: '#ffffff', border: '#64748b', text: '#0f172a', circleText: '#0f172a', icon: '⚪', label: '0/100' },
+        GRAY: { bg: '#475569', softBg: '#f1f5f9', border: '#94a3b8', text: '#334155', circleText: '#f1f5f9', icon: '🔘', label: 'فريق رديف' },
+        BLACK: { bg: '#020617', softBg: '#0f172a', border: '#334155', text: '#cbd5e1', circleText: '#94a3b8', icon: '⬛', label: 'خارج العدسة' }
     };
 
     // عرض كل العقد الهيكلية بما فيها GRAY (فريق رديف) و BLACK (خارج العدسة) بترتيب ثنائي غير متقاطع
@@ -929,6 +931,10 @@ function loadTree() {
     const actualEarnUsd = Number(tree.actual_earnings_usd || 0);
     const expOrangeUsd = Number(tree.expected_orange_earnings_usd || 0);
     const totalTeamCount = tree.total_team_count !== undefined ? tree.total_team_count : Math.max(0, nodes.length - 1);
+    const teamCommCount = nodes.filter(n => {
+        const d = parseInt(String(n.structural_me || '1').replace(/\D/g, ''), 10) || 1;
+        return d >= 2 && n.team_bucket === 'COMMISSION_TEAM';
+    }).length;
     const rightArmCnt = Number(tree.right_arm_count || 0);
     const leftArmCnt = Number(tree.left_arm_count || 0);
     const reports = Array.isArray(tree.country_reports) ? tree.country_reports : [];
@@ -946,10 +952,11 @@ function loadTree() {
     });
 
     page.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
-            <div>
-                <h2 style="margin:0;">🌳 الشجرة الدولية التفاعلية (S01 = ${lensPlan.s01} • يمين ${rightArmCnt} / يسار ${leftArmCnt})</h2>
-                <small style="color:#64748b;">العدسة: <strong>${esc(tree.lens_country_code || 'ALL')}</strong> • اضغط أي عضو لعرض شجرة نسبه وسقفه العكسي الـ 11</small>
+        <!-- شريط عدسات الدول الداكن — مطابق لمعرض الشاشات التفاعلي -->
+        <div class="country-lens-bar-dark">
+            <div style="color:#f8fafc;font-size:0.86rem;font-weight:800;">
+                🔭 <strong>عدسة مشاهدة الشجرة:</strong>
+                <span style="color:#94a3b8;font-weight:600;font-size:0.78rem;">العدسة الحالية (${esc(tree.lens_country_code || 'ALL')}) • اضغط أي عضو لعرض شجرة نسبه وسقفه الـ ${lensPlan.s01}</span>
             </div>
             <div data-spec-id="member-tree-lens-bar" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
                 ${lensCountries.map(lc => {
@@ -959,55 +966,87 @@ function loadTree() {
             </div>
         </div>
 
-        <div data-spec-id="member-tree-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px;margin-bottom:14px;">
-            <div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:12px;">
-                <div style="font-size:0.76rem;color:#475569;font-weight:700;">👥 إجمالي أعضاء الشجرة</div>
-                <strong style="font-size:1.35rem;color:#0f172a;">${totalTeamCount} عضواً</strong>
-                <div style="font-size:0.75rem;color:#64748b;">يمين ${rightArmCnt} • يسار ${leftArmCnt}</div>
+        <!-- رأس شاشة الشجرة الفاخر (تدرج زمردي كحلي — مطابق لمعرض الشاشات) -->
+        <div data-spec-id="member-tree-kpis" style="background:linear-gradient(135deg, #064e3b 0%, #0f172a 100%);color:#ffffff;border-radius:16px;padding:16px 18px;margin-bottom:14px;box-shadow:0 8px 24px rgba(6,78,59,0.22);border:1px solid rgba(16,185,129,0.35);">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+                <div>
+                    <h2 style="margin:0;font-size:1.12rem;font-weight:900;color:#34d399;">🌐 الشجرة الدولية التفاعلية (${lensPlan.s01} جيلاً • S01)</h2>
+                    <div style="font-size:0.79rem;color:#cbd5e1;margin-top:2px;">
+                        أنت: <strong style="color:#ffffff;">${esc((memberBundle.profile && memberBundle.profile.full_name) || '')} (#${esc((memberBundle.profile && memberBundle.profile.member_code) || '')})</strong>
+                        • حصة الفرد: <strong style="color:#fde047;">${esc(fmtCountryLocal(lensPlan.unitShareUsd, lensPlan))}</strong>
+                    </div>
+                </div>
+                <div style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.22);padding:5px 12px;border-radius:10px;font-family:monospace;font-weight:900;font-size:0.86rem;color:#fef08a;direction:ltr;">
+                    ${totalTeamCount}M : ${leftArmCnt}L / ${rightArmCnt}R
+                </div>
             </div>
-            <div style="background:#ecfdf5;border:1.5px solid #10b981;border-radius:14px;padding:12px;">
-                <div style="font-size:0.76rem;color:#065f46;font-weight:700;">🟢 فريق العمولة (1/${lensPlan.s01}..${lensPlan.s01}/${lensPlan.s01})</div>
-                <strong style="font-size:1.35rem;color:#047857;">${tree.commission_team_count || 0}</strong>
-                <div style="font-size:0.75rem;color:#065f46;">حصة الفرد: ${esc(fmtCountryLocal(lensPlan.unitShareUsd, lensPlan))}</div>
+
+            <!-- الأعداد الثلاثة المتسقة بدون أي تناقض -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px;text-align:center;margin-bottom:12px;">
+                <div style="background:rgba(255,255,255,0.08);padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,0.18);">
+                    <div style="font-size:0.78rem;color:#e2e8f0;font-weight:800;">1️⃣ إجمالي أعضاء الشجرة</div>
+                    <strong style="display:block;font-size:1.3rem;color:#ffffff;margin:3px 0;">${totalTeamCount} عضواً</strong>
+                    <div style="font-size:0.73rem;color:#fde68a;">يمين ${rightArmCnt} • يسار ${leftArmCnt}</div>
+                </div>
+                <div style="background:rgba(16,185,129,0.16);padding:10px;border-radius:12px;border:1px solid rgba(52,211,153,0.45);">
+                    <div style="font-size:0.78rem;color:#a7f3d0;font-weight:800;">2️⃣ فريق العمولات (قبل الستوبر)</div>
+                    <strong style="display:block;font-size:1.3rem;color:#34d399;margin:3px 0;">${teamCommCount} مؤهلين</strong>
+                    <div style="font-size:0.72rem;color:#cbd5e1;">مؤهلون خضر من فريقك • مقعدك (1/${lensPlan.s01})</div>
+                </div>
+                <div style="background:rgba(148,163,184,0.14);padding:10px;border-radius:12px;border:1px solid rgba(148,163,184,0.38);">
+                    <div style="font-size:0.78rem;color:#cbd5e1;font-weight:800;">3️⃣ الفريق الرديف (D26 مجمّع)</div>
+                    <strong style="display:block;font-size:1.3rem;color:#f1f5f9;margin:3px 0;">+${tree.reserve_team_aggregated_count || 0}</strong>
+                    <div style="font-size:0.72rem;color:#94a3b8;">بعد امتلاء ${lensPlan.s01}/${lensPlan.s01}</div>
+                </div>
             </div>
-            <div style="background:#f8fafc;border:1.5px solid #64748b;border-radius:14px;padding:12px;">
-                <div style="font-size:0.76rem;color:#334155;font-weight:700;">🔘 الفريق الرديف (D26 مجمّع)</div>
-                <strong style="font-size:1.35rem;color:#475569;">+${tree.reserve_team_aggregated_count || 0}</strong>
-                <div style="font-size:0.75rem;color:#64748b;">بعد امتلاء 11/${lensPlan.s01}</div>
-            </div>
-            <div style="background:#f0fdf4;border:1.5px solid #059669;border-radius:14px;padding:12px;">
-                <div style="font-size:0.76rem;color:#065f46;font-weight:700;">💰 أرباحي الفعلية المحققة</div>
-                <strong style="font-size:1.2rem;color:#047857;">${esc(fmtLocalFromUsd(actualEarnUsd))}</strong>
-                <div style="font-size:0.75rem;color:#065f46;">${fmtUsd(actualEarnUsd)} مرجعي</div>
-            </div>
-            <div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:14px;padding:12px;">
-                <div style="font-size:0.76rem;color:#92400e;font-weight:700;">🟠 الأرباح المتوقعة (قيد التجميع)</div>
-                <strong style="font-size:1.2rem;color:#b45309;">+${esc(fmtLocalFromUsd(expOrangeUsd))}</strong>
-                <div style="font-size:0.75rem;color:#92400e;">${fmtUsd(expOrangeUsd)} محتمل</div>
+
+            <!-- خانتا الأرباح الحقيقية والمتوقعة بتباين عالٍ -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;">
+                <div style="background:rgba(6,95,70,0.6);border:2px solid #10b981;border-radius:12px;padding:11px 14px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                        <span style="font-size:0.84rem;font-weight:900;color:#a7f3d0;">💵 أرباحي الفعلية المحققة:</span>
+                        <strong style="font-size:1.22rem;color:#34d399;font-family:monospace;">${esc(fmtLocalFromUsd(actualEarnUsd))}</strong>
+                    </div>
+                    <div style="font-size:0.74rem;color:#ecfdf5;margin-top:4px;">${fmtUsd(actualEarnUsd)} مرجعي • مبنية على المؤهلين الخضر 🟢 في هذه العدسة</div>
+                </div>
+                <div style="background:rgba(120,53,15,0.6);border:2px solid #f59e0b;border-radius:12px;padding:11px 14px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                        <span style="font-size:0.84rem;font-weight:900;color:#fde68a;">🚀 الأرباح المتوقعة (قيد التجميع):</span>
+                        <strong style="font-size:1.22rem;color:#fde047;font-family:monospace;">+${esc(fmtLocalFromUsd(expOrangeUsd))}</strong>
+                    </div>
+                    <div style="font-size:0.74rem;color:#fef3c7;margin-top:4px;">${fmtUsd(expOrangeUsd)} محتمل • لو أكمل البرتقاليون 🟠 هدفهم الشهري</div>
+                </div>
             </div>
         </div>
 
-        <!-- شريط التحكم والمنظور والفلتر البرتقالي -->
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:#ffffff;border:1px solid #cbd5e1;border-radius:14px;padding:10px 14px;margin-bottom:12px;">
+        <!-- شريط التحكم الداكن والمنظور ومفتاح الألوان -->
+        <div class="tree-toolbar-dark">
             <div data-spec-id="member-tree-controls" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                <input type="search" id="treeSearchInput" class="form-control" style="max-width:210px;padding:6px 10px;font-size:0.84rem;" placeholder="🔍 ابحث بالكود أو الاسم..." value="${esc(treeUiState.searchQuery)}">
-                <button type="button" class="lens-pill-btn" onclick="adjustTreeZoom(0.14)">🔍+</button>
-                <button type="button" class="lens-pill-btn" onclick="adjustTreeZoom(-0.14)">🔍−</button>
+                <input type="search" id="treeSearchInput" class="form-control" style="max-width:200px;padding:6px 10px;font-size:0.82rem;" placeholder="🔍 ابحث بالكود أو الاسم..." value="${esc(treeUiState.searchQuery)}">
+                <button type="button" class="lens-pill-btn" onclick="adjustTreeZoom(0.14)">➕ تكبير</button>
+                <button type="button" class="lens-pill-btn" onclick="adjustTreeZoom(-0.14)">➖ تصغير</button>
                 <button type="button" class="lens-pill-btn" onclick="resetTreeViewport()">⌖ تمركز (${Math.round(treeUiState.zoom * 100)}%)</button>
             </div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                 <div data-spec-id="member-tree-view-toggle" id="treeViewModeToggle" style="display:inline-flex;gap:4px;">
-                    <button type="button" class="lens-pill-btn ${treeUiState.viewMode === 'circles' ? 'active' : ''}" onclick="setTreeViewMode('circles')">🔵 دوائر</button>
+                    <button type="button" class="lens-pill-btn ${treeUiState.viewMode === 'circles' ? 'active' : ''}" onclick="setTreeViewMode('circles')">⭕ دوائر</button>
                     <button type="button" class="lens-pill-btn ${treeUiState.viewMode === 'cards' ? 'active' : ''}" onclick="setTreeViewMode('cards')">🪪 بطاقات</button>
                 </div>
-                <button type="button" data-spec-id="member-tree-orange-filter" class="lens-pill-btn ${treeUiState.orangeOnly ? 'active' : ''}" style="${treeUiState.orangeOnly ? 'background:#d97706;border-color:#d97706;' : 'border-color:#f59e0b;color:#92400e;'}" onclick="toggleTreeOrangeFilter()">
+                <button type="button" data-spec-id="member-tree-orange-filter" class="lens-pill-btn ${treeUiState.orangeOnly ? 'active' : ''}" style="${treeUiState.orangeOnly ? 'background:#f59e0b;color:#0f172a;border-color:#fde047;' : 'border-color:#f59e0b;color:#fde68a;'}" onclick="toggleTreeOrangeFilter()">
                     🟠 إبراز البرتقالي (2Me–11Me)
                 </button>
+            </div>
+            <div style="width:100%;display:flex;gap:12px;flex-wrap:wrap;font-size:0.74rem;color:#cbd5e1;padding-top:6px;border-top:1px solid rgba(255,255,255,0.1);">
+                <span>🟢 مؤهل (عمولات)</span>
+                <span>🟠 برتقالي (كاري أون)</span>
+                <span>⚪ أبيض (0/100)</span>
+                <span>🔘 رمادي (رديف بعد 11)</span>
+                <span>⬛ أسود (خارج العدسة)</span>
             </div>
         </div>
 
         <!-- عدسة جوجل إيرث ثنائية الأبعاد + أزرار HUD -->
-        <div id="treeEarthViewport" data-spec-id="member-tree-earth-viewport" class="tree-earth-viewport">
+        <div id="treeEarthViewport" data-spec-id="member-tree-earth-viewport" class="tree-earth-viewport" style="border-radius:0 0 16px 16px;border-top:none;">
             <div class="hud-dpad-panel" data-spec-id="member-tree-hud-dpad" aria-label="وحدة تحكم الكاميرا">
                 <div></div>
                 <button type="button" class="hud-dpad-btn" onclick="panTreeCamera(0, 80)" title="أعلى">▲</button>
@@ -1024,13 +1063,14 @@ function loadTree() {
                 <svg id="treeSvgOverlay" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;"></svg>
                 <div id="treeLevelsContainer" style="position:relative;z-index:1;display:flex;flex-direction:column;gap:28px;min-width:max-content;">
                     ${depthKeys.map(d => `
-                        <div class="tree-gen-row" style="display:flex;align-items:center;gap:12px;justify-content:center;flex-wrap:nowrap;">
-                            <span style="background:#0f172a;color:#fff;font-size:0.74rem;font-weight:800;padding:4px 8px;border-radius:8px;min-width:44px;text-align:center;">${d}Me</span>
+                        <div class="tree-gen-row" style="display:flex;align-items:center;gap:14px;justify-content:center;flex-wrap:nowrap;">
+                            <span style="background:#0f172a;color:#34d399;border:1px solid #10b981;font-size:0.74rem;font-weight:800;padding:4px 10px;border-radius:8px;min-width:66px;text-align:center;">${d === 1 ? '👑 أنت' : ('الجيل ' + d)}</span>
                             ${byDepth[d].map(n => {
                                 const topo = topoMap.get(Number(n.member_code)) || {};
                                 const pCode = n.parent_member_code !== undefined && n.parent_member_code !== null ? n.parent_member_code : (topo.parent_member_code ?? '');
                                 const vColor = n.visual_color || (n.team_bucket === 'RESERVE_TEAM' ? 'GRAY' : n.node_color);
                                 const pal = visualPalette[vColor] || visualPalette.WHITE;
+                                const isRootSelf = d === 1;
                                 const matchSearch = !searchQ || `${n.member_code} ${n.full_name}`.toLowerCase().includes(searchQ);
                                 const isOrangeHit = (n.node_color === 'ORANGE' && d >= 2 && d <= 11);
                                 let dimStyle = '';
@@ -1041,11 +1081,11 @@ function loadTree() {
                                 if (treeUiState.viewMode === 'circles') {
                                     return `
                                         <div class="tree-circle-node tree-node-card" data-code="${n.member_code}" data-parent="${pCode}" style="${dimStyle}" onclick="openTreeNodeDetailModal(${n.member_code})">
-                                            <div class="tree-circle-disc" style="background:${pal.bg};border-color:${pal.border};color:${pal.circleText};">
-                                                ${n.stopper_slot ? esc(n.stopper_slot) : `#${n.member_code}`}
+                                            <div class="tree-circle-disc ${isRootSelf ? 'c-root-disc' : ''}" style="background:${pal.bg};border-color:${pal.border};color:${pal.circleText};">
+                                                <span>${isRootSelf ? '👑' : ''}${n.stopper_slot ? esc(n.stopper_slot) : `#${n.member_code}`}</span>
+                                                <span style="font-size:0.62rem;opacity:0.9;">${esc(n.residency_country_code || '')}</span>
                                             </div>
-                                            <div style="font-size:0.74rem;font-weight:800;color:#0f172a;white-space:nowrap;max-width:92px;overflow:hidden;text-overflow:ellipsis;">#${n.member_code} ${esc(n.residency_country_code || '')}</div>
-                                            <div style="font-size:0.68rem;color:#475569;white-space:nowrap;max-width:92px;overflow:hidden;text-overflow:ellipsis;">${esc(n.full_name)}</div>
+                                            <div style="font-size:0.76rem;font-weight:800;color:#0f172a;white-space:nowrap;max-width:104px;overflow:hidden;text-overflow:ellipsis;margin-top:4px;">#${n.member_code} ${esc(n.full_name)}</div>
                                         </div>
                                     `;
                                 }
