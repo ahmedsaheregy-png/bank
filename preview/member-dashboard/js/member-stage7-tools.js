@@ -27,28 +27,9 @@
     let ACTIVE_TOOL_TAB = 'referral'; // referral | radar | kyc | support
     let RADAR_FILTER = 'near_target_50_99';
 
+    // Zero-Injection Navigation Gate (D29): Stage 7 tools are folded natively inside Screens 4, 10 & 11.
     function mountMemberToolsButton() {
-        const hdr = document.querySelector('.dashboard-header') || document.querySelector('header') || document.body;
-        if (!document.getElementById('svMemberStage7Btn')) {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.id = 'svMemberStage7Btn';
-            btn.style.cssText = 'background:linear-gradient(135deg,#059669,#0f766e);color:#fff;border:none;padding:7px 13px;border-radius:10px;font-family:Tajawal,sans-serif;font-weight:900;font-size:0.82rem;cursor:pointer;box-shadow:0 4px 12px rgba(5,150,105,0.28);margin:4px 8px;';
-            btn.innerHTML = '👑 أدوات القائد والهوية والدعم';
-            btn.onclick = function () { window.openMemberStage7Modal('referral'); };
-            hdr.appendChild(btn);
-        }
-
-        const nav = document.querySelector('.sidebar-nav') || document.querySelector('.sidebar');
-        if (nav && !document.getElementById('svMemberStage7Nav')) {
-            const a = document.createElement('a');
-            a.href = '#';
-            a.id = 'svMemberStage7Nav';
-            a.className = 'nav-item';
-            a.innerHTML = '<span class="nav-icon">🔥</span><span class="nav-text">رادار القائد وتوثيق الهوية والدعم</span>';
-            a.onclick = function (e) { e.preventDefault(); window.openMemberStage7Modal('radar'); };
-            nav.appendChild(a);
-        }
+        // No-op: never inject extra #svMemberStage7Btn / #svMemberStage7Nav into header or sidebar-nav.
     }
 
     window.openMemberStage7Modal = async function (tab) {

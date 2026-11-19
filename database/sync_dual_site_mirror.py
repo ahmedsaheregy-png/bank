@@ -8,7 +8,6 @@ PREVIEW_DIR = os.path.join(ROOT_DIR, "preview")
 SYNC_FILES = [
     "index.html",
     "auth-gateway.html",
-    "member-showcase.html",
 ]
 
 SYNC_DIRS = [

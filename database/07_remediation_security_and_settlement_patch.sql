@@ -634,12 +634,13 @@ GRANT EXECUTE ON FUNCTION sawyan.authenticate_member_login(TEXT, TEXT) TO anon, 
 
 -- ب) دوال العضو المحمية داخلياً بفحص الجلسة الإلزامي (verify_member_session)
 GRANT EXECUTE ON FUNCTION sawyan.get_member_dashboard_bundle(UUID, TEXT, CHAR, CHAR) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION sawyan.cancel_member_pending_purchase(UUID, UUID, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.manage_member_crm_contact(UUID, VARCHAR, TEXT, UUID, VARCHAR, VARCHAR, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.submit_member_dispute(UUID, UUID, TEXT, TEXT, TEXT, SMALLINT, TEXT, SMALLINT, VARCHAR, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.preview_pos_return_impact(UUID, UUID, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.member_respond_pos_return(UUID, UUID, VARCHAR, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.submit_member_review(UUID, UUID, SMALLINT, TEXT, TEXT) TO anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION sawyan.update_member_profile_settings(UUID, TEXT, VARCHAR, VARCHAR, VARCHAR, UUID, VARCHAR, TEXT, TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION sawyan.update_member_profile_settings(UUID, TEXT, VARCHAR, VARCHAR, VARCHAR, UUID, VARCHAR, TEXT, TEXT, NUMERIC, NUMERIC) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.submit_member_pending_purchase(UUID, UUID, UUID, NUMERIC, VARCHAR, UUID, TEXT, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.manage_member_payout_method(UUID, VARCHAR, TEXT, VARCHAR, VARCHAR, TEXT, UUID) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.request_member_withdrawal(UUID, UUID, NUMERIC, UUID, TEXT) TO anon, authenticated, service_role;

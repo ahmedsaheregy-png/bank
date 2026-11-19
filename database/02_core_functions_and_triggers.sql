@@ -1858,7 +1858,7 @@ BEGIN
 END;
 $$;
 
--- 7.4 محرك الشجرة والعدسات الدولية وفصل S01 (11 نزولاً) والخصوصية D26 (V1 + GV04)
+-- 7.4 محرك الشجرة والعدسات الدولية وفصل S01 (11 نزولاً) والخصوصية D26 (V1 + GV04 + Section 5.6)
 CREATE OR REPLACE FUNCTION sawyan.get_tree_analytics_with_country_lens(
     p_viewer_member_id UUID,
     p_period_ym        CHAR(7),
@@ -1870,73 +1870,163 @@ SECURITY DEFINER
 SET search_path = pg_catalog, pg_temp
 AS $$
 DECLARE
-    v_viewer_gen    INT;
-    v_s01           INT := 11;
-    v_w09_phone_gen INT := 10;
-    v_lens_cid      INT := NULL;
-    v_rec           RECORD;
-    v_parent_out    INT;
-    v_parent_res    BOOLEAN;
-    v_my_rank       INT;
-    v_my_out        INT;
-    v_my_res        BOOLEAN;
-    v_nodes_json    JSONB;
-    v_reserve_cnt   INT := 0;
-    v_comm_cnt      INT := 0;
+    v_viewer_gen        INT;
+    v_viewer_cid        INT;
+    v_viewer_right_id   UUID;
+    v_viewer_left_id    UUID;
+    v_s01               INT := 11;
+    v_s02               INT := 11;
+    v_company_pct       NUMERIC(5,2) := 25.00;
+    v_w09_phone_gen     INT := 10;
+    v_lens_cid          INT := NULL;
+    v_rec               RECORD;
+    v_parent_out        INT;
+    v_parent_res        BOOLEAN;
+    v_my_rank           INT;
+    v_my_out            INT;
+    v_my_res            BOOLEAN;
+    v_nodes_json        JSONB;
+    v_reserve_cnt       INT := 0;
+    v_comm_cnt          INT := 0;
+    v_total_team        INT := 0;
+    v_left_arm_cnt      INT := 0;
+    v_right_arm_cnt     INT := 0;
+    v_actual_usd        NUMERIC(18,2) := 0.00;
+    v_exp_orange_usd    NUMERIC(18,2) := 0.00;
+    v_country_reports   JSONB := '[]'::jsonb;
+    v_next_preview      JSONB := NULL;
+    v_next_parent       sawyan.members%ROWTYPE;
+    v_next_side         VARCHAR(12);
+    v_bfs_right_cnt     BIGINT := 0;
+    v_bfs_left_cnt      BIGINT := 0;
 BEGIN
-    SELECT generation_in_tree INTO v_viewer_gen FROM sawyan.members WHERE id = p_viewer_member_id;
+    SELECT generation_in_tree, residency_country_id, right_child_id, left_child_id
+      INTO v_viewer_gen, v_viewer_cid, v_viewer_right_id, v_viewer_left_id
+      FROM sawyan.members
+     WHERE id = p_viewer_member_id;
     IF NOT FOUND THEN
         RAISE EXCEPTION 'VIEWER_NOT_FOUND';
     END IF;
 
-    SELECT numerical_stopper_s01 INTO v_s01
+    SELECT numerical_stopper_s01, upline_ceiling_s02, company_percent
+      INTO v_s01, v_s02, v_company_pct
       FROM sawyan.settings
      WHERE effective_from <= now()
-     ORDER BY country_id NULLS LAST, effective_from DESC LIMIT 1;
+     ORDER BY country_id NULLS LAST, effective_from DESC, recorded_at DESC LIMIT 1;
     v_s01 := COALESCE(v_s01, 11);
+    v_s02 := GREATEST(COALESCE(v_s02, 11), 1);
+    v_company_pct := COALESCE(v_company_pct, 25.00);
 
     IF p_country_code IS NOT NULL THEN
-        SELECT id INTO v_lens_cid FROM sawyan.countries WHERE country_code = p_country_code;
+        SELECT id INTO v_lens_cid FROM sawyan.countries WHERE country_code = upper(trim(p_country_code));
     END IF;
 
     CREATE TEMP TABLE IF NOT EXISTS _tmp_tree_nodes (
-        member_id          UUID PRIMARY KEY,
-        member_code        BIGINT,
-        full_name          VARCHAR(150),
-        parent_member_id   UUID,
-        placement_side     VARCHAR(12),
-        structural_me      INT,
-        node_color         VARCHAR(10),
-        team_bucket        VARCHAR(20), -- 'COMMISSION_TEAM' | 'UNQUALIFIED_SKIPPED' | 'RESERVE_TEAM'
-        stopper_rank       INT,
-        stopper_out        INT,
-        is_reserve_zone    BOOLEAN,
-        phone_visible      BOOLEAN,
-        phone_masked       VARCHAR(24)
+        member_id                UUID PRIMARY KEY,
+        member_code              BIGINT,
+        full_name                VARCHAR(150),
+        parent_member_id         UUID,
+        parent_member_code       BIGINT,
+        placement_side           VARCHAR(12),
+        viewer_root_arm          VARCHAR(12),
+        structural_me            INT,
+        company_gen              INT,
+        node_color               VARCHAR(10),
+        visual_color             VARCHAR(15),
+        team_bucket              VARCHAR(20), -- 'COMMISSION_TEAM' | 'UNQUALIFIED_SKIPPED' | 'RESERVE_TEAM'
+        stopper_rank             INT,
+        stopper_out              INT,
+        is_reserve_zone          BOOLEAN,
+        reverse_ceiling_11       INT,
+        phone_visible            BOOLEAN,
+        phone_masked             VARCHAR(24),
+        real_sponsor_code        BIGINT,
+        real_sponsor_name        VARCHAR(150),
+        is_direct_sponsored      BOOLEAN,
+        placement_type_label     TEXT,
+        nationality_country_code CHAR(2),
+        residency_country_code   CHAR(2),
+        report_country_id        INT,
+        currency_code            CHAR(3),
+        fx_rate                  NUMERIC(18,6),
+        target_pct               NUMERIC(6,1),
+        box_accumulated_usd      NUMERIC(18,2),
+        target_required_usd      NUMERIC(18,2),
+        subtree_total            BIGINT,
+        subtree_left             BIGINT,
+        subtree_right            BIGINT,
+        node_actual_share_usd    NUMERIC(18,2),
+        node_expected_share_usd  NUMERIC(18,2),
+        has_left_child           BOOLEAN,
+        has_right_child          BOOLEAN
     ) ON COMMIT DROP;
     TRUNCATE TABLE _tmp_tree_nodes;
 
     FOR v_rec IN
-        SELECT m.id, m.member_code, m.full_name, m.parent_member_id, m.placement_side,
+        SELECT m.id, m.member_code, m.full_name, m.parent_member_id, pm.member_code AS parent_member_code,
+               m.placement_side, tc.root_arm_side AS viewer_root_arm, m.generation_in_tree AS company_gen,
                m.residency_country_id, m.is_tombstone_banned, m.phone,
+               m.sponsor_id, sm.member_code AS sponsor_code, sm.full_name AS sponsor_name,
+               c_res.country_code AS res_cc,
+               COALESCE(c_nat.country_code, c_res.country_code) AS nat_cc,
+               c_res.currency_code AS res_curr,
+               c_res.admin_fx_rate AS res_fx,
+               c_res.monthly_target_usd AS res_target_usd,
+               (m.left_child_id IS NOT NULL) AS has_left_child,
+               (m.right_child_id IS NOT NULL) AS has_right_child,
                tc.depth AS rel_depth,
                COALESCE(bool_or(b.is_qualified), false) AS any_qual,
                COALESCE(MAX(b_lens.is_qualified::int), 0) = 1 AS lens_qual,
                COALESCE(MAX((b_lens.carry_on_in_usd + b_lens.current_month_purchases_usd)), 0) AS lens_val,
-               COALESCE(MAX((b.carry_on_in_usd + b.current_month_purchases_usd)), 0) AS any_val
+               COALESCE(MAX((b.carry_on_in_usd + b.current_month_purchases_usd)), 0) AS any_val,
+               ROUND(COALESCE(
+                   MAX(CASE WHEN b.country_id = COALESCE(v_lens_cid, m.residency_country_id)
+                            THEN (b.carry_on_in_usd + b.current_month_purchases_usd + b.compensatory_incoming_usd)
+                            ELSE NULL END),
+                   MAX(b.carry_on_in_usd + b.current_month_purchases_usd + b.compensatory_incoming_usd),
+                   0
+               )::numeric, 2) AS box_accum_usd,
+               ROUND(COALESCE(
+                   MAX(CASE WHEN b.country_id = COALESCE(v_lens_cid, m.residency_country_id)
+                            THEN b.target_required_usd ELSE NULL END),
+                   MAX(b.target_required_usd),
+                   c_res.monthly_target_usd,
+                   24.75
+               )::numeric, 2) AS target_req_usd,
+               COALESCE((SELECT COUNT(*) FROM sawyan.tree_closure st WHERE st.ancestor_id = m.id AND st.depth >= 1), 0) AS sub_total,
+               COALESCE((SELECT COUNT(*) FROM sawyan.tree_closure st WHERE st.ancestor_id = m.id AND st.depth >= 1 AND st.root_arm_side = 'left'), 0) AS sub_left,
+               COALESCE((SELECT COUNT(*) FROM sawyan.tree_closure st WHERE st.ancestor_id = m.id AND st.depth >= 1 AND st.root_arm_side = 'right'), 0) AS sub_right
           FROM sawyan.tree_closure tc
           JOIN sawyan.members m ON m.id = tc.descendant_id
+          JOIN sawyan.countries c_res ON c_res.id = m.residency_country_id
+          LEFT JOIN sawyan.countries c_nat ON c_nat.id = m.nationality_country_id
+          LEFT JOIN sawyan.members pm ON pm.id = m.parent_member_id
+          LEFT JOIN sawyan.members sm ON sm.id = m.sponsor_id
           LEFT JOIN sawyan.monthly_target_boxes b
                  ON b.member_id = m.id AND b.period_ym = p_period_ym
           LEFT JOIN sawyan.monthly_target_boxes b_lens
                  ON b_lens.member_id = m.id AND b_lens.period_ym = p_period_ym AND b_lens.country_id = v_lens_cid
          WHERE tc.ancestor_id = p_viewer_member_id
-         GROUP BY m.id, m.member_code, m.full_name, m.parent_member_id, m.placement_side,
-                  m.residency_country_id, m.is_tombstone_banned, m.phone, tc.depth
+         GROUP BY m.id, m.member_code, m.full_name, m.parent_member_id, pm.member_code,
+                  m.placement_side, tc.root_arm_side, m.generation_in_tree,
+                  m.residency_country_id, m.is_tombstone_banned, m.phone,
+                  m.sponsor_id, sm.member_code, sm.full_name,
+                  c_res.country_code, c_nat.country_code, c_res.currency_code, c_res.admin_fx_rate, c_res.monthly_target_usd,
+                  m.left_child_id, m.right_child_id, tc.depth
          ORDER BY tc.depth ASC, m.member_code ASC
     LOOP
         DECLARE
-            v_color VARCHAR(10);
+            v_color          VARCHAR(10);
+            v_visual_color   VARCHAR(15);
+            v_in_scope_w09   BOOLEAN;
+            v_place_label    TEXT;
+            v_pct            NUMERIC(6,1);
+            v_unit_share     NUMERIC(18,2);
+            v_actual_node    NUMERIC(18,2) := 0.00;
+            v_expected_node  NUMERIC(18,2) := 0.00;
+            v_eff_curr       CHAR(3);
+            v_eff_fx         NUMERIC(18,6);
+            v_rpt_cid        INT;
         BEGIN
             IF v_lens_cid IS NOT NULL THEN
                 IF v_rec.lens_qual THEN v_color := 'GREEN';
@@ -1975,41 +2065,248 @@ BEGIN
                 END IF;
             END IF;
 
+            v_visual_color := CASE
+                WHEN v_color = 'BLACK' THEN 'BLACK'
+                WHEN v_my_res THEN 'GRAY'
+                ELSE v_color
+            END;
+
+            v_in_scope_w09 := (v_rec.rel_depth BETWEEN 1 AND v_w09_phone_gen);
+
+            v_place_label := CASE
+                WHEN v_rec.rel_depth = 0 THEN 'أنت (صاحب الشجرة)'
+                WHEN v_rec.sponsor_id = p_viewer_member_id AND v_rec.parent_member_id = p_viewer_member_id THEN 'مباشر لك وتحت رعايتك مباشرة'
+                WHEN v_rec.sponsor_id = p_viewer_member_id THEN 'مسجل بكودك (إسقاط تلقائي Spillover)'
+                WHEN v_rec.parent_member_id = p_viewer_member_id THEN 'إسقاط من أعلى الشجرة تحتك مباشرة'
+                ELSE 'من بناء فريقك (شبكة الأجيال)'
+            END;
+
+            v_pct := LEAST(ROUND(((v_rec.box_accum_usd / GREATEST(v_rec.target_req_usd, 0.01)) * 100.0)::numeric, 1), 100.0);
+            v_rpt_cid := COALESCE(v_lens_cid, v_rec.residency_country_id);
+            SELECT currency_code, admin_fx_rate INTO v_eff_curr, v_eff_fx
+              FROM sawyan.countries WHERE id = v_rpt_cid;
+            v_eff_curr := COALESCE(v_eff_curr, v_rec.res_curr);
+            v_eff_fx   := COALESCE(v_eff_fx, v_rec.res_fx, 1.000000);
+            v_unit_share := TRUNC(GREATEST(v_rec.target_req_usd, 0.00) / v_s02, 2);
+
+            IF v_rec.rel_depth >= 1 THEN
+                IF NOT v_my_res AND v_my_rank IS NOT NULL THEN
+                    v_actual_node := v_unit_share;
+                ELSIF NOT v_my_res AND v_color = 'ORANGE' THEN
+                    v_expected_node := v_unit_share;
+                END IF;
+            END IF;
+
             INSERT INTO _tmp_tree_nodes VALUES (
-                v_rec.id, v_rec.member_code, v_rec.full_name, v_rec.parent_member_id, v_rec.placement_side,
-                v_rec.rel_depth + 1, v_color,
+                v_rec.id, v_rec.member_code, v_rec.full_name, v_rec.parent_member_id, v_rec.parent_member_code,
+                v_rec.placement_side, v_rec.viewer_root_arm, v_rec.rel_depth + 1, v_rec.company_gen,
+                v_color, v_visual_color,
                 CASE WHEN v_my_res THEN 'RESERVE_TEAM'
                      WHEN v_my_rank IS NOT NULL THEN 'COMMISSION_TEAM'
                      ELSE 'UNQUALIFIED_SKIPPED' END,
                 v_my_rank, v_my_out, v_my_res,
-                (v_rec.rel_depth BETWEEN 1 AND v_w09_phone_gen), -- D26: 2Me-11Me هيكلياً فقط
-                CASE WHEN (v_rec.rel_depth BETWEEN 1 AND v_w09_phone_gen) THEN v_rec.phone ELSE NULL END
+                CASE WHEN v_my_res THEN 0 ELSE GREATEST(0, v_s01 - COALESCE(v_my_out, 1)) END,
+                v_in_scope_w09,
+                CASE WHEN v_in_scope_w09 THEN v_rec.phone ELSE NULL END,
+                CASE WHEN v_in_scope_w09 THEN v_rec.sponsor_code ELSE NULL END,
+                CASE WHEN v_in_scope_w09 THEN v_rec.sponsor_name ELSE NULL END,
+                (v_rec.sponsor_id = p_viewer_member_id),
+                v_place_label,
+                v_rec.nat_cc, v_rec.res_cc, v_rpt_cid, v_eff_curr, v_eff_fx,
+                v_pct, v_rec.box_accum_usd, v_rec.target_req_usd,
+                v_rec.sub_total, v_rec.sub_left, v_rec.sub_right,
+                v_actual_node, v_expected_node,
+                v_rec.has_left_child, v_rec.has_right_child
             );
         END;
     END LOOP;
 
     SELECT COUNT(*) INTO v_reserve_cnt FROM _tmp_tree_nodes WHERE team_bucket = 'RESERVE_TEAM';
     SELECT COUNT(*) INTO v_comm_cnt    FROM _tmp_tree_nodes WHERE team_bucket = 'COMMISSION_TEAM';
+    SELECT COUNT(*),
+           COUNT(*) FILTER (WHERE viewer_root_arm = 'left'),
+           COUNT(*) FILTER (WHERE viewer_root_arm = 'right')
+      INTO v_total_team, v_left_arm_cnt, v_right_arm_cnt
+      FROM _tmp_tree_nodes
+     WHERE structural_me >= 2;
+
+    -- حساب تقارير الدول وحماية الأرباح الأجنبية التعويضية (GREATEST(0, ...) بلا خصم عكسي — D1 + T03)
+    SELECT COALESCE(jsonb_agg(row_to_json(cr)::jsonb ORDER BY cr.is_foreign ASC, cr.country_code ASC), '[]'::jsonb)
+      INTO v_country_reports
+      FROM (
+          SELECT c.country_code,
+                 c.country_name_i18n,
+                 c.currency_code,
+                 c.admin_fx_rate AS fx_rate,
+                 c.monthly_target_usd,
+                 TRUNC(c.monthly_target_usd / v_s02, 2) AS unit_share_usd,
+                 ROUND((
+                     c.monthly_target_usd
+                     + ROUND((c.monthly_target_usd * (v_company_pct / GREATEST(100.0 - v_company_pct, 1.0)))::numeric, 2)
+                     + COALESCE(c.compensatory_admin_fee_usd, 0.00)
+                 )::numeric, 2) AS compensatory_threshold_usd,
+                 (c.id <> v_viewer_cid) AS is_foreign,
+                 COALESCE((
+                     SELECT bq.is_qualified OR ((bq.carry_on_in_usd + bq.current_month_purchases_usd) >= bq.target_required_usd)
+                       FROM sawyan.monthly_target_boxes bq
+                      WHERE bq.member_id = p_viewer_member_id AND bq.country_id = c.id AND bq.period_ym = p_period_ym
+                 ), false) AS viewer_locally_qualified,
+                 COALESCE(agg.total_members, 0) AS total_members,
+                 COALESCE(agg.left_count, 0) AS left_count,
+                 COALESCE(agg.right_count, 0) AS right_count,
+                 COALESCE(agg.green_comm_count, 0) AS green_comm_count,
+                 COALESCE(agg.orange_count, 0) AS orange_count,
+                 COALESCE(agg.white_count, 0) AS white_count,
+                 COALESCE(agg.reserve_count, 0) AS reserve_count,
+                 COALESCE(agg.black_count, 0) AS black_count,
+                 COALESCE(agg.gross_actual_usd, 0.00) AS gross_actual_usd,
+                 COALESCE(agg.gross_expected_usd, 0.00) AS gross_expected_usd,
+                 ROUND((CASE
+                     WHEN c.id <> v_viewer_cid AND NOT COALESCE((
+                         SELECT bq.is_qualified OR ((bq.carry_on_in_usd + bq.current_month_purchases_usd) >= bq.target_required_usd)
+                           FROM sawyan.monthly_target_boxes bq
+                          WHERE bq.member_id = p_viewer_member_id AND bq.country_id = c.id AND bq.period_ym = p_period_ym
+                     ), false)
+                     THEN GREATEST(0.00, COALESCE(agg.gross_actual_usd, 0.00) - (
+                         c.monthly_target_usd
+                         + ROUND((c.monthly_target_usd * (v_company_pct / GREATEST(100.0 - v_company_pct, 1.0)))::numeric, 2)
+                         + COALESCE(c.compensatory_admin_fee_usd, 0.00)
+                     ))
+                     ELSE COALESCE(agg.gross_actual_usd, 0.00)
+                 END)::numeric, 2) AS net_actual_usd,
+                 ROUND((CASE
+                     WHEN c.id <> v_viewer_cid AND NOT COALESCE((
+                         SELECT bq.is_qualified OR ((bq.carry_on_in_usd + bq.current_month_purchases_usd) >= bq.target_required_usd)
+                           FROM sawyan.monthly_target_boxes bq
+                          WHERE bq.member_id = p_viewer_member_id AND bq.country_id = c.id AND bq.period_ym = p_period_ym
+                     ), false)
+                     THEN GREATEST(0.00,
+                         GREATEST(0.00, (COALESCE(agg.gross_actual_usd, 0.00) + COALESCE(agg.gross_expected_usd, 0.00)) - (
+                             c.monthly_target_usd
+                             + ROUND((c.monthly_target_usd * (v_company_pct / GREATEST(100.0 - v_company_pct, 1.0)))::numeric, 2)
+                             + COALESCE(c.compensatory_admin_fee_usd, 0.00)
+                         ))
+                         - GREATEST(0.00, COALESCE(agg.gross_actual_usd, 0.00) - (
+                             c.monthly_target_usd
+                             + ROUND((c.monthly_target_usd * (v_company_pct / GREATEST(100.0 - v_company_pct, 1.0)))::numeric, 2)
+                             + COALESCE(c.compensatory_admin_fee_usd, 0.00)
+                         ))
+                     )
+                     ELSE COALESCE(agg.gross_expected_usd, 0.00)
+                 END)::numeric, 2) AS net_expected_orange_usd
+            FROM sawyan.countries c
+            LEFT JOIN (
+                SELECT report_country_id AS cid,
+                       COUNT(*) FILTER (WHERE structural_me >= 2 AND node_color <> 'BLACK') AS total_members,
+                       COUNT(*) FILTER (WHERE structural_me >= 2 AND node_color <> 'BLACK' AND viewer_root_arm = 'left') AS left_count,
+                       COUNT(*) FILTER (WHERE structural_me >= 2 AND node_color <> 'BLACK' AND viewer_root_arm = 'right') AS right_count,
+                       COUNT(*) FILTER (WHERE structural_me >= 2 AND team_bucket = 'COMMISSION_TEAM') AS green_comm_count,
+                       COUNT(*) FILTER (WHERE structural_me >= 2 AND NOT is_reserve_zone AND node_color = 'ORANGE') AS orange_count,
+                       COUNT(*) FILTER (WHERE structural_me >= 2 AND NOT is_reserve_zone AND node_color = 'WHITE') AS white_count,
+                       COUNT(*) FILTER (WHERE structural_me >= 2 AND team_bucket = 'RESERVE_TEAM' AND node_color <> 'BLACK') AS reserve_count,
+                       COUNT(*) FILTER (WHERE structural_me >= 2 AND node_color = 'BLACK') AS black_count,
+                       COALESCE(SUM(node_actual_share_usd), 0.00) AS gross_actual_usd,
+                       COALESCE(SUM(node_expected_share_usd), 0.00) AS gross_expected_usd
+                  FROM _tmp_tree_nodes
+                 GROUP BY report_country_id
+            ) agg ON agg.cid = c.id
+           WHERE (v_lens_cid IS NULL AND (c.is_active = true OR COALESCE(agg.total_members, 0) > 0 OR c.id = v_viewer_cid))
+              OR (v_lens_cid IS NOT NULL AND c.id = v_lens_cid)
+      ) cr;
+
+    SELECT COALESCE(SUM((el->>'net_actual_usd')::numeric), 0.00),
+           COALESCE(SUM((el->>'net_expected_orange_usd')::numeric), 0.00)
+      INTO v_actual_usd, v_exp_orange_usd
+      FROM jsonb_array_elements(v_country_reports) el;
+
+    -- معاينة موقع الإسقاط المتوازن القادم للعضو (مطابقة 100% لخوارزمية auto_set_member_placement)
+    IF v_viewer_right_id IS NULL OR v_viewer_left_id IS NULL THEN
+        SELECT * INTO v_next_parent FROM sawyan.members WHERE id = p_viewer_member_id;
+        v_next_side := CASE WHEN v_viewer_right_id IS NULL THEN 'right' ELSE 'left' END;
+        SELECT CASE WHEN v_viewer_right_id IS NULL THEN 0 ELSE COALESCE((SELECT COUNT(*) FROM sawyan.tree_closure WHERE ancestor_id = v_viewer_right_id), 0) END,
+               CASE WHEN v_viewer_left_id IS NULL THEN 0 ELSE COALESCE((SELECT COUNT(*) FROM sawyan.tree_closure WHERE ancestor_id = v_viewer_left_id), 0) END
+          INTO v_bfs_right_cnt, v_bfs_left_cnt;
+    ELSE
+        SELECT COUNT(*) INTO v_bfs_right_cnt FROM sawyan.tree_closure WHERE ancestor_id = v_viewer_right_id;
+        SELECT COUNT(*) INTO v_bfs_left_cnt  FROM sawyan.tree_closure WHERE ancestor_id = v_viewer_left_id;
+        SELECT m.* INTO v_next_parent
+          FROM sawyan.tree_closure tc
+          JOIN sawyan.members m ON m.id = tc.descendant_id
+         WHERE tc.ancestor_id = CASE WHEN v_bfs_right_cnt <= v_bfs_left_cnt THEN v_viewer_right_id ELSE v_viewer_left_id END
+           AND (m.left_child_id IS NULL OR m.right_child_id IS NULL)
+           AND m.is_active_in_tree = true
+         ORDER BY tc.depth ASC,
+                  (CASE WHEN m.left_child_id IS NULL AND m.right_child_id IS NULL THEN 0 ELSE 1 END) ASC,
+                  m.member_code ASC
+         LIMIT 1;
+        IF FOUND THEN
+            v_next_side := CASE WHEN v_next_parent.right_child_id IS NULL THEN 'right' ELSE 'left' END;
+        END IF;
+    END IF;
+
+    IF v_next_parent.id IS NOT NULL THEN
+        v_next_preview := jsonb_build_object(
+            'next_parent_code', v_next_parent.member_code,
+            'next_parent_name', v_next_parent.full_name,
+            'next_side', v_next_side,
+            'target_arm', CASE WHEN v_viewer_right_id IS NULL THEN 'right'
+                               WHEN v_viewer_left_id IS NULL THEN 'left'
+                               WHEN v_bfs_right_cnt <= v_bfs_left_cnt THEN 'right'
+                               ELSE 'left' END,
+            'right_arm_count', v_bfs_right_cnt,
+            'left_arm_count', v_bfs_left_cnt
+        );
+    END IF;
 
     SELECT jsonb_agg(jsonb_build_object(
         'member_code', member_code,
         'full_name', full_name,
+        'parent_member_code', parent_member_code,
         'structural_me', structural_me || 'Me',
+        'company_gen', company_gen,
         'placement_side', placement_side,
+        'viewer_root_arm', viewer_root_arm,
         'node_color', node_color,
+        'visual_color', visual_color,
         'team_bucket', team_bucket,
         'stopper_slot', CASE WHEN stopper_rank IS NOT NULL THEN stopper_rank || '/' || v_s01 ELSE NULL END,
+        'reverse_ceiling_11', reverse_ceiling_11,
         'phone_visible', phone_visible,
-        'phone', phone_masked
+        'phone', phone_masked,
+        'real_sponsor_code', real_sponsor_code,
+        'real_sponsor_name', real_sponsor_name,
+        'is_direct_sponsored', is_direct_sponsored,
+        'placement_type_label', placement_type_label,
+        'nationality_country_code', nationality_country_code,
+        'residency_country_code', residency_country_code,
+        'currency_code', currency_code,
+        'fx_rate', fx_rate,
+        'target_pct', target_pct,
+        'box_accumulated_usd', box_accumulated_usd,
+        'target_required_usd', target_required_usd,
+        'subtree_total', subtree_total,
+        'subtree_left', subtree_left,
+        'subtree_right', subtree_right,
+        'node_actual_share_usd', node_actual_share_usd,
+        'node_expected_share_usd', node_expected_share_usd,
+        'has_left_child', has_left_child,
+        'has_right_child', has_right_child
     ) ORDER BY structural_me ASC, member_code ASC)
       INTO v_nodes_json
       FROM _tmp_tree_nodes;
 
     RETURN jsonb_build_object(
         'viewer_member_id', p_viewer_member_id,
-        'lens_country_code', COALESCE(p_country_code, 'ALL'),
+        'lens_country_code', COALESCE(upper(trim(p_country_code)), 'ALL'),
         'commission_team_count', v_comm_cnt,
         'reserve_team_aggregated_count', v_reserve_cnt, -- رقم إجمالي مجمع فقط (D26)
+        'total_team_count', v_total_team,
+        'left_arm_count', v_left_arm_cnt,
+        'right_arm_count', v_right_arm_cnt,
+        'actual_earnings_usd', v_actual_usd,
+        'expected_orange_earnings_usd', v_exp_orange_usd,
+        'next_placement_preview', v_next_preview,
+        'country_reports', v_country_reports,
         'nodes', COALESCE(v_nodes_json, '[]'::jsonb)
     );
 END;

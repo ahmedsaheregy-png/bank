@@ -5,6 +5,8 @@
 *.key
 database/backups/
 database/legacy_v1_archive/
+legacy_archive/
+visual_audit/
 database/SETUP.md
 .agent/
 __pycache__/

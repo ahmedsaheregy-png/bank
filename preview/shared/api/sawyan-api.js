@@ -474,6 +474,15 @@
             });
         },
 
+        async cancelMemberPendingPurchase({ memberId, transactionId, sessionToken = null }) {
+            const tok = sessionToken || SawyanAPI.getMemberSessionToken();
+            return await callRpc('cancel_member_pending_purchase', {
+                p_member_id: memberId,
+                p_transaction_id: transactionId,
+                p_session_token: tok
+            });
+        },
+
         async submitMemberDispute({
             memberId,
             transactionId,
@@ -540,6 +549,8 @@
             favoriteAction = null,
             currentPassword = null,
             newPassword = null,
+            homeLat = null,
+            homeLng = null,
             sessionToken = null
         }) {
             const tok = sessionToken || SawyanAPI.getSessionToken();
@@ -552,7 +563,9 @@
                 p_favorite_merchant_id: favoriteMerchantId,
                 p_favorite_action: favoriteAction,
                 p_current_password: currentPassword,
-                p_new_password: newPassword
+                p_new_password: newPassword,
+                p_home_lat: homeLat !== null && homeLat !== undefined && homeLat !== '' ? Number(homeLat) : null,
+                p_home_lng: homeLng !== null && homeLng !== undefined && homeLng !== '' ? Number(homeLng) : null
             });
         },
 

@@ -640,7 +640,78 @@ BEGIN
         'notifications', v_notifs,
         'disputes', v_disputes,
         'pending_return_requests', v_ret_reqs,
-        'academy_courses', v_courses
+        'academy_courses', v_courses,
+        'registered_referrals', COALESCE((
+            SELECT jsonb_agg(jsonb_build_object(
+                'id', rm.id,
+                'member_code', rm.member_code,
+                'full_name', rm.full_name,
+                'residency_country_code', rc.country_code,
+                'placement_side', rm.placement_side,
+                'parent_member_code', pm.member_code,
+                'generation_in_tree', rm.generation_in_tree,
+                'rel_depth', rtc.depth,
+                'structural_me', CASE WHEN rtc.depth IS NOT NULL THEN (rtc.depth + 1) || 'Me' ELSE NULL END,
+                'phone_visible', (rtc.depth IS NOT NULL AND rtc.depth BETWEEN 1 AND 10),
+                'phone', CASE WHEN rtc.depth IS NOT NULL AND rtc.depth BETWEEN 1 AND 10 THEN rm.phone ELSE NULL END,
+                'is_qualified_this_month', COALESCE(EXISTS(
+                    SELECT 1 FROM sawyan.monthly_target_boxes rtb
+                     WHERE rtb.member_id = rm.id AND rtb.period_ym = v_period AND rtb.is_qualified = true
+                ), false),
+                'kyc_status', rm.kyc_status,
+                'created_at', rm.created_at
+            ) ORDER BY rm.created_at DESC, rm.member_code DESC)
+              FROM sawyan.members rm
+              JOIN sawyan.countries rc ON rc.id = rm.residency_country_id
+              LEFT JOIN sawyan.members pm ON pm.id = rm.parent_member_id
+              LEFT JOIN sawyan.tree_closure rtc ON rtc.ancestor_id = v_member.id AND rtc.descendant_id = rm.id
+             WHERE rm.sponsor_id = v_member.id
+               AND rm.member_code > 0
+        ), '[]'::jsonb),
+        'closed_months_archive', COALESCE((
+            SELECT jsonb_agg(row_to_json(cma)::jsonb ORDER BY cma.period_ym DESC, cma.country_code ASC)
+              FROM (
+                  SELECT sc.period_ym,
+                         cc.country_code,
+                         cc.currency_code,
+                         cc.admin_fx_rate AS fx_rate,
+                         sc.step_status,
+                         sc.is_hard_locked,
+                         sc.payout_executed_at,
+                         COALESCE(tb.carry_on_in_usd, 0.00) AS carry_on_in_usd,
+                         COALESCE(tb.current_month_purchases_usd, 0.00) AS purchases_usd,
+                         COALESCE(tb.compensatory_incoming_usd, 0.00) AS compensatory_incoming_usd,
+                         COALESCE(tb.target_required_usd, cc.monthly_target_usd) AS target_required_usd,
+                         COALESCE(tb.target_consumed_usd, 0.00) AS target_consumed_usd,
+                         COALESCE(tb.carry_on_out_usd, 0.00) AS carry_on_out_usd,
+                         COALESCE(tb.is_qualified, false) AS is_qualified,
+                         COALESCE(tb.qualification_source, 'none') AS qualification_source,
+                         COALESCE((
+                             SELECT ROUND(SUM(cd.share_amount_usd)::numeric, 2)
+                               FROM sawyan.commission_distributions cd
+                               JOIN sawyan.pool_transactions pt ON pt.id = cd.pool_transaction_id
+                              WHERE pt.settlement_cycle_id = sc.id
+                                AND cd.beneficiary_id = v_member.id
+                         ), 0.00) AS commission_earned_usd,
+                         COALESCE((
+                             SELECT ROUND(SUM(sd.surplus_amount_usd)::numeric, 2)
+                               FROM sawyan.surplus_distributions sd
+                               JOIN sawyan.pool_transactions pt ON pt.id = sd.pool_transaction_id
+                              WHERE pt.settlement_cycle_id = sc.id
+                                AND sd.beneficiary_id = v_member.id
+                         ), 0.00) AS surplus_earned_usd
+                    FROM sawyan.settlement_cycles sc
+                    JOIN sawyan.countries cc ON cc.id = sc.country_id
+                    LEFT JOIN sawyan.monthly_target_boxes tb
+                           ON tb.member_id = v_member.id AND tb.country_id = sc.country_id AND tb.period_ym = sc.period_ym
+                   WHERE sc.is_hard_locked = true OR sc.payout_executed_at IS NOT NULL OR sc.period_ym < v_period
+              ) cma
+        ), '[]'::jsonb),
+        'residency_move_requests', CASE
+            WHEN v_member.metadata ? 'pending_residency_move' THEN
+                jsonb_build_array((v_member.metadata->'pending_residency_move') || jsonb_build_object('current_country_code', v_country.country_code))
+            ELSE '[]'::jsonb
+        END
     );
 END;
 $$;
@@ -1028,6 +1099,7 @@ BEGIN
 END;
 $$;
 
+DROP FUNCTION IF EXISTS sawyan.update_member_profile_settings(UUID, TEXT, VARCHAR, VARCHAR, VARCHAR, UUID, VARCHAR, TEXT, TEXT);
 CREATE OR REPLACE FUNCTION sawyan.update_member_profile_settings(
     p_member_id            UUID,
     p_session_token        TEXT DEFAULT NULL,
@@ -1037,11 +1109,13 @@ CREATE OR REPLACE FUNCTION sawyan.update_member_profile_settings(
     p_favorite_merchant_id UUID DEFAULT NULL,
     p_favorite_action      VARCHAR(12) DEFAULT NULL,
     p_current_password     TEXT DEFAULT NULL,
-    p_new_password         TEXT DEFAULT NULL
+    p_new_password         TEXT DEFAULT NULL,
+    p_home_lat             NUMERIC DEFAULT NULL,
+    p_home_lng             NUMERIC DEFAULT NULL
 ) RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = ''
+SET search_path = pg_catalog, pg_temp
 AS $$
 DECLARE
     v_member   sawyan.members%ROWTYPE;
@@ -1081,6 +1155,17 @@ BEGIN
         END IF;
     END IF;
 
+    IF p_home_lat IS NOT NULL AND p_home_lng IS NOT NULL THEN
+        IF p_home_lat < -90 OR p_home_lat > 90 OR p_home_lng < -180 OR p_home_lng > 180 THEN
+            RAISE EXCEPTION 'INVALID_HOME_GPS_COORDINATES';
+        END IF;
+        v_meta := jsonb_set(
+            v_meta,
+            '{home_gps}',
+            jsonb_build_object('lat', ROUND(p_home_lat::numeric, 6), 'lng', ROUND(p_home_lng::numeric, 6), 'updated_at', now())
+        );
+    END IF;
+
     UPDATE sawyan.members
        SET full_name = COALESCE(NULLIF(trim(p_full_name), ''), full_name),
            email = COALESCE(NULLIF(lower(trim(p_email)), ''), email),
@@ -1095,6 +1180,7 @@ BEGIN
         'full_name', v_member.full_name,
         'email', v_member.email,
         'manual_district_fallback', v_member.manual_district_fallback,
+        'home_gps', v_member.metadata->'home_gps',
         'favorite_merchant_ids', COALESCE(v_member.metadata->'favorite_merchant_ids', '[]'::jsonb)
     );
 END;
@@ -1206,6 +1292,65 @@ BEGIN
 END;
 $$;
 
+-- 8ب. إلغاء طلب التوثيق المعلق من قِبل العضو قبل تأكيد التاجر (مع تحرير الـ Soft Hold فوراً)
+CREATE OR REPLACE FUNCTION sawyan.cancel_member_pending_purchase(
+    p_member_id      UUID,
+    p_transaction_id UUID,
+    p_session_token  TEXT DEFAULT NULL
+) RETURNS JSONB
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $$
+DECLARE
+    v_member sawyan.members%ROWTYPE;
+    v_tx     sawyan.transactions%ROWTYPE;
+BEGIN
+    v_member := sawyan.verify_member_session(p_member_id, p_session_token);
+
+    SELECT * INTO v_tx
+      FROM sawyan.transactions
+     WHERE id = p_transaction_id
+       AND member_id = v_member.id
+     FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'PENDING_PURCHASE_NOT_FOUND';
+    END IF;
+    IF v_tx.status <> 'pending' THEN
+        RAISE EXCEPTION 'ONLY_PENDING_PURCHASE_CAN_BE_CANCELLED: %', v_tx.status;
+    END IF;
+
+    UPDATE sawyan.merchants
+       SET soft_hold_balance = GREATEST(0, soft_hold_balance - v_tx.commission_amount)
+     WHERE id = v_tx.merchant_id;
+
+    UPDATE sawyan.transactions
+       SET status = 'rejected',
+           commission_snapshot = COALESCE(commission_snapshot, '{}'::jsonb)
+               || jsonb_build_object('cancelled_by', 'member', 'cancelled_at', now())
+     WHERE id = v_tx.id;
+
+    INSERT INTO sawyan.notifications (recipient_type, recipient_id, event_name, channel, payload)
+    VALUES ('merchant', v_tx.merchant_id, 'PendingPurchaseCancelledByMember', 'in_app',
+            jsonb_build_object('transaction_id', v_tx.id, 'sw_short_code', v_tx.sw_short_code, 'member_code', v_member.member_code));
+
+    PERFORM sawyan.append_audit_log(
+        'member', v_member.id, 'pending_purchase_cancelled_by_member', 'transactions', v_tx.id::text,
+        jsonb_build_object('status', 'pending'),
+        jsonb_build_object('status', 'rejected', 'cancelled_by', 'member')
+    );
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'transaction_id', v_tx.id,
+        'sw_short_code', v_tx.sw_short_code,
+        'status', 'rejected'
+    );
+END;
+$$;
+
 -- منح صلاحيات الاستدعاء المحكومة بالجلسة (verify_member_session)
 REVOKE ALL ON FUNCTION sawyan.verify_member_session(UUID, TEXT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION sawyan.register_new_member(VARCHAR, VARCHAR, BIGINT, TEXT, CHAR, CHAR, BIGINT, VARCHAR, VARCHAR, JSONB) TO anon, authenticated, service_role;
@@ -1217,5 +1362,6 @@ GRANT EXECUTE ON FUNCTION sawyan.submit_member_dispute(UUID, UUID, TEXT, TEXT, T
 GRANT EXECUTE ON FUNCTION sawyan.preview_pos_return_impact(UUID, UUID, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.member_respond_pos_return(UUID, UUID, VARCHAR, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.submit_member_review(UUID, UUID, SMALLINT, TEXT, TEXT) TO anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION sawyan.update_member_profile_settings(UUID, TEXT, VARCHAR, VARCHAR, VARCHAR, UUID, VARCHAR, TEXT, TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION sawyan.update_member_profile_settings(UUID, TEXT, VARCHAR, VARCHAR, VARCHAR, UUID, VARCHAR, TEXT, TEXT, NUMERIC, NUMERIC) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION sawyan.cancel_member_pending_purchase(UUID, UUID, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.submit_member_pending_purchase(UUID, UUID, UUID, NUMERIC, VARCHAR, UUID, TEXT, TEXT) TO anon, authenticated, service_role;

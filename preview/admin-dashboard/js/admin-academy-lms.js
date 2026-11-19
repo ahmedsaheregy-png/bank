@@ -94,7 +94,10 @@
             const p = document.createElement('div');
             p.id = 'academyAdminPage';
             p.className = 'page';
+            p.setAttribute('data-spec-id', 'admin-academy-lms');
             contentArea.appendChild(p);
+        } else {
+            document.getElementById('academyAdminPage').setAttribute('data-spec-id', 'admin-academy-lms');
         }
     }
 
@@ -130,6 +133,7 @@
     }
 
     function renderAcademyAdminShell(pg) {
+        if (pg && pg.setAttribute) pg.setAttribute('data-spec-id', 'admin-academy-lms');
         const st = LMS_STATE.stats || {};
         const editable = canEditAcademy();
         const schema = (window.SAWYAN && window.SAWYAN.API) ? window.SAWYAN.API.getActiveSchema() : 'sawyan';

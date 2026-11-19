@@ -1,0 +1,376 @@
+/* ============================================================================
+ * SAWYAN V3.0 — Unified 4-Tier Responsive CSS Grid App Shell (D30)
+ * Enforces:
+ *   1. >= 1024px (Desktop): Sticky 230px sidebar in dedicated Grid track
+ *   2. 600px–1023px (Half-Screen 680px/780px & Tablet): 64px Compact Icon Rail
+ *      with expandable floating drawer + 0px² overlap with .main-content
+ *   3. <= 599px (Mobile 375px): Bottom navigation + Full More Drawer
+ *   4. Universal min-width: 0 on content columns + Safe Responsive Tables
+ * ============================================================================ */
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html, body {
+    max-width: 100%;
+    overflow-x: clip;
+}
+
+.dashboard-container {
+    width: 100%;
+    max-width: 100%;
+    min-height: 100vh;
+}
+
+.main-content,
+.content-area,
+.page,
+.page.active {
+    min-width: 0 !important;
+    max-width: 100%;
+}
+
+.main-content {
+    overflow-x: clip;
+}
+
+.table-responsive-wrap,
+.table-container {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent rigid multi-column grids from overflowing 680px/375px containers */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)) !important;
+}
+
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)) !important;
+}
+
+.merchants-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)) !important;
+}
+
+/* Rail toggle button (shown cleanly in compact 600-1023px tier) */
+.app-shell-rail-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 34px;
+    margin: 8px auto 4px auto;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+    border-radius: 9px;
+    font-size: 1.05rem;
+    font-weight: 800;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s ease;
+}
+
+.app-shell-rail-toggle:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.app-shell-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 940;
+}
+
+.app-shell-backdrop.open {
+    display: block;
+}
+
+/* ----------------------------------------------------------------------------
+ * Tier 1: Desktop (>= 1024px) — Dedicated 230px Sidebar + Sticky Flow
+ * ---------------------------------------------------------------------------- */
+@media (min-width: 1024px) {
+    .dashboard-container {
+        display: grid !important;
+        grid-template-columns: 230px minmax(0, 1fr) !important;
+        align-items: start;
+    }
+
+    .sidebar {
+        display: flex !important;
+        position: sticky !important;
+        top: 0 !important;
+        right: auto !important;
+        left: auto !important;
+        width: 230px !important;
+        height: 100vh !important;
+        z-index: 40;
+        flex-shrink: 0;
+    }
+
+    .main-content {
+        margin-right: 0 !important;
+        margin-left: 0 !important;
+        width: 100% !important;
+        padding: 20px 26px !important;
+    }
+
+    .bottom-nav {
+        display: none !important;
+    }
+}
+
+/* ----------------------------------------------------------------------------
+ * Tier 2: Half-Screen & Tablet (600px–1023px, covers 680px & 780px viewports)
+ * 64px Compact Icon Rail in dedicated Grid track -> 0px² overlap with content
+ * ---------------------------------------------------------------------------- */
+@media (min-width: 600px) and (max-width: 1023px) {
+    .dashboard-container {
+        display: grid !important;
+        grid-template-columns: 64px minmax(0, 1fr) !important;
+        align-items: start;
+    }
+
+    .sidebar {
+        display: flex !important;
+        flex-direction: column !important;
+        position: sticky !important;
+        top: 0 !important;
+        right: auto !important;
+        left: auto !important;
+        width: 64px !important;
+        height: 100vh !important;
+        overflow-y: auto;
+        overflow-x: hidden;
+        z-index: 50;
+        padding: 4px 0 !important;
+    }
+
+    .app-shell-rail-toggle {
+        display: inline-flex;
+    }
+
+    /* Compact Rail state (collapsed) */
+    .sidebar:not(.rail-expanded) .sidebar-header {
+        padding: 6px 4px !important;
+    }
+
+    .sidebar:not(.rail-expanded) .sawyan-brand-mark {
+        gap: 0 !important;
+        justify-content: center;
+    }
+
+    .sidebar:not(.rail-expanded) .sawyan-brand-mark > span {
+        display: none !important;
+    }
+
+    .sidebar:not(.rail-expanded) .user-profile {
+        display: none !important;
+    }
+
+    .sidebar:not(.rail-expanded) .sidebar-nav {
+        padding: 4px !important;
+        width: 100%;
+    }
+
+    .sidebar:not(.rail-expanded) .nav-item {
+        justify-content: center !important;
+        gap: 0 !important;
+        padding: 10px 4px !important;
+        min-height: 40px;
+        border-radius: 8px;
+    }
+
+    .sidebar:not(.rail-expanded) .nav-item > span:not(.icon):not(.nav-icon) {
+        display: none !important;
+    }
+
+    .sidebar:not(.rail-expanded) .nav-item .icon,
+    .sidebar:not(.rail-expanded) .nav-item .nav-icon {
+        font-size: 1.15rem !important;
+        width: auto !important;
+        margin: 0 !important;
+    }
+
+    .sidebar:not(.rail-expanded) .sidebar-footer {
+        padding: 8px 6px !important;
+    }
+
+    .sidebar:not(.rail-expanded) .sidebar-footer .btn {
+        font-size: 0 !important;
+        padding: 8px 4px !important;
+        min-height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .sidebar:not(.rail-expanded) .sidebar-footer .btn::before {
+        content: "🚪";
+        font-size: 1.05rem;
+        line-height: 1;
+    }
+
+    /* Expanded Overlay Drawer when user toggles Rail button */
+    .sidebar.rail-expanded {
+        position: fixed !important;
+        top: 0 !important;
+        right: 0 !important;
+        width: 245px !important;
+        height: 100vh !important;
+        z-index: 950 !important;
+        box-shadow: -8px 0 28px rgba(15, 23, 42, 0.35);
+    }
+
+    .sidebar.rail-expanded .app-shell-rail-toggle {
+        margin: 8px 12px 4px auto;
+        width: auto;
+        padding: 0 10px;
+    }
+
+    .main-content {
+        margin-right: 0 !important;
+        margin-left: 0 !important;
+        width: 100% !important;
+        padding: 14px 16px !important;
+    }
+
+    .dashboard-header {
+        margin-bottom: 16px !important;
+    }
+
+    .dashboard-header h1 {
+        font-size: 1.35rem !important;
+    }
+
+    /* Keep table headers visible at 600–1023px inside scrollable wrapper */
+    .data-table {
+        display: table !important;
+        width: 100% !important;
+    }
+
+    .data-table thead {
+        display: table-header-group !important;
+    }
+
+    .data-table tbody {
+        display: table-row-group !important;
+    }
+
+    .data-table tr {
+        display: table-row !important;
+    }
+
+    .data-table td,
+    .data-table th {
+        display: table-cell !important;
+        width: auto !important;
+    }
+
+    .data-table td::before {
+        content: none !important;
+        display: none !important;
+    }
+
+    .bottom-nav {
+        display: none !important;
+    }
+}
+
+/* ----------------------------------------------------------------------------
+ * Tier 3: Mobile (< 600px, covers 375x812 viewport)
+ * ---------------------------------------------------------------------------- */
+@media (max-width: 599px) {
+    .dashboard-container {
+        display: block !important;
+    }
+
+    .sidebar {
+        display: none !important;
+    }
+
+    .main-content {
+        margin-right: 0 !important;
+        margin-left: 0 !important;
+        width: 100% !important;
+        padding: 12px 12px 92px !important;
+    }
+
+    .dashboard-header {
+        padding: 10px 4px !important;
+        margin-bottom: 14px !important;
+    }
+
+    .dashboard-header h1 {
+        font-size: 1.2rem !important;
+    }
+
+    .bottom-nav {
+        display: flex !important;
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 900 !important;
+    }
+
+    /* Convert labeled data tables into stacked mobile cards ONLY when labels exist */
+    .data-table[data-has-labels="1"] {
+        display: block !important;
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+
+    .data-table[data-has-labels="1"] thead {
+        display: none !important;
+    }
+
+    .data-table[data-has-labels="1"] tbody {
+        display: block !important;
+    }
+
+    .data-table[data-has-labels="1"] tbody tr {
+        display: block !important;
+        background: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 12px !important;
+        margin-bottom: 12px !important;
+        padding: 12px !important;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06) !important;
+    }
+
+    .data-table[data-has-labels="1"] tbody td {
+        display: flex !important;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        width: 100% !important;
+        text-align: left;
+        padding: 7px 2px !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        font-size: 0.85rem !important;
+        word-break: break-word;
+    }
+
+    .data-table[data-has-labels="1"] tbody td::before {
+        content: attr(data-label) !important;
+        font-weight: 800 !important;
+        color: #475569 !important;
+        text-align: right;
+        flex-shrink: 0;
+        font-size: 0.78rem !important;
+    }
+
+    .data-table[data-has-labels="1"] tbody td:last-child {
+        border-bottom: none !important;
+        justify-content: flex-end;
+    }
+}

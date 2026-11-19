@@ -1,21 +1,22 @@
 ﻿/* ============================================================
-   SAWYAN Admin — Screen 1: Command Center (Home) — DEMO SIMULATION
-   - بيانات محاكاة متسقة حسابياً (ليست إنتاجية)
-   - مصدر الحقيقة الواحد: window.SAWYAN_ADMIN_DEMO (تُغذّى منه باقي الشاشات لاحقاً)
+   SAWYAN Admin — Screen 1: Command Center (Home) — LIVE POSTGRESQL
+   - مصدر الحقيقة الواحد: حزمة قاعدة البيانات الحية (get_admin_sovereign_bundle)
+   - يبدأ بالحالة الصفرية النظيفة حتى وصول حزمة PostgreSQL بدون أي بيانات وهمية
    ============================================================ */
-var __IS_PROD_ZERO = (typeof window !== 'undefined' && window.SAWYAN && !window.SAWYAN.isParallelDemo);
-window.SAWYAN_ADMIN_DEMO = __IS_PROD_ZERO ? {
-    period_label: 'نوفمبر 2026 — بيئة الإنتاج الرسمية الحية (Zero-State)',
+window.SAWYAN_ADMIN_DEMO = {
+    schema: 'sawyan',
+    period_label: 'نوفمبر 2026 — بانتظار المزامنة الحية',
     members: { total: 0, active: 0, pending_kyc: 0, suspended: 0 },
     merchants: { total: 0, active: 0, frozen: 0, pending_approval: 0, low_balance: 0 },
     ops_mtd: 0,
     gmv_mtd: 0,
+    comm_total: 0,
     commission_rate: 0.10,
     treasury_share: 0.25,
     plan_share: 0.75,
     prepaid_held: 0,
     low_balance_threshold: 500,
-    pending: { withdrawals: 0, disputes: 0, support: 0 },
+    pending: { withdrawals: 0, disputes: 0, support: 0, promo: 0 },
     daily_ops: [
         { d: 'الأحد', v: 0 }, { d: 'الاثنين', v: 0 }, { d: 'الثلاثاء', v: 0 },
         { d: 'الأربعاء', v: 0 }, { d: 'الخميس', v: 0 }, { d: 'الجمعة', v: 0 },
@@ -23,44 +24,18 @@ window.SAWYAN_ADMIN_DEMO = __IS_PROD_ZERO ? {
     ],
     categories: [],
     activity: []
-} : {
-    period_label: 'من 1 إلى 14 نوفمبر 2026',
-    members: { total: 4860, active: 4780, pending_kyc: 23, suspended: 57 },
-    merchants: { total: 38, active: 36, frozen: 1, pending_approval: 1, low_balance: 2 },
-    ops_mtd: 1978,
-    gmv_mtd: 1284600,
-    commission_rate: 0.10,
-    treasury_share: 0.25,
-    plan_share: 0.75,
-    prepaid_held: 186300,
-    low_balance_threshold: 500,
-    pending: { withdrawals: 12, disputes: 3, support: 9 },
-    daily_ops: [
-        { d: 'الأحد 8', v: 128 }, { d: 'الاثنين 9', v: 141 }, { d: 'الثلاثاء 10', v: 119 },
-        { d: 'الأربعاء 11', v: 152 }, { d: 'الخميس 12', v: 163 }, { d: 'الجمعة 13', v: 187 },
-        { d: 'السبت 14', v: 148 }
-    ],
-    categories: [
-        { n: 'سوبر ماركت', p: 41, c: '#10b981' }, { n: 'صيدليات', p: 18, c: '#3b82f6' },
-        { n: 'مطاعم وكافيهات', p: 16, c: '#f59e0b' }, { n: 'ملابس', p: 11, c: '#8b5cf6' },
-        { n: 'إلكترونيات', p: 9, c: '#ef4444' }, { n: 'أخرى', p: 5, c: '#94a3b8' }
-    ],
-    activity: [
-        { t: 'اليوم 06:45 م', i: '💳', x: 'أحمد مصطفى (#124) اشترى من سوبر ماركت الفارق المركزي بمبلغ 500.00 ج.م', c: '50.00' },
-        { t: 'اليوم 05:20 م', i: '💳', x: 'منى علي (#210) اشترت من صيدلية الشفاء بمبلغ 340.00 ج.م', c: '34.00' },
-        { t: 'اليوم 04:30 م', i: '💳', x: 'خالد حسن (#125) اشترى من سوبر ماركت الفارق المركزي بمبلغ 1,250.00 ج.م', c: '125.00' },
-        { t: 'اليوم 03:10 م', i: '💸', x: 'طلب سحب جديد من العضو محمد دمير (#101) بمبلغ 1,500.00 ج.م — بانتظار المراجعة', c: null },
-        { t: 'اليوم 02:15 م', i: '💳', x: 'إبراهيم عادل (#135) اشترى من سوبر ماركت الفارق المركزي بمبلغ 825.00 ج.م', c: '82.50' },
-        { t: 'اليوم 01:05 م', i: '💳', x: 'يوسف كمال (#318) اشترى من مطعم البيت الشامي بمبلغ 780.00 ج.م', c: '78.00' }
-    ]
 };
 
 (function () {
     var D = window.SAWYAN_ADMIN_DEMO;
-    var fmt = function (n) { return Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
-    var fmt0 = function (n) { return Number(n).toLocaleString('en-US'); };
+    var fmt = function (n) { return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+    var fmt0 = function (n) { return Number(n || 0).toLocaleString('en-US'); };
 
-    // الانتقال لأي شاشة عبر نفس زر الشريط الجانبي (يضمن تحميل المحتوى)
+    function esc(s) {
+        return String(s === null || s === undefined ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
     window.goAdminPage = function (page) {
         var link = document.querySelector('.sidebar .nav-item[data-page="' + page + '"]') ||
                    document.querySelector('.nav-item[data-page="' + page + '"]');
@@ -73,14 +48,11 @@ window.SAWYAN_ADMIN_DEMO = __IS_PROD_ZERO ? {
     };
 
     function promoPendingCount() {
-        var p = null;
-        try { p = JSON.parse(localStorage.getItem('sawyan_active_merchant_promo') || 'null'); } catch (e) { p = null; }
-        if (!p) return __IS_PROD_ZERO ? 0 : 1;
-        return p.status === 'PENDING_ADMIN_APPROVAL' ? 1 : 0;
+        return Number((D.pending && D.pending.promo) || 0);
     }
 
     function actionRow(icon, count, title, hint, btnLabel, onclick, id) {
-        var done = count === 0;
+        var done = Number(count || 0) === 0;
         return '' +
         '<div id="' + (id || '') + '" style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border:1.5px solid ' + (done ? '#d1fae5' : '#fde68a') + '; background:' + (done ? '#f0fdf4' : '#fffbeb') + '; border-radius:12px;">' +
             '<div style="display:flex; align-items:center; gap:12px;">' +
@@ -108,18 +80,112 @@ window.SAWYAN_ADMIN_DEMO = __IS_PROD_ZERO ? {
         '</div>';
     }
 
+    window.hydrateAdminFromLiveBundle = function (bundle) {
+        if (!bundle || typeof bundle !== 'object') return;
+        var k = bundle.kpis || {};
+        var mems = Array.isArray(bundle.members) ? bundle.members.filter(function (m) { return Number(m.member_code) > 0; }) : [];
+        var mers = Array.isArray(bundle.merchants) ? bundle.merchants : [];
+        var txs = Array.isArray(bundle.transactions) ? bundle.transactions : [];
+        var disputes = Array.isArray(bundle.disputes) ? bundle.disputes : [];
+        var tickets = Array.isArray(bundle.support_tickets) ? bundle.support_tickets : [];
+        var wds = Array.isArray(bundle.withdrawals) ? bundle.withdrawals : [];
+        var flash = Array.isArray(bundle.flash_offers_queue) ? bundle.flash_offers_queue : [];
+        var schema = (window.SAWYAN && window.SAWYAN.API && typeof window.SAWYAN.API.getActiveSchema === 'function')
+            ? window.SAWYAN.API.getActiveSchema()
+            : 'sawyan';
+
+        D.schema = schema;
+        D.period_label = (k.period_ym || '2026-11') + ' — قاعدة البيانات الحية (' + schema + ')';
+        D.members = {
+            total: Number(k.members_total !== undefined ? k.members_total : mems.length),
+            active: mems.filter(function (m) { return !m.is_tombstone_banned && m.is_active_in_tree !== false; }).length,
+            pending_kyc: mems.filter(function (m) { return m.kyc_status === 'pending'; }).length,
+            suspended: mems.filter(function (m) { return !!m.is_tombstone_banned; }).length
+        };
+        D.merchants = {
+            total: Number(k.merchants_total !== undefined ? k.merchants_total : mers.length),
+            active: Number(k.merchants_active !== undefined ? k.merchants_active : mers.filter(function (m) { return m.is_active && !m.is_isolated; }).length),
+            frozen: Number(k.merchants_isolated !== undefined ? k.merchants_isolated : mers.filter(function (m) { return !!m.is_isolated; }).length),
+            pending_approval: mers.filter(function (m) { return !m.is_active; }).length,
+            low_balance: mers.filter(function (m) { return m.is_active && Number(m.free_balance_pct || 0) <= 30; }).length
+        };
+
+        var completedTxs = txs.filter(function (t) { return t.status === 'completed'; });
+        D.ops_mtd = Number(k.transactions_completed !== undefined ? k.transactions_completed : completedTxs.length);
+        D.gmv_mtd = Number(k.gmv_local_completed || 0);
+        D.comm_total = Number(k.commission_local_completed || (D.gmv_mtd * D.commission_rate));
+        D.prepaid_held = mers.reduce(function (s, m) {
+            return s + Math.max(0, Number(m.actual_cash_balance || 0) - Number(m.soft_hold_balance || 0));
+        }, 0);
+
+        D.pending = {
+            withdrawals: Number(k.pending_withdrawals !== undefined ? k.pending_withdrawals : wds.filter(function (w) { return w.status === 'processing_payout'; }).length),
+            disputes: Number(k.open_disputes !== undefined ? k.open_disputes : disputes.filter(function (d) { return d.status === 'awaiting_merchant_friendly' || d.status === 'escalated_to_admin' || d.status === 'appealed_72h'; }).length),
+            support: tickets.filter(function (t) { return t.status === 'open' || t.status === 'in_progress'; }).length,
+            promo: flash.filter(function (x) { return x.event_name === 'MerchantFlashOfferPending'; }).length
+        };
+
+        // بناء الرسم البياني لآخر 7 أيام من المعاملات الحية
+        var dayLabels = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+        var dayCounts = [0, 0, 0, 0, 0, 0, 0];
+        completedTxs.forEach(function (t) {
+            var dt = new Date(t.created_at);
+            if (!isNaN(dt.getTime())) dayCounts[dt.getDay()] += 1;
+        });
+        D.daily_ops = dayLabels.map(function (lbl, idx) { return { d: lbl, v: dayCounts[idx] }; });
+
+        // بناء توزيع الفئات من التجار الفعليين
+        var catMap = {};
+        var totalCatGmv = 0;
+        var merByCode = {};
+        mers.forEach(function (m) { merByCode[m.merchant_code] = m; });
+        mers.forEach(function (m) {
+            var cat = m.category || 'متنوع';
+            var g = Number(m.gmv_completed || 0);
+            if (g > 0) {
+                catMap[cat] = (catMap[cat] || 0) + g;
+                totalCatGmv += g;
+            }
+        });
+        var palette = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#94a3b8'];
+        D.categories = totalCatGmv > 0
+            ? Object.keys(catMap).sort(function (a, b) { return catMap[b] - catMap[a]; }).slice(0, 6).map(function (cat, i) {
+                return { n: cat, p: Math.max(1, Math.round((catMap[cat] / totalCatGmv) * 100)), c: palette[i % palette.length] };
+            })
+            : [];
+
+        // بناء سجل النشاط الأخير من قاعدة البيانات الحية
+        D.activity = txs.slice(0, 8).map(function (t) {
+            var dt = t.created_at ? new Date(t.created_at).toLocaleString('ar-EG') : '';
+            var cur = t.currency_code || 'EGP';
+            var desc = esc(t.member_name || ('عضو #' + (t.member_code || ''))) +
+                ' (#' + Number(t.member_code || 0) + ') — ' +
+                esc(t.merchant_name || '') +
+                ' بمبلغ ' + fmt(t.total_amount) + ' ' + esc(cur) +
+                ' [' + esc(t.sw_short_code || '') + ']';
+            return {
+                t: dt,
+                i: t.status === 'completed' ? '💳' : (t.status === 'reversed' ? '↩️' : '⏳'),
+                x: desc,
+                c: fmt(t.commission_amount) + ' ' + esc(cur)
+            };
+        });
+
+        renderHome();
+        refreshPromoRow();
+    };
+
     function renderHome() {
         var page = document.getElementById('homePage');
         if (!page) return;
 
-        var comm = D.gmv_mtd * D.commission_rate;
+        var comm = D.comm_total !== undefined ? Number(D.comm_total) : (D.gmv_mtd * D.commission_rate);
         var treasury = comm * D.treasury_share;
         var plan = comm * D.plan_share;
         var avgTicket = D.ops_mtd > 0 ? (D.gmv_mtd / D.ops_mtd) : 0;
         var weekTotal = D.daily_ops.reduce(function (s, x) { return s + x.v; }, 0);
         var maxV = Math.max(1, Math.max.apply(null, D.daily_ops.map(function (x) { return x.v; })));
 
-        // --- الرسم الأسبوعي (أعمدة CSS) ---
         var bars = D.daily_ops.map(function (x, idx) {
             var h = Math.round((x.v / maxV) * 150);
             var last = idx === D.daily_ops.length - 1;
@@ -130,90 +196,86 @@ window.SAWYAN_ADMIN_DEMO = __IS_PROD_ZERO ? {
             '</div>';
         }).join('');
 
-        // --- توزيع الفئات ---
         var cats = D.categories.length === 0
-            ? '<div style="padding:24px 12px;text-align:center;color:#64748b;font-weight:700;font-size:0.85rem;background:#f8fafc;border-radius:10px;border:1px dashed #cbd5e1;">لا توجد مبيعات مصنفة بعد — السجل صفري (0.00 ج.م)</div>'
+            ? '<div style="padding:24px 12px;text-align:center;color:#64748b;font-weight:700;font-size:0.85rem;background:#f8fafc;border-radius:10px;border:1px dashed #cbd5e1;">لا توجد مبيعات مصنفة مسجلة في قاعدة البيانات بعد (0.00)</div>'
             : D.categories.map(function (c) {
                 return '<div style="margin-bottom:10px;">' +
-                    '<div style="display:flex; justify-content:space-between; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:3px;"><span>' + c.n + '</span><span style="font-family:Poppins,sans-serif;">' + c.p + '%</span></div>' +
+                    '<div style="display:flex; justify-content:space-between; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:3px;"><span>' + esc(c.n) + '</span><span style="font-family:Poppins,sans-serif;">' + c.p + '%</span></div>' +
                     '<div style="background:#f1f5f9; border-radius:6px; height:10px; overflow:hidden;"><div style="width:' + c.p + '%; height:100%; background:' + c.c + ';"></div></div>' +
                 '</div>';
             }).join('');
 
-        // --- النشاط الأخير ---
         var act = D.activity.length === 0
-            ? '<div style="padding:26px 16px;text-align:center;color:#64748b;font-weight:700;font-size:0.9rem;background:#f8fafc;border-radius:12px;border:1px dashed #cbd5e1;">✨ لا توجد أي عمليات أو حركات مسجلة حتى الآن — قاعدة بيانات الإنتاج نظيفة وصفرية 100% وجاهزة لبدء أول حركة رسمية.</div>'
+            ? '<div style="padding:26px 16px;text-align:center;color:#64748b;font-weight:700;font-size:0.9rem;background:#f8fafc;border-radius:12px;border:1px dashed #cbd5e1;">✨ لا توجد عمليات مسجلة حتى الآن — سجل قاعدة البيانات صفري ونقي 100%.</div>'
             : D.activity.map(function (a) {
                 return '<div style="display:flex; align-items:center; gap:12px; padding:10px 4px; border-bottom:1px solid #f1f5f9;">' +
                     '<div style="width:38px; height:38px; background:#ecfdf5; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">' + a.i + '</div>' +
                     '<div style="flex:1; font-size:0.86rem; color:#1e293b; font-weight:600;">' + a.x +
-                        (a.c ? ' <span style="color:#059669; font-weight:800;">• عمولة سويا ' + a.c + ' ج.م</span>' : '') + '</div>' +
-                    '<div style="font-size:0.74rem; color:#94a3b8; white-space:nowrap;">' + a.t + '</div>' +
+                        (a.c ? ' <span style="color:#059669; font-weight:800;">• عمولة سويا ' + a.c + '</span>' : '') + '</div>' +
+                    '<div style="font-size:0.74rem; color:#94a3b8; white-space:nowrap;">' + esc(a.t) + '</div>' +
                 '</div>';
             }).join('');
 
+        var bannerEl = document.getElementById('sawyanLiveDbBanner');
+        var promoEl = document.getElementById('adminPromoModerationSection');
+
         page.innerHTML = '' +
+        '<div id="adminHomeBannerSlot"></div>' +
         '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:14px;">' +
             '<div><div style="font-size:1.1rem; font-weight:900; color:#0f172a;">🧭 غرفة العمليات المركزية</div>' +
-            '<div style="font-size:0.8rem; color:#64748b; margin-top:2px;">ملخص الشهر الجاري: ' + D.period_label + '</div></div>' +
-            (__IS_PROD_ZERO ? '<span style="background:#dcfce7; color:#065f46; border:1px solid #6ee7b7; padding:4px 12px; border-radius:8px; font-size:0.74rem; font-weight:800;">🟢 بيئة الإنتاج الحية — سجل صفري نقي (Zero-State)</span>' : '<span style="background:#fef3c7; color:#92400e; border:1px solid #fcd34d; padding:4px 12px; border-radius:8px; font-size:0.74rem; font-weight:800;">🧪 بيانات محاكاة للتجربة</span>') +
+            '<div style="font-size:0.8rem; color:#64748b; margin-top:2px;">ملخص الدورة: ' + esc(D.period_label) + '</div></div>' +
+            '<span style="background:#dcfce7; color:#065f46; border:1px solid #6ee7b7; padding:4px 12px; border-radius:8px; font-size:0.74rem; font-weight:800;">🟢 مرتبط بقاعدة البيانات الحية (' + esc(D.schema) + ')</span>' +
         '</div>' +
 
-        // KPIs
-        '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:14px; margin-bottom:18px;">' +
-            kpi('👥', 'إجمالي الأعضاء', fmt0(D.members.total), fmt0(D.members.active) + ' نشط • ' + D.members.pending_kyc + ' بانتظار توثيق الهوية • ' + D.members.suspended + ' موقوف', '#3b82f6') +
-            kpi('🏪', 'إجمالي التجار', fmt0(D.merchants.total), D.merchants.active + ' نشط • ' + D.merchants.frozen + ' مجمّد • ' + D.merchants.pending_approval + ' بانتظار الاعتماد', '#10b981') +
-            kpi('💳', 'عمليات الشهر حتى الآن', fmt0(D.ops_mtd), 'متوسط الفاتورة ' + fmt(avgTicket) + ' ج.م', '#6366f1') +
-            kpi('🛒', 'حجم مبيعات الأعضاء (GMV)', fmt(D.gmv_mtd) + ' <span style="font-size:0.9rem;">ج.م</span>', 'إجمالي ما اشتراه الأعضاء من التجار هذا الشهر', '#0ea5e9') +
-            kpi('💰', 'عمولات سويا المحصّلة (' + (D.commission_rate * 100) + '%)', fmt(comm) + ' <span style="font-size:0.9rem;">ج.م</span>',
-                'خزينة الشركة (25%): <b>' + fmt(treasury) + '</b> ج.م<br>خطة الدخل والأعضاء (75%): <b>' + fmt(plan) + '</b> ج.م', '#f59e0b') +
-            kpi('🛡️', 'أرصدة الشحن المسبق لدى التجار', fmt(D.prepaid_held) + ' <span style="font-size:0.9rem;">ج.م</span>',
-                'التزام على المنصة: مبالغ دفعها التجار مقدماً ولم تُستهلك بعد', '#059669') +
+        '<div data-spec-id="admin-home-kpis" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:14px; margin-bottom:18px;">' +
+            kpi('👥', 'إجمالي الأعضاء', fmt0(D.members.total), fmt0(D.members.active) + ' نشط • ' + D.members.pending_kyc + ' بانتظار توثيق الهوية • ' + D.members.suspended + ' محجوب', '#3b82f6') +
+            kpi('🏪', 'إجمالي التجار', fmt0(D.merchants.total), D.merchants.active + ' نشط • ' + D.merchants.frozen + ' معزول • ' + D.merchants.pending_approval + ' بانتظار الاعتماد', '#10b981') +
+            kpi('💳', 'العمليات المكتملة', fmt0(D.ops_mtd), 'متوسط الفاتورة ' + fmt(avgTicket), '#6366f1') +
+            kpi('🛒', 'حجم المبيعات (GMV محلي)', fmt(D.gmv_mtd), 'إجمالي الفواتير المكتملة بالدفتر الحي', '#0ea5e9') +
+            kpi('💰', 'عمولات سويا المحصّلة', fmt(comm),
+                'خزينة الشركة (25%): <b>' + fmt(treasury) + '</b><br>خطة الدخل والأعضاء (75%): <b>' + fmt(plan) + '</b>', '#f59e0b') +
+            kpi('🛡️', 'أرصدة الشحن الحرة لدى التجار', fmt(D.prepaid_held),
+                'صافي أرصدة الشحن المتاحة بالقاعدة بعد خصم الحجز المؤقت', '#059669') +
         '</div>' +
 
-        // مركز القرارات
         '<div style="background:white; border:1.5px solid #e2e8f0; border-radius:14px; padding:18px; margin-bottom:18px;">' +
             '<div style="font-weight:900; color:#0f172a; font-size:1.05rem; margin-bottom:4px;">⚡ يحتاج قرارك الآن</div>' +
-            '<div style="font-size:0.78rem; color:#64748b; margin-bottom:12px;">كل بند يفتح الشاشة المختصة لاتخاذ القرار</div>' +
-            '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(380px, 1fr)); gap:10px;">' +
+            '<div style="font-size:0.78rem; color:#64748b; margin-bottom:12px;">كل بند يفتح الشاشة المختصة لاتخاذ القرار الحي</div>' +
+            '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:10px;">' +
                 actionRow('📢', promoPendingCount(), 'طلبات إعلانات ترويجية من التجار', 'تُراجَع نصوصها قبل البث لهواتف الأعضاء', 'مراجعة الآن', 'scrollToPromoQueue()', 'actionRowPromo') +
                 actionRow('💸', D.pending.withdrawals, 'طلبات سحب أرباح الأعضاء', 'تحقق من الهوية وبيانات الحساب قبل التحويل', 'فتح طلبات السحب', "goAdminPage('withdrawals')") +
                 actionRow('🪪', D.members.pending_kyc, 'أعضاء بانتظار توثيق الهوية (KYC)', 'شرط لصرف أول سحب', 'فتح الأعضاء', "goAdminPage('members')") +
-                actionRow('🔋', D.merchants.low_balance, 'تجار رصيد شحنهم تحت ' + D.low_balance_threshold + ' ج.م', 'خطر عزلهم عن رادار الأعضاء قريباً', 'فتح التجار', "goAdminPage('merchants')") +
+                actionRow('🔋', D.merchants.low_balance, 'تجار رصيد شحنهم منخفض (≤30%)', 'خطر عزلهم عن رادار الأعضاء قريباً', 'فتح التجار', "goAdminPage('merchants')") +
                 actionRow('🏪', D.merchants.pending_approval, 'طلبات انضمام تجار جدد', 'مراجعة المستندات واعتماد النسبة', 'فتح التجار', "goAdminPage('merchants')") +
                 actionRow('⚠️', D.pending.disputes, 'نزاعات مفتوحة بين الأعضاء والتجار', 'تحكيم إداري ملزم', 'فتح الشكاوى', "goAdminPage('disputes')") +
                 actionRow('🎫', D.pending.support, 'تذاكر دعم فني مفتوحة', 'أعضاء وتجار ينتظرون الرد', 'فتح الدعم الفني', "goAdminPage('support')") +
             '</div>' +
         '</div>' +
 
-        // الرسوم
-        '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(380px, 1fr)); gap:14px; margin-bottom:18px;">' +
+        '<div data-spec-id="admin-home-charts" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:14px; margin-bottom:18px;">' +
             '<div style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:18px;">' +
-                '<div style="font-weight:900; color:#0f172a; margin-bottom:2px;">📈 العمليات اليومية (آخر 7 أيام)</div>' +
+                '<div style="font-weight:900; color:#0f172a; margin-bottom:2px;">📈 توزيع العمليات الأسبوعي (من السجل الحي)</div>' +
                 '<div style="font-size:0.76rem; color:#64748b; margin-bottom:12px;">الإجمالي: <b>' + fmt0(weekTotal) + '</b> عملية</div>' +
                 '<div style="display:flex; align-items:flex-end; gap:6px; height:210px; padding-top:6px;">' + bars + '</div>' +
             '</div>' +
             '<div style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:18px;">' +
                 '<div style="font-weight:900; color:#0f172a; margin-bottom:2px;">🧩 توزيع المبيعات حسب فئة التاجر</div>' +
-                '<div style="font-size:0.76rem; color:#64748b; margin-bottom:12px;">نسبة كل فئة من حجم مبيعات الشهر</div>' + cats +
+                '<div style="font-size:0.76rem; color:#64748b; margin-bottom:12px;">نسبة كل فئة من إجمالي مبيعات القاعدة</div>' + cats +
             '</div>' +
         '</div>' +
 
-        // مكان بطاقة اعتماد الإعلانات
         '<div id="promoQueueSlot"></div>' +
 
-        // النشاط
-        '<div style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:18px;">' +
-            '<div style="font-weight:900; color:#0f172a; margin-bottom:6px;">🕒 النشاط الأخير</div>' + act +
+        '<div data-spec-id="admin-home-activity" style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:18px;">' +
+            '<div style="font-weight:900; color:#0f172a; margin-bottom:6px;">🕒 النشاط الأخير من قاعدة البيانات</div>' + act +
         '</div>';
 
-        // نقل بطاقة اعتماد الإعلانات داخل الرئيسية فقط (كانت تظهر أسفل كل الشاشات)
-        var promo = document.getElementById('adminPromoModerationSection');
+        var bSlot = document.getElementById('adminHomeBannerSlot');
+        if (bannerEl && bSlot) bSlot.appendChild(bannerEl);
         var slot = document.getElementById('promoQueueSlot');
-        if (promo && slot) slot.appendChild(promo);
+        if (promoEl && slot) slot.appendChild(promoEl);
     }
 
-    // تحديث صف الإعلانات في مركز القرارات بعد اعتماد/رفض/إعادة تعيين
     function refreshPromoRow() {
         var row = document.getElementById('actionRowPromo');
         if (!row) return;
@@ -221,18 +283,18 @@ window.SAWYAN_ADMIN_DEMO = __IS_PROD_ZERO ? {
         tmp.innerHTML = actionRow('📢', promoPendingCount(), 'طلبات إعلانات ترويجية من التجار', 'تُراجَع نصوصها قبل البث لهواتف الأعضاء', 'مراجعة الآن', 'scrollToPromoQueue()', 'actionRowPromo');
         row.replaceWith(tmp.firstChild);
     }
+
     var _origRender = window.renderAdminPromoQueue;
     if (typeof _origRender === 'function') {
         window.renderAdminPromoQueue = function () { _origRender(); refreshPromoRow(); };
     }
 
-    // استبدال محمّلات الصفحة الرئيسية القديمة (التي كانت تقرأ قاعدة بيانات شبه فارغة)
     window.loadStats = async function () { renderHome(); };
-    window.loadRecentActivity = async function () { /* مدمج في renderHome */ };
+    window.loadRecentActivity = async function () {};
 
-    // لو كانت الصفحة قد حُمّلت بالفعل نعيد الرسم فوراً
     if (document.readyState !== 'loading') {
         setTimeout(function () { renderHome(); refreshPromoRow(); }, 0);
+    } else {
+        document.addEventListener('DOMContentLoaded', function () { renderHome(); refreshPromoRow(); });
     }
 })();
-

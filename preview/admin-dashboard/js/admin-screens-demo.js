@@ -4,11 +4,7 @@
    - كل عنصر مقترح يحمل شارة: 🧪 مقترح للمعاينة — غير معتمد بعد
    ============================================================ */
 (function () {
-    var __IS_PROD_ZERO = (typeof window !== 'undefined' && window.SAWYAN && !window.SAWYAN.isParallelDemo);
-    if (__IS_PROD_ZERO) {
-        try { localStorage.removeItem('sawyan_admin_ops_v1'); } catch (e) {}
-    }
-    var OPS_LS = 'sawyan_admin_ops_v1';
+    var LIVE_BUNDLE_REF = null;
     var returnContext = null;
 
     /* ---------- أدوات مساعدة عامة ---------- */
@@ -29,7 +25,7 @@
         return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + ' ' + z(d.getHours()) + ':' + z(d.getMinutes());
     }
     function badgeProp(extra) {
-        return '<span style="display:inline-flex;align-items:center;gap:4px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;padding:3px 10px;border-radius:999px;font-size:0.74rem;font-weight:800;">🧪 مقترح للمعاينة — غير معتمد بعد' + (extra ? ' • ' + esc(extra) : '') + '</span>';
+        return '<span style="display:inline-flex;align-items:center;gap:4px;background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7;padding:3px 10px;border-radius:999px;font-size:0.74rem;font-weight:800;">🟢 متصل بقاعدة البيانات الحية' + (extra ? ' • ' + esc(extra) : '') + '</span>';
     }
     function downloadCsv(filename, headers, rows) {
         var lines = [headers].concat(rows).map(function (r) {
@@ -45,121 +41,33 @@
         setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 300);
     }
 
-    /* ---------- الحالة التشغيلية المتماسكة ---------- */
+    /* ---------- الحالة التشغيلية الحية من PostgreSQL ---------- */
     function initialOpsState() {
-        if (__IS_PROD_ZERO) {
-            return {
-                members: [],
-                merchants: [],
-                transactions: [],
-                disputes: [],
-                supportTickets: [],
-                withdrawals: [],
-                fraudQueue: [],
-                reconDiffInjected: false,
-                closeStep: 1,
-                breakGlassOpenUntil: null,
-                breakGlassReason: '',
-                fxRates: [
-                    { code: 'EG', country: 'مصر', cur: 'EGP', curRate: 50.00, nextDraft: 50.00, source: 'البنك المركزي المصري (مرجع التأسيس)', locked: true, unrealizedPnlUsd: 0 },
-                    { code: 'TR', country: 'تركيا', cur: 'TRY', curRate: 50.00, nextDraft: 50.00, source: 'TCMB المركزي التركي (مرجع التأسيس)', locked: true, unrealizedPnlUsd: 0 },
-                    { code: 'SA', country: 'السعودية', cur: 'SAR', curRate: 3.75, nextDraft: 3.75, source: 'ساما — ربط ثابت بالدولار', locked: true, unrealizedPnlUsd: 0 }
-                ],
-                stopperFundDecisions: [],
-                privacyLogs: []
-            };
-        }
         return {
-            members: [
-                { id: 'MEM-101', code: '#101', name: 'محمد دمير', email: 'm.demir@sawyan.demo', phone: '+20 100 555 0101', country: 'EG', residence: 'EG', nationality: 'مصرية', joined: '2026-08-12', active: true, kyc: 'verified', kycDoc: 'بطاقة قومي + فاتورة كهرباء', treePos: '2Me / 2Com (يمين #0)', sponsor: 'الشركة (#0)', targetUsd: 24.75, carryUsd: 28.40, earnedUsd: 4820.00, financialStopperExcessUsd: 215.00, hold: false, moveReq: 'تركيا (عقد عمل) — قيد المراجعة' },
-                { id: 'MEM-124', code: '#124', name: 'أحمد مصطفى', email: 'ahmed.m@sawyan.demo', phone: '+20 101 234 5678', country: 'EG', residence: 'EG', nationality: 'مصرية', joined: '2026-09-03', active: true, kyc: 'pending', kycDoc: 'صورة بطاقة شخصية سارية مرفوعة', treePos: '4Me / 4Com (يمين #101)', sponsor: 'محمد دمير (#101)', targetUsd: 24.75, carryUsd: 19.50, earnedUsd: 310.00, financialStopperExcessUsd: 0, hold: false, moveReq: null },
-                { id: 'MEM-125', code: '#125', name: 'خالد حسن', email: 'khaled.h@sawyan.demo', phone: '+20 112 889 4412', country: 'EG', residence: 'EG', nationality: 'مصرية', joined: '2026-09-08', active: true, kyc: 'verified', kycDoc: 'جواز سفر + عقد إيجار موثق', treePos: '4Me / 5Com (يسار #101)', sponsor: 'محمد دمير (#101)', targetUsd: 24.75, carryUsd: 26.20, earnedUsd: 185.00, financialStopperExcessUsd: 0, hold: false, moveReq: null },
-                { id: 'MEM-210', code: '#210', name: 'منى علي', email: 'mona.ali@sawyan.demo', phone: '+20 122 440 9921', country: 'EG', residence: 'EG', nationality: 'مصرية', joined: '2026-09-18', active: true, kyc: 'pending', kycDoc: 'مستند إقامة مرفوع بتاريخ اليوم', treePos: '5Me / 6Com (يمين #124)', sponsor: 'أحمد مصطفى (#124)', targetUsd: 24.75, carryUsd: 8.10, earnedUsd: 92.00, financialStopperExcessUsd: 0, hold: false, moveReq: null },
-                { id: 'MEM-318', code: '#318', name: 'يوسف كمال', email: 'youssef.k@sawyan.demo', phone: '+90 532 771 2033', country: 'TR', residence: 'TR', nationality: 'تركية', joined: '2026-10-02', active: true, kyc: 'verified', kycDoc: 'Kimlik إقامة تركية سارية', treePos: '6Me / 8Com (يسار #125)', sponsor: 'خالد حسن (#125)', targetUsd: 24.75, carryUsd: 25.00, earnedUsd: 412.50, financialStopperExcessUsd: 0, hold: false, moveReq: null },
-                { id: 'MEM-390', code: '#390', name: 'سارة إبراهيم', email: 'sara.ib@sawyan.demo', phone: '+20 155 310 7740', country: 'EG', residence: 'EG', nationality: 'مصرية', joined: '2026-10-14', active: false, kyc: 'rejected', kycDoc: 'صورة غير واضحة للوجه والرقم', treePos: '7Me / 9Com (يمين #210)', sponsor: 'منى علي (#210)', targetUsd: 24.75, carryUsd: 0, earnedUsd: 0, financialStopperExcessUsd: 0, hold: true, moveReq: null }
-            ],
-            merchants: [
-                { id: 'MER-101', code: 'EG-MKT-101', name: 'سوبر ماركت الفارق المركزي', type: 'both', category: 'سوبر ماركت', country: 'EG', commPct: 10, planSharePct: 75, packageLimit: 10000, prepaidBalance: 4850, creditLimit: 0, status: 'active', gmvMtd: 412500, opsMtd: 618, phone: '+20 100 900 1010', ownerIdNum: '28901011234567' },
-                { id: 'MER-102', code: 'EG-PHR-102', name: 'صيدلية الشفاء الحديثة', type: 'physical', category: 'صيدليات', country: 'EG', commPct: 12, planSharePct: 75, packageLimit: 8000, prepaidBalance: 3920, creditLimit: 0, status: 'active', gmvMtd: 231000, opsMtd: 412, phone: '+20 102 330 4411', ownerIdNum: '28505021239988' },
-                { id: 'MER-103', code: 'EG-RES-103', name: 'مطعم البيت الشامي', type: 'physical', category: 'مطاعم وكافيهات', country: 'EG', commPct: 10, planSharePct: 75, packageLimit: 10000, prepaidBalance: 380, creditLimit: 0, status: 'low_balance', gmvMtd: 198400, opsMtd: 289, phone: '+20 111 778 2200', ownerIdNum: '29103031237711' },
-                { id: 'MER-104', code: 'EG-ELC-104', name: 'تك ستور للإلكترونيات', type: 'online', category: 'إلكترونيات', country: 'EG', commPct: 8, planSharePct: 75, packageLimit: 10000, prepaidBalance: 420, creditLimit: 0, status: 'low_balance', gmvMtd: 165000, opsMtd: 115, phone: '+20 120 441 8819', ownerIdNum: '29207091231122' },
-                { id: 'MER-105', code: 'EG-PRF-105', name: 'عطور الشرق الملكية', type: 'physical', category: 'كوزماتيكس وعطور', country: 'EG', commPct: 15, planSharePct: 75, packageLimit: 6000, prepaidBalance: 240, creditLimit: 0, status: 'frozen', gmvMtd: 94200, opsMtd: 84, phone: '+20 109 612 3300', ownerIdNum: '28811151236644' },
-                { id: 'MER-106', code: 'TR-FSH-201', name: 'أزياء البوسفور (إسطنبول)', type: 'both', category: 'ملابس', country: 'TR', commPct: 10, planSharePct: 75, packageLimit: 15000, prepaidBalance: 9800, creditLimit: 0, status: 'active', gmvMtd: 183500, opsMtd: 240, phone: '+90 533 881 1020', ownerIdNum: 'TR-99812031' },
-                { id: 'MER-107', code: 'EG-NEW-107', name: 'متجر النور للأدوات المنزلية', type: 'physical', category: 'أدوات منزلية', country: 'EG', commPct: 10, planSharePct: 75, packageLimit: 5000, prepaidBalance: 0, creditLimit: 0, status: 'pending_approval', gmvMtd: 0, opsMtd: 0, phone: '+20 106 882 9100', ownerIdNum: '29004051235500', docsNote: 'سجل تجاري #88412 + بطاقة ضريبية مرفقة + إحداثيات مدينة نصر' }
-            ],
-            bankSlips: [
-                { id: 'BNK-991', merchantId: 'MER-101', merchantName: 'سوبر ماركت الفارق المركزي', method: 'InstaPay', ref: 'IP-20261114-8821', amount: 5000, at: 'اليوم 04:15 م', status: 'pending' },
-                { id: 'BNK-992', merchantId: 'MER-105', merchantName: 'عطور الشرق الملكية (معزول)', method: 'تحويل بنكي CIB', ref: 'CIB-9910442', amount: 3000, at: 'اليوم 05:50 م', status: 'pending' }
-            ],
-            transactions: [
-                { id: 'TXN-9842', memberCode: '#124', memberName: 'أحمد مصطفى', phoneLast4: '5678', merchantCode: 'EG-MKT-101', merchantName: 'سوبر ماركت الفارق المركزي', amount: 500, commPct: 10, commAmt: 50, fx: 50, date: '2026-11-14 18:45', route: 'أ (POS)', status: 'completed', note: 'مشتريات بقالة أسبوعية', payoutMonth: '2026-11 (مفتوح)' },
-                { id: 'TXN-9841', memberCode: '#210', memberName: 'منى علي', phoneLast4: '9921', merchantCode: 'EG-PHR-102', merchantName: 'صيدلية الشفاء الحديثة', amount: 340, commPct: 12, commAmt: 40.80, fx: 50, date: '2026-11-14 17:20', route: 'أ (QR)', status: 'completed', note: 'أدوية وعناية', payoutMonth: '2026-11 (مفتوح)' },
-                { id: 'TXN-9840', memberCode: '#125', memberName: 'خالد حسن', phoneLast4: '4412', merchantCode: 'EG-MKT-101', merchantName: 'سوبر ماركت الفارق المركزي', amount: 1250, commPct: 10, commAmt: 125, fx: 50, date: '2026-11-14 16:30', route: 'ب (PIN)', status: 'completed', note: 'شراء منزلي', payoutMonth: '2026-11 (مفتوح)' },
-                { id: 'TXN-PEND-771', memberCode: '#210', memberName: 'منى علي', phoneLast4: '9921', merchantCode: 'EG-ELC-104', merchantName: 'تك ستور للإلكترونيات', amount: 1800, commPct: 8, commAmt: 144, fx: 50, date: '2026-11-12 11:10', route: 'ب (معلق 55س > 48س)', status: 'escalated', note: 'تجاوز مهلة التاجر 48 ساعة — متصاعد للإدارة (D6)', payoutMonth: '2026-11 (مفتوح)' },
-                { id: 'TXN-OCT-410', memberCode: '#125', memberName: 'خالد حسن', phoneLast4: '4412', merchantCode: 'EG-ELC-104', merchantName: 'تك ستور للإلكترونيات', amount: 2200, commPct: 8, commAmt: 176, fx: 50, date: '2026-10-27 14:15', route: 'أ (POS)', status: 'completed', note: 'فاتورة شهر مغلق ومصروف عمولاتها يوم 15 نوفمبر — محظور استردادها برمجياً (D5)', payoutMonth: '2026-10 (مصروف — مقفل نهائياً)' },
-                { id: 'TXN-DUP-804', memberCode: '#124', memberName: 'أحمد مصطفى', phoneLast4: '5678', merchantCode: 'EG-MKT-101', merchantName: 'سوبر ماركت الفارق المركزي', amount: 500, commPct: 10, commAmt: 50, fx: 50, date: '2026-11-14 18:49', route: 'ب (اشتباه تكرار)', status: 'flagged_dup', note: 'نفس العضو والمبلغ خلال 4 دقائق — محتجز آلياً للمراجعة (M11)', payoutMonth: '2026-11 (مفتوح)' }
-            ],
-            disputes: [
-                { id: 'DSP-301', txn: 'TXN-9811', member: 'أحمد مصطفى (#124)', merchant: 'مطعم البيت الشامي', reason: 'المبلغ المسجل 650 ج.م والفاتورة الحقيقية 850 ج.م', slaHoursLeft: 4, status: 'pending', resolution: '' },
-                { id: 'DSP-302', txn: 'TXN-9795', member: 'منى علي (#210)', merchant: 'تك ستور للإلكترونيات', reason: 'رفض التاجر توثيق طلب المسار (ب) رغم الشراء النقدي', slaHoursLeft: 19, status: 'pending', resolution: '' },
-                { id: 'DSP-303', txn: 'TXN-9740', member: 'خالد حسن (#125)', merchant: 'عطور الشرق الملكية', reason: 'تمت عملية شراء قبل علمي بعزل التاجر المؤقت', slaHoursLeft: 28, status: 'pending', resolution: '' }
-            ],
-            tickets: [
-                { id: 'TKT-501', user: 'محمد دمير (#101)', type: 'member', subject: 'طلب تحديث مستند إقامة لفتح دولة تركيا كإقامة', priority: 'high', date: '2026-11-14', status: 'open', reply: '' },
-                { id: 'TKT-502', user: 'سوبر ماركت الفارق', type: 'merchant', subject: 'استعلام عن مطابقة إشعار إنستاباي بمبلغ 5,000 ج.م', priority: 'high', date: '2026-11-14', status: 'in_progress', reply: 'قيد المراجعة المالية مع إيصال BNK-991' },
-                { id: 'TKT-503', user: 'يوسف كمال (#318)', type: 'member', subject: 'كيف أحسب الهدف التعويضي بين تركيا ومصر؟', priority: 'medium', date: '2026-11-13', status: 'open', reply: '' },
-                { id: 'TKT-504', user: 'عطور الشرق الملكية', type: 'merchant', subject: 'طلب فك العزل الوقائي بعد إرسال التحويل البنكي', priority: 'high', date: '2026-11-14', status: 'open', reply: '' },
-                { id: 'TKT-505', user: 'منى علي (#210)', type: 'member', subject: 'تأخر مراجعة صورة الهوية KYC', priority: 'medium', date: '2026-11-13', status: 'in_progress', reply: '' },
-                { id: 'TKT-506', user: 'تك ستور للإلكترونيات', type: 'merchant', subject: 'إضافة مفتاح Webhook جديد لموقع المتجر', priority: 'low', date: '2026-11-12', status: 'open', reply: '' },
-                { id: 'TKT-507', user: 'خالد حسن (#125)', type: 'member', subject: 'الاستعلام عن أثر استرداد فاتورة أكتوبر', priority: 'medium', date: '2026-11-12', status: 'open', reply: '' },
-                { id: 'TKT-508', user: 'صيدلية الشفاء', type: 'merchant', subject: 'تغيير رمز PIN الخاص بالكاشير المسائي', priority: 'low', date: '2026-11-11', status: 'in_progress', reply: '' },
-                { id: 'TKT-509', user: 'سارة إبراهيم (#390)', type: 'member', subject: 'سبب تجميد السحب وإعادة رفع البطاقة', priority: 'medium', date: '2026-11-11', status: 'open', reply: '' }
-            ],
-            withdrawals: [
-                { id: 'WD-701', memberCode: '#101', memberName: 'محمد دمير', usdAmount: 240.00, fxUsed: 50.00, feePct: 1.5, whtPct: 0, method: 'bank_transfer', account: 'IBAN EG8000020111...4921', date: '2026-11-14', kycOk: true, cooldownHoursLeft: 0, dualRequired: true, checker1Approved: false, status: 'pending', note: 'يتجاوز $200 — يلزم اعتماد ثانٍ مزدوج (W05)' },
-                { id: 'WD-702', memberCode: '#125', memberName: 'خالد حسن', usdAmount: 45.00, fxUsed: 50.00, feePct: 1.5, whtPct: 0, method: 'instapay', account: 'khaled@instapay', date: '2026-11-14', kycOk: true, cooldownHoursLeft: 58, dualRequired: false, checker1Approved: false, status: 'pending', note: 'تغيّر الحساب المستلم قبل 14 ساعة — فترة تهدئة 72س سارية (W07)' },
-                { id: 'WD-703', memberCode: '#124', memberName: 'أحمد مصطفى', usdAmount: 30.00, fxUsed: 50.00, feePct: 1.5, whtPct: 0, method: 'vodafone_cash', account: '01012345678', date: '2026-11-14', kycOk: false, cooldownHoursLeft: 0, dualRequired: false, checker1Approved: false, status: 'pending', note: 'الـ KYC لم يُعتمد بعد — محجوب لحين مراجعة الهوية (D7)' },
-                { id: 'WD-704', memberCode: '#318', memberName: 'يوسف كمال', usdAmount: 82.00, fxUsed: 50.00, feePct: 1.5, whtPct: 0, method: 'bank_transfer', account: 'TR3300061005...1109', date: '2026-11-13', kycOk: true, cooldownHoursLeft: 0, dualRequired: false, checker1Approved: false, status: 'pending', note: 'جاهز للصرف (مصر/تركيا مسجل TR)' },
-                { id: 'WD-705', memberCode: '#112', memberName: 'سعيد محمود', usdAmount: 110.00, fxUsed: 50.00, feePct: 1.5, whtPct: 0, method: 'instapay', account: 'saeed@instapay', date: '2026-11-15', kycOk: true, cooldownHoursLeft: 0, dualRequired: false, checker1Approved: true, status: 'approved', note: 'تم التحويل يوم 15 نوفمبر' }
-            ],
-            fraudQueue: [
-                { id: 'FRD-01', severity: 'حرج', title: 'تواتر فواتير مشبوه لثنائي واحد (Member #290 + MER-103)', detail: '6 فواتير في 35 دقيقة بمجموع 8,400 ج.م دون صور إيصال — خرق للمقترح M15/M16', status: 'open', control: 'M15 سقف الثنائي + M16 إلزام الصورة' },
-                { id: 'FRD-02', severity: 'عالي', title: 'تضارب مصالح: التاجر EG-PRF-105 = العضو #312', detail: 'تطابق الرقم القومي (28811151236644) بين مالك المتجر وعضو مسجل تحته لشراء فواتير لنفسه', status: 'open', control: 'ربط الهوية الواحدة + حظر الصفقات الذاتية' },
-                { id: 'FRD-03', severity: 'عالي', title: 'تجمع أجهزة متكرر لبناء سلسال Roll-up وهمي', detail: '3 حسابات (#402، #403، #404) أُنشئت من نفس بصمة الجهاز خلال 12 دقيقة (خرق W12b)', status: 'open', control: 'W12b تقييد الحسابات لكل جهاز + تحقق OTP' },
-                { id: 'FRD-04', severity: 'متوسط', title: 'محاولة إعادة مسح QR أوفلاين مستخدم سابقاً', detail: 'كاشير حاول إعادة إرسال نفس توقيع QR الأوفلاين لـ TXN-9841 — تم الرفض آلياً (Idempotency)', status: 'blocked_auto', control: 'M14 QR وحيد الاستخدام + Nonce' }
-            ],
+            members: [],
+            merchants: [],
+            transactions: [],
+            disputes: [],
+            supportTickets: [],
+            withdrawals: [],
+            fraudQueue: [],
             reconDiffInjected: false,
             closeStep: 1,
             breakGlassOpenUntil: null,
             breakGlassReason: '',
             fxRates: [
-                { code: 'EG', country: 'مصر', cur: 'EGP', curRate: 50.00, nextDraft: 50.00, source: 'البنك المركزي المصري (مرجع 2026-10-30)', locked: true, unrealizedPnlUsd: 0 },
-                { code: 'TR', country: 'تركيا', cur: 'TRY', curRate: 50.00, nextDraft: 52.00, source: 'TCMB المركزي التركي (تجريبي)', locked: true, unrealizedPnlUsd: 0 },
+                { code: 'EG', country: 'مصر', cur: 'EGP', curRate: 50.00, nextDraft: 50.00, source: 'مرجع قاعدة البيانات', locked: true, unrealizedPnlUsd: 0 },
+                { code: 'TR', country: 'تركيا', cur: 'TRY', curRate: 50.00, nextDraft: 50.00, source: 'مرجع قاعدة البيانات', locked: true, unrealizedPnlUsd: 0 },
                 { code: 'SA', country: 'السعودية', cur: 'SAR', curRate: 3.75, nextDraft: 3.75, source: 'ساما — ربط ثابت بالدولار', locked: true, unrealizedPnlUsd: 0 }
             ],
-            stopperFundDecisions: [
-                { id: 'STP-F1', memberCode: '#101', memberName: 'محمد دمير', month: '2026-10', excessUsd: 215.00, sources: 'مصر (135$) + تركيا (80$)', status: 'pending_decision', note: 'في انتظار قرار الإدارة (D14)' }
-            ],
-            privacyLogs: [
-                { at: 'اليوم 06:10 م', actor: 'أدمن: منى (مُعتمِدة)', target: 'محمد دمير (#101)', scope: 'إثبات الإقامة KYC (سحب WD-701)', consent: '✅ موافقة PDPL موثقة' },
-                { at: 'اليوم 05:30 م', actor: 'القائد #101 (تصدير فريق)', target: '10 أجيال أسفله', scope: 'رؤية أرقام الهواتف داخل الستوبر (W09b)', consent: '✅ ضمن صلاحية الهيكل' },
-                { at: 'اليوم 04:00 م', actor: 'رادار التاجر MER-101', target: 'نطاق 3 كم مدينة نصر', scope: 'كثافة الأعضاء المجهولة (k=450 ≥ 10)', consent: '✅ لا بيانات شخصية مكشوفة (M18)' }
-            ]
+            stopperFundDecisions: [],
+            privacyLogs: []
         };
     }
 
-    var OPS = null;
-    function loadOps() {
-        if (__IS_PROD_ZERO) {
-            OPS = initialOpsState();
-            return;
-        }
-        var raw = null;
-        try { raw = JSON.parse(localStorage.getItem(OPS_LS) || 'null'); } catch (e) { raw = null; }
-        if (raw && raw.members && raw.merchants) OPS = raw;
-        else { OPS = initialOpsState(); saveOps(); }
-    }
-    function saveOps() { localStorage.setItem(OPS_LS, JSON.stringify(OPS)); }
+    var OPS = initialOpsState();
+    function loadOps() { OPS = initialOpsState(); }
+    function saveOps() { /* حالة الذاكرة تُحدث مباشرة عبر PostgreSQL — بلا تخزين وهمي في localStorage */ }
     loadOps();
 
     /* ---------- شريط السياق والعودة للمختبر ---------- */
@@ -254,8 +162,8 @@
         div.id = 'memDemoToolbar';
         div.innerHTML =
             '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">' +
-                badgeProp('KYC (D7) • قفل دولة الإقامة (D9) • تعليق الصرف وتعديل المحفظة (P1-17)') +
-                '<div style="font-size:0.78rem;color:#475569;font-weight:700;">الإجمالي الكلي بالمنصة: <b>4,860</b> عضو (4,780 نشط • 23 بانتظار KYC • 57 موقوف — عينة تفاعلية بالأسفل)</div>' +
+                badgeProp('KYC (D7) • قفل دولة الإقامة (D9) • تعليق الصرف والتعديل (P1-17)') +
+                '<div style="font-size:0.78rem;color:#475569;font-weight:700;">الإجمالي المحمّل من القاعدة: <b>' + OPS.members.length + '</b> عضو</div>' +
             '</div>' +
             '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">' +
                 '<input id="memSearchInput" type="text" placeholder="🔍 بحث بالاسم، الكود (#124)، الهاتف..." style="flex:2;min-width:210px;padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px;font-family:Tajawal,sans-serif;">' +
@@ -393,10 +301,11 @@
         var tbl = page.querySelector('.table-container');
         var top = document.createElement('div');
         top.id = 'merDemoToolbar';
+        var totalFloat = OPS.merchants.reduce(function (s, m) { return s + Number(m.prepaidBalance || 0); }, 0);
         top.innerHTML =
             '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">' +
-                badgeProp('مطابقة الإشعار البنكي P1-11 • حاسبة 5 خانات • مقارنة 25/10/5% مقابل 500 (D4/D15)') +
-                '<div style="font-size:0.78rem;color:#047857;font-weight:800;">إجمالي أرصدة الشحن المسبق بالمنصة: 186,300.00 ج.م (38 تاجراً)</div>' +
+                badgeProp('مطابقة الإشعار البنكي P1-11 • حاسبة 5 خانات • D4/D15') +
+                '<div style="font-size:0.78rem;color:#047857;font-weight:800;">إجمالي أرصدة الشحن المسبق بالمنصة: ' + fmt(totalFloat) + ' (' + OPS.merchants.length + ' متاجر)</div>' +
             '</div>' +
             '<div id="merFilterBar" class="filter-bar" style="margin-bottom:12px;">' +
                 '<button class="filter-btn active" onclick="opsMerFilter(\'all\',this)">الكل</button>' +
@@ -651,32 +560,32 @@
             slotEl.innerHTML =
                 '<div style="background:white;border:2px solid #f59e0b;border-radius:14px;padding:16px;">' +
                     '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">' +
-                        '<div><h3 style="margin:0;color:#92400e;">🪙 صندوق عمولات الستوبر المالي المعلّق وسجل الـ Roll-up (D14 • P1-14)</h3><div style="font-size:0.78rem;color:#64748b;">المبالغ المتجاوزة للحد الشهري لا تُصرف ولا تُعاد توزيعها إلا بقرار مزدوج موثق</div></div>' +
+                        '<div><h3 style="margin:0;color:#92400e;">🪙 صندوق عمولات الستوبر المالي المعلّق وسجل الـ Roll-up (D14 • P1-14)</h3><div style="font-size:0.78rem;color:#64748b;">المبالغ المتجاوزة للحد الشهري لا تُصرف ولا تُعاد توزيعها إلا بقرار مزدوج موثق في PostgreSQL</div></div>' +
                         badgeProp('قرار D14') +
                     '</div>' +
-                    OPS.stopperFundDecisions.map(function (f) {
-                        return '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:12px;">' +
-                            '<div><b>' + esc(f.memberName) + ' (' + esc(f.memberCode) + ')</b> — شهر ' + esc(f.month) + ' • الفائض المحتجز: <b style="color:#b45309;">' + fmt(f.excessUsd) + ' $</b><div style="font-size:0.76rem;color:#475569;">المصدر: ' + esc(f.sources) + ' • الحالة: ' + esc(f.note) + '</div></div>' +
-                            '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
-                                '<button class="btn-sm btn-primary" onclick="opsStopperDecide(\'' + f.id + '\',\'اعتماد ترحيل لاحتياطي التوازن\')">⚖️ قرار إداري (ترحيل/صرف)</button>' +
-                                '<button class="btn-sm btn-warning" onclick="opsRollupTraceModal()">📜 سجل تتبع Roll-up</button>' +
-                            '</div>' +
-                        '</div>';
-                    }).join('') +
+                    (OPS.stopperFundDecisions.length === 0
+                        ? '<div style="padding:14px;text-align:center;color:#64748b;font-size:0.84rem;background:#f8fafc;border-radius:10px;">لا توجد مبالغ متجاوزة للستوبر المالي معلقة بقاعدة البيانات حالياً (0).</div>'
+                        : OPS.stopperFundDecisions.map(function (f) {
+                            return '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:12px;">' +
+                                '<div><b>' + esc(f.memberName) + ' (' + esc(f.memberCode) + ')</b> — شهر ' + esc(f.month) + ' • الفائض المحتجز: <b style="color:#b45309;">' + fmt(f.excessUsd) + ' $</b><div style="font-size:0.76rem;color:#475569;">المصدر: ' + esc(f.sources) + ' • الحالة: ' + esc(f.note) + '</div></div>' +
+                                '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+                                    '<button class="btn-sm btn-warning" onclick="opsRollupTraceModal()">📜 سجل تتبع Roll-up</button>' +
+                                '</div>' +
+                            '</div>';
+                        }).join('')) +
                 '</div>';
         }
     };
     window.opsStopperDecide = function (id, choice) {
-        var f = OPS.stopperFundDecisions.filter(function (x) { return x.id === id; })[0];
-        if (!f) return;
-        f.status = 'decided'; f.note = 'تم القرار: ' + choice + ' (' + nowStr() + ')';
-        saveOps(); loadCommissions();
+        if (typeof window.openSovereignLivePage === 'function') window.openSovereignLivePage('mc');
     };
     window.opsRollupTraceModal = function () {
-        openModal('📜 سجل تتبع الـ Roll-up وإعادة توزيع المتبقي',
-            '<table class="data-table"><thead><tr><th>العملية</th><th>صانع التوزيع</th><th>المستفيد المتجاوَز</th><th>السبب</th><th>المستفيد البديل</th><th>الحصة ($)</th></tr></thead><tbody>' +
-            '<tr><td>POOL-812</td><td>خالد حسن (#125)</td><td>منى علي (#210)</td><td>غير مؤهلة في مصر (8.10$/24.75$)</td><td>أحمد مصطفى (#124)</td><td>2.25 $</td></tr>' +
-            '<tr><td>POOL-813</td><td>يوسف كمال (#318)</td><td>خالد حسن (#125) في تركيا</td><td>غير مؤهل في تركيا (لا شراء/لا تعويض)</td><td>محمد دمير (#101)</td><td>2.25 $ + 1.125 $ متبقي</td></tr>' +
+        var rowsHtml = OPS.transactions.slice(0, 10).map(function (t) {
+            return '<tr><td>' + esc(t.id) + '</td><td>' + esc(t.memberName) + ' (' + esc(t.memberCode) + ')</td><td>' + esc(t.merchantName) + '</td><td>' + fmt(t.commAmt) + '</td><td>' + esc(t.status) + '</td></tr>';
+        }).join('');
+        openModal('📜 سجل العمليات والـ Roll-up من قاعدة البيانات',
+            '<table class="data-table"><thead><tr><th>العملية</th><th>العضو</th><th>التاجر</th><th>العمولة</th><th>الحالة</th></tr></thead><tbody>' +
+            (rowsHtml || '<tr><td colspan="5" class="empty-state">لا توجد حركات توزيع مسجلة في السجل الحي بعد.</td></tr>') +
             '</tbody></table>');
     };
     window.exportCommissions = function () {
@@ -852,111 +761,38 @@
     };
 
     /* ============================================================
-       الشاشة 9: منظومة التقارير الرسمية الستة (Reports)
+       الشاشة 9: منظومة التقارير الرسمية الستة (Reports — من PostgreSQL)
        ============================================================ */
-    var OFFICIAL_REPORTS = __IS_PROD_ZERO ? {
+    var OFFICIAL_REPORTS = {
         tree: {
             title: '1. تقرير الشجرة الشامل (الراعي، الأب، الذراع، والجيل المزدوج)',
-            headers: ['الكود', 'العضو', 'الدولة', 'الراعي الحقيقي (Sponsor)', 'الأب بالتسكين (Parent)', 'الذراع', 'الجيل المزدوج (Me/Com)'],
-            rows: [
-                ['#0', 'العضو المؤسس (الجذر السيادي)', 'EG', '—', '—', 'الجذر', '0Me / 0Com']
-            ]
+            headers: ['الكود', 'العضو', 'الدولة', 'الراعي الحقيقي (Sponsor)', 'الأب بالتسكين (Parent)', 'الذراع', 'الجيل المزدوج'],
+            rows: []
         },
         carryon: {
             title: '2. تقرير التأهل الشهري وصندوق الهدف (Carry On)',
-            headers: ['العضو', 'الدولة', 'الهدف ($)', 'مرحل سابق ($)', 'مشتريات الشهر ($)', 'الإجمالي ($)', 'المقتطع للتأهل ($)', 'المرحل القادم ($)', 'الحالة'],
+            headers: ['العضو', 'الدولة', 'مرحل سابق ($)', 'مشتريات الشهر ($)', 'المرحل القادم ($)', 'الحالة'],
             rows: []
         },
         commissions: {
-            title: '3. تقرير العمولات الفردية وسجل الـ Roll-up وإعادة توزيع الفائض',
-            headers: ['رقم التوزيع', 'صانع التوزيع', 'مبلغ التوزيع ($)', 'الحصة الأصلية ($)', 'مستفيدون داخل السقف', 'تجاوز (Roll-up)', 'المتبقي المعاد توزيعه ($)'],
+            title: '3. تقرير المعاملات والعمولات الفعلي',
+            headers: ['كود العملية', 'العضو', 'التاجر', 'الإجمالي', 'العمولة', 'خطة الدخل ($)', 'الحالة'],
             rows: []
         },
         international: {
             title: '4. تقرير الأداء الدولي المتوازي (استقلال الدول وعدم الدمج)',
-            headers: ['الدولة', 'التجار النشطون', 'مبيعات الأعضاء (محلي)', 'عمولات سويا (محلي)', 'سعر الصرف الإداري', 'المكافئ المركزي ($)', 'وضع التفعيل'],
-            rows: [
-                ['🇪🇬 مصر (EG)', '0', '0.00 ج.م', '0.00 ج.م', '50.00 ج.م / $', '0.00 $', '🟢 نشطة ومفعلة'],
-                ['🇹🇷 تركيا (TR)', '0', '0.00 ليرة', '0.00 ليرة', '50.00 ليرة / $', '0.00 $', '🟢 نشطة ومفعلة'],
-                ['🇸🇦 السعودية (SA)', '0', '0.00 ر.س', '0.00 ر.س', '3.75 ر.س / $', '0.00 $', '⚪ غير نشطة (بانتظار D13)']
-            ]
+            headers: ['الدولة', 'التجار النشطون', 'العمليات المكتملة', 'سعر الصرف الإداري', 'الهدف ($)', 'وضع التفعيل'],
+            rows: []
         },
         reconciliation: {
             title: '5. تقرير الخزانة وخطة الدخل والمطابقة المالية الصفرية',
             headers: ['البند المحاسبي', 'الدائن / المصدر', 'المدين / الوجهة', 'الفرق', 'الحكم الرقابي'],
-            rows: [
-                ['تفكيك عمولات سويا (10%)', '0.00 ج.م (مجموع التجار)', '0.00 خزانة (25%) + 0.00 خطة (75%)', '0.00 ج.م', '✅ مطابق 100%'],
-                ['التزامات الشحن المسبق للتجار', '0.00 إيداعات معتمدة', '0.00 عمولات مستهلكة + 0.00 رصيد باقٍ', '0.00 ج.م', '✅ مطابق 100%'],
-                ['الشجرة الدولية مقابل بطاقات الدول', '0.00 $ إجمالي الشجرة', '0.00 $ (EG) + 0.00 $ (TR)', '0.00 $', '✅ مطابق 100%']
-            ]
+            rows: []
         },
         audit: {
             title: '6. تقرير المراجعة والاستثناءات الرقابية والفوترة الضريبية (Audit & Tax)',
             headers: ['الفئة', 'العدد / القيمة', 'التفصيل التشغيلي', 'المعيار المرتبط'],
-            rows: [
-                ['فواتير مكررة محجوزة', '0 عملية (0.00 ج.م)', 'لا توجد حالات مسجلة', 'حماية الازدواج M11'],
-                ['عمليات معلقة متصاعدة >48س', '0 عملية (0.00 ج.م)', 'لا توجد عمليات معلقة', 'SLA التجار D6'],
-                ['فروق التقريب العشرية (4301)', '0.0000 $', 'تدوير Decimal دقيق لحساب فروق التقريب بالخزانة', 'D11']
-            ]
-        }
-    } : {
-        tree: {
-            title: '1. تقرير الشجرة الشامل (الراعي، الأب، الذراع، والجيل المزدوج)',
-            headers: ['الكود', 'العضو', 'الدولة', 'الراعي الحقيقي (Sponsor)', 'الأب بالتسكين (Parent)', 'الذراع', 'الجيل المزدوج (Me/Com)'],
-            rows: [
-                ['#101', 'محمد دمير', 'EG', '#0 (الشركة)', '#0 (الشركة)', 'يمين', '1Me / 2Com'],
-                ['#124', 'أحمد مصطفى', 'EG', '#101 (محمد دمير)', '#101', 'يمين', '2Me / 3Com'],
-                ['#125', 'خالد حسن', 'EG', '#101 (محمد دمير)', '#101', 'يسار', '2Me / 3Com'],
-                ['#210', 'منى علي', 'EG', '#124 (أحمد مصطفى)', '#124', 'يمين', '3Me / 4Com'],
-                ['#318', 'يوسف كمال', 'TR', '#125 (خالد حسن)', '#125', 'يسار', '3Me / 4Com']
-            ]
-        },
-        carryon: {
-            title: '2. تقرير التأهل الشهري وصناديق الـ Carry On لكل دولة',
-            headers: ['العضو', 'الدولة', 'الهدف ($)', 'المرحل السابق ($)', 'مشتريات الشهر ($)', 'الإجمالي ($)', 'المستهلك ($)', 'الفائض المرحّل ($)', 'الحالة'],
-            rows: [
-                ['محمد دمير (#101)', 'EG', '24.75', '3.65', '24.75', '28.40', '24.75', '3.65', '🟢 مؤهل بالمشتريات'],
-                ['أحمد مصطفى (#124)', 'EG', '24.75', '12.00', '7.50', '19.50', '0.00', '19.50 (جاري)', '🟠 قيد التجميع'],
-                ['خالد حسن (#125)', 'EG', '24.75', '1.45', '24.75', '26.20', '24.75', '1.45', '🟢 مؤهل بالمشتريات'],
-                ['يوسف كمال (#318)', 'TR', '24.75', '0.25', '24.75', '25.00', '24.75', '0.25', '🟢 مؤهل بالمشتريات'],
-                ['محمد دمير (#101)', 'TR', '33.00 (تعويضي)', '0.00', '0.00 (تعويض)', 'أرباح TR 80.00', '33.00', 'صافي 47.00', '🟢 مؤهل تعويضياً']
-            ]
-        },
-        commissions: {
-            title: '3. تقرير العمولات الفردية وسجل الـ Roll-up وإعادة توزيع الفائض',
-            headers: ['رقم التوزيع', 'صانع التوزيع', 'مبلغ التوزيع ($)', 'الحصة الأصلية ($)', 'مستفيدون داخل السقف', 'تجاوز (Roll-up)', 'المتبقي المعاد توزيعه ($)'],
-            rows: [
-                ['POOL-812', 'خالد حسن (#125)', '24.75', '2.25', '8 مؤهلين', 'تجاوز #210 (غير مؤهلة) ← #124', '6.75 (0.84375$/فرد)'],
-                ['POOL-813', 'يوسف كمال (#318)', '24.75', '2.25', '6 مؤهلين', 'تجاوز #125 في TR ← #101', '11.25 (1.875$/فرد)']
-            ]
-        },
-        international: {
-            title: '4. تقرير الأداء الدولي المتوازي (استقلال الدول وعدم الدمج)',
-            headers: ['الدولة', 'التجار النشطون', 'مبيعات الأعضاء (محلي)', 'عمولات سويا (محلي)', 'سعر الصرف الإداري', 'المكافئ المركزي ($)', 'وضع التفعيل'],
-            rows: [
-                ['🇪🇬 مصر (EG)', '31', '1,101,100.00 ج.م', '110,110.00 ج.م', '50.00 ج.م / $', '2,202.20 $', '🟢 نشطة ومفعلة'],
-                ['🇹🇷 تركيا (TR)', '7', '183,500.00 ليرة', '18,350.00 ليرة', '50.00 ليرة / $', '367.00 $', '🟢 نشطة ومفعلة'],
-                ['🇸🇦 السعودية (SA)', '0', '0.00 ر.س', '0.00 ر.س', '3.75 ر.س / $', '0.00 $', '⚪ غير نشطة (بانتظار T06+D18)']
-            ]
-        },
-        reconciliation: {
-            title: '5. تقرير الخزانة وخطة الدخل والمطابقة المالية الصفرية',
-            headers: ['البند المحاسبي', 'الدائن / المصدر', 'المدين / الوجهة', 'الفرق', 'الحكم الرقابي'],
-            rows: [
-                ['تفكيك عمولات سويا (10%)', '128,460.00 ج.م (مجموع التجار)', '32,115.00 خزانة (25%) + 96,345.00 خطة (75%)', '0.00 ج.م', '✅ مطابق 100%'],
-                ['التزامات الشحن المسبق للتجار', '252,645.00 إيداعات معتمدة', '66,345.00 عمولات مستهلكة + 186,300.00 رصيد باقٍ', '0.00 ج.م', '✅ مطابق 100%'],
-                ['الشجرة الدولية مقابل بطاقات الدول', '2,569.20 $ إجمالي الشجرة', '2,202.20 $ (EG) + 367.00 $ (TR)', '0.00 $', '✅ مطابق 100%']
-            ]
-        },
-        audit: {
-            title: '6. تقرير المراجعة والاستثناءات الرقابية والفوترة الضريبية (Audit & Tax)',
-            headers: ['الفئة', 'العدد / القيمة', 'التفصيل التشغيلي', 'المعيار المرتبط'],
-            rows: [
-                ['فواتير مكررة محجوزة', '1 عملية (500 ج.م)', 'TXN-DUP-804 محجوزة بفارق 4 دقائق — M11', 'حماية الازدواج'],
-                ['عمليات معلقة متصاعدة >48س', '1 عملية (1,800 ج.م)', 'TXN-PEND-771 تنتظر الحسم — D6', 'SLA التجار'],
-                ['فروق التقريب العشرية', '0.0000 $', 'تدوير Decimal دقيق لحساب فروق التقريب بالخزانة', 'D11'],
-                ['وعاء ضريبة القيمة المضافة / WHT', '128,460 ج.م عمولات بانتظار نسبة Y07', 'يلزم اعتماد نسبة الضريبة لكل دولة مع المحاسب القانوني', 'D19 (معلق)']
-            ]
+            rows: []
         }
     };
     function upgradeReportsSelect() {
@@ -1061,21 +897,19 @@
     }
 
     function renderReconTab() {
-        var diff = OPS.reconDiffInjected;
-        var rows = __IS_PROD_ZERO ? [
-            ['1. تفكيك العمولة العامة (10%)', '0.00 ج.م (إجمالي التجار)', '0.00 خزانة + 0.00 خطة', '0.00 ج.م', true],
-            ['2. حصة خطة الدخل مقابل الصناديق والتوزيعات', '0.00 ج.م', '0.00 توزيعات + 0.00 Carry On', '0.00 ج.م', true],
-            ['3. صندوق هدف العضو مقابل مجموع الفواتير (SUM)', '0.00 $', '0.00 $ (مجموع الفواتير الموثقة)', '0.00 $', true],
-            ['4. الشجرة الدولية مقابل مجموع بطاقات الدول', '0.00 $', '0.00 $ (EG) + 0.00 $ (TR)', '0.00 $', true],
-            ['5. التزامات الشحن المسبق للتجار (Liability)', '0.00 ج.م', '0.00 إيداعات − 0.00 عمولات مقتطعة', '0.00 ج.م', true],
-            ['6. دفتر فروق التقريب العشري (Decimal Ledger)', '0.0000 $', 'جميع المبالغ بأصغر وحدة نقدية (D11)', '0.0000 $', true]
-        ] : [
-            ['1. تفكيك العمولة العامة (10%)', '128,460.00 ج.م (إجمالي التجار)', diff ? '32,115.00 + 96,332.50 = 128,447.50' : '32,115.00 خزانة + 96,345.00 خطة', diff ? '+12.50 ج.م' : '0.00 ج.م', !diff],
-            ['2. حصة خطة الدخل مقابل الصناديق والتوزيعات', '96,345.00 ج.م', diff ? '96,332.50 (قيد JRN-ERR-404 مفقود)' : '61,200 توزيعات + 35,145 Carry On', diff ? '+12.50 ج.م' : '0.00 ج.م', !diff],
-            ['3. صندوق هدف العضو مقابل مجموع الفواتير (SUM)', '28.40 $ (محمد دمير #101)', '28.40 $ (مجموع فواتير نوفمبر الموثقة)', '0.00 $', true],
-            ['4. الشجرة الدولية مقابل مجموع بطاقات الدول', '2,569.20 $', '2,202.20 $ (EG) + 367.00 $ (TR)', '0.00 $', true],
-            ['5. التزامات الشحن المسبق للتجار (Liability)', '186,300.00 ج.م', '252,645 إيداعات − 66,345 عمولات مقتطعة', '0.00 ج.م', true],
-            ['6. دفتر فروق التقريب العشري (Decimal Ledger)', '0.0000 $', 'جميع المبالغ بأصغر وحدة نقدية (D11)', '0.0000 $', true]
+        var zd = (LIVE_BUNDLE_REF && LIVE_BUNDLE_REF.zero_discrepancy) || {};
+        var kp = (LIVE_BUNDLE_REF && LIVE_BUNDLE_REF.kpis) || {};
+        var diff = OPS.reconDiffInjected || (zd.is_zero_discrepancy_intact === false);
+        var sumDr = Number(zd.total_debit_usd || 0);
+        var sumCr = Number(zd.total_credit_usd || 0);
+        var ledDiff = Number(zd.ledger_diff_usd || 0);
+        var rows = [
+            ['1. توازن القيد المزدوج العام (Ledger Trial Balance)', fmt(sumDr) + ' $ (مدين)', fmt(sumCr) + ' $ (دائن)', (OPS.reconDiffInjected ? '+12.50 ج.م (محاكاة)' : fmt(ledDiff) + ' $'), !diff],
+            ['2. خزانة الشركة (25%) مقابل التزام خطة الدخل (75%)', fmt(kp.treasury_revenue_usd) + ' $ خزانة', fmt(kp.plan_pool_liability_usd) + ' $ التزام خطة', fmt(zd.pool_mismatch_count || 0, 0) + ' فوارق', Number(zd.pool_mismatch_count || 0) === 0],
+            ['3. التزامات الشحن المسبق للتجار (حساب 2101)', fmt(kp.merchant_prepaid_float_usd) + ' $', 'صافي أرصدة التجار الحرة بالقاعدة', '0.00 $', true],
+            ['4. أرصدة محافظ الأعضاء القابلة للسحب + S03 Suspense', fmt(kp.member_wallets_payable_usd) + ' $ متاح', fmt(kp.s03_suspense_usd) + ' $ معلق S03', '0.00 $', true],
+            ['5. قيود يومية غير متزنة (Unbalanced Entries)', fmt0(zd.unbalanced_entries_count || 0) + ' قيود', 'القيد المزدوج الصارم', fmt0(zd.unbalanced_entries_count || 0), Number(zd.unbalanced_entries_count || 0) === 0],
+            ['6. دفتر فروق التقريب العشري (حساب 4301)', fmt(kp.rounding_4301_usd, 4) + ' $', 'تدوير Decimal دقيق (D11)', '0.0000 $', true]
         ];
         return '<div style="background:white;border:1.5px solid ' + (diff ? '#dc2626' : '#10b981') + ';border-radius:14px;padding:18px;">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">' +
@@ -1159,29 +993,41 @@
     }
 
     function renderComplianceTab() {
+        var ctrs = (LIVE_BUNDLE_REF && Array.isArray(LIVE_BUNDLE_REF.countries)) ? LIVE_BUNDLE_REF.countries : [];
+        var countryRows = ctrs.length === 0
+            ? '<tr><td colspan="5" class="empty-state">بانتظار تحميل بوابة الدول من قاعدة البيانات...</td></tr>'
+            : ctrs.map(function (c) {
+                var nameAr = (c.country_name_i18n && (c.country_name_i18n.ar || c.country_name_i18n.en)) || c.country_code;
+                return '<tr>' +
+                    '<td data-label="الدولة"><b>' + esc(nameAr) + ' (' + esc(c.country_code) + ')</b></td>' +
+                    '<td data-label="T06">' + Number(c.active_merchants_count || 0) + ' تاجر • ' + Number(c.completed_tx_count || 0) + ' عملية</td>' +
+                    '<td data-label="D18">' + (c.legal_opinion_verified ? '✅ موثق ومعتمد' : '⏳ قيد الاستيفاء') + '</td>' +
+                    '<td data-label="D19">VAT ' + Number(c.vat_rate || 0) + '% • WHT ' + Number(c.wht_rate || 0) + '%</td>' +
+                    '<td data-label="الحكم">' + (c.is_active ? '<span class="badge badge-success">🟢 دولة نشطة</span>' : '<span class="badge badge-danger">⛔ غير مفعلة (D13)</span>') + '</td>' +
+                '</tr>';
+            }).join('');
         return '<div style="display:grid;gap:16px;">' +
             '<div style="background:white;border:1.5px solid #cbd5e1;border-radius:14px;padding:18px;">' +
                 '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">' +
-                    '<div><h3 style="margin:0;">🌍 بوابة جاهزية الدول والامتثال القانوني والضريبي (P0-4 • D13 • D18 • D19)</h3><div style="font-size:0.8rem;color:#64748b;">لا يجوز فتح دولة للتأهل أو الهدف التعويضي قبل استيفاء التجار (T06) والرأي القانوني (D18) والفاتورة الضريبية (D19)</div></div>' +
+                    '<div><h3 style="margin:0;">🌍 بوابة جاهزية الدول والامتثال القانوني والضريبي (P0-4 • D13 • D18 • D19)</h3><div style="font-size:0.8rem;color:#64748b;">تُقرأ القيم مباشرةً من جدول الدول في PostgreSQL</div></div>' +
                     badgeProp('D13 + D18 + D19') +
                 '</div>' +
-                '<table class="data-table"><thead><tr><th>الدولة</th><th>التجار والعمليات (T06: ≥5 تجار و50 عملية)</th><th>الرأي القانوني المكتوب (D18)</th><th>الضرائب VAT/WHT وETA (D19)</th><th>الحكم التلقائي للبوابة</th></tr></thead><tbody>' +
-                '<tr><td data-label="الدولة">🇪🇬 مصر (EG)</td><td data-label="T06">31 تاجراً • 1,738 عملية ✅</td><td data-label="D18">⏳ قيد المراجعة مع محامٍ مرخص</td><td data-label="D19">⏳ يلزم ضريبية 14% VAT وإيصال إلكتروني ETA</td><td data-label="الحكم"><span style="color:#b45309;font-weight:800;">⚠️ مُفعّلة تجريبياً — يلزم D18/D19</span></td></tr>' +
-                '<tr><td data-label="الدولة">🇹🇷 تركيا (TR)</td><td data-label="T06">7 تجار • 240 عملية ✅</td><td data-label="D18">⏳ قيد المراجعة القانونية</td><td data-label="D19">⏳ لم تُحدد نسب الضرائب التركية Y07</td><td data-label="الحكم"><span style="color:#b45309;font-weight:800;">⚠️ مُفعّلة تجريبياً — يلزم D18/D19</span></td></tr>' +
-                '<tr><td data-label="الدولة">🇸🇦 السعودية (SA)</td><td data-label="T06">0 تجار • 0 عملية ❌ (تحت الحد)</td><td data-label="D18">❌ غير مستوفى</td><td data-label="D19">❌ غير مستوفى</td><td data-label="الحكم"><span class="badge badge-danger">⛔ محجوبة عن التفعيل</span></td></tr>' +
-                '</tbody></table>' +
+                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>الدولة</th><th>التجار والعمليات (T06)</th><th>الرأي القانوني (D18)</th><th>الضرائب VAT/WHT (D19)</th><th>الحكم التلقائي للبوابة</th></tr></thead><tbody>' +
+                countryRows +
+                '</tbody></table></div>' +
             '</div>' +
             '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;">' +
                 '<div style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:16px;">' +
-                    '<h3 style="margin:0 0 8px 0;font-size:0.98rem;">📢 معاينة إشعار التأثير المسبق (P1-20 — مهلة T07: 30 يوماً)</h3>' +
-                    '<p style="font-size:0.82rem;color:#475569;margin-bottom:8px;">عند اعتماد أي تغيير على النسب أو الهدف التعويضي للشهر القادم، يُبث هذا الإعلان التلقائي:</p>' +
-                    '<div style="background:#eff6ff;border:1px dashed #3b82f6;border-radius:10px;padding:10px;font-size:0.82rem;">"إشعار رسمي: سيسري بتاريخ <b>2026-12-01</b> تعديل معامل الهدف التعويضي لدولة تركيا ليصبح 33.00$. يمكنك مراجعة الأثر قبل انتهاء المهلة."</div>' +
+                    '<h3 style="margin:0 0 8px 0;font-size:0.98rem;">📢 إشعار التأثير المسبق (P1-20 — مهلة 30 يوماً)</h3>' +
+                    '<p style="font-size:0.82rem;color:#475569;margin-bottom:8px;">أي تعديل معلمات مالية مستقبلي يمر إلزامياً عبر طابور Maker–Checker ويُطبق بأثر أمامي غير رجعي (D28).</p>' +
                 '</div>' +
                 '<div style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:16px;">' +
-                    '<h3 style="margin:0 0 8px 0;font-size:0.98rem;">🔐 سجل خصوصية PDPL والاطلاع على الهواتف والرادار (Y08 • W09 • M18)</h3>' +
-                    OPS.privacyLogs.map(function (p) {
-                        return '<div style="padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:0.78rem;"><b>' + esc(p.actor) + '</b> ⬅️ ' + esc(p.target) + '<div style="color:#64748b;">' + esc(p.scope) + ' • ' + esc(p.consent) + ' (' + esc(p.at) + ')</div></div>';
-                    }).join('') +
+                    '<h3 style="margin:0 0 8px 0;font-size:0.98rem;">🔐 سجل التدقيق والخصوصية PDPL الحية</h3>' +
+                    (OPS.privacyLogs.length === 0
+                        ? '<div style="color:#64748b;font-size:0.82rem;">لا توجد سجلات تدقيق إضافية محملة بعد.</div>'
+                        : OPS.privacyLogs.map(function (p) {
+                            return '<div style="padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:0.78rem;"><b>' + esc(p.actor) + '</b> ⬅️ ' + esc(p.target) + '<div style="color:#64748b;">' + esc(p.scope) + ' • ' + esc(p.consent) + ' (' + esc(p.at) + ')</div></div>';
+                        }).join('')) +
                 '</div>' +
             '</div>' +
         '</div>';

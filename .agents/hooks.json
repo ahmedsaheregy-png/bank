@@ -1,0 +1,12 @@
+{
+  "sawyan-zero-defect-stop-gate": {
+    "enabled": true,
+    "Stop": [
+      {
+        "type": "command",
+        "command": "D:\\Python314\\python.exe ..\\database\\stop_hook_gate.py",
+        "timeout": 60
+      }
+    ]
+  }
+}

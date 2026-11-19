@@ -1,0 +1,203 @@
+{
+  "manifest_version": "3.0.0",
+  "constitutional_ref": "الملف_التقني_للمطورين.md (Sections 1.6, 5.6, 6.2, 6.3, 11.1, D29, D30)",
+  "viewports": [
+    { "name": "desktop", "width": 1440, "height": 900, "tier": "desktop" },
+    { "name": "half_screen_wide", "width": 780, "height": 900, "tier": "rail" },
+    { "name": "half_screen_narrow", "width": 680, "height": 900, "tier": "rail" },
+    { "name": "mobile", "width": 375, "height": 812, "tier": "mobile" }
+  ],
+  "forbidden_live_patterns": [
+    { "id": "legacy_showcase_link", "pattern": "member-showcase.html", "scope": "web" },
+    { "id": "legacy_v1_demo_link", "pattern": "member-demo/index.html", "scope": "web" },
+    { "id": "merchant_mock_map", "pattern": "MOCK_MEMBERS_MAP", "scope": "web" },
+    { "id": "merchant_hardcoded_gmv", "pattern": "42,800.00", "scope": "web" },
+    { "id": "merchant_hardcoded_store_name", "pattern": "سوبرماركت الفارق", "scope": "merchant" },
+    { "id": "forbidden_term_cashback_ar", "pattern": "كاشباك", "scope": "web" },
+    { "id": "forbidden_term_cashback_space", "pattern": "كاش باك", "scope": "web" },
+    { "id": "forbidden_term_bank", "pattern": "SAWYAN BANK", "scope": "web" },
+    { "id": "forbidden_term_clawback", "pattern": "-19.75$", "scope": "all" },
+    { "id": "forbidden_term_rolling_reserve", "pattern": "Rolling Reserve", "scope": "all" },
+    { "id": "forbidden_frozen_totp_active", "pattern": "Offline TOTP Member QR", "scope": "all" }
+  ],
+  "portals": {
+    "public": {
+      "entry_paths": ["index.html", "preview/index.html"],
+      "required_spec_ids": [
+        "public-geo-trust-bar",
+        "public-main-nav",
+        "public-hero-wallet-card",
+        "public-how-it-works",
+        "public-marketplace-explorer",
+        "public-y06-disclaimer"
+      ],
+      "forbidden_href_substrings": [
+        "member-showcase.html",
+        "member-demo"
+      ]
+    },
+    "member": {
+      "entry_path": "preview/member-dashboard/dashboard.html",
+      "allowed_nav_pages": [
+        "home",
+        "myPending",
+        "transactions",
+        "tree",
+        "wallet",
+        "academy",
+        "merchants",
+        "favorites",
+        "crm",
+        "referrals",
+        "settings"
+      ],
+      "mobile_bottom_nav_min_tabs": 5,
+      "screen_spec_ids": {
+        "home": [
+          "member-home-target-box",
+          "member-home-pending-card",
+          "member-home-team-radar",
+          "member-home-single-qr",
+          "member-home-calculator",
+          "member-home-recent-tx"
+        ],
+        "myPending": [
+          "member-pending-limit-meter",
+          "member-pending-list"
+        ],
+        "transactions": [
+          "member-tx-country-tabs",
+          "member-tx-period-tabs",
+          "member-tx-d5-banner",
+          "member-tx-list"
+        ],
+        "tree": [
+          "member-tree-lens-bar",
+          "member-tree-kpis",
+          "member-tree-controls",
+          "member-tree-view-toggle",
+          "member-tree-orange-filter",
+          "member-tree-earth-viewport",
+          "member-tree-hud-dpad",
+          "member-tree-reserve-counter",
+          "member-tree-country-reports",
+          "member-tree-leader-radar",
+          "member-tree-detail-table"
+        ],
+        "wallet": [
+          "member-wallet-fx-reconcile-card",
+          "member-wallet-s03-meter",
+          "member-wallet-withdraw-btn",
+          "member-wallet-methods-section",
+          "member-wallet-history"
+        ],
+        "academy": [
+          "member-academy-lms"
+        ],
+        "merchants": [
+          "member-merchants-leaflet-map",
+          "member-merchants-sort-select",
+          "member-merchants-filters",
+          "member-merchants-grid"
+        ],
+        "favorites": [
+          "member-favorites-grid"
+        ],
+        "crm": [
+          "member-crm-board"
+        ],
+        "referrals": [
+          "member-referrals-qr",
+          "member-referrals-y06-share",
+          "member-referrals-spillover-predictor",
+          "member-referrals-quick-add",
+          "member-referrals-registered-table"
+        ],
+        "settings": [
+          "member-settings-residency-lock",
+          "member-settings-residency-move-btn",
+          "member-settings-kyc",
+          "member-settings-home-gps",
+          "member-settings-support",
+          "member-settings-password"
+        ]
+      },
+      "required_rpcs": [
+        "get_member_dashboard_bundle",
+        "get_tree_analytics_with_country_lens",
+        "cancel_member_pending_purchase",
+        "get_member_academy_catalog",
+        "member_update_academy_progress"
+      ]
+    },
+    "merchant": {
+      "entry_path": "preview/merchant-dashboard/dashboard.html",
+      "allowed_nav_pages": [
+        "home",
+        "kiosk",
+        "pending",
+        "scan",
+        "qrScanner",
+        "transactions",
+        "financial",
+        "radar",
+        "storeKit",
+        "settings"
+      ],
+      "screen_spec_ids": {
+        "home": [
+          "merchant-home-kpis",
+          "merchant-home-radar-card"
+        ],
+        "financial": [
+          "merchant-financial-prepaid-card",
+          "merchant-financial-d15-ladder",
+          "merchant-financial-ledger-tabs"
+        ]
+      },
+      "required_rpcs": [
+        "get_merchant_dashboard_bundle",
+        "submit_pos_transaction"
+      ]
+    },
+    "admin": {
+      "entry_path": "preview/admin-dashboard/dashboard.html",
+      "allowed_nav_pages": [
+        "home",
+        "sovereignLive",
+        "sovereignOpsCenter",
+        "academyAdmin",
+        "decisionsLab",
+        "governanceOps",
+        "members",
+        "merchants",
+        "transactions",
+        "commissions",
+        "disputes",
+        "support",
+        "reports",
+        "withdrawals",
+        "settings"
+      ],
+      "screen_spec_ids": {
+        "home": [
+          "admin-home-live-banner",
+          "admin-home-kpis",
+          "admin-home-charts",
+          "admin-home-activity"
+        ],
+        "sovereignLive": [
+          "admin-live-hub"
+        ],
+        "academyAdmin": [
+          "admin-academy-lms"
+        ]
+      },
+      "required_rpcs": [
+        "get_admin_sovereign_overview",
+        "admin_search_and_reply_ops",
+        "admin_manage_academy_lms"
+      ]
+    }
+  }
+}

@@ -310,45 +310,45 @@ function loadFinancialReport() {
         </div>
 
         <!-- 1. بطاقة الرصيد المباشر ومؤشر الأمان المالي ضد العزل -->
-        <div style="background:linear-gradient(135deg, #064e3b, #0f172a); color:white; border-radius:14px; padding:18px 22px; margin-bottom:16px; box-shadow:0 4px 15px rgba(6,78,59,0.25); border:1px solid #10b981;">
+        <div data-spec-id="merchant-financial-prepaid-card" style="background:linear-gradient(135deg, #064e3b, #0f172a); color:white; border-radius:14px; padding:18px 22px; margin-bottom:16px; box-shadow:0 4px 15px rgba(6,78,59,0.25); border:1px solid #10b981;">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; flex-wrap:wrap; gap:12px;">
                 <div>
                     <span style="font-size:0.75rem; background:rgba(16,185,129,0.2); border:1px solid #10b981; color:#a7f3d0; padding:2px 8px; border-radius:10px; font-weight:700;">رصيد الشحن مسبق الدفع المتاح حالياً (Prepaid)</span>
-                    <div id="livePrepaidBalance" style="font-size:2.2rem; font-weight:900; margin-top:6px; font-family:monospace; color:#34d399;">4,850.00 ج.م</div>
+                    <div id="livePrepaidBalance" style="font-size:2.2rem; font-weight:900; margin-top:6px; font-family:monospace; color:#34d399;">0.00 ج.م</div>
                 </div>
                 <div style="text-align:left;">
-                    <span style="background:#ecfdf5; color:#047857; font-weight:800; font-size:0.8rem; padding:4px 12px; border-radius:8px; display:inline-block; border:1px solid #a7f3d0;">
-                        🟢 حالة المتجر: آمن ونشط بالرادار
+                    <span id="liveStoreRadarBadge" style="background:#ecfdf5; color:#047857; font-weight:800; font-size:0.8rem; padding:4px 12px; border-radius:8px; display:inline-block; border:1px solid #a7f3d0;">
+                        🟢 حالة المتجر: جاري التحقق...
                     </span>
-                    <div style="font-size:0.74rem; color:#94a3b8; margin-top:5px;">الحد الأدنى لإنذار الشحن: 500.00 ج.م</div>
+                    <div id="liveMinWarnLabel" style="font-size:0.74rem; color:#94a3b8; margin-top:5px;">تنبيه انخفاض الرصيد: وفق إعدادات الحساب</div>
                 </div>
             </div>
 
             <!-- شريط الأمان المالي الاستراتيجي -->
-            <div style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:10px; padding:10px 14px; font-size:0.8rem; color:#e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                <span>🛡️ <strong>حد الأمان المحاسبي:</strong> رصيدك الحالي يكفي لتمرير مبيعات لأعضاء سويا بقيمة <strong>48,500.00 ج.م</strong> قبل الحاجة لإعادة الشحن.</span>
-                <span style="color:#a7f3d0; font-weight:800; font-family:monospace;">نسبة العمولة: 10.0% معتمدة</span>
+            <div data-spec-id="merchant-financial-d15-ladder" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:10px; padding:10px 14px; font-size:0.8rem; color:#e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <span id="liveSafetyCapStrip">🛡️ <strong>حد الأمان المحاسبي:</strong> جاري حساب سعة التغطية المباشرة من رصيد الشحن المسبق...</span>
+                <span id="liveDedRateBadge" style="color:#a7f3d0; font-weight:800; font-family:monospace;">نسبة العمولة التعاقدية: —%</span>
             </div>
         </div>
 
         <!-- 2. بطاقات إحصائيات الشهر الحالي السريعة -->
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:14px; margin-bottom:16px;">
             <div style="background:white; border:1px solid #cbd5e1; border-radius:12px; padding:14px 18px; text-align:center;">
-                <div style="font-size:0.78rem; color:#64748b; font-weight:700;">إجمالي مبيعات الشهر (Gross GMV)</div>
-                <div style="font-size:1.35rem; font-weight:900; color:#0f172a; margin-top:4px;">42,800.00 ج.م</div>
+                <div style="font-size:0.78rem; color:#64748b; font-weight:700;">إجمالي مبيعات الدورة الحالية (Gross GMV)</div>
+                <div id="finGrossGmvCard" style="font-size:1.35rem; font-weight:900; color:#0f172a; margin-top:4px;">0.00 ج.م</div>
             </div>
             <div style="background:white; border:1px solid #cbd5e1; border-radius:12px; padding:14px 18px; text-align:center;">
-                <div style="font-size:0.78rem; color:#64748b; font-weight:700;">عمولات سويا (10%)</div>
-                <div style="font-size:1.35rem; font-weight:900; color:#dc2626; margin-top:4px;">-4,280.00 ج.م</div>
+                <div id="finCommRateLbl" style="font-size:0.78rem; color:#64748b; font-weight:700;">عمولات سويًا المستقطعة</div>
+                <div id="finCommDedCard" style="font-size:1.35rem; font-weight:900; color:#dc2626; margin-top:4px;">0.00 ج.م</div>
             </div>
             <div style="background:white; border:1px solid #cbd5e1; border-radius:12px; padding:14px 18px; text-align:center;">
-                <div style="font-size:0.78rem; color:#64748b; font-weight:700;">صافي مبيعات المتجر المحصلة (90%)</div>
-                <div style="font-size:1.35rem; font-weight:900; color:#059669; margin-top:4px;">38,520.00 ج.م</div>
+                <div id="finNetRateLbl" style="font-size:0.78rem; color:#64748b; font-weight:700;">صافي مبيعات المتجر بعد العمولة</div>
+                <div id="finNetSalesCard" style="font-size:1.35rem; font-weight:900; color:#059669; margin-top:4px;">0.00 ج.م</div>
             </div>
         </div>
 
         <!-- 3. شريط التبويبات المحاسبية الثلاثة -->
-        <div style="display:flex; border-bottom:2px solid #e2e8f0; margin-bottom:14px; gap:8px;">
+        <div data-spec-id="merchant-financial-ledger-tabs" style="display:flex; border-bottom:2px solid #e2e8f0; margin-bottom:14px; gap:8px;">
             <button id="finTabBtn1" onclick="switchFinancialTab(1)" style="background:transparent; border:none; border-bottom:3px solid #059669; color:#059669; font-weight:900; font-size:0.9rem; padding:8px 16px; cursor:pointer; font-family:'Tajawal';">
                 🧾 كشف استهلاك الشحن والمبيعات (أين صُرف؟)
             </button>
@@ -356,7 +356,7 @@ function loadFinancialReport() {
                 🔋 سجل عمليات شحن الرصيد (كم مرة وبكم؟)
             </button>
             <button id="finTabBtn3" onclick="switchFinancialTab(3)" style="background:transparent; border:none; border-bottom:3px solid transparent; color:#64748b; font-weight:700; font-size:0.9rem; padding:8px 16px; cursor:pointer; font-family:'Tajawal';">
-                📅 الإقفالات والتسويات للأشهر السابقة
+                📅 الفواتير الضريبية والتسويات (B2B)
             </button>
         </div>
 
@@ -370,43 +370,12 @@ function loadFinancialReport() {
                             <th style="padding:10px 12px;">رقم العملية</th>
                             <th style="padding:10px 12px;">العضو المشتري</th>
                             <th style="padding:10px 12px;">قيمة الفاتورة</th>
-                            <th style="padding:10px 12px;">عمولات سويا (10%)</th>
-                            <th style="padding:10px 12px;">الرصيد المتبقي بعد العملية</th>
+                            <th style="padding:10px 12px;">العمولة التعاقدية</th>
+                            <th style="padding:10px 12px;">الحالة</th>
                         </tr>
                     </thead>
-                    <tbody style="divide-y:1px solid #e2e8f0;">
-                        <tr style="border-bottom:1px solid #f1f5f9;">
-                            <td style="padding:10px 12px; color:#64748b;">اليوم 06:45 م</td>
-                            <td style="padding:10px 12px; font-weight:800; font-family:monospace;">#TX-1095</td>
-                            <td style="padding:10px 12px; font-weight:700;">أحمد مصطفى (#124)</td>
-                            <td style="padding:10px 12px; font-weight:800;">500.00 ج.م</td>
-                            <td style="padding:10px 12px; color:#dc2626; font-weight:800; font-family:monospace;">-50.00 ج.م </td>
-                            <td style="padding:10px 12px; color:#059669; font-weight:900; font-family:monospace;">4,850.00 ج.م</td>
-                        </tr>
-                        <tr style="border-bottom:1px solid #f1f5f9;">
-                            <td style="padding:10px 12px; color:#64748b;">اليوم 04:30 م</td>
-                            <td style="padding:10px 12px; font-weight:800; font-family:monospace;">#TX-1092</td>
-                            <td style="padding:10px 12px; font-weight:700;">خالد حسن (#125)</td>
-                            <td style="padding:10px 12px; font-weight:800;">1,250.00 ج.م</td>
-                            <td style="padding:10px 12px; color:#dc2626; font-weight:800; font-family:monospace;">-125.00 ج.م </td>
-                            <td style="padding:10px 12px; color:#059669; font-weight:900; font-family:monospace;">4,900.00 ج.م</td>
-                        </tr>
-                        <tr style="border-bottom:1px solid #f1f5f9;">
-                            <td style="padding:10px 12px; color:#64748b;">اليوم 02:15 م</td>
-                            <td style="padding:10px 12px; font-weight:800; font-family:monospace;">#TX-1088</td>
-                            <td style="padding:10px 12px; font-weight:700;">إبراهيم عادل (#135)</td>
-                            <td style="padding:10px 12px; font-weight:800;">825.00 ج.م</td>
-                            <td style="padding:10px 12px; color:#dc2626; font-weight:800; font-family:monospace;">-82.50 ج.م </td>
-                            <td style="padding:10px 12px; color:#059669; font-weight:900; font-family:monospace;">5,025.00 ج.م</td>
-                        </tr>
-                        <tr style="border-bottom:1px solid #f1f5f9;">
-                            <td style="padding:10px 12px; color:#64748b;">أمس 08:20 م</td>
-                            <td style="padding:10px 12px; font-weight:800; font-family:monospace;">#TX-1075</td>
-                            <td style="padding:10px 12px; font-weight:700;">سارة أحمد (#140)</td>
-                            <td style="padding:10px 12px; font-weight:800;">450.00 ج.م</td>
-                            <td style="padding:10px 12px; color:#dc2626; font-weight:800; font-family:monospace;">-45.00 ج.م </td>
-                            <td style="padding:10px 12px; color:#059669; font-weight:900; font-family:monospace;">5,107.50 ج.م</td>
-                        </tr>
+                    <tbody>
+                        <tr><td colspan="6" style="padding:16px;text-align:center;color:#64748b;">جاري تحميل كشف العمليات من قاعدة البيانات...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -419,107 +388,25 @@ function loadFinancialReport() {
                     <thead style="background:#f1f5f9; border-bottom:1.5px solid #cbd5e1; font-weight:800; color:#334155;">
                         <tr>
                             <th style="padding:10px 12px;">تاريخ الشحن</th>
-                            <th style="padding:10px 12px;">رقم العملية</th>
+                            <th style="padding:10px 12px;">رقم القيد</th>
                             <th style="padding:10px 12px;">المبلغ المشحون</th>
-                            <th style="padding:10px 12px;">وسيلة الدفع</th>
-                            <th style="padding:10px 12px;">الرصيد قبل الشحن</th>
-                            <th style="padding:10px 12px;">الرصيد بعد الشحن</th>
-                            <th style="padding:10px 12px;">الإيصال الرسمي</th>
+                            <th style="padding:10px 12px;">البيان والمرجع</th>
+                            <th style="padding:10px 12px;">ملاحظات</th>
+                            <th style="padding:10px 12px;">التوجيه المحاسبي</th>
+                            <th style="padding:10px 12px;">الحالة</th>
                         </tr>
                     </thead>
-                    <tbody style="divide-y:1px solid #e2e8f0;">
-                        <tr style="border-bottom:1px solid #f1f5f9;">
-                            <td style="padding:10px 12px; color:#64748b;">08 نوفمبر 2026</td>
-                            <td style="padding:10px 12px; font-weight:800; font-family:monospace;">#TOP-781</td>
-                            <td style="padding:10px 12px; color:#059669; font-weight:900; font-family:monospace;">+3,000.00 ج.م</td>
-                            <td style="padding:10px 12px;"><span style="background:#eff6ff; color:#1d4ed8; padding:2px 8px; border-radius:6px; font-weight:800; font-size:0.75rem;">إنستاباي (InstaPay)</span></td>
-                            <td style="padding:10px 12px; font-family:monospace; color:#64748b;">2,152.50 ج.م</td>
-                            <td style="padding:10px 12px; font-family:monospace; font-weight:800; color:#047857;">5,152.50 ج.م</td>
-                            <td style="padding:10px 12px;">
-                                <button onclick="alert('📄 إيصال الشحن الرسمي رقم #TOP-781: معتمد برقم مرجعي بنكي NBE-99120')" style="background:#f1f5f9; border:1px solid #cbd5e1; padding:3px 8px; border-radius:4px; font-size:0.75rem; cursor:pointer;">عرض الإيصال</button>
-                            </td>
-                        </tr>
-                        <tr style="border-bottom:1px solid #f1f5f9;">
-                            <td style="padding:10px 12px; color:#64748b;">01 نوفمبر 2026</td>
-                            <td style="padding:10px 12px; font-weight:800; font-family:monospace;">#TOP-742</td>
-                            <td style="padding:10px 12px; color:#059669; font-weight:900; font-family:monospace;">+2,000.00 ج.م</td>
-                            <td style="padding:10px 12px;"><span style="background:#fdf2f8; color:#9d174d; padding:2px 8px; border-radius:6px; font-weight:800; font-size:0.75rem;">فودافون كاش</span></td>
-                            <td style="padding:10px 12px; font-family:monospace; color:#64748b;">845.00 ج.م</td>
-                            <td style="padding:10px 12px; font-family:monospace; font-weight:800; color:#047857;">2,845.00 ج.م</td>
-                            <td style="padding:10px 12px;">
-                                <button onclick="alert('📄 إيصال الشحن الرسمي رقم #TOP-742: معتمد برقم محفظة VF-40291')" style="background:#f1f5f9; border:1px solid #cbd5e1; padding:3px 8px; border-radius:4px; font-size:0.75rem; cursor:pointer;">عرض الإيصال</button>
-                            </td>
-                        </tr>
-                        <tr style="border-bottom:1px solid #f1f5f9;">
-                            <td style="padding:10px 12px; color:#64748b;">15 أكتوبر 2026</td>
-                            <td style="padding:10px 12px; font-weight:800; font-family:monospace;">#TOP-690</td>
-                            <td style="padding:10px 12px; color:#059669; font-weight:900; font-family:monospace;">+5,000.00 ج.م</td>
-                            <td style="padding:10px 12px;"><span style="background:#f0fdf4; color:#15803d; padding:2px 8px; border-radius:6px; font-weight:800; font-size:0.75rem;">تحويل بنكي مباشر</span></td>
-                            <td style="padding:10px 12px; font-family:monospace; color:#64748b;">420.00 ج.م</td>
-                            <td style="padding:10px 12px; font-family:monospace; font-weight:800; color:#047857;">5,420.00 ج.م</td>
-                            <td style="padding:10px 12px;">
-                                <button onclick="alert('📄 إيصال الشحن الرسمي رقم #TOP-690: معتمد برقم تحويل CIB-11048')" style="background:#f1f5f9; border:1px solid #cbd5e1; padding:3px 8px; border-radius:4px; font-size:0.75rem; cursor:pointer;">عرض الإيصال</button>
-                            </td>
-                        </tr>
+                    <tbody>
+                        <tr><td colspan="7" style="padding:16px;text-align:center;color:#64748b;">جاري تحميل سجل الشحن من دفتر اليومية...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- التبويب 3: الإقفالات والتسويات الشهرية السابقة -->
+        <!-- التبويب 3: الفواتير الضريبية المزدوجة والتسويات -->
         <div id="finTabContent3" style="display:none;">
-            <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:12px; padding:14px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <label style="font-weight:800; font-size:0.85rem; color:#0f172a;">اختر دورة الإقفال الشهري:</label>
-                    <select id="settlementMonthSelect" onchange="changeSettlementMonth(this.value)" style="padding:6px 12px; border-radius:6px; border:1px solid #cbd5e1; font-weight:700; font-family:'Tajawal'; font-size:0.85rem;">
-                        <option value="oct_2026" selected>أكتوبر 2026 (دورة مقفلة معتمدة)</option>
-                        <option value="sep_2026">سبتمبر 2026 (دورة مقفلة معتمدة)</option>
-                        <option value="aug_2026">أغسطس 2026 (دورة مقفلة معتمدة)</option>
-                    </select>
-                </div>
-                <button onclick="alert('📥 جاري تنزيل الفاتورة الضريبية وإشعار التسوية المعتمد لشهر ' + document.getElementById('settlementMonthSelect').options[document.getElementById('settlementMonthSelect').selectedIndex].text);" style="background:#1e3a8a; color:white; border:none; padding:8px 14px; border-radius:6px; font-weight:700; font-size:0.82rem; cursor:pointer; font-family:'Tajawal';">
-                    🧾 تحميل الفاتورة الضريبية الشهرية (Tax Invoice PDF)
-                </button>
-            </div>
-
-            <!-- جدول ملخص الإقفال للشهر المختار -->
-            <div style="background:white; border:1px solid #cbd5e1; border-radius:12px; overflow:hidden;">
-                <table style="width:100%; border-collapse:collapse; text-align:right; font-size:0.86rem;">
-                    <thead style="background:#f1f5f9; border-bottom:1.5px solid #cbd5e1; font-weight:800; color:#334155;">
-                        <tr>
-                            <th style="padding:10px 14px;">البند المحاسبي</th>
-                            <th style="padding:10px 14px;">القيمة المالية</th>
-                            <th style="padding:10px 14px;">التوجيه المحاسبي</th>
-                        </tr>
-                    </thead>
-                    <tbody style="divide-y:1px solid #e2e8f0;">
-                        <tr style="border-bottom:1px solid #f1f5f9;">
-                            <td style="padding:10px 14px; font-weight:700;">رصيد أول المدة للشحن (Opening Balance)</td>
-                            <td style="padding:10px 14px; font-weight:900; font-family:monospace;">420.00 ج.م</td>
-                            <td style="padding:10px 14px; color:#64748b;">مرحل من سبتمبر 2026</td>
-                        </tr>
-                        <tr style="border-bottom:1px solid #f1f5f9;">
-                            <td style="padding:10px 14px; font-weight:700;">إجمالي مبالغ الشحن المضافة خلال الشهر (+)</td>
-                            <td style="padding:10px 14px; font-weight:900; font-family:monospace; color:#059669;">+5,000.00 ج.م</td>
-                            <td style="padding:10px 14px; color:#059669;">تمت تسويتها واعتمادها بالبنك</td>
-                        </tr>
-                        <tr style="border-bottom:1px solid #f1f5f9;">
-                            <td style="padding:10px 14px; font-weight:700;">إجمالي مبيعات أعضاء سويا بالمحل (Gross GMV)</td>
-                            <td style="padding:10px 14px; font-weight:900; font-family:monospace; color:#0f172a;">45,750.00 ج.م</td>
-                            <td style="padding:10px 14px; color:#64748b;">إجمالي 64 فاتورة معتمدة</td>
-                        </tr>
-                        <tr style="border-bottom:1px solid #f1f5f9;">
-                            <td style="padding:10px 14px; font-weight:700;">عمولات سويا (10%) (-)</td>
-                            <td style="padding:10px 14px; font-weight:900; font-family:monospace; color:#dc2626;">-4,575.00 ج.م</td>
-                            <td style="padding:10px 14px; color:#dc2626;">مستقطعة وفق النسبة التعاقدية 10%</td>
-                        </tr>
-                        <tr style="background:#f0fdf4; border-top:2px solid #10b981;">
-                            <td style="padding:12px 14px; font-weight:900; color:#065f46;">رصيد آخر المدة المرحل للشهر التالي (Closing Balance)</td>
-                            <td style="padding:12px 14px; font-weight:900; font-family:monospace; font-size:1.1rem; color:#047857;">845.00 ج.م</td>
-                            <td style="padding:12px 14px; font-weight:800; color:#047857;">✅ تم ترحيله كرصيد افتتاحي لشهر نوفمبر</td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:12px; padding:16px; text-align:center; color:#64748b;">
+                جاري تحميل الفواتير الضريبية المزدوجة B2B من قاعدة البيانات...
             </div>
         </div>
     `;
@@ -547,23 +434,16 @@ function switchFinancialTab(tabNum) {
 }
 
 function promptTopupBalance() {
-    const amount = prompt('أدخل مبلغ الشحن بالجنيه المصري (مثال: 1000):', '1000');
-    if (amount && parseFloat(amount) > 0) {
-        alert('✅ تم تسجيل طلب شحن الرصيد بمبلغ ' + amount + ' ج.م بنجاح عبر إنستاباي / فودافون كاش!\nتم تحديث رصيد الأمان بالرادار.');
-        const balEl = document.getElementById('livePrepaidBalance');
-        if (balEl) {
-            const current = 4850.00;
-            balEl.innerText = (current + parseFloat(amount)).toLocaleString('en-US', {minimumFractionDigits: 2}) + ' ج.م';
-        }
-    }
+    // يُستبدل بالدالة الحية أسفل الملف (merchantInitiateTopup) بعد تحميل merchantBundle
+    if (typeof loadFinancialReport === 'function') loadFinancialReport();
 }
 
 function exportFinancialStatementPDF() {
-    alert('📥 جاري تنزيل كشف الحساب المالي المعتمد لمتجر سوبرماركت الفارق بصيغة PDF...');
+    window.print();
 }
 
 function changeSettlementMonth(val) {
-    alert('📅 تم تحديث عرض دورة التسوية الشهرية لـ ' + val);
+    if (typeof loadFinancialReport === 'function') loadFinancialReport();
 }
 function loadSettings() {
     const page = document.getElementById('settingsPage');
@@ -1066,136 +946,8 @@ function onScanError(errorMessage) {
 }
 
 /**
- * معالجة الإدخال اليدوي
+ * معالجة الإدخال اليدوي (تعتمد كلياً على البحث السيرفري الآمن lookup_member_for_pos دون مصفوفات وهمية)
  */
-// ===== قاعدة بيانات الأعضاء المعتمدة للكشف اللحظي بالاسم =====
-const MOCK_MEMBERS_MAP = {
-    '1': { name: 'أحمد مصطفى', code: 'SWY-124', phone: '01012345678', rank: 'عضو نشط ومؤهل' },
-    '12': { name: 'أحمد مصطفى', code: 'SWY-124', phone: '01012345678', rank: 'عضو نشط ومؤهل' },
-    '124': { name: 'أحمد مصطفى', code: 'SWY-124', phone: '01012345678', rank: 'عضو نشط ومؤهل' },
-    'SWY-124': { name: 'أحمد مصطفى', code: 'SWY-124', phone: '01012345678', rank: 'عضو نشط ومؤهل' },
-    '125': { name: 'خالد حسن', code: 'SWY-125', phone: '01123456789', rank: 'عضو نشط ومؤهل' },
-    'SWY-125': { name: 'خالد حسن', code: 'SWY-125', phone: '01123456789', rank: 'عضو نشط ومؤهل' },
-    '135': { name: 'إبراهيم عادل', code: 'SWY-135', phone: '01234567890', rank: 'عضو نشط ومؤهل' },
-    'SWY-135': { name: 'إبراهيم عادل', code: 'SWY-135', phone: '01234567890', rank: 'عضو نشط ومؤهل' },
-    '140': { name: 'سارة أحمد', code: 'SWY-140', phone: '01512345678', rank: 'عضوة نشطة ومؤهلة' },
-    'SWY-140': { name: 'سارة أحمد', code: 'SWY-140', phone: '01512345678', rank: 'عضوة نشطة ومؤهلة' },
-    '101': { name: 'محمد دمير', code: 'SWY-101', phone: '01099887766', rank: 'عضو نشط ومؤهل' },
-    'SWY-101': { name: 'محمد دمير', code: 'SWY-101', phone: '01099887766', rank: 'عضو نشط ومؤهل' },
-    '102': { name: 'محمود علي', code: 'SWY-102', phone: '01188776655', rank: 'عضو نشط ومؤهل' },
-    'SWY-102': { name: 'محمود علي', code: 'SWY-102', phone: '01188776655', rank: 'عضو نشط ومؤهل' },
-    '103': { name: 'طارق عبد الله', code: 'SWY-103', phone: '01277665544', rank: 'عضو نشط ومؤهل' },
-    'SWY-103': { name: 'طارق عبد الله', code: 'SWY-103', phone: '01277665544', rank: 'عضو نشط ومؤهل' },
-    '110': { name: 'مريم إبراهيم', code: 'SWY-110', phone: '01033445566', rank: 'عضوة نشطة ومؤهلة' },
-    'SWY-110': { name: 'مريم إبراهيم', code: 'SWY-110', phone: '01033445566', rank: 'عضوة نشطة ومؤهلة' }
-};
-
-function getMemberByCode(inputCode) {
-    if (!inputCode) return null;
-    const clean = inputCode.trim();
-    if (MOCK_MEMBERS_MAP[clean]) return MOCK_MEMBERS_MAP[clean];
-    const upper = clean.toUpperCase();
-    if (MOCK_MEMBERS_MAP[upper]) return MOCK_MEMBERS_MAP[upper];
-    // المطابقة بالأرقام
-    const num = clean.replace(/[^0-9]/g, '');
-    if (num && MOCK_MEMBERS_MAP[num]) return MOCK_MEMBERS_MAP[num];
-    // توليد ذكي لأي كود آخر لضمان عدم توقف التجربة
-    return {
-        name: 'كابتن / عضو سويا المعتمد (' + clean + ')',
-        code: clean.startsWith('SWY-') ? clean : ('SWY-' + clean),
-        phone: '010XXXXXXXX',
-        rank: 'عضو نشط ومؤهل'
-    };
-}
-
-// الكشف اللحظي عن اسم العضو أثناء الكتابة في شاشة مسح QR / دفع أونلاين
-// الكشف اللحظي الفوري عن اسم العميل بمجرد كتابة أي حرف أو رقم
-function handleManualCodeInput(val) {
-    const box = document.getElementById('detectedMemberBox');
-    const nameText = document.getElementById('detectedMemberNameText');
-    const badge = document.getElementById('detectedMemberBadge');
-    const codeText = document.getElementById('detectedMemberCodeText');
-    
-    const clean = val ? val.trim() : '';
-
-    if (clean.length === 0) {
-        if (box) {
-            box.style.background = '#f8fafc';
-            box.style.borderColor = '#cbd5e1';
-            box.style.borderStyle = 'dashed';
-        }
-        if (nameText) {
-            nameText.innerText = '(اكتب كود العميل وسيظهر اسمه هنا فوراً)';
-            nameText.style.color = '#94a3b8';
-        }
-        if (badge) badge.style.display = 'none';
-        if (codeText) codeText.style.display = 'none';
-        scannedMemberData = null;
-        return;
-    }
-
-    // مطابقة ذكية حتى من رقم واحد (مثال: 1 -> أحمد مصطفى)
-    const member = getMemberByCode(clean);
-
-    if (member) {
-        scannedMemberData = {
-            id: member.code,
-            code: member.code,
-            name: member.name
-        };
-
-        if (box) {
-            box.style.background = '#ecfdf5';
-            box.style.borderColor = '#10b981';
-            box.style.borderStyle = 'solid';
-        }
-        if (nameText) {
-            nameText.innerHTML = `👤 <span style="color:#047857;">${member.name}</span>`;
-            nameText.style.color = '#047857';
-        }
-        if (badge) {
-            badge.style.display = 'inline-block';
-            badge.innerText = '🟢 ' + member.rank;
-        }
-        if (codeText) {
-            codeText.style.display = 'block';
-            codeText.innerHTML = `كود العضوية: <strong>${member.code}</strong> • هاتف: ${member.phone}`;
-        }
-    }
-}
-
-function handleScanPageMemberCode(val) {
-    const preview = document.getElementById('scanPageMemberPreview');
-    const form = document.getElementById('transactionForm');
-    const clean = val ? val.trim() : '';
-    if (clean.length < 2) {
-        if (preview) {
-            preview.style.display = 'none';
-            preview.innerHTML = '';
-        }
-        if (form) form.style.display = 'none';
-        return;
-    }
-    const member = getMemberByCode(clean);
-    if (member) {
-        if (preview) {
-            preview.style.display = 'block';
-            preview.innerHTML = `
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <div style="width:36px; height:36px; background:#10b981; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.1rem;">👤</div>
-                    <div>
-                        <div style="font-weight:900; color:#065f46; font-size:0.95rem;">اسم العميل: <span style="color:#047857; text-decoration:underline;">${member.name}</span></div>
-                        <div style="font-size:0.75rem; color:#059669; margin-top:2px;">كود: <strong>${member.code}</strong> • <span style="background:#d1fae5; color:#065f46; padding:1px 6px; border-radius:4px; font-weight:700;">🟢 ${member.rank}</span></div>
-                    </div>
-                </div>
-            `;
-        }
-        if (form) {
-            form.style.display = 'block';
-        }
-    }
-}
-
 function processManualQRInput() {
     const input = document.getElementById('manualQRInput');
     const qrData = input ? input.value.trim() : '';
@@ -2212,12 +1964,55 @@ loadFinancialReport = async function () {
     const p = merchantBundle?.profile;
     if (!p) return;
     const curr = p.currency_code || 'EGP';
+    const pct = Number(p.deduction_percent || 10);
+    const freeBal = Number(p.free_balance || 0);
+    const safetyCap = pct > 0 ? (freeBal * 100 / pct) : 0;
+
     const liveBal = document.getElementById('livePrepaidBalance');
-    if (liveBal) liveBal.textContent = fmtMerchantMoney(p.free_balance, curr);
+    if (liveBal) liveBal.textContent = fmtMerchantMoney(freeBal, curr);
+
+    const statusBadge = document.getElementById('liveStoreRadarBadge');
+    if (statusBadge) {
+        if (p.is_isolated) {
+            statusBadge.textContent = '🔴 المتجر معزول مؤقتاً لنفاد الرصيد';
+            statusBadge.style.background = '#fef2f2';
+            statusBadge.style.color = '#991b1b';
+            statusBadge.style.borderColor = '#fca5a5';
+        } else if (!p.is_active) {
+            statusBadge.textContent = '⏳ المتجر قيد المراجعة الإدارية';
+            statusBadge.style.background = '#fef3c7';
+            statusBadge.style.color = '#92400e';
+            statusBadge.style.borderColor = '#fcd34d';
+        } else {
+            statusBadge.textContent = '🟢 حالة المتجر: آمن ونشط بالرادار';
+        }
+    }
+
+    const safetyStrip = document.getElementById('liveSafetyCapStrip');
+    if (safetyStrip) {
+        safetyStrip.innerHTML = `🛡️ <strong>حد الأمان المحاسبي:</strong> رصيدك المتاح يكفي لتمرير مبيعات لأعضاء سويًا حتى <strong>${fmtMerchantMoney(safetyCap, curr)}</strong>.`;
+    }
+    const dedBadge = document.getElementById('liveDedRateBadge');
+    if (dedBadge) dedBadge.textContent = `نسبة العمولة التعاقدية: ${pct.toFixed(1)}% معتمدة`;
 
     const txs = merchantBundle?.completed_transactions || [];
     const topups = merchantBundle?.topup_history || [];
     const taxInvs = merchantBundle?.b2b_tax_invoices || [];
+
+    const grossTotal = txs.reduce((s, t) => s + Number(t.total_amount || 0), 0);
+    const commTotal = txs.reduce((s, t) => s + Number(t.commission_amount || 0), 0);
+    const netTotal = grossTotal - commTotal;
+
+    const gmvEl = document.getElementById('finGrossGmvCard');
+    const commEl = document.getElementById('finCommDedCard');
+    const netEl = document.getElementById('finNetSalesCard');
+    const commLbl = document.getElementById('finCommRateLbl');
+    const netLbl = document.getElementById('finNetRateLbl');
+    if (gmvEl) gmvEl.textContent = fmtMerchantMoney(grossTotal, curr);
+    if (commEl) commEl.textContent = `-${fmtMerchantMoney(commTotal, curr)}`;
+    if (netEl) netEl.textContent = fmtMerchantMoney(netTotal, curr);
+    if (commLbl) commLbl.textContent = `عمولات سويًا (${pct.toFixed(1)}%)`;
+    if (netLbl) netLbl.textContent = `صافي مبيعات المتجر (${(100 - pct).toFixed(1)}%)`;
 
     const tab1Body = document.querySelector('#finTabContent1 tbody');
     if (tab1Body) {

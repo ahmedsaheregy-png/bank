@@ -2573,3 +2573,184 @@ body {
     font-size: 0.75rem;
     font-weight: 600;
 }
+
+/* ============================================================================
+   V3.1 1:1 Member Showcase Parity & Contrast Locks
+   ============================================================================ */
+.main-content .btn-outline,
+.modal .btn-outline,
+#sawyanMemberModalOverlay .btn-outline,
+#memberDetailModal .btn-outline {
+    background: #ffffff;
+    color: #0f172a;
+    border: 1.5px solid #cbd5e1;
+}
+
+.main-content .btn-outline:hover,
+.modal .btn-outline:hover {
+    background: #f1f5f9;
+    color: #047857;
+    border-color: #10b981;
+}
+
+.lens-pill-btn {
+    background: #ffffff;
+    color: #0f172a;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 7px 13px;
+    font-family: 'Tajawal', sans-serif;
+    font-weight: 800;
+    font-size: 0.83rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.lens-pill-btn:hover {
+    border-color: #059669;
+    color: #047857;
+    background: #ecfdf5;
+}
+
+.lens-pill-btn.active {
+    background: linear-gradient(135deg, #059669, #047857);
+    color: #ffffff;
+    border-color: #047857;
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.28);
+}
+
+.target-box-card {
+    border-radius: 16px;
+    padding: 18px;
+    margin: 14px 0;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+    background: #ffffff;
+    border: 2px solid #cbd5e1;
+}
+
+.target-box-card.white-state {
+    border-color: #94a3b8;
+    background: linear-gradient(135deg, #f8fafc, #ffffff);
+}
+
+.target-box-card.orange-state {
+    border-color: #f59e0b;
+    background: linear-gradient(135deg, #fffbeb, #ffffff);
+}
+
+.target-box-card.green-state {
+    border-color: #10b981;
+    background: linear-gradient(135deg, #ecfdf5, #ffffff);
+}
+
+.tree-earth-viewport {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    height: 540px;
+    min-height: 440px;
+    overflow: hidden;
+    background: radial-gradient(circle at 50% 20%, #f0fdf4 0%, #f8fafc 65%, #e2e8f0 100%);
+    border: 1.5px solid #cbd5e1;
+    border-radius: 18px;
+    box-shadow: inset 0 2px 12px rgba(15, 23, 42, 0.06);
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+}
+
+.tree-earth-viewport.panning {
+    cursor: grabbing;
+}
+
+.tree-earth-stage {
+    position: absolute;
+    top: 24px;
+    left: 50%;
+    transform-origin: top center;
+    will-change: transform;
+}
+
+.hud-dpad-panel {
+    position: absolute;
+    bottom: 14px;
+    left: 14px;
+    z-index: 25;
+    background: rgba(15, 23, 42, 0.88);
+    backdrop-filter: blur(8px);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 14px;
+    padding: 8px;
+    display: grid;
+    grid-template-columns: repeat(3, 30px);
+    gap: 4px;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.32);
+}
+
+.hud-dpad-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    font-weight: 900;
+    font-size: 0.82rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.hud-dpad-btn:hover {
+    background: #10b981;
+    border-color: #34d399;
+}
+
+.tree-circle-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    min-width: 82px;
+    max-width: 96px;
+    text-align: center;
+    transition: transform 0.15s ease;
+}
+
+.tree-circle-node:hover {
+    transform: translateY(-2px);
+}
+
+.tree-circle-disc {
+    width: 48px;
+    height: 48px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 0.78rem;
+    border: 3px solid #cbd5e1;
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.14);
+}
+
+.tree-node-card {
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tree-node-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+}
+
+@media (max-width: 599px) {
+    .tree-earth-viewport {
+        height: 430px;
+        min-height: 360px;
+    }
+}

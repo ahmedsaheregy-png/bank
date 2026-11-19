@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="../shared/css/notifications.css">
     <link rel="stylesheet" href="../shared/css/image-upload.css">
     <link rel="stylesheet" href="../member-dashboard/css/dashboard.css">
+    <link rel="stylesheet" href="../shared/css/app-shell.css?v=20261119_v3shell">
     <!-- Leaflet for Merchant Radar Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -91,7 +92,7 @@
             <div class="content-area">
                 <!-- Home Page -->
                 <div id="homePage" class="page active">
-                    <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 20px;">
+                    <div class="stats-grid" data-spec-id="merchant-home-kpis" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 20px;">
                         <!-- 1. مبيعات اليوم -->
                         <div class="stat-card" style="background: white; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 16px; border-right: 4px solid #10b981;">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -141,7 +142,7 @@
                         </div>
                     </div>
 <!-- بطاقة رادار أعضاء سويا في محيط المتجر (القوة الشرائية المستهدفة) -->
-                        <div class="stat-card" style="grid-column: 1 / -1; background: linear-gradient(135deg, #064e3b, #0f172a); border-radius: 16px; padding: 22px; color: white; box-shadow: 0 6px 20px rgba(6,78,59,0.25); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; border: 1px solid #10b981;">
+                        <div class="stat-card" data-spec-id="merchant-home-radar-card" style="grid-column: 1 / -1; background: linear-gradient(135deg, #064e3b, #0f172a); border-radius: 16px; padding: 22px; color: white; box-shadow: 0 6px 20px rgba(6,78,59,0.25); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; border: 1px solid #10b981;">
                             <div style="flex: 1; min-width: 280px;">
                                 <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(16,185,129,0.2); border: 1px solid #10b981; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; color: #a7f3d0; margin-bottom: 8px;">
                                     <span>📍 رادار أعضاء سويا في محيطك (نطاق 3 كم)</span>
@@ -265,7 +266,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     <script src="../shared/config/supabase.js"></script>
-    <script src="../shared/api/sawyan-api.js"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261119_eod_clean"></script>
     <script src="../shared/components/logo.js"></script>
     <script src="../shared/components/notifications.js"></script>
     <script src="../shared/components/image-upload.js"></script>
@@ -273,7 +274,7 @@
     <script src="../shared/payments/payment-service.js"></script>
     <script src="../shared/payments/mock-provider.js"></script>
     <script src="../shared/payments/payment-init.js"></script>
-    <script src="js/dashboard.js"></script>
+    <script src="js/dashboard.js?v=20261119_eod_clean"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             setTimeout(() => {
@@ -478,7 +479,7 @@
 
                   <div style="margin-bottom:12px;">
                       <label style="display:block; font-size:0.85rem; font-weight:800; color:#0f172a; margin-bottom:4px;">نص العرض الترويجي والتفاصيل <span style="color:#ef4444;">*</span></label>
-                      <textarea id="promoBody" rows="3" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600; font-family:'Tajawal'; font-size:0.84rem; line-height:1.5;">تسوق اليوم من سوبرماركت الفارق بفرع مدينة نصر واحصل على عائدات استهلاك استثماري إضافية 10% على كافة المشتريات لإغلاق هدفك الشهري ومضاعفة نقاطك!</textarea>
+                      <textarea id="promoBody" rows="3" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600; font-family:'Tajawal'; font-size:0.84rem; line-height:1.5;">تسوق اليوم من متجرنا واحصل على عائدات استهلاك استثماري إضافية على كافة المشتريات لإغلاق هدفك الشهري ومضاعفة نقاطك!</textarea>
                   </div>
 
                   <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;">
@@ -587,6 +588,7 @@ async function submitPromoRequestForReview() {
 }
 </script>
 <script src="js/merchant-stage7-tools.js?v=20261118_stage7"></script>
+<script src="../shared/js/app-shell.js?v=20261119_v3shell"></script>
 
 </body>
 

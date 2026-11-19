@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="../member-dashboard/css/dashboard.css">
     <link rel="stylesheet" href="css/admin.css?v=20261119_acad_fix">
     <link rel="stylesheet" href="css/admin_mobile_tables.css">
+    <link rel="stylesheet" href="../shared/css/app-shell.css?v=20261119_v3shell">
 </head>
 
 <body>
@@ -98,7 +99,7 @@
             <div class="content-area" id="contentArea">
                 <!-- Home Page -->
                 <div id="homePage" class="page active">
-                    <div class="stats-grid">
+                    <div class="stats-grid" data-spec-id="admin-home-kpis">
                         <div class="stat-card stat-primary">
                             <div class="stat-icon">👥</div>
                             <div class="stat-info">
@@ -132,7 +133,7 @@
                         </div>
                     </div>
 
-                    <div class="charts-grid">
+                    <div class="charts-grid" data-spec-id="admin-home-charts">
                         <div class="chart-card">
                             <h3>العمليات اليومية (آخر 7 أيام)</h3>
                             <div id="dailyChart" class="chart-placeholder">
@@ -148,7 +149,7 @@
                         </div>
                     </div>
 
-                    <div class="recent-activity">
+                    <div class="recent-activity" data-spec-id="admin-home-activity">
                         <h2>النشاط الأخير</h2>
                         <div id="activityList" class="activity-list"></div>
                     </div>
@@ -372,7 +373,7 @@
                 <div id="sovereignOpsCenterPage" class="page"></div>
 
                 <!-- Standalone Training Academy LMS Department -->
-                <div id="academyAdminPage" class="page"></div>
+                <div id="academyAdminPage" class="page" data-spec-id="admin-academy-lms"></div>
 
                 <!-- Governance, Close, Reconciliation & Fraud Ops Page (Prototype) -->
                 <div id="governanceOpsPage" class="page"></div>
@@ -452,163 +453,32 @@
                     <div style="font-size: 0.78rem; color: #64748b; margin-top: 2px;">مراجعة النصوص والعروض قبل البث المباشر على هواتف الأعضاء بالحي</div>
                 </div>
             </div>
-            <span id="adminPromoCountBadge" style="background: #eff6ff; color: #1d4ed8; font-size: 0.78rem; font-weight: 800; padding: 4px 10px; border-radius: 8px; border: 1px solid #bfdbfe;">
-                🔔 طلب جديد معلق (1)
+            <span id="adminPromoCountBadge" style="background: #f0fdf4; color: #15803d; font-size: 0.78rem; font-weight: 800; padding: 4px 10px; border-radius: 8px; border: 1px solid #bbf7d0;">
+                ✅ لا توجد معلقات (0)
             </span>
         </div>
 
         <div id="adminPromoQueueContainer">
-            <!-- سيتم ملؤه ديناميكياً من localStorage -->
+            <!-- يُملأ ديناميكياً عند وجود طلبات عروض مروّجة -->
         </div>
     </div>
 
     <script>
     function renderAdminPromoQueue() {
+        if (typeof window.renderLiveFlashOfferQueue === 'function') {
+            window.renderLiveFlashOfferQueue();
+            return;
+        }
         const container = document.getElementById('adminPromoQueueContainer');
         const badge = document.getElementById('adminPromoCountBadge');
         if (!container) return;
-
-        if (typeof window !== 'undefined' && window.SAWYAN && !window.SAWYAN.isParallelDemo) {
-            localStorage.removeItem('sawyan_active_merchant_promo');
-            localStorage.removeItem('sawyan_member_broadcast_notification');
-            if (badge) {
-                badge.innerText = '✅ لا توجد معلقات (0)';
-                badge.style.background = '#f0fdf4';
-                badge.style.color = '#15803d';
-                badge.style.border = '1px solid #bbf7d0';
-            }
-            container.innerHTML = '<div style=\"background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 12px; padding: 14px; text-align: center; color: #64748b; font-weight: 700; font-size: 0.88rem;\">✨ لا توجد إعلانات أو عروض معلقة بانتظار الاعتماد — النظام بصفر معلقات وجاهز للتشغيل الفعلي.</div>';
-            return;
+        if (badge) {
+            badge.innerText = '✅ لا توجد معلقات (0)';
+            badge.style.background = '#f0fdf4';
+            badge.style.color = '#15803d';
+            badge.style.border = '1px solid #bbf7d0';
         }
-
-        let promo = JSON.parse(localStorage.getItem('sawyan_active_merchant_promo') || 'null');
-        
-        // If not in localStorage yet, supply a default demo pending promo
-        if (!promo) {
-            promo = {
-                id: 'PRM-892',
-                merchant_name: 'سوبر ماركت الفارق المركزي',
-                merchant_code: 'EG-MKT-101',
-                branch: 'فرع مدينة نصر',
-                title: '🔥 عرض عائدات إضافية 10% اليوم فقط!',
-                body: 'تسوق اليوم من سوبرماركت الفارق بفرع مدينة نصر واحصل على عائدات استهلاك استثماري إضافية 10% على كافة المشتريات لإغلاق هدفك الشهري ومضاعفة نقاطك!',
-                target: 'الأعضاء الباحثين عن إغلاق الهدف (850 عضواً)',
-                duration: '24 ساعة فقط (عرض فلاش)',
-                status: 'PENDING_ADMIN_APPROVAL',
-                created_at: '07:15 م'
-            };
-            localStorage.setItem('sawyan_active_merchant_promo', JSON.stringify(promo));
-        }
-
-        if (promo.status === 'PENDING_ADMIN_APPROVAL') {
-            badge.innerText = '🔔 طلب جديد معلق (1)';
-            badge.style.background = '#eff6ff';
-            badge.style.color = '#1d4ed8';
-
-            container.innerHTML = `
-                <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 14px;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-                        <div>
-                            <div style="font-weight: 900; font-size: 0.95rem; color: #0f172a;">
-                                🏪 ${promo.merchant_name} <span style="font-size: 0.78rem; color: #64748b;">(#${promo.merchant_code} • ${promo.branch})</span>
-                            </div>
-                            <div style="font-size: 0.78rem; color: #059669; font-weight: 700; margin-top: 3px;">
-                                📍 الفئة المستهدفة: ${promo.target} • الصلاحية: ${promo.duration} • أُرسل في: ${promo.created_at}
-                            </div>
-                        </div>
-                        <span style="background: #fef3c7; color: #92400e; font-size: 0.74rem; font-weight: 800; padding: 3px 8px; border-radius: 6px;">🟡 بانتظار الاعتماد (#${promo.id})</span>
-                    </div>
-
-                    <!-- نص الإعلان المطلوب بثه -->
-                    <div style="background: #ffffff; border: 1px dashed #94a3b8; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px;">
-                        <div style="font-weight: 800; font-size: 0.86rem; color: #1e293b; margin-bottom: 4px;">
-                            📢 العنوان: <span style="color: #047857;">${promo.title}</span>
-                        </div>
-                        <div style="font-size: 0.82rem; color: #334155; line-height: 1.5;">
-                            "${promo.body}"
-                        </div>
-                    </div>
-
-                    <!-- أزرار قرار الإدارة التفاعلية الحقيقية -->
-                    <div style="display: flex; gap: 10px;">
-                        <button onclick="approveMerchantPromo('${promo.id}')" style="flex: 2; background: #059669; color: white; border: none; padding: 11px; border-radius: 8px; font-weight: 800; font-family: 'Tajawal'; font-size: 0.9rem; cursor: pointer; box-shadow: 0 2px 8px rgba(5,150,105,0.25);">
-                            ✅ اعتماد ونشر الإشعار لهواتف الأعضاء فوراً
-                        </button>
-                        <button onclick="rejectMerchantPromo('${promo.id}')" style="flex: 1; background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; padding: 11px; border-radius: 8px; font-weight: 800; font-family: 'Tajawal'; font-size: 0.86rem; cursor: pointer;">
-                            ❌ رفض العرض
-                        </button>
-                    </div>
-                </div>
-            `;
-        } else if (promo.status === 'APPROVED') {
-            badge.innerText = '✅ لا توجد طلبات معلقة (0)';
-            badge.style.background = '#ecfdf5';
-            badge.style.color = '#047857';
-
-            container.innerHTML = `
-                <div style="background: #f0fdf4; border: 1.5px solid #10b981; border-radius: 12px; padding: 16px; text-align: center;">
-                    <div style="font-size: 1.8rem; margin-bottom: 6px;">🎉</div>
-                    <div style="font-weight: 900; font-size: 1.05rem; color: #065f46;">تم اعتماد العرض #${promo.id} بنجاح!</div>
-                    <div style="font-size: 0.82rem; color: #047857; margin-top: 4px;">
-                        تم بث الإشعار بنجاح عبر خدمة Push Notifications لهواتف الأعضاء في محيط ${promo.branch}.
-                    </div>
-                    <div style="margin-top: 10px;">
-                        <button onclick="resetDemoPromo()" style="background: white; border: 1px solid #cbd5e1; color: #475569; padding: 5px 12px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;">🔄 إعادة تعيين التجربة لعرض جديد</button>
-                    </div>
-                </div>
-            `;
-        } else if (promo.status === 'REJECTED') {
-            badge.innerText = '❌ طلب مرفوض';
-            badge.style.background = '#fef2f2';
-            badge.style.color = '#dc2626';
-
-            container.innerHTML = `
-                <div style="background: #fef2f2; border: 1.5px solid #fca5a5; border-radius: 12px; padding: 16px; text-align: center;">
-                    <div style="font-weight: 900; font-size: 1.05rem; color: #991b1b;">تم رفض العرض #${promo.id}</div>
-                    <div style="font-size: 0.82rem; color: #b91c1c; margin-top: 4px;">السبب: "${promo.rejection_reason || 'غير مطابق للشروط'}" وتم إبلاغ التاجر في لوحته.</div>
-                    <div style="margin-top: 10px;">
-                        <button onclick="resetDemoPromo()" style="background: white; border: 1px solid #cbd5e1; color: #475569; padding: 5px 12px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;">🔄 إعادة تعيين التجربة</button>
-                    </div>
-                </div>
-            `;
-        }
-    }
-
-    function approveMerchantPromo(promoId) {
-        let promo = JSON.parse(localStorage.getItem('sawyan_active_merchant_promo') || '{}');
-        promo.status = 'APPROVED';
-        promo.approved_at = new Date().toLocaleTimeString('ar-EG');
-        localStorage.setItem('sawyan_active_merchant_promo', JSON.stringify(promo));
-        
-        // Also fire notification in member dashboard
-        localStorage.setItem('sawyan_member_broadcast_notification', JSON.stringify({
-            title: promo.title,
-            body: promo.body,
-            merchant: promo.merchant_name,
-            time: 'الآن'
-        }));
-
-        alert('✅ قرار الإدارة: تم اعتماد الإشعار الترويجي #' + promoId + ' وبثه فوراً لهواتف الأعضاء في الحي!');
-        renderAdminPromoQueue();
-    }
-
-    function rejectMerchantPromo(promoId) {
-        const reason = prompt('يرجى كتابة سبب الرفض لتوجيه التاجر:', 'نسبة الخصم غير واضحة لبعض الأصناف');
-        if (!reason) return;
-
-        let promo = JSON.parse(localStorage.getItem('sawyan_active_merchant_promo') || '{}');
-        promo.status = 'REJECTED';
-        promo.rejection_reason = reason;
-        localStorage.setItem('sawyan_active_merchant_promo', JSON.stringify(promo));
-
-        alert('❌ تم رفض الطلب وإرسال سبب الرفض إلى لوحة تحكم التاجر.');
-        renderAdminPromoQueue();
-    }
-
-    function resetDemoPromo() {
-        localStorage.removeItem('sawyan_active_merchant_promo');
-        localStorage.removeItem('sawyan_member_broadcast_notification');
-        renderAdminPromoQueue();
+        container.innerHTML = '<div style="background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:12px;padding:14px;text-align:center;color:#64748b;font-weight:700;font-size:0.88rem;">✨ بانتظار المزامنة مع قاعدة البيانات الحية...</div>';
     }
 
     window.addEventListener('DOMContentLoaded', () => {
@@ -689,17 +559,18 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../shared/config/supabase.js?v=20261118_stage7"></script>
-    <script src="../shared/api/sawyan-api.js?v=20261119_acad_fix"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261119_eod_clean"></script>
     <script src="../shared/components/logo.js"></script>
     <script src="js/dashboard.js?v=20261119_academy"></script>
     <script src="js/dashboard-extended.js?v=20261118_stage7"></script>
-    <script src="js/admin-home-demo.js?v=20261118_stage7"></script>
+    <script src="js/admin-home-demo.js?v=20261119_eod_clean"></script>
     <script src="js/admin-settings-center.js?v=20261118_stage7"></script>
     <script src="js/admin-screens-demo.js?v=20261118_stage7"></script>
-    <script src="js/admin-decisions-lab.js?v=20261118_stage7"></script>
-    <script src="js/admin-v3-live-bridge.js?v=20261118_quicklogin"></script>
-    <script src="js/admin-stage7-ops-hub.js?v=20261119_academy"></script>
+    <script src="js/admin-decisions-lab.js?v=20261119_eod_clean"></script>
+    <script src="js/admin-v3-live-bridge.js?v=20261119_eod_clean"></script>
+    <script src="js/admin-stage7-ops-hub.js?v=20261119_eod_clean"></script>
     <script src="js/admin-academy-lms.js?v=20261119_acad_fix"></script>
+    <script src="../shared/js/app-shell.js?v=20261119_v3shell"></script>
 </body>
 
 </html>

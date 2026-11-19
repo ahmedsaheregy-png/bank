@@ -2,25 +2,25 @@
 /* عرض الجداول على الموبايل - حل بسيط ومباشر */
 /* ================================================== */
 
-@media screen and (max-width: 768px) {
+@media screen and (max-width: 599px) {
 
-    /* إخفاء رأس الجدول */
-    .data-table thead {
+    /* إخفاء رأس الجدول فقط عندما تتوفر عناوين الخلايا data-label */
+    .data-table[data-has-labels="1"] thead {
         display: none !important;
     }
 
     /* الجدول كـ block */
-    .data-table {
+    .data-table[data-has-labels="1"] {
         display: block !important;
         width: 100% !important;
     }
 
-    .data-table tbody {
+    .data-table[data-has-labels="1"] tbody {
         display: block !important;
     }
 
     /* كل صف = بطاقة */
-    .data-table tbody tr {
+    .data-table[data-has-labels="1"] tbody tr {
         display: block !important;
         background: #fff !important;
         border: 1px solid #ddd !important;
@@ -31,7 +31,7 @@
     }
 
     /* كل خلية = سطر */
-    .data-table tbody td {
+    .data-table[data-has-labels="1"] tbody td {
         display: block !important;
         width: 100% !important;
         text-align: right !important;
@@ -43,20 +43,20 @@
     }
 
     /* العنوان قبل القيمة */
-    .data-table tbody td::before {
+    .data-table[data-has-labels="1"] tbody td::before {
         content: attr(data-label) ": ";
         font-weight: bold !important;
         color: #666 !important;
     }
 
     /* آخر خلية (الأزرار) */
-    .data-table tbody td:last-child {
+    .data-table[data-has-labels="1"] tbody td:last-child {
         border-bottom: none !important;
         text-align: center !important;
         padding-top: 10px !important;
     }
 
-    .data-table tbody td:last-child::before {
+    .data-table[data-has-labels="1"] tbody td:last-child::before {
         content: "" !important;
     }
 

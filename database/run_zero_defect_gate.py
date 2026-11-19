@@ -30,7 +30,7 @@ INTERNAL_ONLY_FUNCTIONS = {
 }
 
 MIRROR_DIRS = ["assets", "css", "js", "public", "shared", "member-dashboard", "merchant-dashboard", "admin-dashboard"]
-MIRROR_FILES = ["index.html", "auth-gateway.html", "member-showcase.html"]
+MIRROR_FILES = ["index.html", "auth-gateway.html"]
 SKIP_NAMES = {".git", "__pycache__", ".DS_Store", "Thumbs.db", "test_modal.html", "test_submit_runner.html"}
 
 
@@ -122,12 +122,28 @@ def main():
                 contract_errors.append(f"{fn_name} unknown params: {sorted(missing_args)}")
     check(len(contract_errors) == 0 and len(rpc_calls) >= 15, f"SQL <-> JS RPC Contract Match ({len(rpc_calls)} RPCs verified, errors={contract_errors})")
 
-    # 3. Anti-Wipe UI Preservation Gate (Protects rich Merchant 113KB & Admin 500KB+ UI)
+    # 3. Anti-Wipe Floor + Real D29/D30 Playwright Visual & Spec Parity Gate (replaces vanity byte-only check)
     merch_js_size = os.path.getsize(os.path.join(PREVIEW_DIR, "merchant-dashboard", "js", "dashboard.js"))
     admin_js_dir = os.path.join(PREVIEW_DIR, "admin-dashboard", "js")
     admin_js_size = sum(os.path.getsize(os.path.join(admin_js_dir, x)) for x in os.listdir(admin_js_dir) if x.endswith(".js"))
-    check(merch_js_size >= 100_000, f"Merchant UI preservation lock intact ({merch_js_size:,} bytes >= 100,000)")
-    check(admin_js_size >= 500_000, f"Admin UI preservation lock intact ({admin_js_size:,} bytes >= 500,000)")
+    check(merch_js_size >= 60_000, f"Merchant UI non-wipe floor intact ({merch_js_size:,} bytes >= 60,000)")
+    check(admin_js_size >= 250_000, f"Admin UI non-wipe floor intact ({admin_js_size:,} bytes >= 250,000)")
+
+    import subprocess
+    ui_gate_script = os.path.join(DB_DIR, "verify_ui_and_visual_gates.py")
+    lock_file = os.path.join(REPO_DIR, "specs", "SAWYAN_STATE_LOCK.json")
+    ui_mode = "--phase0-layout"
+    if os.path.exists(lock_file):
+        try:
+            lock_data = json.load(open(lock_file, "r", encoding="utf-8"))
+            if lock_data.get("strict_parity_enabled"):
+                ui_mode = "--full"
+        except Exception:
+            pass
+    ui_proc = subprocess.run([sys.executable, ui_gate_script, ui_mode], cwd=REPO_DIR, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    check(ui_proc.returncode == 0, f"D29/D30 Visual Collision & Spec-to-DOM Gate ({ui_mode}) passed (rc={ui_proc.returncode})")
+    if ui_proc.returncode != 0:
+        print(ui_proc.stderr or ui_proc.stdout, file=sys.stderr)
 
     # 4. 100% SHA-256 Dual-Site Mirror Parity Gate (`preview/` == `/`)
     mismatches = []

@@ -1,0 +1,14 @@
+{
+  "state_version": "3.0.0",
+  "active_milestone": "v3_full_zero_defect_sealed",
+  "manifest_sha256": "4fff5b771c7fa63f1b8cc7fb3ff0a332a55b813aaead87a5bc140b6d6ebd7a04",
+  "strict_parity_enabled": true,
+  "phase_a_docs_verified": true,
+  "phase_0_locks_installed": true,
+  "phase_1_member_parity_verified": true,
+  "phase_2_de_mock_verified": true,
+  "frozen_items": [
+    "OFFLINE_TOTP_MEMBER_QR_60S"
+  ],
+  "notes": "strict_parity_enabled becomes true upon completing Phase 1 & Phase 2 and binds Stop Hook + Zero-Defect Gate to full D29/D30 visual & spec parity."
+}

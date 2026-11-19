@@ -15,8 +15,6 @@
 (function () {
     'use strict';
 
-    const IS_PROD = Boolean(typeof window !== 'undefined' && window.SAWYAN && !window.SAWYAN.isParallelDemo);
-
     function esc(v) {
         return String(v === null || v === undefined ? '' : v)
             .replace(/&/g, '&amp;')
@@ -588,27 +586,26 @@
     };
 
     // ========================================================================
-    // 3. Live PostgreSQL Binding for Sidebar Screens in Production (Gap 4, 6, 7, 8)
+    // 3. Live PostgreSQL Binding for Sidebar Screens (Single Codebase D29)
     // ========================================================================
-    if (IS_PROD) {
-        // Override Members Screen with Live Server-Side Search + KYC/Residency Viewer + Password Reset
-        window.loadMembers = async function (q) {
-            const page = document.getElementById('membersPage');
-            if (!page) return;
-            const res = await window.SAWYAN.API.adminSearchAndReplyOps({ action: 'search', entity: 'members', query: q || '' });
-            const list = res.results || [];
-            page.innerHTML =
-                '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">' +
-                    '<div><h2 style="margin:0;">👥 إدارة الأعضاء الحية (`sawyan.members` — ' + list.length + ')</h2><div style="font-size:0.8rem;color:#64748b;">بحث مباشر على السيرفر + مراجعة وثائق KYC ونقل الإقامة + استعادة الحسابات</div></div>' +
-                    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-                        '<input id="svLiveMemSearch" type="text" value="' + esc(q || '') + '" placeholder="ابحث بالكود أو الهاتف أو الاسم..." class="form-control" style="width:240px;">' +
-                        '<button type="button" class="btn btn-primary" onclick="loadMembers(document.getElementById(\'svLiveMemSearch\').value)">🔎 بحث سيرفري</button>' +
-                        '<button type="button" class="btn btn-outline" onclick="openSovereignOpsCenter(\'root0\')">👑 تأسيس قائد تحت #0</button>' +
-                    '</div>' +
+    // Override Members Screen with Live Server-Side Search + KYC/Residency Viewer + Password Reset
+    window.loadMembers = async function (q) {
+        const page = document.getElementById('membersPage');
+        if (!page) return;
+        const res = await window.SAWYAN.API.adminSearchAndReplyOps({ action: 'search', entity: 'members', query: q || '' });
+        const list = res.results || [];
+        page.innerHTML =
+            '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">' +
+                '<div><h2 style="margin:0;">👥 إدارة الأعضاء الحية (' + list.length + ')</h2><div style="font-size:0.8rem;color:#64748b;">بحث مباشر على السيرفر + مراجعة وثائق KYC ونقل الإقامة + استعادة الحسابات</div></div>' +
+                '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+                    '<input id="svLiveMemSearch" type="text" value="' + esc(q || '') + '" placeholder="ابحث بالكود أو الهاتف أو الاسم..." class="form-control" style="width:240px;">' +
+                    '<button type="button" class="btn btn-primary" onclick="loadMembers(document.getElementById(\'svLiveMemSearch\').value)">🔎 بحث سيرفري</button>' +
+                    '<button type="button" class="btn btn-outline" onclick="openSovereignOpsCenter(\'root0\')">👑 تأسيس قائد تحت #0</button>' +
                 '</div>' +
-                '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px;overflow-x:auto;">' +
-                    '<table class="data-table"><thead><tr><th>الكود</th><th>الاسم</th><th>الهاتف / الدولة</th><th>الراعي</th><th>المحفظة ($)</th><th>حالة KYC / نقل دولة</th><th>الحالة</th><th>إجراءات حية</th></tr></thead><tbody>' +
-                    (list.length === 0 ? '<tr><td colspan="8" class="empty-state">لا يوجد أعضاء مطابقون في قاعدة بيانات الإنتاج حالياً</td></tr>' : list.map(function (m) {
+            '</div>' +
+            '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px;overflow-x:auto;">' +
+                '<table class="data-table"><thead><tr><th>الكود</th><th>الاسم</th><th>الهاتف / الدولة</th><th>الراعي</th><th>المحفظة ($)</th><th>حالة KYC / نقل دولة</th><th>الحالة</th><th>إجراءات حية</th></tr></thead><tbody>' +
+                (list.length === 0 ? '<tr><td colspan="8" class="empty-state">لا يوجد أعضاء مطابقون في قاعدة البيانات الحية حالياً</td></tr>' : list.map(function (m) {
                         const mv = m.pending_residency_move;
                         return '<tr>' +
                             '<td><b>#' + Number(m.member_code) + '</b></td>' +
@@ -691,7 +688,7 @@
 
             page.innerHTML =
                 '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">' +
-                    '<div><h2 style="margin:0;">🏪 إدارة التجار والعقود والشحن البنكي (`sawyan.merchants` — ' + list.length + ')</h2><div style="font-size:0.8rem;color:#64748b;">تفعيل المتاجر، تثبيت نسبة العمولة التعاقدية، سقف الائتمان D4، واعتماد الحوالات البنكية B2B</div></div>' +
+                    '<div><h2 style="margin:0;">🏪 إدارة التجار والعقود والشحن البنكي (' + list.length + ')</h2><div style="font-size:0.8rem;color:#64748b;">تفعيل المتاجر، تثبيت نسبة العمولة التعاقدية، سقف الائتمان D4، واعتماد الحوالات البنكية B2B</div></div>' +
                     '<div style="display:flex;gap:8px;">' +
                         '<input id="svLiveMerSearch" type="text" value="' + esc(q || '') + '" placeholder="ابحث بكود التاجر أو الاسم أو الهاتف..." class="form-control" style="width:240px;">' +
                         '<button type="button" class="btn btn-primary" onclick="loadMerchants(document.getElementById(\'svLiveMerSearch\').value)">🔎 بحث سيرفري</button>' +
@@ -711,7 +708,7 @@
                     : '') +
                 '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px;overflow-x:auto;">' +
                     '<table class="data-table"><thead><tr><th>كود التاجر</th><th>المنشأة</th><th>الدولة / الفئة</th><th>نسبة العمولة</th><th>رصيد الشحن 2101</th><th>سقف D4</th><th>الحالة</th><th>إجراءات التعاقد والشحن</th></tr></thead><tbody>' +
-                    (list.length === 0 ? '<tr><td colspan="8" class="empty-state">لا يوجد تجار مسجلون في قاعدة بيانات الإنتاج حالياً</td></tr>' : list.map(function (m) {
+                    (list.length === 0 ? '<tr><td colspan="8" class="empty-state">لا يوجد تجار مسجلون في قاعدة البيانات الحية حالياً</td></tr>' : list.map(function (m) {
                         return '<tr>' +
                             '<td><b>' + esc(m.merchant_code) + '</b></td>' +
                             '<td><b>' + esc(m.business_name) + '</b><br><small style="color:#64748b;">' + esc(m.phone) + '</small></td>' +
@@ -735,7 +732,7 @@
                 '⚙️ تحرير عقد ومدخلات التاجر: ' + esc(m.business_name) + ' (' + esc(m.merchant_code) + ')',
                 '<div style="display:grid;gap:12px;">' +
                     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;">' +
-                        '<div><label style="font-size:0.78rem;font-weight:800;">نسبة عمولة صيان (%)</label><input id="svMerPct" type="number" step="0.5" min="1" max="40" value="' + Number(m.deduction_percent || 10) + '" class="form-control"></div>' +
+                        '<div><label style="font-size:0.78rem;font-weight:800;">نسبة عمولة سويًا (%)</label><input id="svMerPct" type="number" step="0.5" min="1" max="40" value="' + Number(m.deduction_percent || 10) + '" class="form-control"></div>' +
                         '<div><label style="font-size:0.78rem;font-weight:800;">التصنيف التجاري</label><input id="svMerCat" type="text" value="' + esc(m.category || 'supermarket') + '" class="form-control"></div>' +
                         '<div><label style="font-size:0.78rem;font-weight:800;">سقف الائتمان الاستثنائي D4</label><input id="svMerCredit" type="number" step="100" min="0" value="' + Number(m.credit_limit || 0) + '" class="form-control"></div>' +
                         '<div><label style="font-size:0.78rem;font-weight:800;">حالة التفعيل بالرادار</label><select id="svMerActive" class="form-control"><option value="true" ' + (m.is_active ? 'selected' : '') + '>🟢 مفعل ومعتمد</option><option value="false" ' + (!m.is_active ? 'selected' : '') + '>⏳ موقوف / قيد المراجعة</option></select></div>' +
@@ -795,7 +792,7 @@
             const list = bundle.withdrawals || [];
 
             page.innerHTML =
-                '<div class="page-header"><h2>💸 طلبات سحب أرباح الأعضاء الحية (`sawyan.wallet_transactions`)</h2></div>' +
+                '<div class="page-header"><h2>💸 طلبات سحب أرباح الأعضاء الحية (' + list.length + ')</h2></div>' +
                 '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px;overflow-x:auto;">' +
                     '<table class="data-table"><thead><tr><th>العضو</th><th>المبلغ ($)</th><th>التوقيت</th><th>الحالة</th><th>إجراء المحاسب / المؤسس</th></tr></thead><tbody>' +
                     (list.length === 0 ? '<tr><td colspan="5" class="empty-state">لا توجد طلبات سحب مسجلة حالياً</td></tr>' : list.map(function (w) {
@@ -884,7 +881,6 @@
             else if (pg === 'withdrawals') setTimeout(function () { window.loadWithdrawals(); }, 30);
             else if (pg === 'support') setTimeout(function () { window.loadSupport(); }, 30);
         });
-    }
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', mountCommandCenterSidebarLink);

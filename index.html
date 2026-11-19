@@ -24,7 +24,7 @@
 <body>
 
     <!-- 1. Top Smart Geo & Trust Strip -->
-    <div class="top-geo-trust-bar" role="region" aria-label="نطاق التصفح الجغرافي والثقة">
+    <div class="top-geo-trust-bar" data-spec-id="public-geo-trust-bar" role="region" aria-label="نطاق التصفح الجغرافي والثقة">
         <div class="container top-bar-flex">
             <div class="top-geo-status">
                 <span id="topGeoBadge">🌍 تتصفح حالياً: <strong>عرض كل الدول العالمية</strong></span>
@@ -39,17 +39,16 @@
     </div>
 
     <!-- 2. Sticky Light Navbar + Always-Visible Geo-Pill -->
-    <nav class="preview-nav portal-nav" aria-label="التنقل الرئيسي">
+    <nav class="preview-nav portal-nav" data-spec-id="public-main-nav" aria-label="التنقل الرئيسي">
         <div class="container nav-content">
             <a href="index.html" class="nav-logo" id="navBrandLogo" aria-label="SAWYAN الرئيسية">
                 <strong style="font-size:1.35rem; color:#047857; font-weight:900;">SAWYAN</strong>
             </a>
 
             <div class="nav-links" style="gap:8px; flex-wrap:nowrap;">
-                <a href="member-showcase.html" style="color:#d97706 !important; font-weight:800; background:rgba(245,158,11,0.12) !important; padding:6px 10px; border-radius:8px; border:1px solid rgba(245,158,11,0.35); white-space:nowrap;">✨ معرض الشاشات التفاعلي (11 شاشة)</a>
                 <a href="#features" class="active">المميزات</a>
                 <a href="#marketplace-explorer">التجار</a>
-                <a href="member-demo/index.html" class="demo-link">جرّب كعضو</a>
+                <a href="member-dashboard/login.html?quick=member" class="demo-link">جرّب كعضو</a>
                 <a href="#how-it-works">كيف يعمل</a>
                 <a href="public/verify.html">التحقق من الفاتورة</a>
             </div>
@@ -83,13 +82,12 @@
                 <button type="button" class="mobile-menu-close" id="mobileMenuCloseBtn" aria-label="إغلاق القائمة">✕</button>
             </div>
             <div class="mobile-menu-links">
-                <a href="member-showcase.html" style="color:#d97706; font-weight:800;">✨ معرض الشاشات التفاعلي (11 شاشة)</a>
                 <a href="#features">⭐ المميزات</a>
                 <a href="#marketplace-explorer">🏪 التجار المميزون</a>
                 <a href="public/merchants.html" id="mobileAllMerchantsLink">📋 عرض جميع التجار (856+)</a>
                 <a href="#how-it-works">⚙️ آلية العمل</a>
                 <a href="public/verify.html">🔎 التحقق من الفاتورة</a>
-                <a href="member-demo/index.html">📱 جرّب كعضو (مع الحاسبة)</a>
+                <a href="member-dashboard/login.html?quick=member">📱 جرّب كعضو (مع الحاسبة)</a>
                 <a href="merchant-dashboard/register.html">🤝 سجّل متجرك</a>
             </div>
             <div class="mobile-menu-cta">
@@ -151,7 +149,7 @@
                     <a href="member-dashboard/register.html" class="btn btn-primary btn-lg join-cta-link" id="heroJoinBtn">
                         🚀 ابدأ الآن مجاناً
                     </a>
-                    <a href="member-demo/index.html" class="btn btn-secondary btn-lg">
+                    <a href="member-dashboard/login.html?quick=member" class="btn btn-secondary btn-lg">
                         👁️ جرّب النظام
                     </a>
                 </div>
@@ -184,7 +182,7 @@
                         <span id="floatingGainLabel" style="font-weight:800; color:#047857; font-size:0.86rem;">+25$ عائد مشتريات</span>
                     </div>
 
-                    <div class="wallet-preview-card" style="background: linear-gradient(145deg, #0f2744 0%, #064e3b 100%); color:#ffffff; border-radius:22px; padding:24px; width:100%; box-shadow:0 24px 54px rgba(15,39,68,0.24); border:1px solid rgba(255,255,255,0.16); position:relative; z-index:2;">
+                    <div class="wallet-preview-card" data-spec-id="public-hero-wallet-card" style="background: linear-gradient(145deg, #0f2744 0%, #064e3b 100%); color:#ffffff; border-radius:22px; padding:24px; width:100%; box-shadow:0 24px 54px rgba(15,39,68,0.24); border:1px solid rgba(255,255,255,0.16); position:relative; z-index:2;">
                         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px;">
                             <span style="font-weight:800; font-size:0.98rem; color:#a7f3d0;">💳 محفظتي (الاستهلاك الاستثماري)</span>
                             <span id="walletPreviewGeoTag" style="background:rgba(255,255,255,0.16); padding:4px 10px; border-radius:999px; font-size:0.78rem; font-weight:700;">🌍 عالمي (USD)</span>
@@ -277,7 +275,7 @@
                     </ul>
                     <div class="card-buttons">
                         <a href="member-dashboard/register.html?type=consumer" class="btn btn-primary join-cta-link">ابدأ الآن مجاناً</a>
-                        <a href="member-demo/index.html" class="btn btn-secondary">جرّب النظام</a>
+                        <a href="member-dashboard/login.html?quick=member" class="btn btn-secondary">جرّب النظام</a>
                     </div>
                 </div>
 
@@ -320,7 +318,7 @@
     </section>
 
     <!-- 5. How It Works: آلية العمل (Stacked Dual Tracks: 1- Shopper/Project Builder, 2- Merchants) -->
-    <section class="section how-it-works-section how-it-works" id="how-it-works">
+    <section class="section how-it-works-section how-it-works" id="how-it-works" data-spec-id="public-how-it-works">
         <div class="container">
             <div class="section-header text-center">
                 <h2><span class="text-gradient">آلية العمل</span></h2>
@@ -419,7 +417,7 @@
     </section>
 
     <!-- 7. Featured Merchants Explorer: تجار مميزون (Verbatim Copy + Geo Filter Controls + Exact Team Returns Wording) -->
-    <section id="marketplace-explorer" class="section merchants-section">
+    <section id="marketplace-explorer" data-spec-id="public-marketplace-explorer" class="section merchants-section">
         <div class="container">
             <div class="section-header text-center">
                 <h2>تجار <span class="text-gradient">مميزون</span></h2>
@@ -479,7 +477,7 @@
                     <a href="member-dashboard/register.html" class="btn btn-primary btn-lg join-cta-link">
                         ابدأ الآن مجاناً
                     </a>
-                    <a href="member-demo/index.html" class="btn btn-outline btn-lg">
+                    <a href="member-dashboard/login.html?quick=member" class="btn btn-outline btn-lg">
                         جرّب أولاً
                     </a>
                 </div>
@@ -538,7 +536,6 @@
                         <strong style="color:#ffffff; margin-bottom:4px;">المنصة والتحقق</strong>
                         <a href="public/merchants.html" id="footerMerchantsLink">التجار</a>
                         <a href="public/verify.html">التحقق من الفاتورة</a>
-                        <a href="member-showcase.html">معرض الشاشات التفاعلي (11 شاشة)</a>
                         <a href="public/terms.html">الشروط والأحكام</a>
                         <a href="public/privacy.html">سياسة الخصوصية</a>
                         <a href="public/contact.html">تواصل معنا</a>
@@ -548,12 +545,12 @@
                         <a href="member-dashboard/register.html">تسجيل عضو مجاني</a>
                         <a href="merchant-dashboard/register.html">سجّل متجرك</a>
                         <a href="auth-gateway.html">بوابة الدخول</a>
-                        <a href="member-demo/index.html">جرّب كعضو (مع الحاسبة)</a>
+                        <a href="member-dashboard/login.html?quick=member">جرّب كعضو (مع الحاسبة)</a>
                     </div>
                 </div>
             </div>
 
-            <div class="footer-y06-disclaimer">
+            <div class="footer-y06-disclaimer" data-spec-id="public-y06-disclaimer">
                 <strong>إفصاح الأرباح والحوكمة (Y06):</strong> منصة <strong>SAWYAN</strong> منصة استهلاك استثماري وتجارة تشاركية مرتبطة حصراً بالمشتريات اليومية الفعلية لدى التجار المعتمدين ولا تقدم خدمات مصرفية حالياً. العائدات والأرقام التوضيحية مشروطة بالمشتريات الحقيقية وتخضع لمراجعة <code>14 يوماً</code> قبل الصرف يوم 15 ولا تمثل وعداً بدخل مضمون.
             </div>
         </div>

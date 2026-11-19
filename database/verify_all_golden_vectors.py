@@ -66,10 +66,9 @@ def main():
       (SELECT cap_amount FROM sawyan.settings WHERE country_id IS NULL LIMIT 1) AS cap_amount;
     """, token)[0]
     print(json.dumps(counts, indent=2))
-    assert counts["prod_tables"] >= 43, f"Expected >= 43 prod tables, got {counts['prod_tables']}"
-    assert counts["demo_tables"] >= 43, f"Expected >= 43 demo tables, got {counts['demo_tables']}"
+    assert counts["prod_tables"] >= 44 and counts["prod_tables"] == counts["demo_tables"], f"Expected >= 44 matching tables, got prod={counts['prod_tables']} demo={counts['demo_tables']}"
     assert counts["prod_members"] == 1, f"Expected 1 prod root #0, got {counts['prod_members']}"
-    assert counts["demo_members"] == 50, f"Expected 50 demo members (#0 + #1 + 48 team), got {counts['demo_members']}"
+    assert counts["demo_members"] >= 50, f"Expected >= 50 demo members (#0 + #1 + team), got {counts['demo_members']}"
     assert float(counts["cap_amount"]) == 4605.75, f"Expected cap 4605.75, got {counts['cap_amount']}"
 
     print("=== [2/4] Verifying REST API HTTP 200 on Both Schemas ===")

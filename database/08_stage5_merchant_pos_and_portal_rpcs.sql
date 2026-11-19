@@ -964,7 +964,9 @@ BEGIN
         SELECT * INTO v_req
           FROM sawyan.return_requests
          WHERE transaction_id = v_tx.id AND merchant_id = v_merch.id
-         ORDER BY created_at DESC
+         ORDER BY (status IN ('pending_otp', 'approved_in_app')) DESC,
+                  COALESCE(resolved_at, created_at) DESC,
+                  id DESC
          LIMIT 1
          FOR UPDATE;
         IF NOT FOUND THEN
@@ -1040,7 +1042,9 @@ BEGIN
           FROM sawyan.return_requests
          WHERE transaction_id = v_tx.id AND merchant_id = v_merch.id
            AND status IN ('pending_otp', 'rejected_member', 'locked', 'expired')
-         ORDER BY created_at DESC
+         ORDER BY (status = 'pending_otp') DESC,
+                  COALESCE(resolved_at, created_at) DESC,
+                  id DESC
          LIMIT 1
          FOR UPDATE;
 

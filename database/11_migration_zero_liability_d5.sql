@@ -28,7 +28,8 @@ ALTER TABLE sawyan.countries
     ADD COLUMN IF NOT EXISTS payout_release_hour SMALLINT NOT NULL DEFAULT 18;
 
 ALTER TABLE sawyan.settlement_cycles
-    ADD COLUMN IF NOT EXISTS recalc_required BOOLEAN NOT NULL DEFAULT false;
+    ADD COLUMN IF NOT EXISTS recalc_required    BOOLEAN NOT NULL DEFAULT false,
+    ADD COLUMN IF NOT EXISTS payout_executed_at TIMESTAMPTZ;
 
 ALTER TABLE sawyan.transactions
     ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ,

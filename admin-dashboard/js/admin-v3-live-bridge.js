@@ -219,6 +219,12 @@
             renderLiveSummaryBannerOnHome();
             renderSovereignLivePage();
             renderLiveFlashOfferQueue();
+            if (typeof window.hydrateAdminFromLiveBundle === 'function') {
+                window.hydrateAdminFromLiveBundle(LIVE_BUNDLE);
+            }
+            if (typeof window.hydrateAdminOpsFromLiveBundle === 'function') {
+                window.hydrateAdminOpsFromLiveBundle(LIVE_BUNDLE);
+            }
             if (showFeedback) showToast('تمت مزامنة البيانات السيادية الحية من قاعدة البيانات بنجاح', false);
         } catch (err) {
             if (/ADMIN_AUTH_REQUIRED|ADMIN_SESSION_INVALID|ADMIN_SESSION_EXPIRED|ADMIN_NOT_ACTIVE/.test(err.message || '')) {
@@ -256,7 +262,11 @@
             const div = document.createElement('div');
             div.id = 'sovereignLivePage';
             div.className = 'page';
+            div.setAttribute('data-spec-id', 'admin-live-hub');
             area.insertBefore(div, area.firstChild);
+        }
+        if (window.SAWYAN && window.SAWYAN.AppShell && typeof window.SAWYAN.AppShell.syncMoreMenu === 'function') {
+            window.SAWYAN.AppShell.syncMoreMenu();
         }
     }
 
@@ -281,6 +291,7 @@
         if (!strip) {
             strip = document.createElement('div');
             strip.id = 'sawyanLiveDbBanner';
+            strip.setAttribute('data-spec-id', 'admin-home-live-banner');
             strip.style.cssText = 'background:linear-gradient(135deg,#064e3b,#0f172a);color:#ffffff;border:1.5px solid #10b981;border-radius:14px;padding:14px 18px;margin-bottom:16px;box-shadow:0 6px 20px rgba(6,78,59,0.2);';
             home.insertBefore(strip, home.firstChild);
         }
@@ -725,15 +736,13 @@
     // 5. Wire Live Flash Offer Moderation Queue (#adminPromoModerationSection)
     // ------------------------------------------------------------------------
     function renderLiveFlashOfferQueue() {
-        if (!LIVE_BUNDLE || !Array.isArray(LIVE_BUNDLE.flash_offers_queue) || LIVE_BUNDLE.flash_offers_queue.length === 0) {
-            return;
-        }
         const container = document.getElementById('adminPromoQueueContainer');
         const badge = document.getElementById('adminPromoCountBadge');
         if (!container || !badge) return;
 
-        const pending = LIVE_BUNDLE.flash_offers_queue.filter(function (x) { return x.event_name === 'MerchantFlashOfferPending'; });
-        badge.textContent = pending.length > 0 ? ('🔔 عروض حية بانتظار الاعتماد (' + pending.length + ')') : '✅ لا توجد عروض معلقة بقاعدة البيانات (0)';
+        const queue = (LIVE_BUNDLE && Array.isArray(LIVE_BUNDLE.flash_offers_queue)) ? LIVE_BUNDLE.flash_offers_queue : [];
+        const pending = queue.filter(function (x) { return x.event_name === 'MerchantFlashOfferPending'; });
+        badge.textContent = pending.length > 0 ? ('🔔 عروض حية بانتظار الاعتماد (' + pending.length + ')') : '✅ لا توجد معلقات (0)';
 
         if (pending.length > 0) {
             container.innerHTML = pending.map(function (item) {
@@ -751,8 +760,11 @@
                     '</div>' +
                 '</div>';
             }).join('');
+        } else {
+            container.innerHTML = '<div style="background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:12px;padding:14px;text-align:center;color:#64748b;font-weight:700;font-size:0.88rem;">✨ لا توجد إعلانات أو عروض معلقة بانتظار الاعتماد في قاعدة البيانات الحية (0).</div>';
         }
     }
+    window.renderLiveFlashOfferQueue = renderLiveFlashOfferQueue;
 
     // ------------------------------------------------------------------------
     // 6. Action Handlers Calling Guarded PostgreSQL Stage 6 RPCs
