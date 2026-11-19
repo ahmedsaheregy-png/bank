@@ -345,9 +345,9 @@
 
         openModal(
             isEdit ? '✏️ تعديل المادة التدريبية' : '➕ إضافة مادة تدريبية جديدة',
-            '<div style="display:grid;gap:10px;">' +
+            '<div style="display:flex;flex-direction:column;gap:12px;">' +
                 '<div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;">' +
-                    '<div><label style="font-size:0.78rem;font-weight:800;">المسار التدريبي</label>' +
+                    '<div><label style="display:block;margin-bottom:4px;font-size:0.78rem;font-weight:800;">المسار التدريبي</label>' +
                         '<select id="svAcadEdTrack" class="form-control">' +
                             '<option value="">— بدون مسار —</option>' +
                             tracks.map(function (t) {
@@ -355,7 +355,7 @@
                             }).join('') +
                         '</select>' +
                     '</div>' +
-                    '<div><label style="font-size:0.78rem;font-weight:800;">النوع</label>' +
+                    '<div><label style="display:block;margin-bottom:4px;font-size:0.78rem;font-weight:800;">النوع</label>' +
                         '<select id="svAcadEdType" class="form-control" onchange="svUpdateAcademyUrlPreview()">' +
                             '<option value="video" ' + (mediaType === 'video' ? 'selected' : '') + '>🎬 فيديو</option>' +
                             '<option value="article" ' + (mediaType === 'article' ? 'selected' : '') + '>📖 مقالة</option>' +
@@ -364,17 +364,17 @@
                             '<option value="mixed" ' + (mediaType === 'mixed' ? 'selected' : '') + '>🧩 مختلط</option>' +
                         '</select>' +
                     '</div>' +
-                    '<div><label style="font-size:0.78rem;font-weight:800;">الترتيب</label>' +
+                    '<div><label style="display:block;margin-bottom:4px;font-size:0.78rem;font-weight:800;">الترتيب</label>' +
                         '<input id="svAcadEdOrder" type="number" min="1" value="' + esc(order) + '" class="form-control">' +
                     '</div>' +
                 '</div>' +
                 '<div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;">' +
-                    '<div><label style="font-size:0.78rem;font-weight:800;">عنوان المادة بالعربية *</label><input id="svAcadEdTitleAr" type="text" value="' + esc(titleAr) + '" class="form-control" placeholder="مثلاً: شرح المشروع للمبتدئين"></div>' +
-                    '<div><label style="font-size:0.78rem;font-weight:800;">المدة (دقائق)</label><input id="svAcadEdDur" type="number" min="1" max="600" value="' + esc(dur) + '" class="form-control" placeholder="5"></div>' +
+                    '<div><label style="display:block;margin-bottom:4px;font-size:0.78rem;font-weight:800;">عنوان المادة بالعربية *</label><input id="svAcadEdTitleAr" type="text" value="' + esc(titleAr) + '" class="form-control" placeholder="مثلاً: شرح المشروع للمبتدئين"></div>' +
+                    '<div><label style="display:block;margin-bottom:4px;font-size:0.78rem;font-weight:800;">المدة (دقائق)</label><input id="svAcadEdDur" type="number" min="1" max="600" value="' + esc(dur) + '" class="form-control" placeholder="5"></div>' +
                 '</div>' +
                 '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
-                    '<div><label style="font-size:0.78rem;font-weight:800;">العنوان الإنجليزي (اختياري)</label><input id="svAcadEdTitleEn" type="text" value="' + esc(titleEn) + '" class="form-control"></div>' +
-                    '<div><label style="font-size:0.78rem;font-weight:800;">يتطلب إتمام درس سابق (اختياري)</label>' +
+                    '<div><label style="display:block;margin-bottom:4px;font-size:0.78rem;font-weight:800;">العنوان الإنجليزي (اختياري)</label><input id="svAcadEdTitleEn" type="text" value="' + esc(titleEn) + '" class="form-control"></div>' +
+                    '<div><label style="display:block;margin-bottom:4px;font-size:0.78rem;font-weight:800;">يتطلب إتمام درس سابق (اختياري)</label>' +
                         '<select id="svAcadEdPrereq" class="form-control">' +
                             '<option value="">— مفتوح مباشرة بلا قيد —</option>' +
                             allLessons.filter(function (x) { return !l || String(x.id) !== String(l.id); }).map(function (x) {
@@ -383,11 +383,11 @@
                         '</select>' +
                     '</div>' +
                 '</div>' +
-                '<div><label style="font-size:0.78rem;font-weight:800;">رابط الوسائط الآمن HTTPS (YouTube / Vimeo / MP4 / MP3 / PDF)</label>' +
-                    '<input id="svAcadEdUrl" type="url" value="' + esc(mediaUrl) + '" class="form-control" placeholder="https://www.youtube.com/watch?v=..." oninput="svUpdateAcademyUrlPreview()">' +
+                '<div><label style="display:block;margin-bottom:4px;font-size:0.78rem;font-weight:800;">رابط الوسائط الآمن HTTPS (YouTube / Vimeo / MP4 / MP3 / PDF)</label>' +
+                    '<input id="svAcadEdUrl" type="url" value="' + esc(mediaUrl) + '" class="form-control" dir="ltr" placeholder="https://www.youtube.com/watch?v=..." oninput="svUpdateAcademyUrlPreview()">' +
                 '</div>' +
-                '<div id="svAcadModalLivePreview"></div>' +
-                '<div><label style="font-size:0.78rem;font-weight:800;">النص والشرح التدريبي</label>' +
+                '<div id="svAcadModalLivePreview" style="display:block;width:100%;margin-top:4px;"></div>' +
+                '<div><label style="display:block;margin-bottom:4px;font-size:0.78rem;font-weight:800;">النص والشرح التدريبي</label>' +
                     '<textarea id="svAcadEdContentAr" rows="4" class="form-control" placeholder="اكتب شرح المادة التدريبية أو نقاط الفيديو...">' + esc(contentAr) + '</textarea>' +
                 '</div>' +
                 '<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:0.84rem;">' +
@@ -477,13 +477,13 @@
         const t = trackId ? (LMS_STATE.tracks || []).find(function (x) { return String(x.id) === String(trackId); }) : null;
         openModal(
             t ? '✏️ تعديل المسار التدريبي' : '➕ إضافة مسار تدريبي جديد',
-            '<div style="display:grid;gap:10px;">' +
+            '<div style="display:flex;flex-direction:column;gap:12px;">' +
                 '<div style="display:grid;grid-template-columns:80px 1fr 90px;gap:8px;">' +
-                    '<div><label style="font-size:0.78rem;font-weight:800;">الأيقونة</label><input id="svTrkIcon" type="text" value="' + esc((t && t.icon) || '🎓') + '" class="form-control"></div>' +
-                    '<div><label style="font-size:0.78rem;font-weight:800;">عنوان المسار بالعربية *</label><input id="svTrkTitleAr" type="text" value="' + esc((t && t.title_i18n && t.title_i18n.ar) || '') + '" class="form-control"></div>' +
-                    '<div><label style="font-size:0.78rem;font-weight:800;">الترتيب</label><input id="svTrkOrder" type="number" min="1" value="' + esc((t && t.sort_order) || ((LMS_STATE.tracks || []).length + 1)) + '" class="form-control"></div>' +
+                    '<div><label style="display:block;margin-bottom:4px;font-size:0.78rem;font-weight:800;">الأيقونة</label><input id="svTrkIcon" type="text" value="' + esc((t && t.icon) || '🎓') + '" class="form-control"></div>' +
+                    '<div><label style="display:block;margin-bottom:4px;font-size:0.78rem;font-weight:800;">عنوان المسار بالعربية *</label><input id="svTrkTitleAr" type="text" value="' + esc((t && t.title_i18n && t.title_i18n.ar) || '') + '" class="form-control"></div>' +
+                    '<div><label style="display:block;margin-bottom:4px;font-size:0.78rem;font-weight:800;">الترتيب</label><input id="svTrkOrder" type="number" min="1" value="' + esc((t && t.sort_order) || ((LMS_STATE.tracks || []).length + 1)) + '" class="form-control"></div>' +
                 '</div>' +
-                '<div><label style="font-size:0.78rem;font-weight:800;">وصف المسار</label><textarea id="svTrkDescAr" rows="2" class="form-control">' + esc((t && t.description_i18n && t.description_i18n.ar) || '') + '</textarea></div>' +
+                '<div><label style="display:block;margin-bottom:4px;font-size:0.78rem;font-weight:800;">وصف المسار</label><textarea id="svTrkDescAr" rows="2" class="form-control">' + esc((t && t.description_i18n && t.description_i18n.ar) || '') + '</textarea></div>' +
                 '<div style="display:flex;gap:14px;font-size:0.84rem;">' +
                     '<label><input id="svTrkSeq" type="checkbox" ' + (!t || t.is_sequential ? 'checked' : '') + '> تسلسل تدريجي</label>' +
                     '<label><input id="svTrkPub" type="checkbox" ' + (!t || t.is_published ? 'checked' : '') + '> منشور الآن</label>' +

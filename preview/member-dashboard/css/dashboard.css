@@ -88,12 +88,16 @@ body {
 
 .acad-embed-box {
     position: relative;
+    display: block;
     width: 100%;
-    padding-bottom: 56.25%;
+    aspect-ratio: 16 / 9;
+    height: auto;
+    min-height: 220px;
+    max-height: 440px;
     background: #0f172a;
     border-radius: 12px;
     overflow: hidden;
-    margin-bottom: 12px;
+    margin: 4px 0 12px 0;
 }
 
 .acad-embed-box iframe,

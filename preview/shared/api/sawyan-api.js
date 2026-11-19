@@ -267,6 +267,10 @@
             }
         },
 
+        getMemberSessionToken() {
+            return SawyanAPI.getSessionToken();
+        },
+
         saveMemberSession(memberObj, sessionToken) {
             try {
                 if (memberObj) {
