@@ -552,13 +552,17 @@
                         </div>
 
                         <div class="form-group" style="flex: 1;">
-                            <label style="font-weight: 800; font-size: 0.86rem; color: #0f172a;">الحي / المنطقة</label>
+                            <label style="font-weight: 800; font-size: 0.86rem; color: #0f172a;">الحي / المنطقة <span class="required-star">*</span></label>
+                            <input type="search" id="districtSearchInput" class="form-control"
+                                style="margin-bottom:6px; font-size:0.82rem; padding:7px 10px;"
+                                placeholder="🔍 ابحث عن حيك أو منطقتك (GeoNames)...">
                             <select id="districtSelect" class="form-control" style="font-weight: 700;" onchange="handleDistrictSelectChange(this.value)">
                                 <option value="مدينة نصر" selected>مدينة نصر</option>
                             </select>
                             <input type="text" id="manualDistrictInput" maxlength="60" class="form-control"
                                 style="display:none; font-weight:700; margin-top:6px;"
-                                placeholder="اكتب اسم الحي أو المنطقة (اختياري)">
+                                placeholder="اكتب اسم الحي أو القرية (حقل إلزامي)">
+                            <small id="districtGeoHint" style="display:block;font-size:0.72rem;color:#059669;font-weight:700;margin-top:4px;"></small>
                         </div>
                     </div>
 
@@ -648,10 +652,11 @@
                     idLabel: 'الرقم القومي (14 رقم)',
                     idMax: 14,
                     cities: {
-                        cairo: { name: 'القاهرة', districts: ['مدينة نصر', 'التجمع الخامس', 'المعادي', 'مصر الجديدة', 'شبرا', 'وسط البلد', 'حلوان'] },
-                        giza: { name: 'الجيزة', districts: ['الدقي', 'المهندسين', 'الهرم', 'فيصل', 'الشيخ زايد', '6 أكتوبر'] },
-                        alex: { name: 'الإسكندرية', districts: ['سموحة', 'سيدي جابر', 'ميامي', 'المنتزه', 'محرم بك', 'العجمي'] },
-                        mansoura: { name: 'المنصورة', districts: ['حي الجامعة', 'المشاية السفلية', 'توريل', 'طلخا'] }
+                        cairo: { name: 'القاهرة', districts: ['مدينة نصر', 'التجمع الخامس', 'التجمع الأول', 'الرحاب', 'مدينتي', 'الشروق', 'بدر', 'العاصمة الإدارية الجديدة', 'المعادي', 'زهراء المعادي', 'مصر الجديدة', 'النزهة', 'شيراتون المطار', 'العباسية', 'حدائق القبة', 'الزيتون', 'المطرية', 'عين شمس', 'المرج', 'مدينة السلام', 'جسر السويس', 'شبرا', 'روض الفرج', 'الزمالك', 'جاردن سيتي', 'وسط البلد', 'عابدين', 'السيدة زينب', 'المنيل', 'المقطم', 'البساتين', 'دار السلام', 'حلوان', 'حدائق حلوان', '15 مايو'] },
+                        giza: { name: 'الجيزة', districts: ['الدقي', 'المهندسين', 'العجوزة', 'إمبابة', 'الوراق', 'بولاق الدكرور', 'فيصل', 'الهرم', 'حدائق الأهرام', 'العمرانية', 'الجيزة', '6 أكتوبر', 'الشيخ زايد', 'حدائق أكتوبر', 'الحوامدية', 'البدرشين'] },
+                        alex: { name: 'الإسكندرية', districts: ['سموحة', 'سيدي جابر', 'سيدي بشر', 'ميامي', 'المنتزه', 'المندرة', 'العصافرة', 'جليم', 'سان ستيفانو', 'لوران', 'رشدي', 'كفر عبده', 'ستانلي', 'سبورتنج', 'الإبراهيمية', 'محطة الرمل', 'المنشية', 'بحري', 'محرم بك', 'العجمي', 'برج العرب الجديدة'] },
+                        aswan: { name: 'أسوان', districts: ['مدينة أسوان', 'أسوان الجديدة', 'العقاد', 'الكرور', 'المحمودية', 'كيما', 'الصداقة الجديدة', 'السد العالي', 'كوم أمبو', 'إدفو', 'دراو', 'نصر النوبة', 'أبو سمبل'] },
+                        mansoura: { name: 'المنصورة', districts: ['حي الجامعة', 'المشاية السفلية', 'توريل', 'قناة السويس', 'طلخا', 'ميت غمر', 'السنبلاوين', 'دكرنس', 'بلقاس'] }
                     }
                 },
                 SA: {
@@ -692,7 +697,7 @@
                     idLabel: 'رقم الكيملك / الإقامة التركية (TC: 11 رقم)',
                     idMax: 11,
                     cities: {
-                        istanbul: { name: 'إسطنبول', districts: ['الفاتح', 'باشاك شهير', 'إسنيورت', 'كاديكوي', 'شيشلي', 'بيليك دوزو'] },
+                        istanbul: { name: 'إسطنبول', districts: ['الفاتح', 'باشاك شهير', 'إسنيورت', 'بيليك دوزو', 'أفجيلار', 'كوتشوك شكمجة', 'باهتشيلي إيفلر', 'باغجلار', 'باكيركوي', 'زيتون بورنو', 'بيرم باشا', 'أيوب سلطان', 'غازي عثمان باشا', 'سلطان غازي', 'شيشلي', 'كاغد خانة', 'بشكتاش', 'ساريير', 'بي أوغلو', 'كاديكوي', 'أوسكودار', 'عمرانية', 'أتاشهير', 'مالتبه', 'كارتال', 'بنديك'] },
                         ankara: { name: 'أنقرة', districts: ['تشانكايا', 'كيشي أورين', 'يني محلة'] },
                         bursa: { name: 'بورصة', districts: ['عثمان غازي', 'نيلوفر', 'يلدريم'] }
                     }
@@ -847,6 +852,7 @@
 
                 const hasRealDistricts = !!(cityObj && Array.isArray(cityObj.districts) && cityObj.districts.length > 0 && cityObj.districts[0] !== 'وسط المدينة / المنطقة الرئيسية');
 
+                const customOpt = document.createElement('option');
                 if (hasRealDistricts) {
                     districtSelect.style.display = 'block';
                     districtSelect.innerHTML = '';
@@ -857,9 +863,8 @@
                         if (idx === 0) opt.selected = true;
                         districtSelect.appendChild(opt);
                     });
-                    const customOpt = document.createElement('option');
                     customOpt.value = '__MANUAL__';
-                    customOpt.innerText = '✏️ حي / منطقة أخرى (كتابة يدوية)';
+                    customOpt.innerText = '✏️ حي / قرية أخرى غير مدرجة (كتابة يدوية)';
                     districtSelect.appendChild(customOpt);
                     if (manualDistrictInput) {
                         manualDistrictInput.style.display = 'none';
@@ -871,6 +876,9 @@
                     if (manualDistrictInput) {
                         manualDistrictInput.style.display = 'block';
                     }
+                }
+                if (typeof window.loadGeoDistrictsForCity === 'function' && citySel && citySel.selectedOptions && citySel.selectedOptions[0]) {
+                    window.loadGeoDistrictsForCity(countryCode, citySel.selectedOptions[0], '');
                 }
             }
 
@@ -965,11 +973,11 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../shared/config/supabase.js"></script>
-    <script src="../shared/api/sawyan-api.js?v=20261119_auth_audit"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261119_world_geo"></script>
     <script src="../shared/components/logo.js"></script>
     <script src="../js/demo-data.js"></script>
-    <script src="../shared/data/countries.js"></script>
-    <script src="js/register.js?v=20261119_auth_audit"></script>
+    <script src="../shared/data/countries.js?v=20261119_world_geo"></script>
+    <script src="js/register.js?v=20261119_world_geo"></script>
 </body>
 
 </html>

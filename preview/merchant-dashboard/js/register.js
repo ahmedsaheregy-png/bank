@@ -95,9 +95,10 @@ async function handleMerchantRegister(e) {
         return;
     }
     let resolvedDial = '+20';
-    if (window.SAWYAN_COUNTRIES_DATA && Array.isArray(window.SAWYAN_COUNTRIES_DATA)) {
-        const hit = window.SAWYAN_COUNTRIES_DATA.find(c => c.code === countryCode);
-        if (hit && hit.dial) resolvedDial = hit.dial;
+    const worldCountries = (window.SAWYAN && Array.isArray(window.SAWYAN.Countries)) ? window.SAWYAN.Countries : [];
+    const worldHit = worldCountries.find(c => String(c.code || '').toUpperCase() === countryCode);
+    if (worldHit && worldHit.dialCode) {
+        resolvedDial = worldHit.dialCode;
     } else {
         const fallbackDial = { EG: '+20', TR: '+90', SA: '+966', AE: '+971', DE: '+49', US: '+1' };
         resolvedDial = fallbackDial[countryCode] || '+20';

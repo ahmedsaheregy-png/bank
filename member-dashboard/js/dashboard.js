@@ -2229,6 +2229,57 @@ function updateReferralTargetCountry(countryCode) {
     }
 }
 
+function buildWorldCountryOptions({ selectedCode = '', includeAutoOption = false, excludeCode = '' } = {}) {
+    const worldList = (window.SAWYAN && Array.isArray(window.SAWYAN.Countries)) ? window.SAWYAN.Countries : [];
+    const matrixArr = (memberBundle && Array.isArray(memberBundle.countries_plan_matrix)) ? memberBundle.countries_plan_matrix : [];
+    const pubList = Array.from(liveCountriesPlanMap.values());
+    const mergedMap = new Map();
+
+    worldList.forEach(w => {
+        const code = String(w.code || '').trim().toUpperCase();
+        if (!code || code === String(excludeCode || '').toUpperCase()) return;
+        mergedMap.set(code, {
+            code,
+            nameAr: w.nameAr || w.nameEn || code,
+            flag: w.flag || '🌍',
+            is_active: false
+        });
+    });
+
+    [...matrixArr, ...pubList].forEach(c => {
+        const code = String(c.country_code || '').trim().toUpperCase();
+        if (!code || code === String(excludeCode || '').toUpperCase()) return;
+        const prev = mergedMap.get(code) || { code, nameAr: code, flag: '🌍', is_active: false };
+        mergedMap.set(code, {
+            code,
+            nameAr: (c.country_name_i18n && c.country_name_i18n.ar) || prev.nameAr || code,
+            flag: prev.flag || '🌍',
+            is_active: Boolean(c.is_active) || prev.is_active
+        });
+    });
+
+    const all = Array.from(mergedMap.values());
+    const activeList = all.filter(c => c.is_active).sort((a, b) => a.nameAr.localeCompare(b.nameAr, 'ar'));
+    const globalList = all.filter(c => !c.is_active).sort((a, b) => a.nameAr.localeCompare(b.nameAr, 'ar'));
+    const selUpper = String(selectedCode || '').toUpperCase();
+
+    let html = includeAutoOption
+        ? `<option value="" ${!selUpper ? 'selected' : ''}>🌍 تلقائي (يختاره المدعو عند التسجيل)</option>`
+        : '';
+
+    if (activeList.length) {
+        html += `<optgroup label="🟢 الدول النشطة حالياً">` +
+            activeList.map(c => `<option value="${esc(c.code)}" ${selUpper === c.code ? 'selected' : ''}>${c.flag} ${esc(c.nameAr)} (${esc(c.code)}) — نشطة</option>`).join('') +
+            `</optgroup>`;
+    }
+    if (globalList.length) {
+        html += `<optgroup label="🌍 باقي دول العالم">` +
+            globalList.map(c => `<option value="${esc(c.code)}" ${selUpper === c.code ? 'selected' : ''}>${c.flag} ${esc(c.nameAr)} (${esc(c.code)})</option>`).join('') +
+            `</optgroup>`;
+    }
+    return html;
+}
+
 function loadReferrals() {
     const page = document.getElementById('referralsPage');
     if (!page) return;
@@ -2237,16 +2288,6 @@ function loadReferrals() {
     const nextPrev = memberBundle?.tree_analytics?.next_placement_preview || null;
     const regRefs = memberBundle?.registered_referrals || [];
 
-    const countryChoices = [
-        { code: '', label: '🌍 تلقائي (يختاره المدعو عند التسجيل)' },
-        { code: 'EG', label: '🇪🇬 مصر (EG)' },
-        { code: 'TR', label: '🇹🇷 تركيا (TR)' },
-        { code: 'SA', label: '🇸🇦 السعودية (SA)' },
-        { code: 'AE', label: '🇦🇪 الإمارات (AE)' },
-        { code: 'DE', label: '🇩🇪 ألمانيا (DE)' },
-        { code: 'US', label: '🇺🇸 أمريكا (US)' }
-    ];
-
     page.innerHTML = `
         <h2>🔗 بوابة الإحالة، التسكين المتوازن، وتسجيل المباشرين</h2>
 
@@ -2254,9 +2295,9 @@ function loadReferrals() {
             <div>
                 <p style="margin:0 0 10px;">كود الراعي الخاص بك: <strong style="color:#047857;font-size:1.05rem;">#${esc(currentMember.member_code)}</strong> — كل من يسجل عبر هذا الرابط يتأكد من اسمك الثلاثي قبل التسكين الذري التلقائي في أضعف ذراع (G01–G05).</p>
                 <div style="margin-bottom:10px;">
-                    <label for="referralTargetCountrySelect" style="display:block;font-weight:700;font-size:0.84rem;margin-bottom:4px;color:#065f46;">🌍 الدولة المستهدفة للمدعو:</label>
-                    <select id="referralTargetCountrySelect" class="form-control" style="max-width:320px;" onchange="updateReferralTargetCountry(this.value)">
-                        ${countryChoices.map(c => `<option value="${c.code}" ${selectedCountry === c.code ? 'selected' : ''}>${c.label}</option>`).join('')}
+                    <label for="referralTargetCountrySelect" style="display:block;font-weight:700;font-size:0.84rem;margin-bottom:4px;color:#065f46;">🌍 الدولة المستهدفة للمدعو (كل دول العالم):</label>
+                    <select id="referralTargetCountrySelect" class="form-control" style="max-width:340px;" onchange="updateReferralTargetCountry(this.value)">
+                        ${buildWorldCountryOptions({ selectedCode: selectedCountry, includeAutoOption: true })}
                     </select>
                 </div>
                 <div class="referral-link" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
@@ -2292,10 +2333,7 @@ function loadReferrals() {
                 <input type="text" id="qRefName" required class="form-control" placeholder="الاسم الكامل للمشترك *">
                 <input type="tel" id="qRefPhone" required class="form-control" placeholder="الهاتف الدولي (+20...) *">
                 <select id="qRefCountry" class="form-control">
-                    <option value="EG">🇪🇬 مصر (EG)</option>
-                    <option value="TR">🇹🇷 تركيا (TR)</option>
-                    <option value="SA">🇸🇦 السعودية (SA)</option>
-                    <option value="AE">🇦🇪 الإمارات (AE)</option>
+                    ${buildWorldCountryOptions({ selectedCode: (currentMember && currentMember.country_code) || 'EG', includeAutoOption: false })}
                 </select>
                 <input type="password" id="qRefPass" required minlength="8" class="form-control" placeholder="كلمة المرور (8+ أحرف) *">
                 <button type="submit" id="qRefSubmitBtn" class="btn btn-primary">+ تسجيل وإدراج تلقائي بالشبكة</button>
@@ -2378,13 +2416,12 @@ async function loadSettings() {
     const p = memberBundle.profile || currentMember;
     const moveReqs = memberBundle.residency_move_requests || [];
     const homeGps = p.metadata?.home_gps || {};
-
-    let activeCountries = Array.isArray(memberBundle.countries_plan_matrix)
-        ? memberBundle.countries_plan_matrix.filter(c => c.is_active)
-        : [];
-    if (!activeCountries.length) {
-        activeCountries = [{ country_code: 'EG' }, { country_code: 'TR' }];
-    }
+    const curCc = String(p.country_code || 'EG').toUpperCase();
+    const curCountryMeta = (window.SAWYAN && Array.isArray(window.SAWYAN.Countries))
+        ? window.SAWYAN.Countries.find(c => String(c.code || '').toUpperCase() === curCc)
+        : null;
+    const curCountryAr = curCountryMeta ? `${curCountryMeta.flag} ${curCountryMeta.nameAr} (${curCc})` : curCc;
+    const isKycVerified = p.kyc_status === 'verified';
 
     page.innerHTML = `
         <h2>⚙️ الملف الشخصي، الإقامة، الهوية (KYC)، الدعم والأمان</h2>
@@ -2392,39 +2429,74 @@ async function loadSettings() {
         <div data-spec-id="member-settings-residency-lock" style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:16px;padding:18px;margin-top:14px;">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
                 <div>
-                    <strong style="color:#92400e;font-size:1.02rem;">🌍 دولة الإقامة المقيدة حسابياً: ${esc(p.country_code)} (${esc(p.currency_code)})</strong>
-                    <div style="font-size:0.84rem;color:#78350f;margin-top:4px;"><strong>⚠️ لحماية أرباحك: حدد دولة إقامتك الحالية بدقة</strong> — لا يجوز تغيير دولة الإقامة خلال الشهر المفتوح.</div>
+                    <strong style="color:#92400e;font-size:1.02rem;">🌍 دولة الإقامة المقيدة حسابياً حالياً: ${esc(curCountryAr)} — العملة: ${esc(p.currency_code)}</strong>
+                    <div style="font-size:0.84rem;color:#78350f;margin-top:4px;"><strong>⚠️ لحماية أرباحك: دولة إقامتك مقفلة طوال الشهر المفتوح (D9).</strong> استخدم هذا القسم <u>فقط إذا انتقلت للإقامة الفعلية في دولة أخرى</u> ليسري النقل مطلع الشهر القادم مع حفظ رصيد Carry On السابق كاملاً.</div>
                 </div>
                 <span style="background:#ffffff;border:1px solid #f59e0b;color:#92400e;padding:4px 12px;border-radius:999px;font-weight:800;font-size:0.8rem;">🔒 قفل الشهر المفتوح</span>
             </div>
             ${moveReqs.length ? `<div style="margin-top:10px;background:#ffffff;border:1px solid #fcd34d;border-radius:10px;padding:10px;font-size:0.82rem;">✈️ طلب نقل إقامة مسجل إلى <strong>${esc(moveReqs[0].target_country_code)}</strong> — الحالة: <strong>${esc(moveReqs[0].status)}</strong> • يسري من: ${esc(String(moveReqs[0].effective_from || '').slice(0, 10))}</div>` : ''}
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-top:12px;">
-                <select id="setMoveTargetCountry" class="form-control">
-                    ${activeCountries.map(c => `<option value="${esc(c.country_code)}">${esc(c.country_code)}</option>`).join('')}
-                </select>
-                <input type="text" id="setMoveDocNum" class="form-control" placeholder="رقم الإقامة / تأشيرة العمل الجديدة">
-                <button type="button" data-spec-id="member-settings-residency-move-btn" class="btn btn-primary btn-sm" onclick="submitSettingsResidencyMove()">✈️ طلب نقل دولة الإقامة (الشهر القادم)</button>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:12px;align-items:end;">
+                <div>
+                    <label for="setMoveTargetCountry" style="display:block;font-size:0.78rem;font-weight:800;color:#92400e;margin-bottom:4px;">1️⃣ دولة الإقامة الجديدة (كل دول العالم)</label>
+                    <select id="setMoveTargetCountry" class="form-control">
+                        ${buildWorldCountryOptions({ selectedCode: '', includeAutoOption: false, excludeCode: curCc })}
+                    </select>
+                </div>
+                <div>
+                    <label for="setMoveDocNum" style="display:block;font-size:0.78rem;font-weight:800;color:#92400e;margin-bottom:4px;">2️⃣ رقم إثبات الإقامة بالبلد الجديد (إقامة / تأشيرة عمل / عقد سكن)</label>
+                    <input type="text" id="setMoveDocNum" class="form-control" placeholder="أدخل رقم مستند الإقامة في الدولة الجديدة">
+                </div>
+                <div>
+                    <label for="setMoveFileInput" style="display:block;font-size:0.78rem;font-weight:800;color:#92400e;margin-bottom:4px;">3️⃣ صورة مستند الإقامة (اختياري الآن)</label>
+                    <input type="file" id="setMoveFileInput" accept="image/*" class="form-control">
+                </div>
+                <div>
+                    <button type="button" data-spec-id="member-settings-residency-move-btn" class="btn btn-primary btn-block" onclick="submitSettingsResidencyMove()">✈️ تقديم طلب نقل دولة الإقامة (الشهر القادم)</button>
+                </div>
             </div>
         </div>
 
-        <div data-spec-id="member-settings-kyc" style="background:#ffffff;border:1.5px solid ${p.kyc_status === 'verified' ? '#10b981' : '#cbd5e1'};border-radius:16px;padding:18px;margin-top:14px;">
+        <div data-spec-id="member-settings-kyc" style="background:#ffffff;border:1.5px solid ${isKycVerified ? '#10b981' : '#cbd5e1'};border-radius:16px;padding:18px;margin-top:14px;">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-                <h3 style="margin:0;font-size:1rem;">🪪 توثيق الهوية الوطنية (شرط أول سحب)</h3>
-                <span style="padding:4px 12px;border-radius:999px;font-size:0.8rem;font-weight:800;background:${p.kyc_status === 'verified' ? '#d1fae5' : p.kyc_status === 'pending' ? '#fef3c7' : '#fee2e2'};color:${p.kyc_status === 'verified' ? '#065f46' : p.kyc_status === 'pending' ? '#92400e' : '#991b1b'};">
-                    ${p.kyc_status === 'verified' ? '✅ الهوية موثّقة' : p.kyc_status === 'pending' ? '⏳ قيد المراجعة' : '⚠️ غير موثّقة'}
+                <div>
+                    <h3 style="margin:0;font-size:1rem;">🪪 توثيق الهوية الشخصية — KYC (مرة واحدة قبل أول سحب)</h3>
+                    <small style="color:#64748b;">لتأكيد شخصيتك بالبطاقة القومية أو جواز السفر عند سحب الأرباح (منفصل تماماً عن طلب الانتقال لدولة أخرى أعلاه).</small>
+                </div>
+                <span style="padding:4px 12px;border-radius:999px;font-size:0.8rem;font-weight:800;background:${isKycVerified ? '#d1fae5' : p.kyc_status === 'pending' ? '#fef3c7' : '#fee2e2'};color:${isKycVerified ? '#065f46' : p.kyc_status === 'pending' ? '#92400e' : '#991b1b'};">
+                    ${isKycVerified ? '✅ الهوية موثّقة' : p.kyc_status === 'pending' ? '⏳ قيد المراجعة' : '⚠️ غير موثّقة'}
                 </span>
             </div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;">
-                <input type="text" id="setKycLegalName" class="form-control" value="${esc(p.full_name || '')}" placeholder="الاسم القانوني الرباعي">
-                <select id="setKycDocType" class="form-control">
-                    <option value="national_id">بطاقة رقم قومي</option>
-                    <option value="passport">جواز سفر ساري</option>
-                    <option value="residency_permit">إقامة سارية</option>
-                </select>
-                <input type="text" id="setKycDocNumber" class="form-control" placeholder="رقم البطاقة / الجواز">
-                <input type="file" id="setKycFileInput" accept="image/*" class="form-control">
+            ${isKycVerified ? `
+                <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                    <span style="color:#065f46;font-weight:700;font-size:0.86rem;">✅ هويتك الوطنية موثّقة ومعتمدة بالكامل — يمكنك سحب أرباحك بحرية دون الحاجة لإعادة الرفع.</span>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="toggleKycReupload()">🔄 تحديث وثيقة الهوية</button>
+                </div>
+            ` : ''}
+            <div id="kycReuploadWrap" style="display:${isKycVerified ? 'none' : 'block'};margin-top:10px;">
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
+                    <div>
+                        <label for="setKycLegalName" style="display:block;font-size:0.78rem;font-weight:800;color:#334155;margin-bottom:4px;">الاسم القانوني الرباعي (كما بالوثيقة)</label>
+                        <input type="text" id="setKycLegalName" class="form-control" value="${esc(p.full_name || '')}" placeholder="الاسم القانوني الرباعي">
+                    </div>
+                    <div>
+                        <label for="setKycDocType" style="display:block;font-size:0.78rem;font-weight:800;color:#334155;margin-bottom:4px;">نوع وثيقة الهوية</label>
+                        <select id="setKycDocType" class="form-control">
+                            <option value="national_id">بطاقة رقم قومي</option>
+                            <option value="passport">جواز سفر ساري</option>
+                            <option value="residency_permit">إقامة سارية</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="setKycDocNumber" style="display:block;font-size:0.78rem;font-weight:800;color:#334155;margin-bottom:4px;">رقم البطاقة القومية / جواز السفر</label>
+                        <input type="text" id="setKycDocNumber" class="form-control" placeholder="أدخل رقم البطاقة أو الجواز">
+                    </div>
+                    <div>
+                        <label for="setKycFileInput" style="display:block;font-size:0.78rem;font-weight:800;color:#334155;margin-bottom:4px;">صورة وثيقة الهوية (وجه واضح)</label>
+                        <input type="file" id="setKycFileInput" accept="image/*" class="form-control">
+                    </div>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="submitSettingsKycUpload()">📤 إرسال مستند الهوية للاعتماد</button>
             </div>
-            <button type="button" class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="submitSettingsKycUpload()">📤 إرسال مستند الهوية للاعتماد</button>
         </div>
 
         <div data-spec-id="member-settings-home-gps" style="background:#ffffff;border:1px solid #cbd5e1;border-radius:16px;padding:18px;margin-top:14px;">
@@ -2554,22 +2626,46 @@ window.submitSettingsKycUpload = async function () {
     }
 };
 
+window.toggleKycReupload = function () {
+    const wrap = document.getElementById('kycReuploadWrap');
+    if (wrap) {
+        wrap.style.display = (wrap.style.display === 'none') ? 'block' : 'none';
+    }
+};
+
 window.submitSettingsResidencyMove = async function () {
     try {
-        const docNum = document.getElementById('setMoveDocNum').value.trim();
-        const tgt = document.getElementById('setMoveTargetCountry').value;
+        const docNum = (document.getElementById('setMoveDocNum')?.value || '').trim();
+        const tgt = (document.getElementById('setMoveTargetCountry')?.value || '').trim().toUpperCase();
+        if (!tgt) {
+            alert('⚠️ يرجى اختيار دولة الإقامة الجديدة أولاً.');
+            return;
+        }
+        if (docNum.length < 4) {
+            alert('⚠️ يرجى إدخال رقم مستند إثبات الإقامة بالبلد الجديد (4 أحرف/أرقام على الأقل).');
+            return;
+        }
+        const imgData = await readCompressedKycImage(document.getElementById('setMoveFileInput'));
         await window.SAWYAN.API.submitMemberKycOrResidencyMove({
             memberId: currentMember.id,
             requestKind: 'residency_move',
             legalFullName: currentMember.full_name || 'عضو SAWYAN',
             documentType: 'residency_permit',
             documentNumber: docNum,
+            documentImageData: imgData,
             targetCountryCode: tgt
         });
         alert(`✅ تم تسجيل طلب نقل دولة الإقامة إلى ${tgt} ليسري مطلع الشهر المحاسبي القادم!`);
         await refreshDashboardBundle();
     } catch (err) {
-        alert('❌ ' + err.message);
+        const msg = String(err?.message || '');
+        if (msg.includes('ALREADY_IN_TARGET_COUNTRY')) {
+            alert('⚠️ أنت مسجل حالياً على هذه الدولة بالفعل — اختر دولة جديدة مختلفة.');
+        } else if (msg.includes('KYC_FULL_NAME_AND_DOC_NUMBER_REQUIRED')) {
+            alert('⚠️ يرجى إدخال رقم مستند الإقامة الجديد (4 خانات على الأقل).');
+        } else {
+            alert('❌ ' + msg);
+        }
     }
 };
 

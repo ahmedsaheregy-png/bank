@@ -148,6 +148,7 @@ BEGIN
                      ) ORDER BY g.city_name ASC)
                      FROM sawyan.geonames_locations g
                      WHERE g.country_code = c.country_code
+                       AND COALESCE(g.alternate_names, '') NOT LIKE '%__GEO_BULK__%'
                  ), '[]'::jsonb) AS cities
             FROM sawyan.countries c
             CROSS JOIN LATERAL (
@@ -179,6 +180,7 @@ BEGIN
                      ) ORDER BY g.city_name ASC)
                      FROM sawyan.geonames_locations g
                      WHERE g.country_code = c.country_code
+                       AND COALESCE(g.alternate_names, '') NOT LIKE '%__GEO_BULK__%'
                  ), '[]'::jsonb) AS cities
             FROM sawyan.countries c
       ) ac;
@@ -1156,8 +1158,11 @@ BEGIN
 
     IF v_kind = 'residency_move' THEN
         v_tgt_cc := upper(substr(trim(COALESCE(p_target_country_code, '')), 1, 2));
-        IF NOT EXISTS (SELECT 1 FROM sawyan.countries WHERE country_code = v_tgt_cc AND is_active = true) THEN
-            RAISE EXCEPTION 'TARGET_COUNTRY_NOT_ACTIVE: %', v_tgt_cc;
+        IF NOT EXISTS (SELECT 1 FROM sawyan.countries WHERE country_code = v_tgt_cc) THEN
+            RAISE EXCEPTION 'TARGET_COUNTRY_NOT_REGISTERED: %', v_tgt_cc;
+        END IF;
+        IF v_tgt_cc = (SELECT country_code FROM sawyan.countries WHERE id = v_mem.residency_country_id) THEN
+            RAISE EXCEPTION 'ALREADY_IN_TARGET_COUNTRY';
         END IF;
 
         UPDATE sawyan.members

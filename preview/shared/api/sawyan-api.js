@@ -1057,6 +1057,22 @@
             return await callRpc('get_public_active_countries_and_cities', {});
         },
 
+        async searchGeonamesLocations({
+            countryCode = 'EG',
+            query = '',
+            admin1Filter = null,
+            kind = 'all',
+            limit = 60
+        } = {}) {
+            return await callRpc('search_geonames_locations', {
+                p_country_code: String(countryCode || 'EG').toUpperCase(),
+                p_query: query ? String(query).trim() : '',
+                p_admin1_filter: admin1Filter ? String(admin1Filter).trim() : null,
+                p_kind: kind || 'all',
+                p_limit: Number(limit) || 60
+            });
+        },
+
         async verifyRootInviteToken(token) {
             return await callRpc('verify_root_invite_token', {
                 p_token: String(token || '').trim()

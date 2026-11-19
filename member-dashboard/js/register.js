@@ -197,30 +197,187 @@ async function loadLiveCountriesAndCities(preferredCountry, preferredCity) {
     }
 }
 
-function populateLiveCities(countryCode, preferredCity) {
+let geoCityReqSeq = 0;
+let geoDistrictReqSeq = 0;
+let districtSearchTimer = null;
+
+function escAttr(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+function renderCityOptionsHtml(cities) {
+    let html = (cities || []).map(g =>
+        `<option value="GEO_${g.geoname_id}" data-admin1="${escAttr(g.admin1_name || '')}" data-asciiname="${escAttr(g.asciiname || '')}">${escAttr(g.city_name)}</option>`
+    ).join('');
+    html += '<option value="OTHER_MANUAL">📍 مدينة / منطقة أخرى (كتابة يدوية)</option>';
+    return html;
+}
+
+async function populateLiveCities(countryCode, preferredCity) {
     const citySel = document.getElementById('citySelect');
     if (!citySel || !liveCountriesCache.length) return;
+    const reqId = ++geoCityReqSeq;
     const cty = liveCountriesCache.find(c => c.country_code === countryCode);
-    const cities = (cty && cty.cities) || [];
-    let html = cities.map(g => `<option value="GEO_${g.geoname_id}">${g.city_name}</option>`).join('');
-    html += '<option value="OTHER_MANUAL">📍 مدينة / منطقة أخرى (كتابة يدوية)</option>';
-    citySel.innerHTML = html;
+    let cities = (cty && Array.isArray(cty.cities)) ? cty.cities.slice() : [];
+
+    // For countries with fewer than 5 preloaded primary cities, fetch real world cities from GeoNames DB
+    if (cities.length < 5 && window.SAWYAN && window.SAWYAN.API && typeof window.SAWYAN.API.searchGeonamesLocations === 'function') {
+        try {
+            const gRes = await window.SAWYAN.API.searchGeonamesLocations({ countryCode, kind: 'cities', limit: 120 });
+            if (reqId !== geoCityReqSeq) return;
+            const fetched = Array.isArray(gRes?.results) ? gRes.results : [];
+            if (fetched.length > 0) {
+                const seenIds = new Set(cities.map(x => Number(x.geoname_id)));
+                fetched.forEach(item => {
+                    if (!seenIds.has(Number(item.geoname_id))) {
+                        seenIds.add(Number(item.geoname_id));
+                        cities.push(item);
+                    }
+                });
+                if (cty) cty.cities = cities;
+            }
+        } catch (e) {
+            console.warn('GeoNames cities fetch fallback:', e.message);
+        }
+    }
+
+    if (reqId !== geoCityReqSeq) return;
+
+    citySel.innerHTML = renderCityOptionsHtml(cities);
 
     const wrap = document.getElementById('manualCityInputWrap');
+    const DEFAULT_CAPITAL_BY_COUNTRY = { EG: 'cairo', TR: 'istanbul', SA: 'riyadh', AE: 'dubai', DE: 'berlin', US: 'new york', GB: 'london' };
+    const effectiveCityPref = String(preferredCity || DEFAULT_CAPITAL_BY_COUNTRY[countryCode] || '').trim().toLowerCase();
     if (cities.length === 0) {
         citySel.value = 'OTHER_MANUAL';
         if (wrap) wrap.style.display = 'block';
     } else {
         if (wrap) wrap.style.display = 'none';
-        if (preferredCity) {
-            const found = Array.from(citySel.options).find(o => o.textContent.toLowerCase().includes(preferredCity));
+        if (effectiveCityPref) {
+            const found = Array.from(citySel.options).find(o => {
+                const txt = (o.textContent || '').toLowerCase();
+                const asc = (o.dataset && o.dataset.asciiname ? o.dataset.asciiname : '').toLowerCase();
+                return txt.includes(effectiveCityPref) || asc.includes(effectiveCityPref);
+            });
             if (found) citySel.value = found.value;
         }
     }
+
+    const searchInp = document.getElementById('districtSearchInput');
+    if (searchInp) searchInp.value = '';
+
     if (typeof window.handleCityChange === 'function') {
         window.handleCityChange(citySel.value);
     }
 }
+
+window.loadGeoDistrictsForCity = async function (countryCode, cityOpt, queryText = '') {
+    const reqId = ++geoDistrictReqSeq;
+    const districtSelect = document.getElementById('districtSelect');
+    const manualDistrictInput = document.getElementById('manualDistrictInput');
+    const hintEl = document.getElementById('districtGeoHint');
+    if (!districtSelect || !window.SAWYAN || !window.SAWYAN.API || typeof window.SAWYAN.API.searchGeonamesLocations !== 'function') {
+        return;
+    }
+
+    const cc = String(countryCode || 'EG').toUpperCase();
+    const q = String(queryText || '').trim();
+    if (cityOpt && cityOpt.value === 'OTHER_MANUAL' && !q) {
+        districtSelect.style.display = 'none';
+        districtSelect.innerHTML = '<option value="__MANUAL__" selected>كتابة يدوية</option>';
+        if (manualDistrictInput) manualDistrictInput.style.display = 'block';
+        if (hintEl) {
+            hintEl.textContent = 'اكتب اسم الحي أو المنطقة يدوياً أدناه (إلزامي)';
+            hintEl.style.color = '#d97706';
+        }
+        return;
+    }
+
+    const adm1 = (cityOpt && cityOpt.dataset ? cityOpt.dataset.admin1 : '') || '';
+    const asc = (cityOpt && cityOpt.dataset ? cityOpt.dataset.asciiname : '') || '';
+    const subCityPreferAscii = new Set(['Jeddah', 'Taif', 'Dammam', 'Khobar', 'Abha', 'Tabuk', 'Buraidah']);
+    const admin1Filter = subCityPreferAscii.has(asc) ? asc : (adm1 || asc || null);
+
+    try {
+        let gRes = await window.SAWYAN.API.searchGeonamesLocations({
+            countryCode: cc,
+            query: q,
+            admin1Filter: admin1Filter,
+            kind: 'districts',
+            limit: 120
+        });
+        if (reqId !== geoDistrictReqSeq) return;
+        let list = Array.isArray(gRes?.results) ? gRes.results : [];
+
+        // If a global country city has no sub-district rows tagged __GEO_DISTRICT__, fall back to region/all places
+        if (list.length === 0 && !q && admin1Filter) {
+            const gAll = await window.SAWYAN.API.searchGeonamesLocations({
+                countryCode: cc,
+                query: '',
+                admin1Filter: admin1Filter,
+                kind: 'all',
+                limit: 120
+            });
+            if (reqId !== geoDistrictReqSeq) return;
+            list = Array.isArray(gAll?.results) ? gAll.results : [];
+        }
+
+        // Deduplicate district names preserving curated Arabic priority order
+        const uniqueNames = [];
+        const seen = new Set();
+        for (const r of list) {
+            const nm = String(r.city_name || '').trim();
+            if (!nm || seen.has(nm.toLowerCase())) continue;
+            seen.add(nm.toLowerCase());
+            uniqueNames.push(nm);
+        }
+
+        if (uniqueNames.length > 0) {
+            districtSelect.style.display = 'block';
+            districtSelect.innerHTML =
+                uniqueNames.map((nm, idx) => `<option value="${escAttr(nm)}" ${idx === 0 ? 'selected' : ''}>${escAttr(nm)}</option>`).join('') +
+                '<option value="__MANUAL__">✏️ حي / قرية أخرى غير مدرجة (كتابة يدوية)</option>';
+            if (manualDistrictInput) {
+                manualDistrictInput.style.display = 'none';
+                manualDistrictInput.value = '';
+            }
+            if (hintEl) {
+                hintEl.textContent = `📍 ${uniqueNames.length} حي/منطقة متاحة (GeoNames)`;
+                hintEl.style.color = '#059669';
+            }
+        } else {
+            districtSelect.style.display = 'none';
+            districtSelect.innerHTML = '<option value="__MANUAL__" selected>كتابة يدوية</option>';
+            if (manualDistrictInput) {
+                manualDistrictInput.style.display = 'block';
+            }
+            if (hintEl) {
+                hintEl.textContent = q ? 'لم يتم العثور على نتيجة مطابقة — اكتب اسم الحي يدوياً أدناه (إلزامي)' : 'اكتب اسم الحي أو المنطقة يدوياً أدناه (إلزامي)';
+                hintEl.style.color = '#d97706';
+            }
+        }
+    } catch (e) {
+        console.warn('GeoNames districts search error:', e.message);
+    }
+};
+
+document.addEventListener('DOMContentLoaded', function () {
+    const searchInp = document.getElementById('districtSearchInput');
+    if (searchInp) {
+        searchInp.addEventListener('input', function () {
+            clearTimeout(districtSearchTimer);
+            const val = this.value || '';
+            districtSearchTimer = setTimeout(() => {
+                const cc = (document.getElementById('countryOfResidence')?.value || 'EG').toUpperCase();
+                const citySel = document.getElementById('citySelect');
+                const opt = (citySel && citySel.selectedOptions && citySel.selectedOptions[0]) || null;
+                if (typeof window.loadGeoDistrictsForCity === 'function') {
+                    window.loadGeoDistrictsForCity(cc, opt, val);
+                }
+            }, 220);
+        });
+    }
+});
 
 async function verifyFounderRootToken(token) {
     const display = document.getElementById('sponsorNameDisplay');
@@ -389,6 +546,18 @@ async function handleRegister(e) {
 
     if (fullName.length < 3) {
         alert('الرجاء إدخال الاسم الثلاثي الكامل.');
+        return;
+    }
+
+    if (cityVal === 'OTHER_MANUAL' && customCity.length < 2) {
+        alert('⚠️ يرجى كتابة اسم مدينتك أو محافظتك (حقل إلزامي).');
+        return;
+    }
+
+    if (!districtVal || districtVal.length < 2) {
+        alert('⚠️ يرجى اختيار أو كتابة الحي / المنطقة (حقل إلزامي).');
+        const manualDistEl = document.getElementById('manualDistrictInput');
+        if (manualDistEl && manualDistEl.style.display !== 'none') manualDistEl.focus();
         return;
     }
 
