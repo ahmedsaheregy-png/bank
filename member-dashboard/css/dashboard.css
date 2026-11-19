@@ -74,7 +74,7 @@ body {
 .nav-item {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     padding: 7px 10px;
     color: white;
     text-decoration: none;
@@ -82,6 +82,27 @@ body {
     transition: all 0.2s;
     margin-bottom: 2px;
     font-size: 0.8rem;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.acad-embed-box {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%;
+    background: #0f172a;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+
+.acad-embed-box iframe,
+.acad-embed-box video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
 }
 
 .nav-item:hover {

@@ -470,12 +470,48 @@
             });
         },
 
-        async submitMemberDispute({ memberId, transactionId, reason, sessionToken = null }) {
+        async submitMemberDispute({
+            memberId,
+            transactionId,
+            reason,
+            category = 'general',
+            evidenceUrl = null,
+            audioUrl = null,
+            audioSec = null,
+            videoUrl = null,
+            videoSec = null,
+            sessionToken = null
+        }) {
             const tok = sessionToken || SawyanAPI.getSessionToken();
             return await callRpc('submit_member_dispute', {
                 p_member_id: memberId,
                 p_transaction_id: transactionId,
                 p_dispute_reason: reason,
+                p_session_token: tok,
+                p_audio_url: audioUrl,
+                p_audio_sec: audioSec,
+                p_video_url: videoUrl,
+                p_video_sec: videoSec,
+                p_dispute_category: category || 'general',
+                p_evidence_url: evidenceUrl
+            });
+        },
+
+        async previewPosReturnImpact({ memberId, transactionId, sessionToken = null }) {
+            const tok = sessionToken || SawyanAPI.getSessionToken();
+            return await callRpc('preview_pos_return_impact', {
+                p_member_id: memberId,
+                p_transaction_id: transactionId,
+                p_session_token: tok
+            });
+        },
+
+        async memberRespondPosReturn({ memberId, returnRequestId, decision, sessionToken = null }) {
+            const tok = sessionToken || SawyanAPI.getSessionToken();
+            return await callRpc('member_respond_pos_return', {
+                p_member_id: memberId,
+                p_return_request_id: returnRequestId,
+                p_decision: decision,
                 p_session_token: tok
             });
         },
@@ -579,13 +615,18 @@
             periodYm,
             makerAdminId,
             checkerAdminId,
-            ias21FxDeltaUsd = 0
+            ias21FxDeltaUsd = 0,
+            countryCode = null
         }) {
+            const normCountry = (countryCode && String(countryCode).trim().toUpperCase() !== 'ALL')
+                ? String(countryCode).trim().toUpperCase().slice(0, 2)
+                : null;
             return await callRpc('finalize_settlement_payout_step5_6', {
                 p_period_ym: periodYm,
                 p_maker_admin_id: makerAdminId,
                 p_checker_admin_id: checkerAdminId,
-                p_ias21_fx_delta_usd: Number(ias21FxDeltaUsd || 0)
+                p_ias21_fx_delta_usd: Number(ias21FxDeltaUsd || 0),
+                p_country_code: normCountry
             });
         },
 
@@ -815,18 +856,21 @@
             transactionId,
             reason = null,
             idempotencyKey = null,
-            sessionToken = null
+            sessionToken = null,
+            mode = 'request_otp',
+            otpCode = null,
+            proofUrl = null
         }) {
             const tok = sessionToken || SawyanAPI.getMerchantSessionToken();
-            return await callRpc('merchant_manage_branches_and_refunds', {
+            return await callRpc('merchant_process_pos_return', {
                 p_merchant_id: merchantId,
+                p_transaction_id: transactionId,
+                p_reason: reason || 'مرتجع فاتورة من نقطة البيع',
+                p_idempotency_key: idempotencyKey || generateIdempotencyKey(),
                 p_session_token: tok,
-                p_action: 'voluntary_tx_refund',
-                p_payload: {
-                    transaction_id: transactionId,
-                    reason: reason || 'مرتجع فاتورة من نقطة البيع',
-                    idempotency_key: idempotencyKey || generateIdempotencyKey()
-                }
+                p_mode: mode || 'request_otp',
+                p_otp_code: otpCode,
+                p_proof_url: proofUrl
             });
         },
 
@@ -952,10 +996,13 @@
         }) {
             const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id);
             const tok = sessionToken || SawyanAPI.getAdminSessionToken();
+            const normCountry = (countryCode && String(countryCode).trim().toUpperCase() !== 'ALL')
+                ? String(countryCode).trim().toUpperCase().slice(0, 2)
+                : null;
             return await callRpc('admin_execute_period_close_wizard', {
                 p_admin_id: adm,
                 p_session_token: tok,
-                p_country_code: countryCode,
+                p_country_code: normCountry,
                 p_period_ym: periodYm,
                 p_step_action: stepAction,
                 p_checker_admin_id: checkerAdminId,
@@ -1261,6 +1308,127 @@
                 p_action: action,
                 p_payload: payload
             });
+        },
+
+        async adminManageAcademyLms({
+            adminId = null,
+            sessionToken = null,
+            entity = 'lesson',
+            action = 'list',
+            payload = {}
+        }) {
+            const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id);
+            const tok = sessionToken || SawyanAPI.getAdminSessionToken();
+            return await callRpc('admin_manage_academy_lms', {
+                p_admin_id: adm,
+                p_session_token: tok,
+                p_entity: entity,
+                p_action: action,
+                p_payload: payload
+            });
+        },
+
+        async getMemberAcademyCatalog({
+            memberId,
+            sessionToken = null
+        }) {
+            const tok = sessionToken || SawyanAPI.getMemberSessionToken();
+            return await callRpc('get_member_academy_catalog', {
+                p_member_id: memberId,
+                p_session_token: tok
+            });
+        },
+
+        async memberUpdateAcademyProgress({
+            memberId,
+            sessionToken = null,
+            courseId,
+            action = 'complete'
+        }) {
+            const tok = sessionToken || SawyanAPI.getMemberSessionToken();
+            return await callRpc('member_update_academy_progress', {
+                p_member_id: memberId,
+                p_session_token: tok,
+                p_course_id: courseId,
+                p_action: action
+            });
+        },
+
+        parseAcademyMedia(rawUrl, mediaType = 'article') {
+            const url = String(rawUrl || '').trim();
+            if (!url) return { kind: 'empty', safeUrl: '', embedUrl: '' };
+            if (!/^https:\/\/[^\s]+$/i.test(url)) return { kind: 'invalid', safeUrl: '', embedUrl: '' };
+
+            let u;
+            try {
+                u = new URL(url);
+            } catch (_e) {
+                return { kind: 'invalid', safeUrl: '', embedUrl: '' };
+            }
+            const host = u.hostname.toLowerCase();
+            const path = u.pathname || '';
+            const cleanUrl = u.toString();
+
+            // YouTube (youtube.com / m.youtube.com / youtu.be) -> privacy-enhanced embed
+            if (host === 'youtu.be') {
+                const vid = path.replace(/^\/+/, '').split('/')[0];
+                if (/^[A-Za-z0-9_-]{6,20}$/.test(vid)) {
+                    return { kind: 'youtube', safeUrl: cleanUrl, embedUrl: `https://www.youtube-nocookie.com/embed/${vid}?rel=0` };
+                }
+            }
+            if (host.endsWith('youtube.com') || host.endsWith('youtube-nocookie.com')) {
+                let vid = u.searchParams.get('v') || '';
+                if (!vid && /^\/(embed|shorts)\/([A-Za-z0-9_-]{6,20})/.test(path)) {
+                    vid = path.split('/')[2];
+                }
+                if (/^[A-Za-z0-9_-]{6,20}$/.test(vid)) {
+                    return { kind: 'youtube', safeUrl: cleanUrl, embedUrl: `https://www.youtube-nocookie.com/embed/${vid}?rel=0` };
+                }
+            }
+
+            // Vimeo
+            if (host === 'vimeo.com' || host === 'player.vimeo.com') {
+                const m = path.match(/\/(?:video\/)?([0-9]{5,15})(?:\/|$)/);
+                if (m) {
+                    return { kind: 'vimeo', safeUrl: cleanUrl, embedUrl: `https://player.vimeo.com/video/${m[1]}` };
+                }
+            }
+
+            if (/\.(mp4|webm|mov)(\?|$)/i.test(path)) {
+                return { kind: 'html5_video', safeUrl: cleanUrl, embedUrl: cleanUrl };
+            }
+            if (/\.(mp3|wav|m4a|ogg|aac)(\?|$)/i.test(path) || mediaType === 'audio') {
+                return { kind: 'html5_audio', safeUrl: cleanUrl, embedUrl: cleanUrl };
+            }
+            if (/\.pdf(\?|$)/i.test(path) || mediaType === 'pdf') {
+                return { kind: 'pdf', safeUrl: cleanUrl, embedUrl: cleanUrl };
+            }
+            return { kind: 'link', safeUrl: cleanUrl, embedUrl: cleanUrl };
+        },
+
+        buildAcademyMediaPlayerHtml(rawUrl, mediaType = 'article') {
+            const escH = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            const parsed = SawyanAPI.parseAcademyMedia(rawUrl, mediaType);
+            if (parsed.kind === 'youtube' || parsed.kind === 'vimeo') {
+                return `<div class="acad-embed-box"><iframe src="${escH(parsed.embedUrl)}" title="Academy Training Video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>`;
+            }
+            if (parsed.kind === 'html5_video') {
+                return `<div class="acad-embed-box"><video controls playsinline preload="metadata" src="${escH(parsed.safeUrl)}"></video></div>`;
+            }
+            if (parsed.kind === 'html5_audio') {
+                return `<div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:12px;margin-bottom:12px;"><div style="font-size:0.8rem;font-weight:800;color:#0f172a;margin-bottom:6px;">🎧 مشغل المادة الصوتية</div><audio controls preload="metadata" style="width:100%;" src="${escH(parsed.safeUrl)}"></audio></div>`;
+            }
+            if (parsed.kind === 'pdf' || parsed.kind === 'link') {
+                const lbl = parsed.kind === 'pdf' ? '📄 فتح / تحميل الملف التدريبي (PDF)' : '🔗 فتح المرفق التدريبي الآمن (HTTPS)';
+                return `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;"><span style="font-size:0.84rem;font-weight:800;color:#065f46;">${lbl}</span><a href="${escH(parsed.safeUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">فتح الرابط ↗</a></div>`;
+            }
+            if (parsed.kind === 'invalid') {
+                return `<div style="background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;padding:10px;border-radius:10px;font-size:0.82rem;font-weight:700;margin-bottom:12px;">⚠️ الرابط غير صالح (يُقبل فقط روابط HTTPS الآمنة مثل YouTube أو Vimeo أو MP4/Audio/PDF).</div>`;
+            }
+            if (mediaType === 'video') {
+                return `<div style="background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:12px;padding:14px;text-align:center;color:#475569;font-size:0.84rem;margin-bottom:12px;">🎬 <b>مادة مرئية تأسيسية</b> — اقرأ الشرح المنظّم بالأسفل (ويمكن للإدارة إرفاق رابط YouTube / Vimeo / MP4 في أي وقت لتشغيله هنا مباشرة).</div>`;
+            }
+            return '';
         },
 
         async getLeader10GenFollowupRadar({

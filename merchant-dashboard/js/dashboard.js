@@ -2075,24 +2075,133 @@ async function loadAllTransactions(periodFilter = activeShiftPeriod) {
     `;
 }
 
-async function handleMerchantPosReturn(transactionId, shortCode) {
-    const reason = prompt(`تنفيذ مرتجع للفاتورة (${shortCode}) قبل يوم الصرف (يوم 15):\n⚠️ تنبيه: لا تُسلّم النقد للعميل قبل إتمام الإلغاء، وبعد يوم الصرف 15 يرفض النظام أي مرتجع ويتحمله المتجر وحده.\n\nسبب الإرجاع:`, 'مرتجع بضاعة بموافقة العميل قبل يوم الصرف');
-    if (reason === null) return;
-    try {
-        const res = await window.SAWYAN.API.merchantProcessPosReturn({
-            merchantId: currentMerchant.id,
-            transactionId,
-            reason: reason.trim() || 'مرتجع قبل يوم الصرف'
-        });
-        alert(`✅ تم إلغاء الفاتورة (${shortCode}) واسترداد العمولة لرصيد المتجر بنجاح!\n• الإشعار الدائن: ${res?.credit_note_number || 'تم القيد'}`);
-        await loadAllTransactions(activeShiftPeriod);
-    } catch (err) {
-        if (String(err.message || '').includes('POST_PAYOUT_RETURN_FORBIDDEN')) {
-            alert('🛑 مرفوض برمجياً وتعاقدياً (POST_PAYOUT_RETURN_FORBIDDEN):\nتم إغلاق هذا الشهر وصرف عمولاته في اليوم 15! لا يقبل نظام سوياً أي مرتجع بعد يوم الصرف، وفي حال موافقتك على قبول المرتجع بعد يوم 15 يتحمله المتجر وحده بالكامل (100%) خارج النظام.');
-        } else {
-            alert('❌ تعذر تنفيذ المرتجع: ' + err.message);
-        }
+function openMerchantPosReturnModal(transactionId, shortCode) {
+    let overlay = document.getElementById('sawyanMerchantReturnModal');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'sawyanMerchantReturnModal';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.65);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10050;';
+        document.body.appendChild(overlay);
     }
+    overlay.style.display = 'flex';
+    const close = () => { overlay.style.display = 'none'; };
+
+    const renderStep1 = () => {
+        overlay.innerHTML = `
+            <div style="background:#fff;border-radius:16px;max-width:480px;width:100%;padding:22px;direction:rtl;font-family:Tajawal,sans-serif;box-shadow:0 20px 50px rgba(0,0,0,0.28);">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                    <h3 style="margin:0;color:#0f172a;font-size:1.08rem;">↩️ مصافحة مرتجع آمنة — الفاتورة ${escM(shortCode)}</h3>
+                    <button type="button" id="mrCloseBtn" style="border:none;background:#f1f5f9;border-radius:8px;width:32px;height:32px;cursor:pointer;font-weight:800;">✕</button>
+                </div>
+                <div style="background:#fff7ed;border:1.5px solid #fb923c;border-radius:10px;padding:10px;font-size:0.82rem;color:#9a3412;margin-bottom:12px;">
+                    ⚠️ <strong>تنبيه إلزامي:</strong> لا تُسلِّم النقد للعميل قبل إتمام رمز التحقق (<strong>OTP</strong>) أو موافقة تطبيق العميل؛ وبعد صرف يوم 15 يرفض النظام أي مرتجع ويتحمله المتجر وحده (100%).
+                </div>
+                <label style="font-weight:700;font-size:0.86rem;display:block;margin-bottom:4px;">سبب المرتجع *</label>
+                <input id="mrReturnReason" type="text" class="form-control" value="مرتجع بضاعة بموافقة العميل قبل يوم الصرف" style="margin-bottom:12px;">
+                <div style="display:flex;gap:8px;justify-content:flex-end;">
+                    <button type="button" id="mrCancelBtn" class="btn btn-outline btn-sm">إلغاء</button>
+                    <button type="button" id="mrSendOtpBtn" class="btn btn-primary btn-sm">١. إرسال رمز OTP لتطبيق العميل</button>
+                </div>
+            </div>
+        `;
+        document.getElementById('mrCloseBtn').onclick = close;
+        document.getElementById('mrCancelBtn').onclick = close;
+        document.getElementById('mrSendOtpBtn').onclick = async () => {
+            const btn = document.getElementById('mrSendOtpBtn');
+            const reason = (document.getElementById('mrReturnReason').value || '').trim() || 'مرتجع قبل يوم الصرف';
+            btn.disabled = true;
+            btn.textContent = '⏳ جاري الإرسال...';
+            try {
+                await window.SAWYAN.API.merchantProcessPosReturn({
+                    merchantId: currentMerchant.id,
+                    transactionId,
+                    reason,
+                    mode: 'request_otp'
+                });
+                renderStep2(reason, '');
+            } catch (err) {
+                btn.disabled = false;
+                btn.textContent = '١. إرسال رمز OTP لتطبيق العميل';
+                if (String(err.message || '').includes('POST_PAYOUT_RETURN_FORBIDDEN')) {
+                    alert('🛑 مرفوض برمجياً وتعاقدياً (POST_PAYOUT_RETURN_FORBIDDEN):\nتم إغلاق هذا الشهر وصرف عمولاته في اليوم 15! لا يقبل نظام سوياً أي مرتجع بعد يوم الصرف، وفي حال موافقتك على قبول المرتجع بعد يوم 15 يتحمله المتجر وحده بالكامل (100%) خارج النظام.');
+                    close();
+                } else {
+                    alert('❌ تعذر بدء المرتجع: ' + err.message);
+                }
+            }
+        };
+    };
+
+    const renderStep2 = (reason, statusHtml) => {
+        overlay.innerHTML = `
+            <div style="background:#fff;border-radius:16px;max-width:490px;width:100%;padding:22px;direction:rtl;font-family:Tajawal,sans-serif;box-shadow:0 20px 50px rgba(0,0,0,0.28);">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                    <h3 style="margin:0;color:#0f172a;font-size:1.08rem;">🔐 الخطوة 2: تأكيد OTP المرتجع — ${escM(shortCode)}</h3>
+                    <button type="button" id="mrCloseBtn2" style="border:none;background:#f1f5f9;border-radius:8px;width:32px;height:32px;cursor:pointer;font-weight:800;">✕</button>
+                </div>
+                <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:10px;padding:10px;font-size:0.82rem;color:#065f46;margin-bottom:10px;">
+                    ✅ تم إرسال رمز تحقق <strong>OTP (6 أرقام)</strong> وطلب موافقة لتطبيق العميل. أدخل الرمز الذي يظهر للعميل أو ارفع إثبات الرد عند مغادرته دون تأكيد.
+                </div>
+                <div id="mrOtpFeedback">${statusHtml}</div>
+                <label style="font-weight:700;font-size:0.86rem;display:block;margin-bottom:4px;">رمز التحقق OTP من العميل (6 أرقام)</label>
+                <input id="mrOtpInput" type="text" maxlength="6" placeholder="مثال: 482910" class="form-control" style="margin-bottom:10px;letter-spacing:3px;font-weight:800;text-align:center;">
+                <div style="display:flex;gap:8px;margin-bottom:14px;">
+                    <button type="button" id="mrConfirmOtpBtn" class="btn btn-primary btn-sm" style="flex:1;">٢. تأكيد OTP وتنفيذ المرتجع</button>
+                </div>
+                <details style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:10px;">
+                    <summary style="cursor:pointer;font-weight:800;color:#b45309;font-size:0.84rem;">🚨 هل تسلّم العميل النقد وغادر دون تأكيد؟ (تصعيد P0 بإثبات)</summary>
+                    <div style="margin-top:8px;display:grid;gap:8px;">
+                        <input id="mrEscProofUrl" type="url" placeholder="رابط صورة إيصال رد المبلغ أو الكاميرا https://..." class="form-control">
+                        <button type="button" id="mrEscalateBtn" class="btn btn-outline btn-sm" style="border-color:#dc2626;color:#dc2626;">رفع إثبات وتصعيد للإدارة (P0)</button>
+                    </div>
+                </details>
+            </div>
+        `;
+        document.getElementById('mrCloseBtn2').onclick = close;
+        document.getElementById('mrConfirmOtpBtn').onclick = async () => {
+            const otp = (document.getElementById('mrOtpInput').value || '').trim();
+            if (!otp) return;
+            const res = await window.SAWYAN.API.merchantProcessPosReturn({
+                merchantId: currentMerchant.id,
+                transactionId,
+                reason,
+                mode: 'confirm_otp',
+                otpCode: otp
+            });
+            if (res && res.ok === false) {
+                const msg = res.status === 'locked'
+                    ? '🔒 تم قفل محاولات OTP بعد استنفاد الحد الأقصى (5 محاولات). يمكنك التصعيد بالإثبات أدناه.'
+                    : `⚠️ رمز OTP غير صحيح — المحاولات المتبقية: ${res.attempts_remaining ?? 0}`;
+                renderStep2(reason, `<div style="background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;padding:8px 10px;border-radius:8px;font-size:0.82rem;margin-bottom:10px;">${msg}</div>`);
+                return;
+            }
+            alert(`✅ تم تأكيد المرتجع وإلغاء الفاتورة (${shortCode}) واسترداد العمولة لرصيد المتجر!`);
+            close();
+            await loadAllTransactions(activeShiftPeriod);
+        };
+        document.getElementById('mrEscalateBtn').onclick = async () => {
+            const proofUrl = (document.getElementById('mrEscProofUrl').value || '').trim();
+            if (!proofUrl) { alert('يرجى إدخال رابط إثبات رد المبلغ للعميل.'); return; }
+            try {
+                await window.SAWYAN.API.merchantProcessPosReturn({
+                    merchantId: currentMerchant.id,
+                    transactionId,
+                    reason,
+                    mode: 'escalate_with_proof',
+                    proofUrl
+                });
+                alert('📨 تم رفع إثبات المرتجع وتصعيد تذكرة P0 للإدارة بنجاح.');
+                close();
+                await loadAllTransactions(activeShiftPeriod);
+            } catch (err) { alert('❌ ' + err.message); }
+        };
+    };
+
+    renderStep1();
+}
+
+async function handleMerchantPosReturn(transactionId, shortCode) {
+    openMerchantPosReturnModal(transactionId, shortCode);
 }
 
 // حقن البيانات الحية في الموقف المالي ذي التبويبات الثلاثة (مع الحفاظ الكامل على تبويباته وتصميمه!)

@@ -84,30 +84,36 @@
         const ov = document.getElementById('svStage7ModalOverlay');
         if (ov) ov.style.display = 'none';
     };
+    window.svOpenAdminModal = openStage7Modal;
+    window.svAdminToast = toast;
+    window.svEsc = esc;
 
     // ========================================================================
-    // 1. Sovereign Command Center: Root #0 Leaders + Staff RBAC + Academy/Categories
+    // 1. Sovereign Command Center: Root #0 Leaders + Staff RBAC + Geo & Categories
     // ========================================================================
     function mountCommandCenterSidebarLink() {
         const nav = document.querySelector('.sidebar-nav') || document.querySelector('.sidebar');
         const contentArea = document.getElementById('contentArea') || document.querySelector('.dashboard-main');
         if (!nav || !contentArea) return;
 
-        if (!document.getElementById('svStage7HubNavItem')) {
-            const a = document.createElement('a');
-            a.href = '#';
-            a.id = 'svStage7HubNavItem';
-            a.className = 'nav-item';
-            a.dataset.page = 'sovereignOpsCenter';
-            a.style.cssText = 'background:rgba(251,191,36,0.16);border:1px solid rgba(251,191,36,0.45);margin:4px 8px;border-radius:10px;font-weight:900;';
-            a.innerHTML = '<span class="nav-icon">👑</span><span class="nav-text">قادة #0 والموظفون والأكاديمية</span>';
-            a.addEventListener('click', function (e) {
+        let navLink = document.getElementById('svStage7HubNavItem');
+        if (!navLink) {
+            navLink = document.createElement('a');
+            navLink.href = '#';
+            navLink.id = 'svStage7HubNavItem';
+            navLink.className = 'nav-item nav-item-sovereign';
+            navLink.dataset.page = 'sovereignOpsCenter';
+            navLink.innerHTML = '<span class="icon">👑</span><span>التأسيس والموظفون</span>';
+            const firstItem = nav.querySelector('.nav-item');
+            if (firstItem && firstItem.nextSibling) nav.insertBefore(navLink, firstItem.nextSibling);
+            else nav.appendChild(navLink);
+        }
+        if (!navLink.dataset.svBound) {
+            navLink.dataset.svBound = '1';
+            navLink.addEventListener('click', function (e) {
                 e.preventDefault();
                 window.openSovereignOpsCenter('root0');
             });
-            const firstItem = nav.querySelector('.nav-item');
-            if (firstItem && firstItem.nextSibling) nav.insertBefore(a, firstItem.nextSibling);
-            else nav.appendChild(a);
         }
 
         if (!document.getElementById('sovereignOpsCenterPage')) {
@@ -136,13 +142,16 @@
         }
     }
 
-    let ACTIVE_OPS_TAB = 'root0'; // root0 | staff | cities | academy
+    let ACTIVE_OPS_TAB = 'root0'; // root0 | staff | geo_catalog
 
     window.openSovereignOpsCenter = async function (tab) {
-        if (tab) ACTIVE_OPS_TAB = tab;
+        if (tab) ACTIVE_OPS_TAB = (tab === 'cities' || tab === 'categories') ? 'geo_catalog' : tab;
         document.querySelectorAll('.nav-item').forEach(function (n) { n.classList.remove('active'); });
         const navItem = document.getElementById('svStage7HubNavItem');
         if (navItem) navItem.classList.add('active');
+
+        const titleEl = document.getElementById('pageTitle');
+        if (titleEl) titleEl.textContent = '👑 التأسيس وإدارة الموظفين والكتالوج';
 
         document.querySelectorAll('.page').forEach(function (p) { p.classList.remove('active'); });
         const pg = document.getElementById('sovereignOpsCenterPage');
@@ -160,15 +169,14 @@
         const tabs = [
             ['root0', '🌳 قادة الجيل الأول تحت #0'],
             ['staff', '👔 الموظفون والأدوار السبعة'],
-            ['cities', '🏙️ مدن ومحافظات الدول'],
-            ['academy', '🎓 الأكاديمية وتصنيفات المتاجر']
+            ['geo_catalog', '🗺️ المدن وتصنيفات المتاجر']
         ];
 
         pg.innerHTML =
             '<div style="background:linear-gradient(135deg,#0f172a,#064e3b);color:#ffffff;padding:16px 20px;border-radius:14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">' +
                 '<div>' +
-                    '<div style="font-size:1.12rem;font-weight:900;">👑 مركز التأسيس السيادي وإدارة الموظفين والجغرافيا والأكاديمية</div>' +
-                    '<div style="font-size:0.8rem;color:#a7f3d0;margin-top:3px;">جميع الأدوات مرتبطة مباشرةً بقاعدة البيانات الحية (' + esc(window.SAWYAN.API.getActiveSchema()) + ') وموثقة في سجل التدقيق الجنائي.</div>' +
+                    '<div style="font-size:1.12rem;font-weight:900;">👑 مركز التأسيس السيادي وإدارة الموظفين والجغرافيا والكتالوج</div>' +
+                    '<div style="font-size:0.8rem;color:#a7f3d0;margin-top:3px;">جميع الأدوات مرتبطة مباشرةً بقاعدة البيانات الحية (' + esc(window.SAWYAN.API.getActiveSchema()) + ') وموثقة في سجل التدقيق الجنائي. (الأكاديمية التدريبية متاحة الآن كقسم مستقل في القائمة الجانبية 🎓)</div>' +
                 '</div>' +
                 (founder ? '<span style="background:#fbbf24;color:#0f172a;padding:4px 12px;border-radius:999px;font-weight:900;font-size:0.78rem;">صلاحية المؤسس السيادي مفعّلة</span>' : '<span style="background:rgba(255,255,255,0.15);padding:4px 12px;border-radius:999px;font-size:0.78rem;">وضع عرض الصلاحيات</span>') +
             '</div>' +
@@ -184,8 +192,7 @@
         try {
             if (ACTIVE_OPS_TAB === 'root0') await renderRoot0Tab(sub);
             else if (ACTIVE_OPS_TAB === 'staff') await renderStaffTab(sub);
-            else if (ACTIVE_OPS_TAB === 'cities') await renderCitiesTab(sub);
-            else await renderAcademyAndCategoriesTab(sub);
+            else await renderGeoAndCategoriesTab(sub);
         } catch (err) {
             sub.innerHTML = '<div style="padding:18px;background:#fef2f2;color:#991b1b;border-radius:12px;font-weight:800;">⛔ ' + esc(err.message) + '</div>';
         }
@@ -464,67 +471,40 @@
         } catch (err) { toast(err.message, true); }
     };
 
-    // --- Sub-Tab 4: Academy Courses & Merchant Categories ---
-    async function renderAcademyAndCategoriesTab(sub) {
-        const res = await window.SAWYAN.API.adminManageAcademyAndCategories({ domain: 'academy', action: 'list' });
-        const courses = res.academy_courses || [];
-        const cats = res.categories || [];
-
+    // --- Sub-Tab 3: Geo Cities & Merchant Categories ---
+    async function renderGeoAndCategoriesTab(sub) {
         sub.innerHTML =
             '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;">' +
-                '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
-                    '<h3 style="margin:0 0 8px 0;font-size:0.98rem;">🎓 إدارة دروس الأكاديمية التدريبية للأعضاء والقادة (`academy_courses`)</h3>' +
-                    '<div style="display:grid;gap:8px;margin-bottom:10px;">' +
-                        '<input id="svAcadTitle" type="text" placeholder="عنوان الدرس التدريبي بالعربية" class="form-control">' +
-                        '<textarea id="svAcadContent" rows="2" placeholder="ملخص / محتوى الدرس التدريبي..." class="form-control"></textarea>' +
-                        '<div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;">' +
-                            '<input id="svAcadUrl" type="text" placeholder="رابط الفيديو أو الدليل (URL)" class="form-control">' +
-                            '<button type="button" class="btn btn-primary" onclick="svAddAcademyCourse()">➕ نشر الدرس</button>' +
-                        '</div>' +
-                    '</div>' +
-                    '<table class="data-table"><thead><tr><th>الدرس</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>' +
-                    courses.map(function (c) {
-                        return '<tr><td><b>' + esc((c.title_i18n && c.title_i18n.ar) || c.slug) + '</b></td><td>' + (c.is_published ? '<span class="badge badge-success">منشور</span>' : '<span class="badge badge-warning">مخفي</span>') + '</td><td><button type="button" class="btn-sm btn-outline" onclick="svToggleAcademy(\'' + c.id + '\')">تبديل</button></td></tr>';
-                    }).join('') +
-                    '</tbody></table>' +
-                '</div>' +
+                '<div id="svGeoCitiesPane"></div>' +
+                '<div id="svCategoriesPane"></div>' +
+            '</div>';
+        const citiesPane = document.getElementById('svGeoCitiesPane');
+        const catsPane = document.getElementById('svCategoriesPane');
+        await Promise.all([
+            renderCitiesTab(citiesPane),
+            renderMerchantCategoriesCard(catsPane)
+        ]);
+    }
 
-                '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
-                    '<h3 style="margin:0 0 8px 0;font-size:0.98rem;">🏷️ تصنيفات المتاجر المعتمدة (`sawyan.categories`)</h3>' +
-                    '<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:10px;">' +
-                        '<input id="svCatSlug" type="text" placeholder="الكود (مثلاً: optics)" class="form-control">' +
-                        '<input id="svCatNameAr" type="text" placeholder="الاسم (مثلاً: بصريات ونظارات)" class="form-control">' +
-                        '<button type="button" class="btn btn-primary" onclick="svAddCategory()">➕ إضافة</button>' +
-                    '</div>' +
-                    '<div style="max-height:290px;overflow-y:auto;"><table class="data-table"><thead><tr><th>التصنيف</th><th>الكود</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>' +
-                    cats.map(function (ct) {
-                        return '<tr><td><b>' + esc((ct.name_i18n && ct.name_i18n.ar) || ct.slug) + '</b></td><td><code>' + esc(ct.slug) + '</code></td><td>' + (ct.is_active ? '🟢' : '⚪') + '</td><td><button type="button" class="btn-sm btn-outline" onclick="svToggleCategory(' + ct.id + ')">تبديل</button></td></tr>';
-                    }).join('') +
-                    '</tbody></table></div>' +
+    async function renderMerchantCategoriesCard(container) {
+        const res = await window.SAWYAN.API.adminManageAcademyAndCategories({ domain: 'category', action: 'list' });
+        const cats = res.categories || [];
+        container.innerHTML =
+            '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
+                '<h3 style="margin:0 0 8px 0;font-size:0.98rem;">🏷️ تصنيفات المتاجر المعتمدة (<code>sawyan.categories</code>)</h3>' +
+                '<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:10px;">' +
+                    '<input id="svCatSlug" type="text" placeholder="الكود (مثلاً: optics)" class="form-control">' +
+                    '<input id="svCatNameAr" type="text" placeholder="الاسم (مثلاً: بصريات ونظارات)" class="form-control">' +
+                    '<button type="button" class="btn btn-primary" onclick="svAddCategory()">➕ إضافة</button>' +
                 '</div>' +
+                '<div style="max-height:360px;overflow-y:auto;"><table class="data-table"><thead><tr><th>التصنيف</th><th>الكود</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>' +
+                cats.map(function (ct) {
+                    return '<tr><td><b>' + esc((ct.name_i18n && ct.name_i18n.ar) || ct.slug) + '</b></td><td><code>' + esc(ct.slug) + '</code></td><td>' + (ct.is_active ? '🟢' : '⚪') + '</td><td><button type="button" class="btn-sm btn-outline" onclick="svToggleCategory(' + ct.id + ')">تبديل</button></td></tr>';
+                }).join('') +
+                '</tbody></table></div>' +
             '</div>';
     }
 
-    window.svAddAcademyCourse = async function () {
-        try {
-            await window.SAWYAN.API.adminManageAcademyAndCategories({
-                domain: 'academy',
-                action: 'upsert',
-                payload: {
-                    title_ar: document.getElementById('svAcadTitle').value.trim(),
-                    content_ar: document.getElementById('svAcadContent').value.trim(),
-                    media_url: document.getElementById('svAcadUrl').value.trim(),
-                    is_published: true
-                }
-            });
-            toast('🎓 تم نشر الدرس في أكاديمية الأعضاء فوراً!', false);
-            await renderSovereignOpsCenter();
-        } catch (err) { toast(err.message, true); }
-    };
-    window.svToggleAcademy = async function (id) {
-        await window.SAWYAN.API.adminManageAcademyAndCategories({ domain: 'academy', action: 'toggle', payload: { id: id } });
-        await renderSovereignOpsCenter();
-    };
     window.svAddCategory = async function () {
         try {
             await window.SAWYAN.API.adminManageAcademyAndCategories({
@@ -541,8 +521,10 @@
         } catch (err) { toast(err.message, true); }
     };
     window.svToggleCategory = async function (id) {
-        await window.SAWYAN.API.adminManageAcademyAndCategories({ domain: 'category', action: 'toggle', payload: { id: id } });
-        await renderSovereignOpsCenter();
+        try {
+            await window.SAWYAN.API.adminManageAcademyAndCategories({ domain: 'category', action: 'toggle', payload: { id: id } });
+            await renderSovereignOpsCenter();
+        } catch (err) { toast(err.message, true); }
     };
 
     // ========================================================================

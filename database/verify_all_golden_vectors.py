@@ -56,7 +56,7 @@ def main():
         print("ERROR: SUPABASE_ACCESS_TOKEN env var required.", file=sys.stderr)
         sys.exit(1)
 
-    print("=== [1/4] Verifying 43 Tables in Production (sawyan) & Parallel Demo (sawyan_demo) ===")
+    print("=== [1/4] Verifying 43+ Tables in Production (sawyan) & Parallel Demo (sawyan_demo) ===")
     counts = run_sql("""
     SELECT
       (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'sawyan' AND table_type = 'BASE TABLE') AS prod_tables,
@@ -66,8 +66,8 @@ def main():
       (SELECT cap_amount FROM sawyan.settings WHERE country_id IS NULL LIMIT 1) AS cap_amount;
     """, token)[0]
     print(json.dumps(counts, indent=2))
-    assert counts["prod_tables"] == 43, f"Expected 43 prod tables, got {counts['prod_tables']}"
-    assert counts["demo_tables"] == 43, f"Expected 43 demo tables, got {counts['demo_tables']}"
+    assert counts["prod_tables"] >= 43, f"Expected >= 43 prod tables, got {counts['prod_tables']}"
+    assert counts["demo_tables"] >= 43, f"Expected >= 43 demo tables, got {counts['demo_tables']}"
     assert counts["prod_members"] == 1, f"Expected 1 prod root #0, got {counts['prod_members']}"
     assert counts["demo_members"] == 50, f"Expected 50 demo members (#0 + #1 + 48 team), got {counts['demo_members']}"
     assert float(counts["cap_amount"]) == 4605.75, f"Expected cap 4605.75, got {counts['cap_amount']}"
@@ -84,9 +84,18 @@ def main():
 
     print("=== [3/4] Setting Up Ephemeral QA Sandbox (`sawyan_qa`) ===")
     run_sql("DROP SCHEMA IF EXISTS sawyan_qa CASCADE;", token)
-    run_sql(clone_to_qa(read_sql("01_schema_and_43_tables.sql")), token)
-    run_sql(clone_to_qa(read_sql("02_core_functions_and_triggers.sql")), token)
-    run_sql(clone_to_qa(read_sql("03_seed_coa_countries_and_demo.sql")), token)
+    for qa_sql_file in [
+        "01_schema_and_43_tables.sql",
+        "02_core_functions_and_triggers.sql",
+        "03_seed_coa_countries_and_demo.sql",
+        "04_rls_and_grants.sql",
+        "05_stage3_api_payment_and_shift_rpcs.sql",
+        "06_stage4_member_and_portal_rpcs.sql",
+        "07_remediation_security_and_settlement_patch.sql",
+        "08_stage5_merchant_pos_and_portal_rpcs.sql",
+        "09_stage6_admin_governance_and_launch_rpcs.sql",
+    ]:
+        run_sql(clone_to_qa(read_sql(qa_sql_file)), token)
 
     print("=== [4/4] Executing Golden Acceptance Vectors (V1-V9 & GV01-GV10) ===")
     qa_sql = """
@@ -140,13 +149,29 @@ def main():
         v_r1 UUID; v_l1 UUID;
         v_m12 UUID; v_m15 UUID;
         v_new_gv8 UUID;
-        -- V7 / V8 / V9 vars
+        -- V7 / V8 / V9 & GV09-D/E / Option 1-A vars
         v_err_caught BOOLEAN := false;
         v_density JSONB;
         v_self_res JSONB;
         v_emp_self UUID;
         v_idem_key UUID := gen_random_uuid();
         v_idem1 JSONB; v_idem2 JSONB;
+        v_merch_tok TEXT := 'qa-merch-session-token';
+        v_mem_tok   TEXT := 'qa-mem-session-token';
+        v_otp_req_id UUID;
+        v_otp_real   TEXT;
+        v_otp_res    JSONB;
+        v_disp_res   JSONB;
+        v_cyc_may    BIGINT;
+        v_cyc_jun_eg BIGINT;
+        v_cyc_jun_tr BIGINT;
+        v_merch_tr   UUID;
+        v_br_tr      UUID;
+        v_tx_may1    UUID;
+        v_tx_may2    UUID;
+        v_tx_jun_eg  UUID;
+        v_tx_jun_tr  UUID;
+        v_break_mem  UUID;
     BEGIN
         SELECT id INTO v_eg_id FROM sawyan_qa.countries WHERE country_code = 'EG';
         SELECT id INTO v_tr_id FROM sawyan_qa.countries WHERE country_code = 'TR';
@@ -410,6 +435,20 @@ def main():
             RAISE EXCEPTION 'GV06_COMPENSATORY_OR_CARRYON_PRESERVATION_FAILED';
         END IF;
 
+        -- D1 Home-Country Drop Check: if Comp Ahmed loses home EG qualification before TR payout, TR compensatory drops to 'none'
+        UPDATE sawyan_qa.monthly_target_boxes
+           SET current_month_purchases_usd = 10.00, target_consumed_usd = 0.00, carry_on_out_usd = 10.00,
+               is_qualified = false, qualification_source = 'none'
+         WHERE member_id = v_comp_mem AND country_id = v_eg_id AND period_ym = '2026-12';
+        PERFORM sawyan_qa.run_monthly_settlement_engine(v_cyc_tr);
+        IF EXISTS (
+            SELECT 1 FROM sawyan_qa.monthly_target_boxes
+             WHERE member_id = v_comp_mem AND country_id = v_tr_id AND period_ym = '2026-12'
+               AND (is_qualified IS TRUE OR qualification_source = 'compensatory')
+        ) THEN
+            RAISE EXCEPTION 'D1_HOME_DROP_COMPENSATORY_REVOKE_FAILED';
+        END IF;
+
         -- ====================================================================
         -- TEST GV08: Atomic Auto-Placement Tie-Break (Right First G02, 0 children, oldest code)
         -- ====================================================================
@@ -532,6 +571,141 @@ def main():
         IF ROUND(v_gv_box, 2) <> 6.25 THEN
             RAISE EXCEPTION 'GV01_CARRY_ON_FAILED: Expected 6.25, got %', v_gv_box;
         END IF;
+
+        -- ====================================================================
+        -- TEST GV09-D / GV09-E: Full Day-14 Window (23:59:59) + Day-15 Ban + 2-Step OTP Lock + Option 1-A Triage
+        -- ====================================================================
+        UPDATE sawyan_qa.merchants
+           SET metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('active_session_token', v_merch_tok)
+         WHERE id = v_merch_zaid;
+        UPDATE sawyan_qa.members
+           SET metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('active_session_token', v_mem_tok)
+         WHERE id = v_zaid;
+
+        -- Freeze simulated time inside May 2027 (2027-05-20)
+        PERFORM set_config('app_qa.fixed_now_utc', '2027-05-20 12:00:00+00', true);
+        v_res := sawyan_qa.submit_pos_transaction(v_zaid, v_merch_zaid, v_br_zaid, 16500.00, 'cash', 'MAY27-1', 'SW-MAY27-1', gen_random_uuid(), NULL, true, NULL);
+        v_tx_may1 := (v_res->>'transaction_id')::uuid;
+        v_res := sawyan_qa.submit_pos_transaction(v_zaid, v_merch_zaid, v_br_zaid, 16500.00, 'cash', 'MAY27-2', 'SW-MAY27-2', gen_random_uuid(), NULL, true, NULL);
+        v_tx_may2 := (v_res->>'transaction_id')::uuid;
+
+        INSERT INTO sawyan_qa.settlement_cycles (country_id, period_ym, closure_utc_instant, maker_admin_id)
+        VALUES (v_eg_id, '2027-05', '2027-05-31 20:59:59+00', v_a1) RETURNING id INTO v_cyc_may;
+        PERFORM sawyan_qa.run_monthly_settlement_engine(v_cyc_may);
+
+        -- Advance simulated clock to 2027-06-14 23:59:58+03 (last seconds of Day 14 in Cairo EEST UTC+3 -> MUST allow OTP handshake!)
+        PERFORM set_config('app_qa.fixed_now_utc', '2027-06-14 23:59:58+03', true);
+        v_otp_res := sawyan_qa.merchant_process_pos_return(
+            v_merch_zaid, v_tx_may1, 'Day-14 23:59:58 return', gen_random_uuid(), v_merch_tok, 'request_otp', NULL, NULL
+        );
+        IF COALESCE((v_otp_res->>'ok')::boolean, false) IS NOT TRUE
+           OR (v_otp_res ? 'otp_code') OR (v_otp_res ? 'otp_sha256')
+        THEN
+            RAISE EXCEPTION 'GV09D_OTP_REQUEST_OR_PRIVACY_FAILED: %', v_otp_res;
+        END IF;
+        v_otp_req_id := (v_otp_res->>'return_request_id')::uuid;
+
+        -- Verify wrong OTP increments non-rollback counter 1..5 and locks without raising exception
+        FOR i IN 1..5 LOOP
+            v_otp_res := sawyan_qa.merchant_process_pos_return(
+                v_merch_zaid, v_tx_may1, 'Wrong OTP test', NULL, v_merch_tok, 'confirm_otp', '000000', NULL
+            );
+            IF COALESCE((v_otp_res->>'ok')::boolean, true) IS NOT FALSE OR (v_otp_res->>'failed_attempts')::int <> i THEN
+                RAISE EXCEPTION 'GV09D_OTP_COUNTER_FAILED at attempt %: %', i, v_otp_res;
+            END IF;
+        END LOOP;
+        IF (v_otp_res->>'status') <> 'locked' THEN
+            RAISE EXCEPTION 'GV09D_OTP_LOCK_FAILED: %', v_otp_res;
+        END IF;
+
+        -- Fresh OTP + valid confirm_otp reverses TX without leaking box_cascade (D26)
+        v_otp_res := sawyan_qa.merchant_process_pos_return(
+            v_merch_zaid, v_tx_may1, 'Valid OTP reversal', gen_random_uuid(), v_merch_tok, 'request_otp', NULL, NULL
+        );
+        v_otp_req_id := (v_otp_res->>'return_request_id')::uuid;
+        SELECT payload->>'otp_code' INTO v_otp_real
+          FROM sawyan_qa.notifications
+         WHERE recipient_id = v_zaid AND event_name = 'PosReturnOtpRequested' AND (payload->>'return_request_id')::uuid = v_otp_req_id
+         ORDER BY created_at DESC LIMIT 1;
+
+        v_otp_res := sawyan_qa.merchant_process_pos_return(
+            v_merch_zaid, v_tx_may1, 'Valid OTP reversal', gen_random_uuid(), v_merch_tok, 'confirm_otp', v_otp_real, NULL
+        );
+        IF COALESCE((v_otp_res->>'ok')::boolean, false) IS NOT TRUE
+           OR ((v_otp_res->'reversal') ? 'box_cascade')
+        THEN
+            RAISE EXCEPTION 'GV09D_CONFIRM_OTP_OR_D26_STRIP_FAILED: %', v_otp_res;
+        END IF;
+
+        -- Recalculate 2027-05 after dirty-flag return (Zaid stays qualified with MAY27-2!)
+        IF NOT (SELECT recalc_required FROM sawyan_qa.settlement_cycles WHERE id = v_cyc_may) THEN
+            RAISE EXCEPTION 'GV09D_LAZY_DIRTY_FLAG_NOT_SET';
+        END IF;
+        PERFORM sawyan_qa.run_monthly_settlement_engine(v_cyc_may);
+
+        -- Advance to Day 15 00:00:01 Cairo -> POST_PAYOUT_RETURN_FORBIDDEN even before payout button
+        PERFORM set_config('app_qa.fixed_now_utc', '2027-06-15 00:00:01+03', true);
+        v_err_caught := false;
+        BEGIN
+            PERFORM sawyan_qa.merchant_process_pos_return(
+                v_merch_zaid, v_tx_may2, 'Post-Day14 midnight return', gen_random_uuid(), v_merch_tok, 'request_otp', NULL, NULL
+            );
+        EXCEPTION WHEN OTHERS THEN
+            IF SQLERRM LIKE '%POST_PAYOUT_RETURN_FORBIDDEN%' THEN v_err_caught := true; END IF;
+        END;
+        IF NOT v_err_caught THEN
+            RAISE EXCEPTION 'GV09D_DAY15_HARD_CUTOFF_FAILED';
+        END IF;
+
+        -- Option 1-A Non-Breaking vs Breaking Dispute Triage:
+        -- Reset clock to 2027-06-20, create breaking & non-breaking disputes across EG and TR in 2027-06
+        PERFORM set_config('app_qa.fixed_now_utc', '2027-06-20 12:00:00+00', true);
+        UPDATE sawyan_qa.monthly_target_boxes
+           SET carry_on_in_usd = 30.00, is_qualified = true, qualification_source = 'carry_on'
+         WHERE member_id = v_zaid AND country_id = v_eg_id AND period_ym = '2027-06';
+        v_res := sawyan_qa.submit_pos_transaction(v_zaid, v_merch_zaid, v_br_zaid, 16500.00, 'cash', 'JUN27-EG', 'SW-JUN-EG', gen_random_uuid(), NULL, true, NULL);
+        v_tx_jun_eg := (v_res->>'transaction_id')::uuid;
+        -- Non-breaking dispute for Zaid (has $30 carry-on + $24.75 = $54.75 -> still qualified without $24.75!)
+        v_disp_res := sawyan_qa.submit_member_dispute(v_zaid, v_tx_jun_eg, 'Non-breaking stalled return', v_mem_tok, NULL, NULL, NULL, NULL, 'return_stalled', 'https://proof.local/nonbreak.jpg');
+
+        -- Create TR merchant & breaking member (#break_mem) who ONLY has $24.75 from one TX in TR 2027-06
+        INSERT INTO sawyan_qa.merchants (merchant_code, country_id, business_name, owner_name, email, phone, category, merchant_type, deduction_percent, package_base_amount, actual_cash_balance, is_active)
+        VALUES ('M-TR-1A', v_tr_id, 'متجر تركيا', 'تاجر تركي', 'mtr1a@qa.local', '+905500001111', 'supermarket', 'physical', 10.00, 10000.00, 10000.00, true)
+        RETURNING id INTO v_merch_tr;
+        INSERT INTO sawyan_qa.merchant_branches (merchant_id, branch_code, branch_name, is_main_branch, address, latitude, longitude)
+        VALUES (v_merch_tr, 'BR-TR-1', 'اسطنبول', true, 'اسطنبول', 41.0082, 28.9784) RETURNING id INTO v_br_tr;
+        INSERT INTO sawyan_qa.members (member_code, full_name, phone, residency_country_id, auth_user_id, sponsor_id, metadata)
+        VALUES (590, 'Breaking User TR', '+905599990590', v_tr_id, gen_random_uuid(), v_m[1], jsonb_build_object('active_session_token', v_mem_tok))
+        RETURNING id INTO v_break_mem;
+
+        v_res := sawyan_qa.submit_pos_transaction(v_break_mem, v_merch_tr, v_br_tr, 16500.00, 'cash', 'JUN27-TR', 'SW-JUN-TR', gen_random_uuid(), NULL, true, NULL);
+        v_tx_jun_tr := (v_res->>'transaction_id')::uuid;
+        v_disp_res := sawyan_qa.submit_member_dispute(v_break_mem, v_tx_jun_tr, 'Pivot dollar return stalled', v_mem_tok, NULL, NULL, NULL, NULL, 'return_stalled', 'https://proof.local/pivot.jpg');
+        IF (v_disp_res->>'status') <> 'escalated_to_admin' THEN
+            RAISE EXCEPTION 'GV09E_FAST_TRACK_P0_FAILED: %', v_disp_res;
+        END IF;
+
+        INSERT INTO sawyan_qa.settlement_cycles (country_id, period_ym, closure_utc_instant, maker_admin_id)
+        VALUES (v_eg_id, '2027-06', '2027-06-30 20:59:59+00', v_a1) RETURNING id INTO v_cyc_jun_eg;
+        INSERT INTO sawyan_qa.settlement_cycles (country_id, period_ym, closure_utc_instant, maker_admin_id)
+        VALUES (v_tr_id, '2027-06', '2027-06-30 20:59:59+00', v_a1) RETURNING id INTO v_cyc_jun_tr;
+        PERFORM sawyan_qa.run_monthly_settlement_engine(v_cyc_jun_eg);
+        PERFORM sawyan_qa.run_monthly_settlement_engine(v_cyc_jun_tr);
+
+        PERFORM set_config('app_qa.fixed_now_utc', '2027-07-15 15:30:00+00', true);
+        -- Clean EG pays out despite Zaid non-breaking dispute; TR MUST block ONLY TR!
+        PERFORM sawyan_qa.finalize_settlement_payout_step5_6('2027-06', v_a1, v_a2, 0.00, 'EG');
+        v_err_caught := false;
+        BEGIN
+            PERFORM sawyan_qa.finalize_settlement_payout_step5_6('2027-06', v_a1, v_a2, 0.00, 'TR');
+        EXCEPTION WHEN OTHERS THEN
+            IF SQLERRM LIKE '%QUALIFICATION_BREAKING_DISPUTE_OPEN%' THEN v_err_caught := true; END IF;
+        END;
+        IF NOT v_err_caught THEN
+            RAISE EXCEPTION 'GV09E_OPTION_1A_COUNTRY_SCOPE_FAILED';
+        END IF;
+
+        PERFORM set_config('app_qa.fixed_now_utc', '', true);
 
     END $$;
     """

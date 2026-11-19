@@ -1,5 +1,153 @@
 /* Admin Dashboard Additional Styles */
 
+/* Sidebar Single-Line Consistency & Sovereign Accent */
+.sidebar-nav .nav-item {
+    white-space: nowrap;
+    overflow: hidden;
+    gap: 8px;
+}
+
+.sidebar-nav .nav-item .icon {
+    flex-shrink: 0;
+}
+
+.sidebar-nav .nav-item span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sidebar-nav .nav-item.nav-item-sovereign {
+    background: rgba(255, 255, 255, 0.11);
+    border-right: 3px solid #fbbf24;
+    font-weight: 700;
+}
+
+.sidebar-nav .nav-item.nav-item-sovereign:hover {
+    background: rgba(255, 255, 255, 0.20);
+}
+
+.sidebar-nav .nav-item.nav-item-sovereign.active {
+    background: rgba(255, 255, 255, 0.28);
+    border-right-color: #fde68a;
+}
+
+/* Standalone Academy LMS Admin Styles */
+.acad-hero {
+    background: linear-gradient(135deg, #0f172a, #065f46);
+    color: #ffffff;
+    padding: 18px 22px;
+    border-radius: 16px;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.acad-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.acad-kpi-card {
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 14px 16px;
+}
+
+.acad-kpi-card .acad-kpi-label {
+    font-size: 0.78rem;
+    color: #64748b;
+    font-weight: 700;
+}
+
+.acad-kpi-card .acad-kpi-val {
+    font-size: 1.45rem;
+    font-weight: 900;
+    color: #0f172a;
+    margin-top: 4px;
+}
+
+.acad-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.acad-tab-btn {
+    padding: 9px 15px;
+    border-radius: 10px;
+    border: 1.5px solid #cbd5e1;
+    background: #ffffff;
+    color: #0f172a;
+    font-family: 'Tajawal', sans-serif;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.acad-tab-btn.active {
+    background: #059669;
+    border-color: #059669;
+    color: #ffffff;
+}
+
+.acad-card {
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 14px;
+}
+
+.acad-lesson-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 13px 15px;
+    margin-bottom: 10px;
+}
+
+.acad-media-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 800;
+}
+
+.acad-embed-box {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%;
+    background: #0f172a;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+
+.acad-embed-box iframe,
+.acad-embed-box video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
 .stat-card.stat-primary {
     border-left: 4px solid var(--color-blue-500);
 }

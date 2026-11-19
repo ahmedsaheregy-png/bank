@@ -433,7 +433,7 @@
                 '<h3 style="margin:0 0 8px 0;font-size:1rem;color:#0f172a;">📅 تشغيل معالج الإقفال الشهري ذي الـ 6 خطوات على قاعدة البيانات (`settlement_cycles`)</h3>' +
                 '<p style="font-size:0.82rem;color:#475569;margin:0 0 12px 0;">١) ينفّذ المدير المالي (Maker) الخطوات 1–4 (فحص المطابقة الصفرية + المسح الصعودي Bottom-Up DAG + الهدف التعويضي D1 + قطع TRUNC 4301). ٢) يعتمد المدير الثاني (Checker ≠ Maker) الخطوتين 5–6 (قيد فرق العملة IAS 21 + عزل الستوبر المالي S03 + ترحيل المحافظ + القفل الصلب Hard Lock).</p>' +
                 '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:12px;">' +
-                    '<div><label style="font-size:0.78rem;font-weight:700;">الدولة</label><select id="svCloseCountrySelect" class="form-control"><option value="EG">🇪🇬 مصر (EG)</option><option value="TR">🇹🇷 تركيا (TR)</option></select></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:700;">الدولة</label><select id="svCloseCountrySelect" class="form-control"><option value="ALL">🌍 جميع الدول الجاهزة (ALL)</option><option value="EG">🇪🇬 مصر (EG)</option><option value="TR">🇹🇷 تركيا (TR)</option></select></div>' +
                     '<div><label style="font-size:0.78rem;font-weight:700;">الشهر المحاسبي (YYYY-MM)</label><input id="svClosePeriodInput" type="text" value="' + esc(defaultYm) + '" class="form-control"></div>' +
                     '<div><label style="font-size:0.78rem;font-weight:700;">قيد إعادة تقييم العملة IAS 21 ($)</label><input id="svCloseIas21Input" type="number" step="0.01" value="0.00" class="form-control"></div>' +
                 '</div>' +
@@ -638,19 +638,33 @@
 
         return '<div style="display:grid;gap:14px;">' +
             '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
-                '<h3 style="margin:0 0 8px 0;font-size:1rem;color:#0f172a;">⚠️ تذاكر النزاعات الثلاثية الحية (`dispute_tickets` — D6 + Clawback D5)</h3>' +
-                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>الفاتورة</th><th>العضو</th><th>التاجر</th><th>السبب</th><th>الحالة</th><th>حكم الإدارة</th></tr></thead><tbody>' +
-                (disputes.length === 0 ? '<tr><td colspan="6" class="empty-state">لا توجد نزاعات معلقة في القاعدة حالياً</td></tr>' : disputes.map(function (d) {
+                '<h3 style="margin:0 0 8px 0;font-size:1rem;color:#0f172a;">⚠️ تذاكر النزاعات الثلاثية الحية (`dispute_tickets` — D6 + فرز Option 1-A + Clawback D5)</h3>' +
+                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>الفاتورة</th><th>العضو</th><th>التاجر</th><th>التصنيف وفرز الصرف (1-أ)</th><th>السبب والإثبات</th><th>الحالة</th><th>حكم الإدارة</th></tr></thead><tbody>' +
+                (disputes.length === 0 ? '<tr><td colspan="7" class="empty-state">لا توجد نزاعات معلقة في القاعدة حالياً</td></tr>' : disputes.map(function (d) {
                     const open = d.status === 'awaiting_merchant_friendly' || d.status === 'escalated_to_admin';
+                    const isBreak = Boolean(d.is_qualification_breaking);
+                    const triageBadge = isBreak
+                        ? '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:0.76rem;font-weight:800;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;">🔴 كاسرة للتأهل (' + fmt2(d.estimated_commission_at_stake_usd || 0) + '$ بالخطر)</span>'
+                        : '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:0.76rem;font-weight:700;background:#dcfce7;color:#166534;">🟢 غير كاسرة للتأهل</span>';
+                    const btns = open
+                        ? ('<div style="display:flex;gap:4px;flex-wrap:wrap;">' +
+                            '<button type="button" class="btn-sm btn-success" onclick="svOpsAct(\'dispute_ticket\',\'' + d.id + '\',\'resolved_member\')">إنصاف العضو</button>' +
+                            (d.tx_status === 'completed'
+                                ? '<button type="button" class="btn-sm btn-danger" onclick="svOpsAct(\'dispute_ticket\',\'' + d.id + '\',\'resolved_member_clawback\')">عكس قبل الصرف</button>' +
+                                  '<button type="button" class="btn-sm btn-warning" onclick="svOpsAct(\'dispute_ticket\',\'' + d.id + '\',\'resolved_merchant_force_return\')">فرض المرتجع (30ي تجميد)</button>'
+                                : '') +
+                            '<button type="button" class="btn-sm btn-outline" onclick="svOpsAct(\'dispute_ticket\',\'' + d.id + '\',\'resolved_merchant\')">لصالح التاجر</button>' +
+                            (isBreak ? '<button type="button" class="btn-sm btn-danger" onclick="svOpsAct(\'dispute_ticket\',\'' + d.id + '\',\'resolved_merchant_malicious_claim\')">بلاغ كيدي (30ي تجميد)</button>' : '') +
+                          '</div>')
+                        : 'تم الفصل';
                     return '<tr>' +
-                        '<td><b>' + esc(d.sw_short_code) + '</b> (' + fmt2(d.total_amount) + ' ' + esc(d.currency_code) + ')</td>' +
+                        '<td><b>' + esc(d.sw_short_code) + '</b> (' + fmt2(d.total_amount) + ' ' + esc(d.currency_code) + ')' + (d.tx_country_code ? '<br><small>' + esc(d.tx_country_code) + ' • ' + esc(d.dispute_period_ym || '') + '</small>' : '') + '</td>' +
                         '<td>#' + Number(d.member_code) + ' ' + esc(d.member_name) + '</td>' +
                         '<td>' + esc(d.merchant_name) + '</td>' +
-                        '<td>' + esc(d.dispute_reason) + '</td>' +
+                        '<td><code>' + esc(d.dispute_category || 'general') + '</code><br>' + triageBadge + '</td>' +
+                        '<td>' + esc(d.dispute_reason) + (d.evidence_url ? '<br><a href="' + esc(d.evidence_url) + '" target="_blank" rel="noopener">📎 دليل الإثبات</a>' : '') + '</td>' +
                         '<td><span class="badge badge-warning">' + esc(d.status) + '</span></td>' +
-                        '<td>' + (open
-                            ? '<div style="display:flex;gap:5px;"><button type="button" class="btn-sm btn-success" onclick="svOpsAct(\'dispute_ticket\',\'' + d.id + '\',\'resolved_member\')">لصالح العضو</button><button type="button" class="btn-sm btn-warning" onclick="svOpsAct(\'dispute_ticket\',\'' + d.id + '\',\'resolved_merchant\')">لصالح التاجر</button></div>'
-                            : 'تم الفصل') + '</td>' +
+                        '<td>' + btns + '</td>' +
                     '</tr>';
                 }).join('')) +
                 '</tbody></table></div>' +
@@ -788,12 +802,27 @@
             const cc = document.getElementById('svCloseCountrySelect').value;
             const ym = document.getElementById('svClosePeriodInput').value.trim();
             const ias = Number(document.getElementById('svCloseIas21Input').value || 0);
-            await window.SAWYAN.API.adminExecutePeriodCloseWizard({
-                countryCode: cc,
-                periodYm: ym,
-                stepAction: stepAction,
-                ias21FxDeltaUsd: ias
-            });
+            if (stepAction === 'run_steps_1_to_4' && cc === 'ALL') {
+                const activeCodes = ((LIVE_BUNDLE && LIVE_BUNDLE.countries) || [])
+                    .filter(function (c) { return c.is_active; })
+                    .map(function (c) { return c.country_code; });
+                const targets = activeCodes.length ? activeCodes : ['EG', 'TR'];
+                for (let i = 0; i < targets.length; i++) {
+                    await window.SAWYAN.API.adminExecutePeriodCloseWizard({
+                        countryCode: targets[i],
+                        periodYm: ym,
+                        stepAction: stepAction,
+                        ias21FxDeltaUsd: ias
+                    });
+                }
+            } else {
+                await window.SAWYAN.API.adminExecutePeriodCloseWizard({
+                    countryCode: cc === 'ALL' ? null : cc,
+                    periodYm: ym,
+                    stepAction: stepAction,
+                    ias21FxDeltaUsd: ias
+                });
+            }
             showToast(stepAction === 'run_steps_1_to_4'
                 ? (isSovereignFounder(LIVE_BUNDLE && LIVE_BUNDLE.admin) ? '👑 اكتملت الخطوات 1–4! يمكنك الآن اعتماد الخطوتين 5–6 فوراً بصلاحية المؤسس.' : 'اكتملت الخطوات 1–4 بنجاح! قم بالتبديل إلى حساب المعتمد الثاني (Checker) لإغلاق الخطوتين 5–6.')
                 : 'اكتمل الإقفال الشهري النهائي (Step 6 Hard Lock) وترحيل المحافظ بنجاح!', false);

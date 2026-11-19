@@ -359,6 +359,8 @@ function renderHomePage() {
         window.recalcMemberHomeCalculator();
     }
 
+    renderPendingReturnRequestsCard(boxCard);
+
     // كود QR الثابت للهوية عند الكاشير (البند المجمّد #1: بدون TOTP 60s)
     const qrContainer = document.getElementById('qrCode');
     if (qrContainer && window.QRCode) {
@@ -519,10 +521,106 @@ function openReviewModal(txId, merchantName) {
     });
 }
 
+function renderPendingReturnRequestsCard(anchorEl) {
+    let wrap = document.getElementById('memberPendingReturnRequestsCard');
+    const reqs = Array.isArray(memberBundle && memberBundle.pending_return_requests) ? memberBundle.pending_return_requests : [];
+    if (!reqs.length) {
+        if (wrap) wrap.innerHTML = '';
+        return;
+    }
+    if (!wrap) {
+        wrap = document.createElement('div');
+        wrap.id = 'memberPendingReturnRequestsCard';
+        if (anchorEl && anchorEl.parentNode) {
+            anchorEl.parentNode.insertBefore(wrap, anchorEl.nextSibling);
+        }
+    }
+    const notifs = Array.isArray(memberBundle.notifications) ? memberBundle.notifications : [];
+    wrap.innerHTML = `
+        <div style="background:#fff7ed;border:2px solid #f97316;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 4px 14px rgba(249,115,22,0.12);">
+            <h3 style="margin:0 0 8px 0;color:#9a3412;font-size:1rem;">↩️ طلبات مصافحة مرتجع تنتظر تأكيدك (${reqs.length})</h3>
+            <p style="font-size:0.82rem;color:#7c2d12;margin:0 0 10px 0;">لا توافق إلا بعد معاينة الأثر على صندوق هدفك الشهري واستلام قيمة الفاتورة المرتجعة فعلياً من التاجر.</p>
+            <div style="display:grid;gap:10px;">
+                ${reqs.map(r => {
+                    const otpNotif = notifs.find(n => n.event_name === 'PosReturnOtpRequested' && n.payload && n.payload.return_request_id === r.id);
+                    const otpCode = otpNotif && otpNotif.payload ? otpNotif.payload.otp_code : null;
+                    return `
+                        <div style="background:#ffffff;border:1px solid #fdba74;border-radius:12px;padding:12px;display:grid;gap:8px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                                <div>
+                                    <strong>${esc(r.merchant_name)}</strong> — <code>${esc(r.sw_short_code)}</code>
+                                    <div style="font-size:0.8rem;color:#64748b;">السبب: ${esc(r.reason)}</div>
+                                </div>
+                                <div style="font-weight:900;color:#0f172a;">${Number(r.total_amount).toFixed(2)} ${esc(r.currency_code)}</div>
+                            </div>
+                            ${otpCode ? `<div style="background:#ecfdf5;border:1px dashed #10b981;border-radius:8px;padding:8px 12px;font-size:0.86rem;color:#065f46;">🔐 رمز <strong>OTP</strong> لتزويد الكاشير عند الموافقة: <strong style="font-size:1.1rem;letter-spacing:3px;">${esc(otpCode)}</strong></div>` : ''}
+                            <div id="retImpactBox_${esc(r.id)}" style="font-size:0.82rem;color:#334155;"></div>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <button type="button" class="btn btn-outline btn-sm" onclick="svPreviewReturnImpact('${esc(r.transaction_id)}','${esc(r.id)}')">📊 معاينة الأثر على الهدف (S08)</button>
+                                <button type="button" class="btn btn-primary btn-sm" onclick="svRespondReturnRequest('${esc(r.id)}','approve')">✅ موافقة وإلغاء الفاتورة</button>
+                                <button type="button" class="btn btn-outline btn-sm" style="border-color:#dc2626;color:#dc2626;" onclick="svRespondReturnRequest('${esc(r.id)}','reject')">❌ رفض المرتجع</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+}
+
+window.svPreviewReturnImpact = async function (txId, reqId) {
+    const box = document.getElementById(`retImpactBox_${reqId}`);
+    try {
+        const res = await window.SAWYAN.API.previewPosReturnImpact({
+            memberId: currentMember.id,
+            transactionId: txId
+        });
+        if (!box) return;
+        box.innerHTML = `
+            <div style="background:${res.stays_qualified ? '#ecfdf5' : '#fef2f2'};border:1px solid ${res.stays_qualified ? '#6ee7b7' : '#fca5a5'};border-radius:8px;padding:8px 10px;">
+                • الرصيد قبل/بعد: <strong>${fmtLocalFromUsd(res.box_before_usd)}</strong> ← <strong>${fmtLocalFromUsd(res.box_after_usd)}</strong>
+                • التأهل: <strong>${res.stays_qualified ? '✅ يظل مؤهلاً' : `⚠️ يسقط التأهل (ينقص ${fmtLocalFromUsd(res.shortfall_to_requalify_usd)})`}</strong>
+                ${res.carry_on_shield_used ? ' • 🛡️ <strong>درع الكاري أون يغطي العجز!</strong>' : ''}
+            </div>
+        `;
+    } catch (err) {
+        if (box) box.textContent = '❌ ' + err.message;
+    }
+};
+
+window.svRespondReturnRequest = async function (reqId, decision) {
+    try {
+        const res = await window.SAWYAN.API.memberRespondPosReturn({
+            memberId: currentMember.id,
+            returnRequestId: reqId,
+            decision
+        });
+        alert(decision === 'approve'
+            ? '✅ تم تأكيد المرتجع وإلغاء الفاتورة وتحديث صندوق هدفك.'
+            : 'ℹ️ تم تسجيل رفضك لطلب المرتجع.');
+        if (res) await refreshDashboardBundle();
+    } catch (err) {
+        alert('❌ ' + err.message);
+    }
+};
+
 function openDisputeModal(txId, shortCode) {
     openMemberModal(`⚠️ فتح تذكرة نزاع ثلاثي للفاتورة ${esc(shortCode)}`, `
         <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px;font-size:0.82rem;color:#9a3412;">
-            تُمنح مهلة حل ودي <strong>48 ساعة</strong> للتاجر قبل التصعيد التلقائي لفريق التحكيم (<code>D6</code>).
+            تُمنح مهلة حل ودي <strong>48 ساعة</strong> للتاجر قبل التصعيد التلقائي لفريق التحكيم (<code>D6</code>). نزاعات المرتجع المتعطل تتطلب إثباتاً وتُصعَّد فوراً إذا كانت كاسرة للتأهل.
+        </div>
+        <div>
+            <label style="font-weight:700;font-size:0.88rem;">تصنيف النزاع *</label>
+            <select name="category" id="dmDisputeCat" class="form-control" onchange="document.getElementById('dmEvidenceUrl').required = (this.value === 'return_stalled');">
+                <option value="general">نزاع عام / جودة خدمة</option>
+                <option value="return_stalled">↩️ تعثر تنفيذ مرتجع خلال الـ 14 يوماً</option>
+                <option value="pending_rejected">رفض فاتورة معلقة صحيحة</option>
+                <option value="amount_mismatch">اختلاف قيمة الفاتورة</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-weight:700;font-size:0.88rem;">رابط إثبات / إيصال إرجاع (إلزامي عند تعثر المرتجع)</label>
+            <input type="url" name="evidenceUrl" id="dmEvidenceUrl" class="form-control" placeholder="https://...">
         </div>
         <div>
             <label style="font-weight:700;font-size:0.88rem;">تفاصيل المشكلة *</label>
@@ -532,7 +630,9 @@ function openDisputeModal(txId, shortCode) {
         await window.SAWYAN.API.submitMemberDispute({
             memberId: currentMember.id,
             transactionId: txId,
-            reason: form.reason.value.trim()
+            reason: form.reason.value.trim(),
+            category: form.category.value,
+            evidenceUrl: (form.evidenceUrl.value || '').trim() || null
         });
         close();
         await refreshDashboardBundle();
@@ -1003,33 +1103,194 @@ function openRequestWithdrawalModal() {
 }
 
 // ---------------------------------------------------------------------------
-// Screen 6: Academy
+// Screen 6: Academy LMS (Tracks, Sequential Player & Progress Tracking)
 // ---------------------------------------------------------------------------
-function loadAcademy() {
+let memberAcademyState = { catalog: null, trackId: 'ALL' };
+
+function academyMediaBadge(mType) {
+    const map = {
+        video: ['🎬 فيديو', '#eff6ff', '#1d4ed8'],
+        audio: ['🎧 صوتي', '#faf5ff', '#7e22ce'],
+        article: ['📖 مقالة تدريبية', '#ecfdf5', '#065f46'],
+        pdf: ['📄 ملف PDF', '#fff7ed', '#c2410c'],
+        mixed: ['🧩 متعدد الوسائط', '#f1f5f9', '#334155']
+    };
+    const m = map[mType || 'article'] || ['📚 مادة', '#f1f5f9', '#334155'];
+    return `<span style="display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;font-size:0.74rem;font-weight:800;background:${m[1]};color:${m[2]};">${m[0]}</span>`;
+}
+
+async function loadAcademy() {
     const page = document.getElementById('academyPage');
-    if (!page || !memberBundle) return;
-    const dbCourses = memberBundle.academy_courses || [];
-    const { code } = getMemberFxContext();
-    const targetLocalTxt = fmtLocalFromUsd(24.75);
-    const defaults = [
-        { slug: 'g01-tree', title_i18n: { ar: 'قواعد الشجرة الثنائية والتسكين التلقائي (G01–G05)' }, content_i18n: { ar: 'شرح كيفية موازنة الذراعين يميناً أولاً والفرق بين الراعي والأب المباشر.' } },
-        { slug: 'd23-box', title_i18n: { ar: `صندوق الهدف الشهري (${targetLocalTxt}) والترحيل المستمر Carry On` }, content_i18n: { ar: `كيف تتراكم العوائد بعملة بلدك (${code}) وتفتح التأهل المحلي والتعويضي الدولي.` } },
-        { slug: 's01-s03', title_i18n: { ar: 'فهم الستوبر العددي (11 جيل) والمالي Pro-Rata (S03)' }, content_i18n: { ar: 'نظام العمل عبر دول متعددة وضبط العدالة الاكتوارية للفريق.' } }
-    ];
-    const items = dbCourses.length > 0 ? dbCourses : defaults;
+    if (!page || !currentMember) return;
+    page.innerHTML = `<div style="background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:28px;text-align:center;color:#64748b;font-weight:700;">جاري تحميل مسارات الأكاديمية وتقدمك التدريبي...</div>`;
+
+    try {
+        const cat = await window.SAWYAN.API.getMemberAcademyCatalog({ memberId: currentMember.id });
+        memberAcademyState.catalog = cat || { tracks: [], lessons: [], summary: { total_lessons: 0, completed_lessons: 0, completion_pct: 0 } };
+        renderMemberAcademyScreen();
+    } catch (err) {
+        page.innerHTML = `<div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:14px;padding:18px;color:#991b1b;font-weight:800;">⛔ تعذر تحميل الأكاديمية: ${esc(err.message)} <button type="button" class="btn btn-outline btn-sm" style="margin-right:10px;" onclick="loadAcademy()">إعادة المحاولة</button></div>`;
+    }
+}
+
+function selectMemberAcademyTrack(trackId) {
+    memberAcademyState.trackId = trackId || 'ALL';
+    renderMemberAcademyScreen();
+}
+
+function renderMemberAcademyScreen() {
+    const page = document.getElementById('academyPage');
+    const cat = memberAcademyState.catalog;
+    if (!page || !cat) return;
+
+    const tracks = cat.tracks || [];
+    const lessons = cat.lessons || [];
+    const summary = cat.summary || { total_lessons: lessons.length, completed_lessons: 0, completion_pct: 0 };
+    const activeTrackId = memberAcademyState.trackId || 'ALL';
+
+    const visibleLessons = lessons.filter(l => activeTrackId === 'ALL' || String(l.track_id || '') === activeTrackId);
 
     page.innerHTML = `
-        <h2>📚 أكاديمية SAWYAN التدريبية</h2>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:16px;">
-            ${items.map(c => `
-                <div style="background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:18px;">
-                    <h3 style="margin:0 0 8px;color:#065f46;font-size:1.05rem;">🎓 ${esc((c.title_i18n && (c.title_i18n.ar || c.title_i18n.en)) || c.slug)}</h3>
-                    <p style="margin:0;color:#475569;font-size:0.9rem;line-height:1.6;">${esc((c.content_i18n && (c.content_i18n.ar || c.content_i18n.en)) || '')}</p>
+        <div style="background:linear-gradient(135deg,#0f172a,#065f46);color:#ffffff;border-radius:16px;padding:20px;margin-bottom:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                <div>
+                    <h2 style="margin:0;font-size:1.25rem;color:#ffffff;">🎓 أكاديمية SAWYAN التدريبية</h2>
+                    <div style="font-size:0.84rem;color:#a7f3d0;margin-top:4px;">مسارات تعليمية متسلسلة لشرح المشروع والتدريبات الأساسية من الإدارة ومن قادة فريقك</div>
                 </div>
-            `).join('')}
+                <div style="text-align:left;min-width:170px;">
+                    <div style="font-size:0.8rem;color:#e2e8f0;font-weight:700;">تقدمك التدريبي: <b>${Number(summary.completed_lessons || 0)}</b> من <b>${Number(summary.total_lessons || 0)}</b> (${Number(summary.completion_pct || 0)}%)</div>
+                    <div style="height:9px;background:rgba(255,255,255,0.18);border-radius:999px;overflow:hidden;margin-top:6px;">
+                        <div style="height:100%;width:${Number(summary.completion_pct || 0)}%;background:linear-gradient(90deg,#10b981,#fbbf24);transition:width 0.3s;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+            <button type="button" onclick="selectMemberAcademyTrack('ALL')" style="padding:8px 14px;border-radius:999px;border:1.5px solid ${activeTrackId === 'ALL' ? '#059669' : '#cbd5e1'};background:${activeTrackId === 'ALL' ? '#059669' : '#ffffff'};color:${activeTrackId === 'ALL' ? '#ffffff' : '#0f172a'};font-family:Tajawal,sans-serif;font-weight:800;font-size:0.84rem;cursor:pointer;">🌐 كل المسارات (${lessons.length})</button>
+            ${tracks.map(t => {
+                const cnt = lessons.filter(l => String(l.track_id || '') === String(t.id)).length;
+                const done = lessons.filter(l => String(l.track_id || '') === String(t.id) && l.is_completed).length;
+                const act = activeTrackId === String(t.id);
+                return `<button type="button" onclick="selectMemberAcademyTrack('${esc(t.id)}')" style="padding:8px 14px;border-radius:999px;border:1.5px solid ${act ? '#059669' : '#cbd5e1'};background:${act ? '#059669' : '#ffffff'};color:${act ? '#ffffff' : '#0f172a'};font-family:Tajawal,sans-serif;font-weight:800;font-size:0.84rem;cursor:pointer;">${esc(t.icon || '🎓')} ${esc((t.title_i18n && (t.title_i18n.ar || t.title_i18n.en)) || t.slug)} (${done}/${cnt})</button>`;
+            }).join('')}
+        </div>
+
+        ${visibleLessons.length === 0 ? `<div style="background:#fff;border:1px dashed #cbd5e1;border-radius:14px;padding:24px;text-align:center;color:#64748b;">لا توجد مواد منشورة ضمن هذا المسار حتى الآن.</div>` : `
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px;">
+                ${visibleLessons.map((l, idx) => {
+                    const titleAr = (l.title_i18n && (l.title_i18n.ar || l.title_i18n.en)) || l.slug;
+                    const bodyAr = (l.content_i18n && (l.content_i18n.ar || l.content_i18n.en)) || '';
+                    const trkTitle = (l.track_title_i18n && l.track_title_i18n.ar) || '';
+                    const isLocked = Boolean(l.is_locked);
+                    const isDone = Boolean(l.is_completed);
+                    return `
+                        <div style="background:#ffffff;border:1.5px solid ${isDone ? '#10b981' : isLocked ? '#e2e8f0' : '#cbd5e1'};border-radius:16px;padding:18px;display:flex;flex-direction:column;justify-content:space-between;opacity:${isLocked ? '0.8' : '1'};">
+                            <div>
+                                <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+                                    <span style="background:#0f172a;color:#ffffff;padding:2px 8px;border-radius:6px;font-size:0.74rem;font-weight:900;">${String(idx + 1).padStart(2, '0')}</span>
+                                    ${academyMediaBadge(l.media_type)}
+                                    ${l.duration_minutes ? `<span style="font-size:0.74rem;color:#64748b;font-weight:700;">⏱ ${Number(l.duration_minutes)} دقيقة</span>` : ''}
+                                    ${isDone ? `<span class="badge badge-success">✅ مكتمل</span>` : isLocked ? `<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:999px;font-size:0.72rem;font-weight:800;">🔒 أكمل السابق أولاً</span>` : ''}
+                                </div>
+                                ${trkTitle ? `<div style="font-size:0.74rem;color:#059669;font-weight:800;margin-bottom:4px;">${esc((l.track_icon || '🎓') + ' ' + trkTitle)}</div>` : ''}
+                                ${l.author_type === 'tree_leader' ? `<div style="font-size:0.74rem;color:#92400e;font-weight:800;margin-bottom:4px;">👑 مادة من قائد فريقك: ${esc(l.author_name || '')}</div>` : ''}
+                                <h3 style="margin:0 0 8px;color:#0f172a;font-size:1.02rem;line-height:1.45;">${esc(titleAr)}</h3>
+                                <p style="margin:0;color:#475569;font-size:0.86rem;line-height:1.65;">${esc(bodyAr.slice(0, 150))}${bodyAr.length > 150 ? '...' : ''}</p>
+                            </div>
+                            <div style="margin-top:14px;padding-top:10px;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                                <button type="button" ${isLocked ? 'disabled' : ''} onclick="openMemberAcademyPlayer('${esc(l.id)}')" class="btn ${isDone ? 'btn-outline' : 'btn-primary'} btn-sm" style="flex:1;">
+                                    ${isLocked ? '🔒 مغلق حتى إتمام المادة السابقة' : isDone ? '🔁 مراجعة المادة' : (l.media_type === 'video' ? '▶️ مشاهدة الدرس والتدريب' : '📖 قراءة وإتمام المادة')}
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `}
+    `;
+}
+
+function openMemberAcademyPlayer(lessonId) {
+    const cat = memberAcademyState.catalog;
+    if (!cat) return;
+    const lessons = cat.lessons || [];
+    const idx = lessons.findIndex(l => String(l.id) === String(lessonId));
+    if (idx === -1) return;
+    const l = lessons[idx];
+    if (l.is_locked) {
+        alert('🔒 يرجى إتمام المادة السابقة أولاً لفتح هذه المادة المتسلسلة.');
+        return;
+    }
+
+    let ov = document.getElementById('sawyanAcademyPlayerOverlay');
+    if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'sawyanAcademyPlayerOverlay';
+        ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.68);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10020;overflow-y:auto;';
+        document.body.appendChild(ov);
+    }
+
+    const titleAr = (l.title_i18n && (l.title_i18n.ar || l.title_i18n.en)) || l.slug;
+    const bodyAr = (l.content_i18n && (l.content_i18n.ar || l.content_i18n.en)) || '';
+    const trkTitle = (l.track_title_i18n && l.track_title_i18n.ar) || '';
+    const playerHtml = (window.SAWYAN && window.SAWYAN.API) ? window.SAWYAN.API.buildAcademyMediaPlayerHtml(l.media_url, l.media_type) : '';
+    const nextLesson = lessons[idx + 1] && !lessons[idx + 1].is_locked ? lessons[idx + 1] : null;
+    const nextDisabledAfterComplete = lessons[idx + 1] || null;
+
+    ov.style.display = 'flex';
+    ov.innerHTML = `
+        <div style="background:#ffffff;border-radius:18px;max-width:760px;width:100%;max-height:92vh;overflow-y:auto;padding:22px;box-shadow:0 24px 54px rgba(0,0,0,0.35);direction:rtl;font-family:Tajawal,sans-serif;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;border-bottom:1.5px solid #e2e8f0;padding-bottom:12px;margin-bottom:14px;">
+                <div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px;">
+                        ${trkTitle ? `<span style="background:#f1f5f9;color:#065f46;padding:2px 9px;border-radius:999px;font-size:0.74rem;font-weight:800;">${esc((l.track_icon || '🎓') + ' ' + trkTitle)}</span>` : ''}
+                        ${academyMediaBadge(l.media_type)}
+                        ${l.duration_minutes ? `<span style="font-size:0.75rem;color:#64748b;font-weight:700;">⏱ ${Number(l.duration_minutes)} دقيقة</span>` : ''}
+                    </div>
+                    <h3 style="margin:0;color:#0f172a;font-size:1.15rem;">${esc(titleAr)}</h3>
+                </div>
+                <button type="button" onclick="document.getElementById('sawyanAcademyPlayerOverlay').style.display='none'" style="border:none;background:#f1f5f9;border-radius:8px;width:34px;height:34px;cursor:pointer;font-weight:900;flex-shrink:0;">✕</button>
+            </div>
+
+            ${playerHtml}
+
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;line-height:1.8;color:#1e293b;font-size:0.93rem;white-space:pre-line;margin-bottom:14px;">${esc(bodyAr)}</div>
+
+            <div style="background:#f0fdf4;border:1px dashed #86efac;border-radius:10px;padding:10px 14px;font-size:0.78rem;color:#065f46;margin-bottom:14px;">
+                🚀 <b>خارطة تطوير الأكاديمية:</b> تم تأسيس هذا القسم لاستيعاب الاختبارات واجتيازات الدورات والتعليقات التفاعلية ومواد القادة المعتمدة لفِرقهم تباعاً.
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                <button type="button" id="svMemAcadToggleBtn" onclick="toggleMemberAcademyLessonComplete('${esc(l.id)}', ${l.is_completed ? "'reset'" : "'complete'"})" class="btn ${l.is_completed ? 'btn-outline' : 'btn-primary'}" style="flex:1;min-width:210px;">
+                    ${l.is_completed ? '↺ مكتمل — إلغاء علامة الإتمام' : '✅ أتممت هذه المادة (تسجيل الإنجاز)'}
+                </button>
+                ${nextLesson
+                    ? `<button type="button" onclick="openMemberAcademyPlayer('${esc(nextLesson.id)}')" class="btn btn-outline">المادة التالية ←</button>`
+                    : (nextDisabledAfterComplete ? `<span style="font-size:0.78rem;color:#64748b;font-weight:700;">🔒 أتمّ هذه المادة لفتح الدرس التالي</span>` : '')}
+            </div>
         </div>
     `;
 }
+
+async function toggleMemberAcademyLessonComplete(lessonId, action) {
+    const btn = document.getElementById('svMemAcadToggleBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ جاري حفظ التقدم...'; }
+    try {
+        await window.SAWYAN.API.memberUpdateAcademyProgress({ memberId: currentMember.id, courseId: lessonId, action: action || 'complete' });
+        const cat = await window.SAWYAN.API.getMemberAcademyCatalog({ memberId: currentMember.id });
+        memberAcademyState.catalog = cat;
+        renderMemberAcademyScreen();
+        openMemberAcademyPlayer(lessonId);
+    } catch (err) {
+        alert('❌ ' + err.message);
+        if (btn) { btn.disabled = false; }
+    }
+}
+
+window.selectMemberAcademyTrack = selectMemberAcademyTrack;
+window.openMemberAcademyPlayer = openMemberAcademyPlayer;
+window.toggleMemberAcademyLessonComplete = toggleMemberAcademyLessonComplete;
 
 // ---------------------------------------------------------------------------
 // Screen 7 & 8: Nearby Merchants + Search/Filters + GPS Radar + Path B Modal

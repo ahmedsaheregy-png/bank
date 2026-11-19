@@ -821,13 +821,18 @@ BEGIN
 END;
 $$;
 
--- 9-ب. تنفيذ مرتجع نقطة بيع محمي للتاجر (يُقبل قبل يوم الصرف 15 مع درع الكاري أون، ويُرفض قطعياً بعد يوم 15 — D5)
+-- 9-ب. تنفيذ مرتجع نقطة بيع محمي بمصافحة خطوتين OTP / موافقة التطبيق للتاجر (D5 Zero-Liability + عدم تسريب OTP للتاجر)
+DROP FUNCTION IF EXISTS sawyan.merchant_process_pos_return(UUID, UUID, TEXT, UUID, TEXT);
+
 CREATE OR REPLACE FUNCTION sawyan.merchant_process_pos_return(
     p_merchant_id     UUID,
     p_transaction_id  UUID,
-    p_reason          TEXT DEFAULT NULL,
-    p_idempotency_key UUID DEFAULT NULL,
-    p_session_token   TEXT DEFAULT NULL
+    p_reason          TEXT    DEFAULT NULL,
+    p_idempotency_key UUID    DEFAULT NULL,
+    p_session_token   TEXT    DEFAULT NULL,
+    p_mode            VARCHAR DEFAULT 'request_otp', -- 'request_otp' | 'confirm_otp' | 'escalate_with_proof'
+    p_otp_code        VARCHAR DEFAULT NULL,
+    p_proof_url       TEXT    DEFAULT NULL
 ) RETURNS JSONB
 LANGUAGE plpgsql
 VOLATILE
@@ -835,20 +840,272 @@ SECURITY DEFINER
 SET search_path = pg_catalog, pg_temp
 AS $$
 DECLARE
-    v_merch sawyan.merchants%ROWTYPE;
-    v_tx    sawyan.transactions%ROWTYPE;
+    v_merch           sawyan.merchants%ROWTYPE;
+    v_tx              sawyan.transactions%ROWTYPE;
+    v_country         sawyan.countries%ROWTYPE;
+    v_cycle           sawyan.settlement_cycles%ROWTYPE;
+    v_req             sawyan.return_requests%ROWTYPE;
+    v_mode            VARCHAR(30);
+    v_reason_clean    TEXT;
+    v_tx_ym           CHAR(7);
+    v_local_now       TIMESTAMP;
+    v_cutoff_local_ts TIMESTAMP;
+    v_rand_bytes      BYTEA;
+    v_otp             CHAR(6);
+    v_otp_hash        CHAR(64);
+    v_req_id          UUID;
+    v_disp_id         UUID;
+    v_new_attempts    SMALLINT;
+    v_rev             JSONB;
 BEGIN
     v_merch := sawyan.verify_merchant_session(p_merchant_id, p_session_token);
-    SELECT * INTO v_tx FROM sawyan.transactions WHERE id = p_transaction_id AND merchant_id = v_merch.id;
+    v_mode := lower(trim(COALESCE(NULLIF(p_mode, ''), 'request_otp')));
+    IF v_mode NOT IN ('request_otp', 'confirm_otp', 'escalate_with_proof') THEN
+        RAISE EXCEPTION 'INVALID_POS_RETURN_MODE: %', p_mode;
+    END IF;
+
+    SELECT * INTO v_tx FROM sawyan.transactions WHERE id = p_transaction_id AND merchant_id = v_merch.id FOR UPDATE;
     IF NOT FOUND THEN
         RAISE EXCEPTION 'TX_NOT_FOUND_OR_UNAUTHORIZED';
     END IF;
-    RETURN sawyan.process_transaction_reversal_clawback(
-        v_tx.id,
-        v_merch.id,
-        COALESCE(NULLIF(trim(p_reason), ''), 'Merchant POS return before payout'),
-        p_idempotency_key
+
+    IF v_tx.status = 'reversed' THEN
+        SELECT * INTO v_req
+          FROM sawyan.return_requests
+         WHERE transaction_id = v_tx.id AND merchant_id = v_merch.id
+           AND status IN ('approved_otp', 'approved_in_app')
+         ORDER BY resolved_at DESC NULLS LAST, created_at DESC
+         LIMIT 1;
+        IF FOUND AND v_mode = 'confirm_otp' THEN
+            RETURN jsonb_build_object(
+                'ok', true,
+                'status', 'already_reversed',
+                'return_request_id', v_req.id,
+                'reversal_status', v_req.status
+            );
+        END IF;
+        RAISE EXCEPTION 'TX_ALREADY_REVERSED';
+    END IF;
+
+    IF v_tx.status <> 'completed' THEN
+        RAISE EXCEPTION 'ONLY_COMPLETED_TX_CAN_BE_RETURNED: tx_status=%', v_tx.status;
+    END IF;
+
+    -- الفحص المبكر لقفل ما بعد يوم الصرف 15 في جميع الأوضاع الثلاثة قبل إنشاء OTP أو التصعيد
+    SELECT * INTO v_country FROM sawyan.countries WHERE id = v_tx.country_id;
+    v_tx_ym := COALESCE(
+        v_tx.commission_snapshot->>'effective_period_ym',
+        to_char(COALESCE(v_tx.completed_at, v_tx.created_at) AT TIME ZONE v_country.iana_timezone, 'YYYY-MM')
     );
+    SELECT * INTO v_cycle FROM sawyan.settlement_cycles WHERE country_id = v_country.id AND period_ym = v_tx_ym;
+
+    v_local_now       := sawyan.now_utc() AT TIME ZONE v_country.iana_timezone;
+    v_cutoff_local_ts := (to_date(v_tx_ym || '-01', 'YYYY-MM-DD') + interval '1 month')::timestamp
+                       + (v_country.return_cutoff_day || ' days')::interval;
+
+    IF (v_cycle.id IS NOT NULL AND (v_cycle.is_hard_locked IS TRUE OR v_cycle.step_status >= 5 OR v_cycle.payout_executed_at IS NOT NULL))
+       OR (v_local_now >= v_cutoff_local_ts)
+    THEN
+        RAISE EXCEPTION 'POST_PAYOUT_RETURN_FORBIDDEN: Returns for closed/paid period % are strictly forbidden after Day 15; merchant bears 100%% liability if accepted outside system.', v_tx_ym;
+    END IF;
+
+    v_reason_clean := COALESCE(NULLIF(trim(p_reason), ''), 'Merchant POS return before payout');
+
+    IF v_mode = 'request_otp' THEN
+        v_rand_bytes := extensions.gen_random_bytes(4);
+        v_otp := lpad(((
+            get_byte(v_rand_bytes, 0)::bigint * 16777216
+          + get_byte(v_rand_bytes, 1)::bigint * 65536
+          + get_byte(v_rand_bytes, 2)::bigint * 256
+          + get_byte(v_rand_bytes, 3)::bigint
+        ) % 900000 + 100000)::text, 6, '0');
+        v_otp_hash := encode(extensions.digest(v_otp, 'sha256'), 'hex');
+
+        UPDATE sawyan.return_requests
+           SET status = 'expired', resolved_at = sawyan.now_utc()
+         WHERE transaction_id = v_tx.id AND status = 'pending_otp';
+
+        INSERT INTO sawyan.return_requests (
+            transaction_id, merchant_id, member_id, reason, otp_sha256, status, expires_at
+        ) VALUES (
+            v_tx.id, v_merch.id, v_tx.member_id, v_reason_clean, v_otp_hash,
+            'pending_otp', sawyan.now_utc() + interval '15 minutes'
+        ) RETURNING id INTO v_req_id;
+
+        -- إرسال رمز OTP وإشعار الموافقة الفورية لتطبيق العضو حصراً (يُمنع تسريب OTP للتاجر)
+        INSERT INTO sawyan.notifications (recipient_type, recipient_id, event_name, channel, payload)
+        VALUES (
+            'member',
+            v_tx.member_id,
+            'PosReturnOtpRequested',
+            'in_app',
+            jsonb_build_object(
+                'return_request_id', v_req_id,
+                'transaction_id', v_tx.id,
+                'sw_short_code', v_tx.sw_short_code,
+                'merchant_name', v_merch.business_name,
+                'total_amount', v_tx.total_amount,
+                'currency_code', v_tx.currency_code,
+                'otp_code', v_otp,
+                'expires_in_minutes', 15,
+                'reason', v_reason_clean
+            )
+        );
+
+        RETURN jsonb_build_object(
+            'ok', true,
+            'status', 'awaiting_member_otp',
+            'return_request_id', v_req_id,
+            'expires_at', sawyan.now_utc() + interval '15 minutes',
+            'message', 'OTP sent to member app; member may provide OTP or approve directly in-app.'
+        );
+
+    ELSIF v_mode = 'confirm_otp' THEN
+        SELECT * INTO v_req
+          FROM sawyan.return_requests
+         WHERE transaction_id = v_tx.id AND merchant_id = v_merch.id
+         ORDER BY created_at DESC
+         LIMIT 1
+         FOR UPDATE;
+        IF NOT FOUND THEN
+            RETURN jsonb_build_object('ok', false, 'status', 'missing_request', 'error_code', 'RETURN_REQUEST_NOT_FOUND');
+        END IF;
+
+        IF v_req.status = 'approved_in_app' THEN
+            RETURN jsonb_build_object('ok', true, 'status', 'already_approved_in_app', 'return_request_id', v_req.id);
+        END IF;
+
+        IF v_req.status = 'locked' THEN
+            RETURN jsonb_build_object(
+                'ok', false,
+                'status', 'locked',
+                'error_code', 'RETURN_OTP_MAX_ATTEMPTS_LOCKED',
+                'failed_attempts', v_req.failed_attempts,
+                'attempts_remaining', 0
+            );
+        END IF;
+
+        IF v_req.status <> 'pending_otp' OR v_req.expires_at <= sawyan.now_utc() THEN
+            IF v_req.status = 'pending_otp' THEN
+                UPDATE sawyan.return_requests SET status = 'expired', resolved_at = sawyan.now_utc() WHERE id = v_req.id;
+            END IF;
+            RETURN jsonb_build_object('ok', false, 'status', 'expired', 'error_code', 'RETURN_OTP_EXPIRED');
+        END IF;
+
+        -- المقارنة غير القابلة للتراجع: عند الخطأ يُحفظ عداد الفشل ويُعاد الرد بدون RAISE EXCEPTION
+        IF encode(extensions.digest(trim(COALESCE(p_otp_code, '')), 'sha256'), 'hex') <> v_req.otp_sha256 THEN
+            v_new_attempts := v_req.failed_attempts + 1;
+            UPDATE sawyan.return_requests
+               SET failed_attempts = v_new_attempts,
+                   status          = CASE WHEN v_new_attempts >= max_attempts THEN 'locked' ELSE 'pending_otp' END,
+                   resolved_at     = CASE WHEN v_new_attempts >= max_attempts THEN sawyan.now_utc() ELSE NULL END
+             WHERE id = v_req.id;
+
+            RETURN jsonb_build_object(
+                'ok', false,
+                'status', CASE WHEN v_new_attempts >= v_req.max_attempts THEN 'locked' ELSE 'invalid_otp' END,
+                'error_code', CASE WHEN v_new_attempts >= v_req.max_attempts THEN 'RETURN_OTP_MAX_ATTEMPTS_LOCKED' ELSE 'INVALID_RETURN_OTP' END,
+                'failed_attempts', v_new_attempts,
+                'attempts_remaining', GREATEST(v_req.max_attempts - v_new_attempts, 0)
+            );
+        END IF;
+
+        UPDATE sawyan.return_requests
+           SET status      = 'approved_otp',
+               resolved_at = sawyan.now_utc()
+         WHERE id = v_req.id;
+
+        v_rev := sawyan.process_transaction_reversal_clawback(
+            v_tx.id,
+            v_merch.id,
+            v_req.reason,
+            COALESCE(p_idempotency_key, v_req.id)
+        );
+
+        -- تطبيق ضابط الخصوصية D26 الصارم: إزالة box_cascade من استجابة التاجر
+        RETURN jsonb_build_object(
+            'ok', true,
+            'status', 'reversed',
+            'return_request_id', v_req.id,
+            'reversal', (v_rev - 'box_cascade')
+        );
+
+    ELSE
+        -- v_mode = 'escalate_with_proof': العميل تسلّم النقد وغادر دون تأكيد، والتاجر يرفع إثبات الرد لتصعيد P0
+        IF NULLIF(trim(COALESCE(p_proof_url, '')), '') IS NULL THEN
+            RAISE EXCEPTION 'RETURN_PROOF_URL_REQUIRED';
+        END IF;
+
+        SELECT * INTO v_req
+          FROM sawyan.return_requests
+         WHERE transaction_id = v_tx.id AND merchant_id = v_merch.id
+           AND status IN ('pending_otp', 'rejected_member', 'locked', 'expired')
+         ORDER BY created_at DESC
+         LIMIT 1
+         FOR UPDATE;
+
+        IF FOUND THEN
+            UPDATE sawyan.return_requests
+               SET status    = 'escalated_to_admin',
+                   proof_url = trim(p_proof_url)
+             WHERE id = v_req.id
+            RETURNING id INTO v_req_id;
+        ELSE
+            INSERT INTO sawyan.return_requests (
+                transaction_id, merchant_id, member_id, reason, otp_sha256,
+                status, proof_url, expires_at
+            ) VALUES (
+                v_tx.id, v_merch.id, v_tx.member_id, v_reason_clean,
+                encode(extensions.digest(v_tx.id::text || ':escalated', 'sha256'), 'hex'),
+                'escalated_to_admin', trim(p_proof_url), sawyan.now_utc() + interval '72 hours'
+            ) RETURNING id INTO v_req_id;
+        END IF;
+
+        SELECT id INTO v_disp_id
+          FROM sawyan.dispute_tickets
+         WHERE transaction_id = v_tx.id
+           AND status IN ('awaiting_merchant_friendly', 'escalated_to_admin')
+         ORDER BY created_at DESC
+         LIMIT 1;
+
+        IF FOUND THEN
+            UPDATE sawyan.dispute_tickets
+               SET dispute_category = 'merchant_return_escalation',
+                   evidence_url     = COALESCE(NULLIF(trim(evidence_url), ''), trim(p_proof_url)),
+                   status           = 'escalated_to_admin',
+                   sla_deadline_at  = LEAST(sla_deadline_at, sawyan.now_utc() + interval '12 hours')
+             WHERE id = v_disp_id;
+        ELSE
+            INSERT INTO sawyan.dispute_tickets (
+                transaction_id, member_id, merchant_id, dispute_category, dispute_reason,
+                evidence_url, status, sla_deadline_at
+            ) VALUES (
+                v_tx.id, v_tx.member_id, v_merch.id, 'merchant_return_escalation',
+                v_reason_clean, trim(p_proof_url), 'escalated_to_admin', sawyan.now_utc() + interval '12 hours'
+            ) RETURNING id INTO v_disp_id;
+        END IF;
+
+        INSERT INTO sawyan.notifications (recipient_type, recipient_id, event_name, channel, payload)
+        VALUES (
+            'member',
+            v_tx.member_id,
+            'MerchantReturnEscalatedP0',
+            'in_app',
+            jsonb_build_object(
+                'return_request_id', v_req_id,
+                'dispute_id', v_disp_id,
+                'transaction_id', v_tx.id,
+                'sw_short_code', v_tx.sw_short_code
+            )
+        );
+
+        RETURN jsonb_build_object(
+            'ok', true,
+            'status', 'escalated_to_admin',
+            'return_request_id', v_req_id,
+            'dispute_id', v_disp_id
+        );
+    END IF;
 END;
 $$;
 
@@ -1071,7 +1328,7 @@ REVOKE ALL ON FUNCTION sawyan.merchant_initiate_topup(UUID, NUMERIC, VARCHAR, VA
 REVOKE ALL ON FUNCTION sawyan.merchant_shift_closing_guarded(UUID, TEXT, UUID, VARCHAR, VARCHAR) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION sawyan.merchant_submit_flash_offer_guarded(UUID, VARCHAR, TEXT, VARCHAR, TEXT) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION sawyan.merchant_radar_density_guarded(UUID, UUID, NUMERIC, TEXT) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION sawyan.merchant_process_pos_return(UUID, UUID, TEXT, UUID, TEXT) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION sawyan.merchant_process_pos_return(UUID, UUID, TEXT, UUID, TEXT, VARCHAR, VARCHAR, TEXT) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION sawyan.get_merchant_dashboard_bundle(UUID, TEXT, VARCHAR, UUID) FROM PUBLIC, anon, authenticated;
 
 -- دالة داخلية محصورة بـ service_role فقط
@@ -1088,5 +1345,5 @@ GRANT EXECUTE ON FUNCTION sawyan.merchant_initiate_topup(UUID, NUMERIC, VARCHAR,
 GRANT EXECUTE ON FUNCTION sawyan.merchant_shift_closing_guarded(UUID, TEXT, UUID, VARCHAR, VARCHAR) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.merchant_submit_flash_offer_guarded(UUID, VARCHAR, TEXT, VARCHAR, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.merchant_radar_density_guarded(UUID, UUID, NUMERIC, TEXT) TO anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION sawyan.merchant_process_pos_return(UUID, UUID, TEXT, UUID, TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION sawyan.merchant_process_pos_return(UUID, UUID, TEXT, UUID, TEXT, VARCHAR, VARCHAR, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.get_merchant_dashboard_bundle(UUID, TEXT, VARCHAR, UUID) TO anon, authenticated, service_role;

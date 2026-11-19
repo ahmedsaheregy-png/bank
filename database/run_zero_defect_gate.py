@@ -26,6 +26,7 @@ INTERNAL_ONLY_FUNCTIONS = {
     "verify_merchant_session",
     "verify_admin_session",
     "append_audit_log",
+    "filter_academy_url_is_safe",
 }
 
 MIRROR_DIRS = ["assets", "css", "js", "public", "shared", "member-dashboard", "merchant-dashboard", "admin-dashboard"]
@@ -84,7 +85,7 @@ def main():
             has_table_privilege('anon', 'sawyan.members', 'SELECT') AS anon_prod_members_select;
     """, token)[0]
 
-    check(sec["prod_rls_off"] == 0 and sec["demo_rls_off"] == 0, "All 43 tables in `sawyan` & `sawyan_demo` have RLS enabled")
+    check(sec["prod_rls_off"] == 0 and sec["demo_rls_off"] == 0, "100% of tables in `sawyan` & `sawyan_demo` have RLS enabled (0 unguarded tables)")
     check(sec["secdef_no_search_path"] == 0, "100% of SECURITY DEFINER functions enforce explicit `search_path`")
     check(not sec["anon_prod_merchants_select"] and not sec["anon_prod_members_select"], "Zero raw `anon` SELECT on `sawyan.merchants` or `sawyan.members`")
 

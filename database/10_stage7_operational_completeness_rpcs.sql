@@ -1337,18 +1337,27 @@ BEGIN
         RETURN jsonb_build_object('status', 'bank_topup_proof_submitted', 'proof_id', v_notif_id);
 
     ELSIF v_act = 'voluntary_tx_refund' THEN
-        -- الفجوة 10: مرتجع طوعي من التاجر خلال الشهر المفتوح (يعكس صندوق الهدف ويرد عمولة التاجر لرصيده آلياً)
-        SELECT * INTO v_tx
-          FROM sawyan.transactions
-         WHERE id = (p_payload->>'transaction_id')::uuid
-           AND merchant_id = v_mer.id
-         FOR UPDATE;
-        IF NOT FOUND THEN RAISE EXCEPTION 'TRANSACTION_NOT_FOUND'; END IF;
-        IF v_tx.status <> 'completed' THEN RAISE EXCEPTION 'ONLY_COMPLETED_TX_CAN_BE_REFUNDED'; END IF;
-
-        v_claw := sawyan.process_transaction_reversal_clawback(v_tx.id, 'in_month', NULL);
-        PERFORM sawyan.append_audit_log('merchant', v_mer.id, 'merchant_voluntary_in_month_refund', 'transactions', v_tx.id::text, NULL, jsonb_build_object('reason', COALESCE(p_payload->>'reason', 'مرتجع بضاعة للعميل'), 'clawback', v_claw));
-        RETURN jsonb_build_object('status', 'refunded', 'clawback', v_claw);
+        -- تفويض المرتجع الطوعي لبوابة المصافحة الآمنة (OTP / In-App D5 Zero-Liability) بدلاً من العكس المباشر غير الآمن
+        v_claw := sawyan.merchant_process_pos_return(
+            v_mer.id,
+            (p_payload->>'transaction_id')::uuid,
+            COALESCE(NULLIF(trim(p_payload->>'reason'), ''), 'مرتجع بضاعة للعميل'),
+            NULLIF(trim(COALESCE(p_payload->>'idempotency_key', '')), '')::uuid,
+            p_session_token,
+            COALESCE(NULLIF(trim(p_payload->>'mode'), ''), 'request_otp'),
+            NULLIF(trim(COALESCE(p_payload->>'otp_code', '')), ''),
+            NULLIF(trim(COALESCE(p_payload->>'proof_url', '')), '')
+        );
+        PERFORM sawyan.append_audit_log(
+            'merchant',
+            v_mer.id,
+            'merchant_voluntary_return_flow_' || COALESCE(v_claw->>'status', 'initiated'),
+            'transactions',
+            (p_payload->>'transaction_id')::text,
+            NULL,
+            jsonb_build_object('reason', COALESCE(p_payload->>'reason', 'مرتجع بضاعة للعميل'), 'return_flow', v_claw)
+        );
+        RETURN jsonb_build_object('status', COALESCE(v_claw->>'status', 'awaiting_member_otp'), 'return_flow', v_claw);
     END IF;
 
     SELECT COALESCE(jsonb_agg(row_to_json(b)::jsonb ORDER BY b.is_main_branch DESC, b.created_at ASC), '[]'::jsonb)

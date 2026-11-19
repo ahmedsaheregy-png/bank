@@ -15,8 +15,8 @@ AS $$
     SELECT CASE
         WHEN left('sawyan.countries', 9) = 'sawyan_qa'
              AND session_user IN ('postgres', 'supabase_admin')
-             AND NULLIF(current_setting('sawyan.qa_fixed_now_utc', true), '') IS NOT NULL
-        THEN current_setting('sawyan.qa_fixed_now_utc', true)::timestamptz
+             AND NULLIF(current_setting('app_qa.fixed_now_utc', true), '') IS NOT NULL
+        THEN current_setting('app_qa.fixed_now_utc', true)::timestamptz
         ELSE pg_catalog.now()
     END;
 $$;

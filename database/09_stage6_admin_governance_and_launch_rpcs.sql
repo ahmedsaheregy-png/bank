@@ -636,20 +636,69 @@ BEGIN
            LIMIT 60
       ) tx;
 
-    -- 11. تذاكر النزاعات الثلاثية (D6) وبلاغات رفع الأسعار (S10) وكاشف الغش الشبكي
-    SELECT COALESCE(jsonb_agg(row_to_json(dp)::jsonb ORDER BY dp.created_at DESC), '[]'::jsonb)
+    -- 11. تذاكر النزاعات الثلاثية (D6 + Option 1-A فرز التأهل) وبلاغات رفع الأسعار (S10) وكاشف الغش الشبكي
+    SELECT COALESCE(jsonb_agg(row_to_json(dp)::jsonb ORDER BY dp.is_qualification_breaking DESC, dp.created_at DESC), '[]'::jsonb)
       INTO v_disputes
       FROM (
           SELECT d.*, t.sw_short_code, t.total_amount, t.currency_code, t.status AS tx_status,
+                 c.country_code AS tx_country_code,
+                 COALESCE(t.commission_snapshot->>'effective_period_ym',
+                          to_char(COALESCE(t.completed_at, t.created_at) AT TIME ZONE c.iana_timezone, 'YYYY-MM')) AS dispute_period_ym,
+                 ROUND(t.income_plan_share_usd::numeric, 2) AS income_plan_share_usd,
                  mem.member_code, mem.full_name AS member_name,
                  mer.merchant_code, mer.business_name AS merchant_name,
-                 ROUND((EXTRACT(EPOCH FROM (d.sla_deadline_at - now())) / 3600.0)::numeric, 1) AS sla_hours_left
+                 ROUND((EXTRACT(EPOCH FROM (d.sla_deadline_at - sawyan.now_utc())) / 3600.0)::numeric, 1) AS sla_hours_left,
+                 (
+                     t.status = 'completed'
+                     AND d.status IN ('awaiting_merchant_friendly', 'escalated_to_admin')
+                     AND d.dispute_category IN ('return_stalled', 'merchant_return_escalation')
+                     AND mb.id IS NOT NULL
+                     AND (mb.carry_on_in_usd + mb.current_month_purchases_usd) >= mb.target_required_usd
+                     AND ((mb.carry_on_in_usd + mb.current_month_purchases_usd) - COALESCE(open_sum.disputed_usd, t.income_plan_share_usd)) < mb.target_required_usd
+                 ) AS is_qualification_breaking,
+                 CASE
+                     WHEN t.status = 'completed'
+                      AND d.status IN ('awaiting_merchant_friendly', 'escalated_to_admin')
+                      AND d.dispute_category IN ('return_stalled', 'merchant_return_escalation')
+                      AND mb.id IS NOT NULL
+                      AND (mb.carry_on_in_usd + mb.current_month_purchases_usd) >= mb.target_required_usd
+                      AND ((mb.carry_on_in_usd + mb.current_month_purchases_usd) - COALESCE(open_sum.disputed_usd, t.income_plan_share_usd)) < mb.target_required_usd
+                     THEN ROUND(COALESCE(
+                         (SELECT SUM(pt.members_share_usd) FROM sawyan.pool_transactions pt WHERE pt.target_box_id = mb.id),
+                         mb.target_required_usd * 0.70
+                     )::numeric, 2)
+                     ELSE 0.00
+                 END AS estimated_commission_at_stake_usd
             FROM sawyan.dispute_tickets d
             JOIN sawyan.transactions t ON t.id = d.transaction_id
+            JOIN sawyan.countries c ON c.id = t.country_id
             JOIN sawyan.members mem ON mem.id = d.member_id
             JOIN sawyan.merchants mer ON mer.id = d.merchant_id
-           ORDER BY d.created_at DESC
-           LIMIT 30
+            LEFT JOIN sawyan.monthly_target_boxes mb
+              ON mb.member_id = t.member_id
+             AND mb.country_id = t.country_id
+             AND mb.period_ym = COALESCE(
+                     t.commission_snapshot->>'effective_period_ym',
+                     to_char(COALESCE(t.completed_at, t.created_at) AT TIME ZONE c.iana_timezone, 'YYYY-MM')
+                 )
+            LEFT JOIN LATERAL (
+                SELECT COALESCE(SUM(t2.income_plan_share_usd), 0.000000) AS disputed_usd
+                  FROM sawyan.dispute_tickets d2
+                  JOIN sawyan.transactions t2 ON t2.id = d2.transaction_id
+                  JOIN sawyan.countries c2 ON c2.id = t2.country_id
+                 WHERE d2.member_id = t.member_id
+                   AND t2.country_id = t.country_id
+                   AND t2.status = 'completed'
+                   AND d2.status IN ('awaiting_merchant_friendly', 'escalated_to_admin')
+                   AND d2.dispute_category IN ('return_stalled', 'merchant_return_escalation')
+                   AND COALESCE(t2.commission_snapshot->>'effective_period_ym',
+                                to_char(COALESCE(t2.completed_at, t2.created_at) AT TIME ZONE c2.iana_timezone, 'YYYY-MM')) = COALESCE(
+                                    t.commission_snapshot->>'effective_period_ym',
+                                    to_char(COALESCE(t.completed_at, t.created_at) AT TIME ZONE c.iana_timezone, 'YYYY-MM')
+                                )
+            ) open_sum ON true
+           ORDER BY is_qualification_breaking DESC, d.created_at DESC
+           LIMIT 50
       ) dp;
 
     SELECT COALESCE(jsonb_agg(row_to_json(pg)::jsonb ORDER BY pg.created_at DESC), '[]'::jsonb)
@@ -891,6 +940,15 @@ DECLARE
     v_partner_id    UUID;
     v_topup_res     JSONB;
     v_next_month_ts TIMESTAMPTZ;
+    v_bg_ym         TEXT;
+    v_total_cycles  INT := 0;
+    v_unlocked      INT := 0;
+    v_adj_cycle     sawyan.settlement_cycles%ROWTYPE;
+    v_adj_cid       INT;
+    v_debit_acct    VARCHAR(16);
+    v_credit_acct   VARCHAR(16);
+    v_adj_amt       NUMERIC(18,2);
+    v_adj_je_id     UUID;
 BEGIN
     v_admin_info := sawyan.verify_admin_session(
         p_admin_id,
@@ -1131,23 +1189,116 @@ BEGIN
             v_exec_effect := jsonb_build_object('effect', 'corporate_partner_registered_d24', 'partner_id', v_partner_id);
 
         ELSIF v_req.action_type = 'BREAK_GLASS_UNLOCK' THEN
+            -- القرار 4: ثبات الدورات المصروفة نهائياً بعد الصرف؛ يُسمح بفتح الحساب فقط لدورات ما قبل الصرف،
+            -- أما الدورات ذات payout_executed_at فتبقى مقفلة كلياً ويُفتح لها قيد تسوية تدقيقي MANUAL_AUDIT_JOURNAL_ADJUSTMENT فقط لمدة ساعتين.
+            v_bg_ym := trim(COALESCE(v_req.payload_after->>'period_ym', v_req.target_id));
+
+            SELECT COUNT(*) INTO v_total_cycles
+              FROM sawyan.settlement_cycles
+             WHERE period_ym = v_bg_ym;
+            IF v_total_cycles = 0 THEN
+                RAISE EXCEPTION 'SETTLEMENT_CYCLE_NOT_FOUND: %', v_bg_ym;
+            END IF;
+
             UPDATE sawyan.settlement_cycles
                SET is_hard_locked         = false,
                    step_status            = 4,
-                   break_glass_expires_at = now() + interval '2 hours'
-             WHERE period_ym = trim(COALESCE(v_req.payload_after->>'period_ym', v_req.target_id));
+                   break_glass_expires_at = sawyan.now_utc() + interval '2 hours'
+             WHERE period_ym = v_bg_ym
+               AND payout_executed_at IS NULL;
+            GET DIAGNOSTICS v_unlocked = ROW_COUNT;
+
+            UPDATE sawyan.settlement_cycles
+               SET break_glass_expires_at = sawyan.now_utc() + interval '2 hours'
+             WHERE period_ym = v_bg_ym
+               AND payout_executed_at IS NOT NULL;
 
             PERFORM sawyan.append_audit_log(
                 'admin',
                 p_admin_id,
                 'break_glass_hard_lock_reopened_2h',
                 'settlement_cycles',
-                v_req.target_id,
+                v_bg_ym,
                 jsonb_build_object('is_hard_locked', true),
-                jsonb_build_object('is_hard_locked', false, 'maker_admin_id', v_req.maker_admin_id, 'checker_admin_id', p_admin_id, 'reason', v_req.reason)
+                jsonb_build_object(
+                    'is_hard_locked', (v_unlocked = 0),
+                    'unlocked_pre_payout_cycles', v_unlocked,
+                    'audit_adjustment_only', (v_unlocked = 0),
+                    'maker_admin_id', v_req.maker_admin_id,
+                    'checker_admin_id', p_admin_id,
+                    'reason', v_req.reason
+                )
             );
 
-            v_exec_effect := jsonb_build_object('effect', 'break_glass_unlocked_2h', 'period_ym', v_req.target_id);
+            v_exec_effect := jsonb_build_object(
+                'effect', 'break_glass_unlocked_2h',
+                'period_ym', v_bg_ym,
+                'unlocked_pre_payout_cycles', v_unlocked,
+                'audit_adjustment_only', (v_unlocked = 0),
+                'window_expires_at', sawyan.now_utc() + interval '2 hours'
+            );
+
+        ELSIF v_req.action_type = 'MANUAL_AUDIT_JOURNAL_ADJUSTMENT' THEN
+            v_bg_ym       := trim(COALESCE(v_req.payload_after->>'period_ym', v_req.target_id));
+            v_debit_acct  := trim(COALESCE(v_req.payload_after->>'debit_account_code', ''));
+            v_credit_acct := trim(COALESCE(v_req.payload_after->>'credit_account_code', ''));
+            v_adj_amt     := ROUND(COALESCE((v_req.payload_after->>'amount_usd')::numeric, 0.00), 2);
+            v_adj_cid     := NULL;
+
+            IF NULLIF(upper(trim(COALESCE(v_req.payload_after->>'country_code', ''))), '') IS NOT NULL THEN
+                SELECT id INTO v_adj_cid FROM sawyan.countries WHERE country_code = upper(trim(v_req.payload_after->>'country_code'));
+                IF NOT FOUND THEN RAISE EXCEPTION 'COUNTRY_NOT_FOUND'; END IF;
+            END IF;
+
+            SELECT * INTO v_adj_cycle
+              FROM sawyan.settlement_cycles
+             WHERE period_ym = v_bg_ym
+               AND (v_adj_cid IS NULL OR country_id = v_adj_cid)
+               AND break_glass_expires_at IS NOT NULL
+               AND break_glass_expires_at > sawyan.now_utc()
+             ORDER BY id ASC
+             LIMIT 1;
+            IF NOT FOUND THEN
+                RAISE EXCEPTION 'BREAK_GLASS_WINDOW_REQUIRED_FOR_MANUAL_AUDIT_ADJUSTMENT';
+            END IF;
+
+            IF v_adj_amt <= 0 OR v_debit_acct = '' OR v_credit_acct = '' OR v_debit_acct = v_credit_acct THEN
+                RAISE EXCEPTION 'INVALID_MANUAL_AUDIT_JOURNAL_PARAMETERS';
+            END IF;
+
+            IF NOT EXISTS (SELECT 1 FROM sawyan.chart_of_accounts WHERE account_code = v_debit_acct)
+               OR NOT EXISTS (SELECT 1 FROM sawyan.chart_of_accounts WHERE account_code = v_credit_acct)
+            THEN
+                RAISE EXCEPTION 'UNKNOWN_COA_ACCOUNT_CODE_IN_MANUAL_ADJUSTMENT';
+            END IF;
+
+            INSERT INTO sawyan.journal_entries (
+                settlement_cycle_id, source_type, source_id, country_id, fx_rate_used, description, posted_at
+            ) VALUES (
+                v_adj_cycle.id, 'MANUAL_AUDIT_ADJUSTMENT', p_request_id, v_adj_cycle.country_id, 1.000000, v_req.reason, sawyan.now_utc()
+            ) RETURNING id INTO v_adj_je_id;
+
+            INSERT INTO sawyan.journal_lines (journal_entry_id, account_code, entity_type, entity_id, debit_usd, credit_usd, amount_local, currency_code)
+            VALUES
+                (v_adj_je_id, v_debit_acct,  NULLIF(trim(COALESCE(v_req.payload_after->>'debit_entity_type', '')), ''),  NULLIF(trim(COALESCE(v_req.payload_after->>'debit_entity_id', '')), '')::uuid,  v_adj_amt, 0.00, v_adj_amt, 'USD'),
+                (v_adj_je_id, v_credit_acct, NULLIF(trim(COALESCE(v_req.payload_after->>'credit_entity_type', '')), ''), NULLIF(trim(COALESCE(v_req.payload_after->>'credit_entity_id', '')), '')::uuid, 0.00, v_adj_amt, v_adj_amt, 'USD');
+
+            PERFORM sawyan.append_audit_log(
+                'admin',
+                p_admin_id,
+                'manual_audit_journal_adjustment_posted',
+                'journal_entries',
+                v_adj_je_id::text,
+                NULL,
+                jsonb_build_object('period_ym', v_bg_ym, 'debit_account_code', v_debit_acct, 'credit_account_code', v_credit_acct, 'amount_usd', v_adj_amt, 'reason', v_req.reason)
+            );
+
+            v_exec_effect := jsonb_build_object(
+                'effect', 'manual_audit_journal_posted',
+                'journal_entry_id', v_adj_je_id,
+                'period_ym', v_bg_ym,
+                'amount_usd', v_adj_amt
+            );
 
         ELSIF v_req.action_type = 'MERCHANT_CREDIT_EXCEPTION_D4' THEN
             UPDATE sawyan.merchants
@@ -1225,12 +1376,14 @@ BEGIN
         SELECT * INTO v_country FROM sawyan.countries WHERE country_code = upper(trim(p_country_code));
         IF NOT FOUND THEN RAISE EXCEPTION 'COUNTRY_NOT_FOUND'; END IF;
 
+        PERFORM pg_advisory_xact_lock(hashtextextended('sawyan_period_' || v_country.id::text || '_' || p_period_ym, 0));
+
         INSERT INTO sawyan.settlement_cycles (
             country_id, period_ym, closure_utc_instant, step_status, zero_discrepancy_passed, maker_admin_id
         ) VALUES (
             v_country.id,
             p_period_ym,
-            ((to_date(p_period_ym || '-01', 'YYYY-MM-DD') + interval '1 month') - interval '1 second'),
+            (((to_date(p_period_ym || '-01', 'YYYY-MM-DD') + interval '1 month')::timestamp - interval '1 second') AT TIME ZONE v_country.iana_timezone),
             2,
             true,
             p_admin_id
@@ -1239,14 +1392,17 @@ BEGIN
            SET maker_admin_id          = p_admin_id,
                zero_discrepancy_passed = true
          WHERE sawyan.settlement_cycles.is_hard_locked = false
+           AND sawyan.settlement_cycles.payout_executed_at IS NULL
         RETURNING * INTO v_cycle;
 
         IF v_cycle.id IS NULL THEN
-            RAISE EXCEPTION 'HARD_LOCK_VIOLATION: Period % for % is hard-locked. Break-Glass dual approval required.', p_period_ym, p_country_code;
+            RAISE EXCEPTION 'HARD_LOCK_VIOLATION: Period % for % is hard-locked or already paid out. Break-Glass dual approval required.', p_period_ym, p_country_code;
         END IF;
 
-        -- إذا لم يسبق تشغيل المحرك على هذه الدورة، نفّذ المسح الصعودي الشامل حتى الخطوة 4
-        IF NOT EXISTS (SELECT 1 FROM sawyan.pool_transactions WHERE settlement_cycle_id = v_cycle.id) THEN
+        -- إذا لم يسبق تشغيل المحرك أو تطلبت المسودة إعادة الحساب بعد مرتجع/اعتماد متأخر، نفّذ المسح الصعودي الشامل حتى الخطوة 4
+        IF COALESCE(v_cycle.recalc_required, false) IS TRUE
+           OR NOT EXISTS (SELECT 1 FROM sawyan.pool_transactions WHERE settlement_cycle_id = v_cycle.id)
+        THEN
             v_eng_res := sawyan.run_monthly_settlement_engine(v_cycle.id);
         ELSE
             UPDATE sawyan.settlement_cycles SET step_status = 4 WHERE id = v_cycle.id;
@@ -1271,11 +1427,20 @@ BEGIN
         );
 
     ELSIF v_act = 'finalize_steps_5_and_6' THEN
-        -- المدير المعتمد (Checker) يوقّع الخطوتين 5 و6 بعد إعداد المدير المالي (Maker != Checker)
-        SELECT maker_admin_id INTO v_maker_id
-          FROM sawyan.settlement_cycles
-         WHERE period_ym = p_period_ym AND step_status = 4 AND is_hard_locked = false
-         ORDER BY (maker_admin_id IS DISTINCT FROM p_admin_id) DESC, id ASC
+        -- المدير المعتمد (Checker) يوقّع الخطوتين 5 و6 بعد إعداد المدير المالي (Maker != Checker) وبنطاق الدولة المختارة أو ALL
+        SELECT sc.maker_admin_id INTO v_maker_id
+          FROM sawyan.settlement_cycles sc
+          JOIN sawyan.countries c ON c.id = sc.country_id
+         WHERE sc.period_ym = p_period_ym
+           AND sc.step_status = 4
+           AND sc.is_hard_locked = false
+           AND sc.payout_executed_at IS NULL
+           AND (
+               NULLIF(upper(trim(COALESCE(p_country_code, ''))), '') IS NULL
+               OR upper(trim(p_country_code)) = 'ALL'
+               OR c.country_code = upper(trim(p_country_code))
+           )
+         ORDER BY (sc.maker_admin_id IS DISTINCT FROM p_admin_id) DESC, sc.id ASC
          LIMIT 1;
 
         IF v_maker_id IS NULL THEN
@@ -1297,7 +1462,8 @@ BEGIN
             p_period_ym,
             v_maker_id,
             v_checker_id,
-            COALESCE(p_ias21_fx_delta_usd, 0.00)
+            COALESCE(p_ias21_fx_delta_usd, 0.00),
+            NULLIF(upper(trim(COALESCE(p_country_code, ''))), '')::char(2)
         );
 
         RETURN v_fin_res;
@@ -1370,25 +1536,87 @@ BEGIN
 
         SELECT * INTO v_tx FROM sawyan.transactions WHERE id = v_dispute.transaction_id FOR UPDATE;
 
-        IF v_dec IN ('resolved_member', 'resolved_member_clawback') THEN
+        IF v_dec = 'resolved_member' THEN
             UPDATE sawyan.dispute_tickets
                SET status             = 'resolved_member',
                    assigned_admin_id  = p_admin_id,
-                   appeal_deadline_at = now() + interval '72 hours'
+                   appeal_deadline_at = sawyan.now_utc() + interval '72 hours'
              WHERE id = v_dispute.id;
 
-            IF v_dec IN ('resolved_member', 'resolved_member_clawback') AND v_tx.status = 'completed' THEN
-                -- القفل الدستوري D5: عكس الفاتورة مسموح قبل يوم الصرف 15 فقط مع درع الكاري أون، ومرفوض قطعياً بعد الصرف
-                v_claw_res := sawyan.process_transaction_reversal_clawback(v_tx.id, p_admin_id, COALESCE(p_notes, 'Admin dispute reversal before payout'));
-            ELSIF v_tx.status = 'pending' THEN
+            -- اعتماد الفاتورة المعلقة للعضو عند إنصافه دون المساس بالفواتير المكتملة السليمة
+            IF v_tx.status = 'pending' THEN
                 v_claw_res := sawyan.feed_monthly_target_box(v_tx.id, v_tx.member_id);
             END IF;
+
+        ELSIF v_dec = 'resolved_member_clawback' THEN
+            IF v_tx.status <> 'completed' THEN
+                RAISE EXCEPTION 'CLAWBACK_REQUIRES_COMPLETED_TX: tx_status=%', v_tx.status;
+            END IF;
+
+            UPDATE sawyan.dispute_tickets
+               SET status             = 'resolved_member',
+                   assigned_admin_id  = p_admin_id,
+                   appeal_deadline_at = sawyan.now_utc() + interval '72 hours'
+             WHERE id = v_dispute.id;
+
+            -- القفل الدستوري D5: عكس الفاتورة مسموح قبل يوم الصرف 15 فقط مع درع الكاري أون، ومرفوض قطعياً بعد الصرف
+            v_claw_res := sawyan.process_transaction_reversal_clawback(v_tx.id, p_admin_id, COALESCE(p_notes, 'Admin dispute reversal before payout'));
+
+        ELSIF v_dec = 'resolved_merchant_force_return' THEN
+            IF v_tx.status <> 'completed' THEN
+                RAISE EXCEPTION 'FORCE_RETURN_REQUIRES_COMPLETED_TX: tx_status=%', v_tx.status;
+            END IF;
+
+            UPDATE sawyan.dispute_tickets
+               SET status             = 'resolved_merchant',
+                   assigned_admin_id  = p_admin_id,
+                   appeal_deadline_at = sawyan.now_utc() + interval '72 hours'
+             WHERE id = v_dispute.id;
+
+            UPDATE sawyan.return_requests
+               SET status      = 'approved_in_app',
+                   resolved_at = sawyan.now_utc()
+             WHERE transaction_id = v_tx.id
+               AND status IN ('pending_otp', 'escalated_to_admin');
+
+            v_claw_res := sawyan.process_transaction_reversal_clawback(
+                v_tx.id,
+                p_admin_id,
+                COALESCE(p_notes, 'Admin forced return after runaway customer proof')
+            );
+
+            UPDATE sawyan.members
+               SET payout_cooldown_until = GREATEST(
+                       COALESCE(payout_cooldown_until, sawyan.now_utc()),
+                       sawyan.now_utc() + interval '30 days'
+                   )
+             WHERE id = v_tx.member_id;
+
+        ELSIF v_dec = 'resolved_merchant_malicious_claim' THEN
+            UPDATE sawyan.dispute_tickets
+               SET status             = 'resolved_merchant',
+                   assigned_admin_id  = p_admin_id,
+                   appeal_deadline_at = sawyan.now_utc() + interval '72 hours'
+             WHERE id = v_dispute.id;
+
+            UPDATE sawyan.return_requests
+               SET status      = 'rejected_member',
+                   resolved_at = sawyan.now_utc()
+             WHERE transaction_id = v_tx.id
+               AND status IN ('pending_otp', 'escalated_to_admin');
+
+            UPDATE sawyan.members
+               SET payout_cooldown_until = GREATEST(
+                       COALESCE(payout_cooldown_until, sawyan.now_utc()),
+                       sawyan.now_utc() + interval '30 days'
+                   )
+             WHERE id = v_tx.member_id;
 
         ELSIF v_dec = 'resolved_merchant' THEN
             UPDATE sawyan.dispute_tickets
                SET status             = 'resolved_merchant',
                    assigned_admin_id  = p_admin_id,
-                   appeal_deadline_at = now() + interval '72 hours'
+                   appeal_deadline_at = sawyan.now_utc() + interval '72 hours'
              WHERE id = v_dispute.id;
         ELSE
             RAISE EXCEPTION 'INVALID_DISPUTE_DECISION: %', p_decision;

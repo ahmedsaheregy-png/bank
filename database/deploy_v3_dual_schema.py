@@ -89,6 +89,7 @@ def main():
     sql_08 = read_sql("08_stage5_merchant_pos_and_portal_rpcs.sql")
     sql_09 = read_sql("09_stage6_admin_governance_and_launch_rpcs.sql")
     sql_10 = read_sql("10_stage7_operational_completeness_rpcs.sql")
+    sql_12 = read_sql("12_stage8_academy_lms_foundation.sql")
     sql_03b = read_sql("03b_seed_demo_tree_48_members.sql")
 
     # Deploy Production (`sawyan`)
@@ -102,6 +103,7 @@ def main():
     run_sql(sql_08, token, "Production 08_stage5_merchant_pos_and_portal_rpcs")
     run_sql(sql_09, token, "Production 09_stage6_admin_governance_and_launch_rpcs")
     run_sql(sql_10, token, "Production 10_stage7_operational_completeness_rpcs")
+    run_sql(sql_12, token, "Production 12_stage8_academy_lms_foundation")
 
     # Deploy Parallel Demo (`sawyan_demo`)
     run_sql(clone_sql_for_demo(sql_01), token, "Parallel Demo 01_schema_and_43_tables")
@@ -115,6 +117,7 @@ def main():
     run_sql(clone_sql_for_demo(sql_08), token, "Parallel Demo 08_stage5_merchant_pos_and_portal_rpcs")
     run_sql(clone_sql_for_demo(sql_09), token, "Parallel Demo 09_stage6_admin_governance_and_launch_rpcs")
     run_sql(clone_sql_for_demo(sql_10), token, "Parallel Demo 10_stage7_operational_completeness_rpcs")
+    run_sql(clone_sql_for_demo(sql_12), token, "Parallel Demo 12_stage8_academy_lms_foundation")
 
     demo_stage5_seed = """
     UPDATE sawyan_demo.members

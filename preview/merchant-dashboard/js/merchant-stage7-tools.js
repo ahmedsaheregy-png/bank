@@ -155,26 +155,44 @@
     function renderMerchantVoluntaryRefund(body) {
         body.innerHTML =
             '<div style="background:#fff7ed;border:1.5px solid #fb923c;border-radius:12px;padding:16px;">' +
-                '<h4 style="margin:0 0 8px 0;color:#9a3412;">↩️ مرتجع فاتورة طوعي للعميل (خلال الشهر المحاسبي المفتوح)</h4>' +
-                '<p style="font-size:0.82rem;color:#334155;margin:0 0 10px 0;">في حال إرجاع العميل للبضاعة، أدخل معرّف العملية (`UUID`) لعكس القيد آلياً واسترداد العمولة لرصيد المتجر وتعديل صندوق هدف العضو.</p>' +
+                '<h4 style="margin:0 0 8px 0;color:#9a3412;">↩️ مصافحة مرتجع الفاتورة بـ OTP (خلال نافذة الـ 14 يوماً قبل الصرف)</h4>' +
+                '<p style="font-size:0.82rem;color:#334155;margin:0 0 10px 0;">⚠️ لا تُسلِّم النقد للعميل قبل تأكيد رمز التحقق (OTP) أو موافقته في التطبيق؛ وبعد الصرف في يوم 15 يتحمل التاجر وحده المرتجع خارج المنصة.</p>' +
                 '<input id="svRefTxId" type="text" placeholder="معرّف الفاتورة (Transaction UUID)" class="form-control" style="margin-bottom:8px;">' +
-                '<input id="svRefReason" type="text" value="مرتجع بضاعة طوعي بطلب العميل" class="form-control" style="margin-bottom:10px;">' +
-                '<button type="button" class="btn btn-primary" onclick="svExecMerchantVoluntaryRefund()">↩️ تنفيذ المرتجع وعكس القيد</button>' +
+                '<input id="svRefReason" type="text" value="مرتجع بضاعة طوعي بطلب العميل" class="form-control" style="margin-bottom:8px;">' +
+                '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">' +
+                    '<button type="button" class="btn btn-primary" onclick="svExecMerchantVoluntaryRefund(\'request_otp\')">١. إرسال OTP للعميل</button>' +
+                '</div>' +
+                '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;border-top:1px dashed #fdba74;padding-top:10px;">' +
+                    '<input id="svRefOtpCode" type="text" maxlength="6" placeholder="رمز OTP من العميل (6 أرقام)" class="form-control" style="max-width:220px;">' +
+                    '<button type="button" class="btn btn-outline" onclick="svExecMerchantVoluntaryRefund(\'confirm_otp\')">٢. تأكيد OTP وإلغاء الفاتورة</button>' +
+                '</div>' +
             '</div>';
     }
 
-    window.svExecMerchantVoluntaryRefund = async function () {
+    window.svExecMerchantVoluntaryRefund = async function (mode) {
         const m = curMerchant();
+        const mMode = mode || 'request_otp';
         try {
-            await window.SAWYAN.API.merchantManageBranchesAndRefunds({
+            const res = await window.SAWYAN.API.merchantManageBranchesAndRefunds({
                 merchantId: m.id,
                 action: 'voluntary_tx_refund',
                 payload: {
                     transaction_id: document.getElementById('svRefTxId').value.trim(),
-                    reason: document.getElementById('svRefReason').value.trim()
+                    reason: document.getElementById('svRefReason').value.trim(),
+                    mode: mMode,
+                    otp_code: mMode === 'confirm_otp' ? (document.getElementById('svRefOtpCode')?.value || '').trim() : null
                 }
             });
-            alert('✅ تم تنفيذ المرتجع واسترداد العمولة لرصيد المتجر بنجاح!');
+            const flow = res && res.return_flow ? res.return_flow : res;
+            if (flow && flow.ok === false) {
+                alert(flow.status === 'locked'
+                    ? '🔒 تم قفل رمز OTP بعد استنفاد 5 محاولات خاطئة.'
+                    : `⚠️ رمز OTP غير صحيح — المحاولات المتبقية: ${flow.attempts_remaining ?? 0}`);
+                return;
+            }
+            alert(mMode === 'request_otp'
+                ? '✅ تم إرسال رمز OTP وطلب الموافقة لتطبيق العميل (لا يظهر للتاجر). أدخل الرمز عند تسلمك إياه من العميل.'
+                : '✅ تم تأكيد OTP وعكس الفاتورة واسترداد العمولة لرصيد المتجر بنجاح!');
         } catch (err) { alert('❌ ' + err.message); }
     };
 

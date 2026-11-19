@@ -85,7 +85,7 @@ def main():
         icon = "PASS" if passed else "FAIL"
         print(f" [{icon}] {name} {('— ' + str(detail)) if detail else ''}")
 
-    # 1. Verify 100% RLS coverage on all 43 tables in `sawyan` and `sawyan_demo`
+    # 1. Verify 100% RLS coverage on all 44 tables in `sawyan` and `sawyan_demo`
     rls_res = run_sql("""
         SELECT
             (SELECT COUNT(*) FROM pg_tables WHERE schemaname = 'sawyan' AND rowsecurity = true) AS prod_rls_on,
@@ -94,8 +94,8 @@ def main():
             (SELECT COUNT(*) FROM pg_tables WHERE schemaname = 'sawyan_demo' AND rowsecurity = false) AS demo_rls_off;
     """, token)[0]
     record(
-        "P45-01: 100% RLS Enabled across all 43 tables in sawyan & sawyan_demo",
-        rls_res["prod_rls_on"] == 43 and rls_res["prod_rls_off"] == 0 and rls_res["demo_rls_on"] == 43 and rls_res["demo_rls_off"] == 0,
+        "P45-01: 100% RLS Enabled across all tables in sawyan & sawyan_demo",
+        rls_res["prod_rls_on"] >= 43 and rls_res["prod_rls_off"] == 0 and rls_res["demo_rls_on"] >= 43 and rls_res["demo_rls_off"] == 0,
         rls_res
     )
 
