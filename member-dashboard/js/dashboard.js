@@ -29,7 +29,7 @@ let treeUiState = {
     tableColorFilter: 'ALL',
     radarMode: 'near_target_50_99',
     radarRows: null,
-    zoom: 0.72,
+    zoom: 1,
     panX: 0,
     panY: 10
 };
@@ -425,7 +425,7 @@ function renderHomePage() {
                     ${esc(fmtLocalFromUsd(actualMonthUsd))} <span style="font-size:0.86rem;font-weight:700;">(${fmtUsd(actualMonthUsd)})</span>
                 </div>
                 <div style="font-size:0.8rem;color:#92400e;line-height:1.55;">
-                    <div>🟢 مؤهلون من فريقك: <strong>${(tree.nodes || []).filter(n => (parseInt(String(n.structural_me || '1').replace(/\D/g, ''), 10) || 1) >= 2 && n.team_bucket === 'COMMISSION_TEAM').length}</strong> (ومقعدك الشخصي 1/${homePlan.s01})</div>
+                    <div>🟢 مؤهلون من فريقك: <strong>${(tree.nodes || []).filter(n => (parseInt(String(n.structural_me || '1').replace(/\D/g, ''), 10) || 1) >= 2 && n.team_bucket === 'COMMISSION_TEAM').length}</strong> • حالتك: <strong>${isQual ? `مؤهل (1/${homePlan.s01})` : `غير مؤهل بعد (${Math.round(pct)}%)`}</strong></div>
                     <div>🟠 برتقالي محتمل عند إكمالهم الهدف: <strong>+${esc(fmtLocalFromUsd(expectedOrangeUsd))}</strong> (${fmtUsd(expectedOrangeUsd)})</div>
                 </div>
                 <button type="button" onclick="goToPage('tree')" class="btn btn-outline btn-sm" style="margin-top:10px;border-color:#d97706;color:#92400e;">🌳 استعرض شجرة العمولات كاملة</button>
@@ -931,6 +931,9 @@ function loadTree() {
     const actualEarnUsd = Number(tree.actual_earnings_usd || 0);
     const expOrangeUsd = Number(tree.expected_orange_earnings_usd || 0);
     const totalTeamCount = tree.total_team_count !== undefined ? tree.total_team_count : Math.max(0, nodes.length - 1);
+    const treeTotalIncludingSelf = totalTeamCount + 1;
+    const selfNode = nodes.find(n => (parseInt(String(n.structural_me || '1').replace(/\D/g, ''), 10) || 1) === 1) || null;
+    const selfIsQualified = !!(selfNode && (selfNode.visual_color === 'GREEN' || selfNode.node_color === 'GREEN'));
     const teamCommCount = nodes.filter(n => {
         const d = parseInt(String(n.structural_me || '1').replace(/\D/g, ''), 10) || 1;
         return d >= 2 && n.team_bucket === 'COMMISSION_TEAM';
@@ -977,21 +980,21 @@ function loadTree() {
                     </div>
                 </div>
                 <div style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.22);padding:5px 12px;border-radius:10px;font-family:monospace;font-weight:900;font-size:0.86rem;color:#fef08a;direction:ltr;">
-                    ${totalTeamCount}M : ${leftArmCnt}L / ${rightArmCnt}R
+                    ${treeTotalIncludingSelf}M (You + ${leftArmCnt}L / ${rightArmCnt}R)
                 </div>
             </div>
 
-            <!-- الأعداد الثلاثة المتسقة بدون أي تناقض -->
+            <!-- الأعداد الثلاثة المتسقة بدون أي تناقض (تشمل العضو نفسه كجيل 1) -->
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px;text-align:center;margin-bottom:12px;">
                 <div style="background:rgba(255,255,255,0.08);padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,0.18);">
                     <div style="font-size:0.78rem;color:#e2e8f0;font-weight:800;">1️⃣ إجمالي أعضاء الشجرة</div>
-                    <strong style="display:block;font-size:1.3rem;color:#ffffff;margin:3px 0;">${totalTeamCount} عضواً</strong>
-                    <div style="font-size:0.73rem;color:#fde68a;">يمين ${rightArmCnt} • يسار ${leftArmCnt}</div>
+                    <strong style="display:block;font-size:1.3rem;color:#ffffff;margin:3px 0;">${treeTotalIncludingSelf} ${treeTotalIncludingSelf === 1 ? 'عضو' : 'عضواً'}</strong>
+                    <div style="font-size:0.73rem;color:#fde68a;">أنت + ${totalTeamCount} بالفريق (يمين ${rightArmCnt} • يسار ${leftArmCnt})</div>
                 </div>
                 <div style="background:rgba(16,185,129,0.16);padding:10px;border-radius:12px;border:1px solid rgba(52,211,153,0.45);">
                     <div style="font-size:0.78rem;color:#a7f3d0;font-weight:800;">2️⃣ فريق العمولات (قبل الستوبر)</div>
-                    <strong style="display:block;font-size:1.3rem;color:#34d399;margin:3px 0;">${teamCommCount} مؤهلين</strong>
-                    <div style="font-size:0.72rem;color:#cbd5e1;">مؤهلون خضر من فريقك • مقعدك (1/${lensPlan.s01})</div>
+                    <strong style="display:block;font-size:1.3rem;color:#34d399;margin:3px 0;">${teamCommCount + (selfIsQualified ? 1 : 0)} مؤهل</strong>
+                    <div style="font-size:0.72rem;color:#cbd5e1;">${selfIsQualified ? `أنت (1/${lensPlan.s01}) + ${teamCommCount} من فريقك` : `${teamCommCount} من فريقك • أنت غير مؤهل بعد`}</div>
                 </div>
                 <div style="background:rgba(148,163,184,0.14);padding:10px;border-radius:12px;border:1px solid rgba(148,163,184,0.38);">
                     <div style="font-size:0.78rem;color:#cbd5e1;font-weight:800;">3️⃣ الفريق الرديف (D26 مجمّع)</div>
@@ -1059,7 +1062,7 @@ function loadTree() {
                 <button type="button" class="hud-dpad-btn" onclick="adjustTreeZoom(-0.12)" title="تصغير">−</button>
             </div>
 
-            <div id="treeEarthStage" class="tree-earth-stage" style="transform: translate(calc(-50% + ${treeUiState.panX}px), ${treeUiState.panY}px) scale(${treeUiState.zoom});">
+            <div id="treeEarthStage" class="tree-earth-stage" style="transform: translate(calc(-50% + ${Math.round(treeUiState.panX)}px), ${Math.round(treeUiState.panY)}px)${treeUiState.zoom !== 1 ? ` scale(${treeUiState.zoom})` : ''};">
                 <svg id="treeSvgOverlay" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;"></svg>
                 <div id="treeLevelsContainer" style="position:relative;z-index:1;display:flex;flex-direction:column;gap:28px;min-width:max-content;">
                     ${depthKeys.map(d => `
@@ -1071,6 +1074,10 @@ function loadTree() {
                                 const vColor = n.visual_color || (n.team_bucket === 'RESERVE_TEAM' ? 'GRAY' : n.node_color);
                                 const pal = visualPalette[vColor] || visualPalette.WHITE;
                                 const isRootSelf = d === 1;
+                                const pctVal = Math.round(Number(n.target_pct || 0));
+                                const circleMainLabel = isRootSelf
+                                    ? (vColor === 'GREEN' ? `👑 1/${lensPlan.s01}` : `👑 ${pctVal}%`)
+                                    : (n.stopper_slot ? esc(n.stopper_slot) : `#${n.member_code}`);
                                 const matchSearch = !searchQ || `${n.member_code} ${n.full_name}`.toLowerCase().includes(searchQ);
                                 const isOrangeHit = (n.node_color === 'ORANGE' && d >= 2 && d <= 11);
                                 let dimStyle = '';
@@ -1082,8 +1089,8 @@ function loadTree() {
                                     return `
                                         <div class="tree-circle-node tree-node-card" data-code="${n.member_code}" data-parent="${pCode}" style="${dimStyle}" onclick="openTreeNodeDetailModal(${n.member_code})">
                                             <div class="tree-circle-disc ${isRootSelf ? 'c-root-disc' : ''}" style="background:${pal.bg};border-color:${pal.border};color:${pal.circleText};">
-                                                <span>${isRootSelf ? '👑' : ''}${n.stopper_slot ? esc(n.stopper_slot) : `#${n.member_code}`}</span>
-                                                <span style="font-size:0.62rem;opacity:0.9;">${esc(n.residency_country_code || '')}</span>
+                                                <span>${circleMainLabel}</span>
+                                                <span style="font-size:0.64rem;opacity:0.9;">${esc(n.residency_country_code || '')}</span>
                                             </div>
                                             <div style="font-size:0.76rem;font-weight:800;color:#0f172a;white-space:nowrap;max-width:104px;overflow:hidden;text-overflow:ellipsis;margin-top:4px;">#${n.member_code} ${esc(n.full_name)}</div>
                                         </div>
@@ -1281,10 +1288,10 @@ window.panTreeCamera = function (dx, dy) {
     treeUiState.panX += dx;
     treeUiState.panY += dy;
     const stage = document.getElementById('treeEarthStage');
-    if (stage) stage.style.transform = `translate(calc(-50% + ${treeUiState.panX}px), ${treeUiState.panY}px) scale(${treeUiState.zoom})`;
+    if (stage) stage.style.transform = `translate(calc(-50% + ${Math.round(treeUiState.panX)}px), ${Math.round(treeUiState.panY)}px)${treeUiState.zoom !== 1 ? ` scale(${treeUiState.zoom})` : ''}`;
 };
 window.resetTreeViewport = function () {
-    treeUiState.zoom = 0.72;
+    treeUiState.zoom = 1;
     treeUiState.panX = 0;
     treeUiState.panY = 10;
     loadTree();

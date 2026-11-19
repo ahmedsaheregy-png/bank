@@ -2694,7 +2694,6 @@ body {
     top: 24px;
     left: 50%;
     transform-origin: top center;
-    will-change: transform;
 }
 
 .hud-dpad-panel {
@@ -2769,10 +2768,8 @@ body {
 .tree-circle-disc.c-root-disc {
     width: 84px;
     height: 84px;
-    background: linear-gradient(135deg, #047857 0%, #065f46 100%) !important;
-    color: #ffffff !important;
     border: 4px solid #facc15 !important;
-    box-shadow: 0 6px 20px rgba(4, 120, 87, 0.45);
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.22), 0 0 0 2px rgba(250, 204, 21, 0.35);
 }
 
 .tree-circle-node:hover .tree-circle-disc {

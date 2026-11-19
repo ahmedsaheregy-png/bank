@@ -1559,6 +1559,11 @@
                 syncLayoutBelowRibbon();
                 if (typeof window !== 'undefined') {
                     window.addEventListener('resize', syncLayoutBelowRibbon);
+                    if (typeof ResizeObserver !== 'undefined') {
+                        const ro = new ResizeObserver(() => syncLayoutBelowRibbon());
+                        ro.observe(bar);
+                    }
+                    setTimeout(syncLayoutBelowRibbon, 250);
                 }
             }
         }
