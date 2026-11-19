@@ -117,8 +117,9 @@ SECURITY DEFINER
 SET search_path = pg_catalog, pg_temp
 AS $$
 DECLARE
-    v_countries  JSONB;
-    v_categories JSONB;
+    v_countries     JSONB;
+    v_all_countries JSONB;
+    v_categories    JSONB;
 BEGIN
     SELECT COALESCE(jsonb_agg(row_to_json(t)::jsonb ORDER BY t.country_code ASC), '[]'::jsonb)
       INTO v_countries
@@ -160,6 +161,28 @@ BEGIN
            WHERE c.is_active = true
       ) t;
 
+    SELECT COALESCE(jsonb_agg(row_to_json(ac)::jsonb ORDER BY ac.is_active DESC, ac.country_code ASC), '[]'::jsonb)
+      INTO v_all_countries
+      FROM (
+          SELECT c.id,
+                 c.country_code,
+                 c.country_name_i18n,
+                 c.currency_code,
+                 c.iana_timezone,
+                 c.is_active,
+                 COALESCE((
+                     SELECT jsonb_agg(jsonb_build_object(
+                         'geoname_id', g.geoname_id,
+                         'city_name', g.city_name,
+                         'asciiname', g.asciiname,
+                         'admin1_name', g.admin1_name
+                     ) ORDER BY g.city_name ASC)
+                     FROM sawyan.geonames_locations g
+                     WHERE g.country_code = c.country_code
+                 ), '[]'::jsonb) AS cities
+            FROM sawyan.countries c
+      ) ac;
+
     SELECT COALESCE(jsonb_agg(jsonb_build_object(
         'id', cat.id,
         'slug', cat.slug,
@@ -171,6 +194,7 @@ BEGIN
 
     RETURN jsonb_build_object(
         'countries', v_countries,
+        'all_countries', v_all_countries,
         'categories', v_categories
     );
 END;
@@ -394,11 +418,10 @@ BEGIN
 
     SELECT id, country_code INTO v_res_cid, v_country_code
       FROM sawyan.countries
-     WHERE country_code = upper(trim(COALESCE(p_residency_country_code, 'EG')))
-       AND is_active = true;
+     WHERE country_code = upper(trim(COALESCE(p_residency_country_code, 'EG')));
 
     IF NOT FOUND THEN
-        RAISE EXCEPTION 'COUNTRY_NOT_ACTIVE_OR_REGISTERED: %', p_residency_country_code;
+        RAISE EXCEPTION 'COUNTRY_NOT_REGISTERED: %', p_residency_country_code;
     END IF;
 
     IF p_nationality_country_code IS NOT NULL THEN

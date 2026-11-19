@@ -764,7 +764,26 @@
             };
 
             function getCountryEntry(countryCode) {
-                return SAWYAN_COUNTRIES_DB[countryCode] || SAWYAN_COUNTRIES_DB.OTHER;
+                if (SAWYAN_COUNTRIES_DB[countryCode]) return SAWYAN_COUNTRIES_DB[countryCode];
+                const world = (window.SAWYAN && Array.isArray(window.SAWYAN.Countries))
+                    ? window.SAWYAN.Countries.find(w => w.code === countryCode)
+                    : null;
+                if (world) {
+                    return {
+                        name: world.nameAr || world.nameEn || countryCode,
+                        flag: world.flag || '🌍',
+                        dialCode: world.dialCode || '+',
+                        phoneLength: 15,
+                        phoneFlexible: true,
+                        phonePlaceholder: 'أدخل رقم الهاتف المحلي (7 إلى 15 رقماً)',
+                        idLabel: 'رقم جواز السفر / الهوية المحلية (اختياري الآن)',
+                        idMax: 20,
+                        cities: {
+                            main: { name: 'المدينة الرئيسية', districts: ['وسط المدينة', 'أونلاين / نطاق عالمي'] }
+                        }
+                    };
+                }
+                return SAWYAN_COUNTRIES_DB.OTHER;
             }
 
             function handleCountryChange(countryCode, preferredCity) {
@@ -823,9 +842,22 @@
             function validatePhoneDigits(el) {
                 const countryCode = document.getElementById('countryOfResidence').value;
                 const c = getCountryEntry(countryCode);
-                const requiredLen = c ? c.phoneLength : 11;
-                const currentLen = el.value.length;
+                const digitsOnly = (el.value || '').replace(/\D/g, '');
+                const currentLen = digitsOnly.length;
 
+                if (c && c.phoneFlexible) {
+                    document.getElementById('phoneCounterText').innerText = currentLen + ' خانة';
+                    if (currentLen >= 7 && currentLen <= 15) {
+                        document.getElementById('phoneValidationMsg').innerText = '✅ رقم هاتف دولي صالح (' + c.name + ')';
+                        document.getElementById('phoneValidationMsg').style.color = '#059669';
+                    } else {
+                        document.getElementById('phoneValidationMsg').innerText = '⚠️ أدخل من 7 إلى 15 رقماً بدون المفتاح الدولي';
+                        document.getElementById('phoneValidationMsg').style.color = '#dc2626';
+                    }
+                    return;
+                }
+
+                const requiredLen = c ? c.phoneLength : 11;
                 document.getElementById('phoneCounterText').innerText = currentLen + ' / ' + requiredLen + ' خانة';
 
                 if (currentLen === requiredLen) {
@@ -890,7 +922,7 @@
     <script src="../shared/components/logo.js"></script>
     <script src="../js/demo-data.js"></script>
     <script src="../shared/data/countries.js"></script>
-    <script src="js/register.js"></script>
+    <script src="js/register.js?v=20261119_all_countries"></script>
 </body>
 
 </html>

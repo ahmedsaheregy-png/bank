@@ -58,44 +58,123 @@ async function waitForSawyanApi() {
 async function loadLiveCountriesAndCities(preferredCountry, preferredCity) {
     try {
         await waitForSawyanApi();
-        if (!(window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.getPublicActiveCountriesAndCities)) return;
-        const pub = await window.SAWYAN.API.getPublicActiveCountriesAndCities();
-        const countries = (pub && pub.countries) || [];
-        if (!countries.length) return;
-        liveCountriesCache = countries;
+        let activeCountries = [];
+        let dbAllCountries = [];
+        if (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.getPublicActiveCountriesAndCities) {
+            const pub = await window.SAWYAN.API.getPublicActiveCountriesAndCities();
+            activeCountries = (pub && pub.countries) || [];
+            dbAllCountries = (pub && pub.all_countries) || activeCountries;
+        }
+
+        const worldList = (window.SAWYAN && Array.isArray(window.SAWYAN.Countries)) ? window.SAWYAN.Countries : [];
+        const worldByCode = new Map(worldList.map(w => [w.code, w]));
+        const dbByCode = new Map(dbAllCountries.map(c => [String(c.country_code || '').trim().toUpperCase(), c]));
+
+        // Merge DB countries + full world ISO list so every member worldwide can register
+        const mergedMap = new Map();
+        dbAllCountries.forEach(c => {
+            const code = String(c.country_code || '').trim().toUpperCase();
+            if (!code) return;
+            const w = worldByCode.get(code) || {};
+            mergedMap.set(code, {
+                country_code: code,
+                nameAr: (c.country_name_i18n && c.country_name_i18n.ar) || w.nameAr || code,
+                nameEn: (c.country_name_i18n && c.country_name_i18n.en) || w.nameEn || code,
+                currency_code: c.currency_code || 'USD',
+                flag: w.flag || '🌍',
+                dialCode: w.dialCode || DIAL_MAP[code] || '+',
+                is_active: Boolean(c.is_active),
+                cities: Array.isArray(c.cities) ? c.cities : []
+            });
+        });
+        worldList.forEach(w => {
+            const code = String(w.code || '').trim().toUpperCase();
+            if (!code || mergedMap.has(code)) return;
+            mergedMap.set(code, {
+                country_code: code,
+                nameAr: w.nameAr || w.nameEn || code,
+                nameEn: w.nameEn || code,
+                currency_code: 'USD',
+                flag: w.flag || '🌍',
+                dialCode: w.dialCode || '+',
+                is_active: false,
+                cities: []
+            });
+        });
+
+        const mergedAll = Array.from(mergedMap.values());
+        if (!mergedAll.length) return;
+        liveCountriesCache = mergedAll;
+
+        const activeList = mergedAll.filter(c => c.is_active).sort((a, b) => a.nameAr.localeCompare(b.nameAr, 'ar'));
+        const globalList = mergedAll.filter(c => !c.is_active).sort((a, b) => a.nameAr.localeCompare(b.nameAr, 'ar'));
 
         const resSel = document.getElementById('countryOfResidence');
         const natSel = document.getElementById('nationality');
         const citySel = document.getElementById('citySelect');
 
+        function updateCountryBanner(code) {
+            if (!resSel) return;
+            let banner = document.getElementById('globalCountryInfoBanner');
+            if (!banner) {
+                banner = document.createElement('div');
+                banner.id = 'globalCountryInfoBanner';
+                banner.style.cssText = 'display:none;margin-top:8px;padding:10px 12px;border-radius:10px;background:#eff6ff;border:1px solid #93c5fd;color:#1e3a8a;font-size:0.78rem;font-weight:700;line-height:1.55;';
+                resSel.parentNode.appendChild(banner);
+            }
+            const entry = mergedMap.get(code);
+            if (entry && !entry.is_active) {
+                banner.style.display = 'block';
+                banner.innerHTML = `🌍 <strong>التسجيل العالمي المفتوح:</strong> يمكنك التسجيل الآن وبناء فريقك في كل الدول النشطة عبر <strong>التأهل التعويضي (D1)</strong>، وستتفعّل المتاجر المحلية في <strong>${entry.nameAr}</strong> فور فتح بوابة الدولة.`;
+            } else {
+                banner.style.display = 'none';
+            }
+        }
+
+        function syncPhoneAndCityForCountry(code, prefCity) {
+            const entry = mergedMap.get(code);
+            if (typeof window.handleCountryChange === 'function') {
+                window.handleCountryChange(code, prefCity);
+            }
+            const flagEl = document.getElementById('countryFlag');
+            const dialEl = document.getElementById('countryDialCode');
+            if (entry && flagEl) flagEl.textContent = entry.flag || '🌍';
+            if (entry && dialEl && entry.dialCode) dialEl.textContent = entry.dialCode;
+            populateLiveCities(code, prefCity);
+            updateCountryBanner(code);
+        }
+
         if (resSel) {
-            const curVal = preferredCountry || resSel.value || countries[0].country_code;
-            resSel.innerHTML = countries.map(c => {
-                const nameAr = (c.country_name_i18n && c.country_name_i18n.ar) || c.country_code;
-                return `<option value="${c.country_code}">${nameAr} (${c.currency_code})</option>`;
-            }).join('');
-            resSel.value = countries.some(c => c.country_code === curVal) ? curVal : countries[0].country_code;
+            const defaultCode = (preferredCountry && mergedMap.has(preferredCountry))
+                ? preferredCountry
+                : (mergedMap.has('EG') ? 'EG' : mergedAll[0].country_code);
+
+            let optHtml = '';
+            if (activeList.length) {
+                optHtml += `<optgroup label="🟢 الدول النشطة حالياً (متاجر محلية مفعّلة)">` +
+                    activeList.map(c => `<option value="${c.country_code}">${c.flag} ${c.nameAr} (${c.currency_code}) — نشطة</option>`).join('') +
+                    `</optgroup>`;
+            }
+            if (globalList.length) {
+                optHtml += `<optgroup label="🌍 باقي دول العالم (التسجيل العالمي المفتوح)">` +
+                    globalList.map(c => `<option value="${c.country_code}">${c.flag} ${c.nameAr} (${c.currency_code})</option>`).join('') +
+                    `</optgroup>`;
+            }
+            resSel.innerHTML = optHtml;
+            resSel.value = defaultCode;
 
             resSel.onchange = function () {
-                populateLiveCities(this.value, null);
-                const dialEl = document.getElementById('countryDialCode');
-                if (dialEl && DIAL_MAP[this.value]) dialEl.textContent = DIAL_MAP[this.value];
+                syncPhoneAndCityForCountry(this.value, null);
             };
         }
 
         if (natSel) {
-            const natVal = preferredCountry || natSel.value || (resSel ? resSel.value : countries[0].country_code);
-            natSel.innerHTML = countries.map(c => {
-                const nameAr = (c.country_name_i18n && c.country_name_i18n.ar) || c.country_code;
-                return `<option value="${c.country_code}">${nameAr}</option>`;
-            }).join('');
-            if (countries.some(c => c.country_code === natVal)) natSel.value = natVal;
-        }
-
-        if (resSel) {
-            const dialEl = document.getElementById('countryDialCode');
-            if (dialEl && DIAL_MAP[resSel.value]) dialEl.textContent = DIAL_MAP[resSel.value];
-            populateLiveCities(resSel.value, preferredCity);
+            const allSorted = mergedAll.slice().sort((a, b) => a.nameAr.localeCompare(b.nameAr, 'ar'));
+            const natVal = (preferredCountry && mergedMap.has(preferredCountry))
+                ? preferredCountry
+                : (resSel ? resSel.value : 'EG');
+            natSel.innerHTML = allSorted.map(c => `<option value="${c.country_code}">${c.flag} ${c.nameAr}</option>`).join('');
+            if (mergedMap.has(natVal)) natSel.value = natVal;
         }
 
         // Ensure manual city input fallback exists
@@ -108,6 +187,10 @@ async function loadLiveCountriesAndCities(preferredCountry, preferredCity) {
             citySel.addEventListener('change', function () {
                 wrap.style.display = this.value === 'OTHER_MANUAL' ? 'block' : 'none';
             });
+        }
+
+        if (resSel) {
+            syncPhoneAndCityForCountry(resSel.value, preferredCity);
         }
     } catch (e) {
         console.warn('Live countries fallback:', e.message);
