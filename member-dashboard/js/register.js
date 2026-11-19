@@ -322,13 +322,27 @@ window.loadGeoDistrictsForCity = async function (countryCode, cityOpt, queryText
             list = Array.isArray(gAll?.results) ? gAll.results : [];
         }
 
-        // Deduplicate district names preserving curated Arabic priority order
+        const normalizeArKey = (str) => String(str || '')
+            .replace(/[\u064B-\u065F\u0670]/g, '')
+            .replace(/[أإآ]/g, 'ا')
+            .replace(/ى/g, 'ي')
+            .replace(/ة/g, 'ه')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLowerCase();
+        const isArabOrTr = new Set(['EG', 'TR', 'SA', 'AE', 'KW', 'QA', 'BH', 'OM', 'JO', 'MA', 'TN', 'DZ', 'IQ', 'LB', 'PS', 'SD', 'LY', 'YE']).has(cc);
+        const hasAnyArabic = list.some(r => /[\u0600-\u06FF]/.test(String(r.city_name || '')));
+
+        // Deduplicate district names preserving curated Arabic priority order and filtering noise
         const uniqueNames = [];
         const seen = new Set();
         for (const r of list) {
             const nm = String(r.city_name || '').trim();
-            if (!nm || seen.has(nm.toLowerCase())) continue;
-            seen.add(nm.toLowerCase());
+            if (!nm) continue;
+            if (isArabOrTr && hasAnyArabic && !/[\u0600-\u06FF]/.test(nm)) continue;
+            const key = normalizeArKey(nm);
+            if (!key || seen.has(key)) continue;
+            seen.add(key);
             uniqueNames.push(nm);
         }
 

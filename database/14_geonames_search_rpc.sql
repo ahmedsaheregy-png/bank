@@ -1,8 +1,9 @@
 -- ============================================================================
--- SAWYAN ECOSYSTEM — Stage 7 Extension: World GeoNames Live Search RPC
+-- SAWYAN ECOSYSTEM — Stage 7 Extension: World GeoNames Live Search RPC (Clean AR)
 -- ============================================================================
 -- Searches world cities & districts across all 168 seeded countries in
--- sawyan.geonames_locations with GIN Trigram index support and Arabic priority.
+-- sawyan.geonames_locations with GIN Trigram index support and strict
+-- curated Arabic district priority (zero mixed Latin/Persian noise).
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION sawyan.search_geonames_locations(
@@ -18,13 +19,15 @@ SECURITY DEFINER
 SET search_path = pg_catalog, pg_temp
 AS $$
 DECLARE
-    v_cc        CHAR(2);
-    v_q         TEXT;
-    v_adm       TEXT;
-    v_kind      VARCHAR(20);
-    v_lim       INT;
-    v_rows      JSONB;
-    v_total_cnt BIGINT := 0;
+    v_cc          CHAR(2);
+    v_q           TEXT;
+    v_adm         TEXT;
+    v_kind        VARCHAR(20);
+    v_lim         INT;
+    v_has_curated BOOLEAN := false;
+    v_is_arab     BOOLEAN := false;
+    v_rows        JSONB;
+    v_total_cnt   BIGINT := 0;
 BEGIN
     v_cc   := upper(trim(COALESCE(p_country_code, 'EG')));
     v_q    := trim(COALESCE(p_query, ''));
@@ -35,10 +38,30 @@ BEGIN
     END IF;
     v_lim := LEAST(GREATEST(COALESCE(p_limit, 60), 1), 150);
 
+    v_is_arab := v_cc IN (
+        'EG', 'SA', 'AE', 'KW', 'QA', 'BH', 'OM', 'JO',
+        'MA', 'TN', 'DZ', 'IQ', 'LB', 'PS', 'SD', 'LY',
+        'YE', 'SY', 'MR', 'SO', 'DJ', 'KM'
+    );
+
     SELECT COUNT(*)
       INTO v_total_cnt
       FROM sawyan.geonames_locations
      WHERE country_code = v_cc;
+
+    IF v_kind = 'districts' THEN
+        SELECT EXISTS (
+            SELECT 1
+              FROM sawyan.geonames_locations g
+             WHERE g.country_code = v_cc
+               AND COALESCE(g.alternate_names, '') LIKE '%__CURATED_AR__%'
+               AND (
+                   v_adm IS NULL
+                   OR lower(COALESCE(g.admin1_name, '')) = lower(v_adm)
+                   OR lower(COALESCE(g.admin1_name, '')) LIKE '%' || lower(v_adm) || '%'
+               )
+        ) INTO v_has_curated;
+    END IF;
 
     SELECT COALESCE(jsonb_agg(row_to_json(res)::jsonb), '[]'::jsonb)
       INTO v_rows
@@ -63,8 +86,13 @@ BEGIN
                  v_kind = 'all'
                  OR (v_kind = 'cities' AND COALESCE(g.alternate_names, '') NOT LIKE '%__GEO_DISTRICT__%')
                  OR (v_kind = 'districts' AND (
-                     COALESCE(g.alternate_names, '') LIKE '%__GEO_DISTRICT__%'
-                     OR (v_adm IS NOT NULL AND lower(COALESCE(g.admin1_name, '')) = lower(v_adm))
+                     (v_has_curated AND COALESCE(g.alternate_names, '') LIKE '%__CURATED_AR__%')
+                     OR (NOT v_has_curated AND (
+                         COALESCE(g.alternate_names, '') LIKE '%__GEO_DISTRICT__%'
+                         OR (v_adm IS NOT NULL AND lower(COALESCE(g.admin1_name, '')) = lower(v_adm))
+                     ) AND (
+                         NOT v_is_arab OR (g.city_name ~ '[ا-يأإآةى]' AND g.city_name !~ '[پچژگکیہ]')
+                     ))
                  ))
              )
              AND (
@@ -85,6 +113,7 @@ BEGIN
     RETURN jsonb_build_object(
         'country_code', v_cc,
         'total_in_country', v_total_cnt,
+        'curated_only', v_has_curated,
         'results', COALESCE(v_rows, '[]'::jsonb)
     );
 END;
