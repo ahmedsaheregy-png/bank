@@ -54,6 +54,28 @@ def main():
         print(f"ERROR: Legacy backup missing at {BACKUP_FILE}. Aborting schema rebuild!", file=sys.stderr)
         sys.exit(1)
 
+    allow_destructive = "--allow-destructive-reset" in sys.argv
+    if not allow_destructive:
+        try:
+            existing = run_sql("""
+                SELECT
+                    (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'sawyan' AND table_name = 'members') AS has_members_tbl,
+                    COALESCE((SELECT COUNT(*) FROM sawyan.members WHERE member_code > 0), 0) AS real_members,
+                    COALESCE((SELECT COUNT(*) FROM sawyan.transactions), 0) AS real_txs;
+            """, token)
+            info = existing[0] if existing else {}
+            if info.get("has_members_tbl", 0) > 0 and (info.get("real_members", 0) > 0 or info.get("real_txs", 0) > 0):
+                print(
+                    f"ERROR: Production schema `sawyan` already contains live data "
+                    f"(members={info.get('real_members')}, transactions={info.get('real_txs')}). "
+                    f"Use non-destructive migration `11_migration_zero_liability_d5.sql` instead, "
+                    f"or pass `--allow-destructive-reset` explicitly if wiping is intended.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+        except Exception:
+            pass
+
     print("1. Resetting and rebuilding schemas (`sawyan` Production & `sawyan_demo` Parallel)...")
     run_sql("DROP SCHEMA IF EXISTS sawyan CASCADE; DROP SCHEMA IF EXISTS sawyan_demo CASCADE;", token, "Drop Legacy Schemas")
 
@@ -66,6 +88,7 @@ def main():
     sql_07 = read_sql("07_remediation_security_and_settlement_patch.sql")
     sql_08 = read_sql("08_stage5_merchant_pos_and_portal_rpcs.sql")
     sql_09 = read_sql("09_stage6_admin_governance_and_launch_rpcs.sql")
+    sql_10 = read_sql("10_stage7_operational_completeness_rpcs.sql")
     sql_03b = read_sql("03b_seed_demo_tree_48_members.sql")
 
     # Deploy Production (`sawyan`)
@@ -78,6 +101,7 @@ def main():
     run_sql(sql_07, token, "Production 07_remediation_security_and_settlement_patch")
     run_sql(sql_08, token, "Production 08_stage5_merchant_pos_and_portal_rpcs")
     run_sql(sql_09, token, "Production 09_stage6_admin_governance_and_launch_rpcs")
+    run_sql(sql_10, token, "Production 10_stage7_operational_completeness_rpcs")
 
     # Deploy Parallel Demo (`sawyan_demo`)
     run_sql(clone_sql_for_demo(sql_01), token, "Parallel Demo 01_schema_and_43_tables")
@@ -90,6 +114,7 @@ def main():
     run_sql(clone_sql_for_demo(sql_07), token, "Parallel Demo 07_remediation_security_and_settlement_patch")
     run_sql(clone_sql_for_demo(sql_08), token, "Parallel Demo 08_stage5_merchant_pos_and_portal_rpcs")
     run_sql(clone_sql_for_demo(sql_09), token, "Parallel Demo 09_stage6_admin_governance_and_launch_rpcs")
+    run_sql(clone_sql_for_demo(sql_10), token, "Parallel Demo 10_stage7_operational_completeness_rpcs")
 
     demo_stage5_seed = """
     UPDATE sawyan_demo.members
@@ -127,6 +152,23 @@ def main():
         ('سارة الامتثال — مسؤول الهوية (KYC)', 'demo.kyc@sawyan.local', gen_random_uuid(), 'kyc_officer', false, true, true, extensions.crypt('Demo@Kyc2026', extensions.gen_salt('bf', 10)))
     ON CONFLICT (email) DO UPDATE
        SET password_hash = EXCLUDED.password_hash, role = EXCLUDED.role, is_active = true;
+
+    INSERT INTO sawyan_demo.admins (full_name, email, auth_user_id, role, must_change_password, two_factor_enabled, is_active, password_hash, metadata)
+    VALUES (
+        'المؤسس السيادي — إدارة مطلقة (Sovereign Founder)',
+        'demo.founder@sawyan.local',
+        gen_random_uuid(),
+        'approver',
+        false,
+        true,
+        true,
+        extensions.crypt('Demo@Founder2026', extensions.gen_salt('bf', 10)),
+        '{"is_sovereign_founder": true}'::jsonb
+    )
+    ON CONFLICT (email) DO UPDATE
+       SET full_name = EXCLUDED.full_name, role = EXCLUDED.role, must_change_password = false,
+           is_active = true, password_hash = EXCLUDED.password_hash,
+           metadata = COALESCE(sawyan_demo.admins.metadata, '{}'::jsonb) || '{"is_sovereign_founder": true}'::jsonb;
 
     INSERT INTO sawyan_demo.partners (
         partner_code, full_name, email, phone, auth_user_id, partnership_scope, scope_targets, profit_basis, profit_share_pct, contract_ref, is_active

@@ -19,14 +19,15 @@ GRANT SELECT ON sawyan.monthly_target_boxes, sawyan.transactions, sawyan.wallets
       sawyan.surplus_distributions, sawyan.compensatory_settlements, sawyan.b2b_tax_invoices,
       sawyan.notifications, sawyan.tree_closure, sawyan.academy_courses, sawyan.orders TO authenticated;
 
--- سحب كافة صلاحيات التعديل المباشر من العميل على الدفاتر وسجلات التدقيق وجداول التسوية (D21)
+-- سحب كافة صلاحيات التعديل المباشر من العميل على الدفاتر وسجلات التدقيق وجداول التسوية ومصافحة OTP (D21 + S05)
 REVOKE ALL ON sawyan.audit_logs, sawyan.journal_entries, sawyan.journal_lines,
        sawyan.chart_of_accounts, sawyan.settlement_cycles, sawyan.psp_settlement_batches,
-       sawyan.idempotency_keys FROM anon, authenticated;
+       sawyan.idempotency_keys, sawyan.return_requests FROM PUBLIC, anon, authenticated;
+GRANT ALL ON TABLE sawyan.return_requests TO service_role;
 REVOKE SELECT ON sawyan.merchants FROM anon;
 GRANT SELECT ON sawyan.chart_of_accounts TO authenticated;
 
--- 2. تفعيل Row Level Security على كافة الجداول الـ 43 بلا استثناء (100% RLS Coverage)
+-- 2. تفعيل Row Level Security على كافة الجداول الـ 44 بلا استثناء (100% RLS Coverage)
 ALTER TABLE sawyan.countries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sawyan.geonames_locations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sawyan.admins ENABLE ROW LEVEL SECURITY;
@@ -70,6 +71,7 @@ ALTER TABLE sawyan.complaints ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sawyan.support_tickets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sawyan.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sawyan.audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sawyan.return_requests ENABLE ROW LEVEL SECURITY;
 
 -- 3. سياسات القراءة العامة المنضبطة (بدون كشف أسرار أو هواتف أو عمولات F01 أو أرصدة تجار)
 CREATE POLICY "public_read_countries" ON sawyan.countries

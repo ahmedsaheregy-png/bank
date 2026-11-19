@@ -102,7 +102,10 @@
 
             <div id="demoSandboxPanel" class="rbac-sandbox-box">
                 <div style="font-size:0.84rem;font-weight:900;color:#92400e;">🧪 بيئة التجربة الموازية (`sawyan_demo`) — اختبار فصل المهام الحقيقي:</div>
-                <div style="font-size:0.76rem;color:#78350f;margin-top:2px;">اختر أحد الأدوار المشفرة بـ Bcrypt لتجربة دورة الإعداد والاعتماد وقفل المدقق:</div>
+                <div style="font-size:0.76rem;color:#78350f;margin-top:2px;">اختر أحد الأدوار المشفرة بـ Bcrypt لتجربة الصلاحية المطلقة أو دورة الإعداد والاعتماد وقفل المدقق:</div>
+                <button type="button" class="rbac-sandbox-btn" style="border-color:#d97706;background:#fffbeb;" onclick="quickDemoLogin('demo.founder@sawyan.local', 'Demo@Founder2026')">
+                    👑 ٠. دخول المؤسس السيادي — إدارة مطلقة فورية (Sovereign Founder)
+                </button>
                 <button type="button" class="rbac-sandbox-btn" onclick="quickDemoLogin('demo.maker@sawyan.local', 'Demo@Maker2026')">
                     💼 ١. دخول مالي مُنشئ للطلبات (Maker — Role: finance)
                 </button>
@@ -143,7 +146,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../shared/config/supabase.js"></script>
-    <script src="../shared/api/sawyan-api.js"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261118_quicklogin"></script>
     <script src="../shared/components/logo.js"></script>
     <script>
         function showLoginError(msg) {
@@ -159,6 +162,9 @@
             if (alertBox) { alertBox.className = 'login-alert'; alertBox.textContent = ''; }
             overlay.classList.add('active');
             try {
+                for (let i = 0; i < 30 && (!window.SAWYAN || !window.SAWYAN.supabase); i++) {
+                    await new Promise(r => setTimeout(r, 100));
+                }
                 await window.SAWYAN.API.authenticateAdminLogin({
                     email: email,
                     password: password,
@@ -186,6 +192,17 @@
             if (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.isDemoMode()) {
                 const sb = document.getElementById('demoSandboxPanel');
                 if (sb) sb.style.display = 'block';
+                const q = new URLSearchParams(window.location.search).get('quick');
+                const quickMap = {
+                    founder: ['demo.founder@sawyan.local', 'Demo@Founder2026'],
+                    staff: ['demo.maker@sawyan.local', 'Demo@Maker2026'],
+                    maker: ['demo.maker@sawyan.local', 'Demo@Maker2026'],
+                    checker: ['demo.checker@sawyan.local', 'Demo@Checker2026'],
+                    auditor: ['demo.auditor@sawyan.local', 'Demo@Auditor2026']
+                };
+                if (q && quickMap[q]) {
+                    window.quickDemoLogin(quickMap[q][0], quickMap[q][1]);
+                }
             }
 
             document.getElementById('loginForm').addEventListener('submit', function (e) {

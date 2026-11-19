@@ -21,6 +21,13 @@
             <h1>تسجيل الدخول</h1>
             <p class="subtitle">ادخل بكود العضوية أو البريد أو الهاتف</p>
 
+            <div id="demoQuickLoginBox" style="display:none; margin:0 0 16px; padding:12px; border-radius:12px; background:#fffbeb; border:1.5px dashed #f59e0b; text-align:center;">
+                <p style="margin:0 0 8px; font-size:0.84rem; color:#92400e; font-weight:700;">🧪 متاح في الموقع الموازي للتجربة فقط (Schema: sawyan_demo)</p>
+                <button type="button" id="demoQuickLoginBtn" class="btn btn-outline btn-block" style="border-color:#d97706; color:#92400e; font-weight:800;">
+                    ⚡ دخول تجريبي كقائد الشجرة (#1 — أحمد ساهر)
+                </button>
+            </div>
+
             <form id="loginForm" class="auth-form">
                 <div class="form-group">
                     <label>كود العضوية أو البريد الإلكتروني أو الهاتف</label>
@@ -36,13 +43,6 @@
 
                 <button type="submit" id="loginBtn" class="btn btn-primary btn-block">دخول</button>
 
-                <div id="demoQuickLoginBox" style="display:none; margin-top:14px; padding:12px; border-radius:12px; background:#fffbeb; border:1.5px dashed #f59e0b; text-align:center;">
-                    <p style="margin:0 0 8px; font-size:0.84rem; color:#92400e; font-weight:700;">🧪 متاح في الموقع الموازي للتجربة فقط (Schema: sawyan_demo)</p>
-                    <button type="button" id="demoQuickLoginBtn" class="btn btn-outline btn-block" style="border-color:#d97706; color:#92400e; font-weight:800;">
-                        ⚡ دخول تجريبي كقائد الشجرة (#1 — أحمد ساهر)
-                    </button>
-                </div>
-
                 <div class="auth-footer">
                     <p><a href="forgot-password.html" class="forgot-link">نسيت كلمة المرور؟</a></p>
                     <p>ليس لديك حساب؟ <a href="register.html">سجل الآن</a></p>
@@ -54,23 +54,12 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../shared/config/supabase.js"></script>
-    <script src="../shared/api/sawyan-api.js"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261118_quicklogin"></script>
     <script src="../shared/components/logo.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             if (window.SAWYAN && window.SAWYAN.Logo) {
                 document.getElementById('logoContainer').innerHTML = window.SAWYAN.Logo.full();
-            }
-
-            if (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.isDemoMode()) {
-                const demoBox = document.getElementById('demoQuickLoginBox');
-                const demoBtn = document.getElementById('demoQuickLoginBtn');
-                if (demoBox) demoBox.style.display = 'block';
-                if (demoBtn) {
-                    demoBtn.addEventListener('click', async function () {
-                        await performLogin('1', 'Demo@Sawyan2026');
-                    });
-                }
             }
 
             async function performLogin(identifier, password) {
@@ -80,7 +69,7 @@
                     btn.textContent = 'جاري التحقق...';
                 }
                 try {
-                    for (let i = 0; i < 15 && (!window.SAWYAN || !window.SAWYAN.supabase); i++) {
+                    for (let i = 0; i < 30 && (!window.SAWYAN || !window.SAWYAN.supabase); i++) {
                         await new Promise(r => setTimeout(r, 100));
                     }
                     const res = await window.SAWYAN.API.authenticateMemberLogin(identifier, password);
@@ -96,6 +85,20 @@
                         btn.disabled = false;
                         btn.textContent = 'دخول';
                     }
+                }
+            }
+
+            if (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.isDemoMode()) {
+                const demoBox = document.getElementById('demoQuickLoginBox');
+                const demoBtn = document.getElementById('demoQuickLoginBtn');
+                if (demoBox) demoBox.style.display = 'block';
+                if (demoBtn) {
+                    demoBtn.addEventListener('click', async function () {
+                        await performLogin('1', 'Demo@Sawyan2026');
+                    });
+                }
+                if (new URLSearchParams(window.location.search).get('quick') === 'member') {
+                    performLogin('1', 'Demo@Sawyan2026');
                 }
             }
 

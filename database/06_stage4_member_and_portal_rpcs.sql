@@ -327,6 +327,7 @@ DECLARE
     v_contacts    JSONB;
     v_notifs      JSONB;
     v_disputes    JSONB;
+    v_ret_reqs    JSONB;
     v_courses     JSONB;
     v_pay_methods JSONB;
     v_gouging     JSONB;
@@ -367,8 +368,9 @@ BEGIN
         'period_ym', b.period_ym,
         'carry_on_in_usd', ROUND(b.carry_on_in_usd::numeric, 2),
         'current_month_purchases_usd', ROUND(b.current_month_purchases_usd::numeric, 2),
+        'compensatory_incoming_usd', ROUND(b.compensatory_incoming_usd::numeric, 2),
         'carry_on_out_usd', ROUND(b.carry_on_out_usd::numeric, 2),
-        'net_accumulated_usd', ROUND((b.carry_on_in_usd + b.current_month_purchases_usd)::numeric, 2),
+        'net_accumulated_usd', ROUND((CASE WHEN b.qualification_source = 'compensatory' THEN b.compensatory_incoming_usd ELSE b.carry_on_in_usd + b.current_month_purchases_usd END)::numeric, 2),
         'target_required_usd', b.target_required_usd,
         'upline_ceiling_s02', v_s02_slots,
         'unit_share_usd', TRUNC(b.target_required_usd / v_s02_slots, 2),
@@ -474,11 +476,12 @@ BEGIN
            LIMIT 30
       ) n;
 
-    -- 7) تذاكر النزاعات (D6)
+    -- 7) تذاكر النزاعات (D6) وطلبات مصافحة المرتجع المعلقة (OTP / In-App D5)
     SELECT COALESCE(jsonb_agg(jsonb_build_object(
         'id', d.id,
         'transaction_id', d.transaction_id,
         'merchant_name', mc.business_name,
+        'dispute_category', d.dispute_category,
         'dispute_reason', d.dispute_reason,
         'status', d.status,
         'sla_deadline_at', d.sla_deadline_at,
@@ -488,6 +491,26 @@ BEGIN
       FROM sawyan.dispute_tickets d
       JOIN sawyan.merchants mc ON mc.id = d.merchant_id
      WHERE d.member_id = v_member.id;
+
+    SELECT COALESCE(jsonb_agg(jsonb_build_object(
+        'id', rr.id,
+        'transaction_id', rr.transaction_id,
+        'sw_short_code', t.sw_short_code,
+        'merchant_name', mc.business_name,
+        'total_amount', t.total_amount,
+        'currency_code', t.currency_code,
+        'reason', rr.reason,
+        'status', rr.status,
+        'expires_at', rr.expires_at,
+        'created_at', rr.created_at
+    ) ORDER BY rr.created_at DESC), '[]'::jsonb)
+      INTO v_ret_reqs
+      FROM sawyan.return_requests rr
+      JOIN sawyan.transactions t ON t.id = rr.transaction_id
+      JOIN sawyan.merchants mc ON mc.id = rr.merchant_id
+     WHERE rr.member_id = v_member.id
+       AND rr.status = 'pending_otp'
+       AND rr.expires_at > sawyan.now_utc();
 
     -- 8) الأكاديمية التدريبية
     SELECT COALESCE(jsonb_agg(jsonb_build_object(
@@ -616,6 +639,7 @@ BEGIN
         'contacts', v_contacts,
         'notifications', v_notifs,
         'disputes', v_disputes,
+        'pending_return_requests', v_ret_reqs,
         'academy_courses', v_courses
     );
 END;
@@ -684,25 +708,40 @@ BEGIN
 END;
 $$;
 
--- 6. فتح نزاع ثلاثي D6 والتقييمات وإعدادات العضو
+-- 6. فتح نزاع ثلاثي D6 والتقييمات وإعدادات العضو ومعاينة وموافقة المرتجع
+DROP FUNCTION IF EXISTS sawyan.submit_member_dispute(UUID, UUID, TEXT, TEXT, TEXT, SMALLINT, TEXT, SMALLINT);
+
 CREATE OR REPLACE FUNCTION sawyan.submit_member_dispute(
-    p_member_id      UUID,
-    p_transaction_id UUID,
-    p_dispute_reason TEXT,
-    p_session_token  TEXT DEFAULT NULL,
-    p_audio_url      TEXT DEFAULT NULL,
-    p_audio_sec      SMALLINT DEFAULT NULL,
-    p_video_url      TEXT DEFAULT NULL,
-    p_video_sec      SMALLINT DEFAULT NULL
+    p_member_id        UUID,
+    p_transaction_id   UUID,
+    p_dispute_reason   TEXT,
+    p_session_token    TEXT DEFAULT NULL,
+    p_audio_url        TEXT DEFAULT NULL,
+    p_audio_sec        SMALLINT DEFAULT NULL,
+    p_video_url        TEXT DEFAULT NULL,
+    p_video_sec        SMALLINT DEFAULT NULL,
+    p_dispute_category VARCHAR DEFAULT 'general',
+    p_evidence_url     TEXT DEFAULT NULL
 ) RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
 AS $$
 DECLARE
-    v_member sawyan.members%ROWTYPE;
-    v_tx     sawyan.transactions%ROWTYPE;
-    v_id     UUID;
+    v_member           sawyan.members%ROWTYPE;
+    v_tx               sawyan.transactions%ROWTYPE;
+    v_country          sawyan.countries%ROWTYPE;
+    v_cycle            sawyan.settlement_cycles%ROWTYPE;
+    v_box              sawyan.monthly_target_boxes%ROWTYPE;
+    v_cat              VARCHAR(30);
+    v_is_ret_disp      BOOLEAN := false;
+    v_tx_ym            CHAR(7);
+    v_local_now        TIMESTAMP;
+    v_cutoff_local_ts  TIMESTAMP;
+    v_is_fast_track    BOOLEAN := false;
+    v_init_status      VARCHAR(30) := 'awaiting_merchant_friendly';
+    v_sla_hours        INTERVAL := interval '48 hours';
+    v_id               UUID;
 BEGIN
     v_member := sawyan.verify_member_session(p_member_id, p_session_token);
     SELECT * INTO v_tx FROM sawyan.transactions WHERE id = p_transaction_id AND member_id = v_member.id;
@@ -714,25 +753,60 @@ BEGIN
         RAISE EXCEPTION 'DISPUTE_REASON_REQUIRED';
     END IF;
 
-    -- حظر فتح تذكرة نزاع استردادي على فاتورة تم إغلاق شهرها وصرف عمولاتها يوم 15 (D5 + T06)
-    IF EXISTS (
-        SELECT 1
-          FROM sawyan.countries c
-          LEFT JOIN sawyan.settlement_cycles sc
-                 ON sc.country_id = c.id
-                AND sc.period_ym = COALESCE(v_tx.commission_snapshot->>'effective_period_ym',
-                                            to_char(v_tx.created_at AT TIME ZONE c.iana_timezone, 'YYYY-MM'))
-         WHERE c.id = v_tx.country_id
-           AND (
-               (sc.id IS NOT NULL AND (sc.is_hard_locked IS TRUE OR sc.step_status >= 5 OR sc.payout_executed_at IS NOT NULL))
-               OR ((now() AT TIME ZONE c.iana_timezone) >= (
-                   (to_date(COALESCE(v_tx.commission_snapshot->>'effective_period_ym',
-                                     to_char(v_tx.created_at AT TIME ZONE c.iana_timezone, 'YYYY-MM')) || '-01', 'YYYY-MM-DD') + interval '1 month')::timestamp
-                   + (c.return_cutoff_day || ' days')::interval
-               ))
-           )
-    ) THEN
-        RAISE EXCEPTION 'POST_PAYOUT_RETURN_FORBIDDEN: Dispute/return window for this period is permanently closed after Day 15 payout.';
+    v_cat := lower(trim(COALESCE(NULLIF(p_dispute_category, ''), 'general')));
+    IF v_cat NOT IN ('general', 'return_stalled', 'pending_rejected', 'amount_mismatch') THEN
+        RAISE EXCEPTION 'INVALID_DISPUTE_CATEGORY: %', p_dispute_category;
+    END IF;
+
+    v_is_ret_disp := (v_cat = 'return_stalled') OR (p_dispute_reason ~* '(مرتجع|استرداد|إرجاع|ارجاع|return|refund)');
+    IF v_is_ret_disp THEN
+        v_cat := 'return_stalled';
+    END IF;
+
+    -- قصر حظر ما بعد الصرف على الفواتير المكتملة ونزاعات المرتجع الاستردادية فقط (إصلاح الحظر الأعمى لـ T06/S04)
+    IF v_tx.status = 'completed' AND v_is_ret_disp THEN
+        SELECT * INTO v_country FROM sawyan.countries WHERE id = v_tx.country_id;
+        v_tx_ym := COALESCE(
+            v_tx.commission_snapshot->>'effective_period_ym',
+            to_char(COALESCE(v_tx.completed_at, v_tx.created_at) AT TIME ZONE v_country.iana_timezone, 'YYYY-MM')
+        );
+        SELECT * INTO v_cycle
+          FROM sawyan.settlement_cycles
+         WHERE country_id = v_country.id AND period_ym = v_tx_ym;
+
+        v_local_now       := sawyan.now_utc() AT TIME ZONE v_country.iana_timezone;
+        v_cutoff_local_ts := (to_date(v_tx_ym || '-01', 'YYYY-MM-DD') + interval '1 month')::timestamp
+                           + (v_country.return_cutoff_day || ' days')::interval;
+
+        IF (v_cycle.id IS NOT NULL AND (v_cycle.is_hard_locked IS TRUE OR v_cycle.step_status >= 5 OR v_cycle.payout_executed_at IS NOT NULL))
+           OR (v_local_now >= v_cutoff_local_ts)
+        THEN
+            RAISE EXCEPTION 'POST_PAYOUT_RETURN_FORBIDDEN: Dispute/return window for this period is permanently closed after Day 15 payout.';
+        END IF;
+
+        -- قفل منع النزاع الكيدي الفارغ (S10 Anti-Sabotage): يتطلب دليلاً مادياً أو طلب مرتجع قائم
+        IF NULLIF(trim(COALESCE(p_evidence_url, p_video_url, p_audio_url, '')), '') IS NULL
+           AND NOT EXISTS (SELECT 1 FROM sawyan.return_requests rr WHERE rr.transaction_id = v_tx.id)
+        THEN
+            RAISE EXCEPTION 'RETURN_DISPUTE_EVIDENCE_REQUIRED: Stalled-return disputes require proof attachment or an active return request.';
+        END IF;
+
+        -- تصعيد فوري للأدمن (Fast-Track P0) إذا كانت التذكرة كاسرة للتأهل أو في آخر 72 ساعة قبل القطع
+        SELECT * INTO v_box
+          FROM sawyan.monthly_target_boxes
+         WHERE member_id = v_member.id AND country_id = v_country.id AND period_ym = v_tx_ym;
+
+        IF FOUND THEN
+            v_is_fast_track := (
+                (v_box.carry_on_in_usd + v_box.current_month_purchases_usd) >= v_box.target_required_usd
+                AND (v_box.carry_on_in_usd + v_box.current_month_purchases_usd - v_tx.income_plan_share_usd) < v_box.target_required_usd
+            );
+        END IF;
+
+        IF v_is_fast_track OR (v_local_now >= (v_cutoff_local_ts - interval '72 hours')) THEN
+            v_init_status := 'escalated_to_admin';
+            v_sla_hours   := interval '12 hours';
+        END IF;
     END IF;
 
     IF EXISTS (
@@ -744,20 +818,183 @@ BEGIN
     END IF;
 
     INSERT INTO sawyan.dispute_tickets (
-        transaction_id, member_id, merchant_id, dispute_reason,
-        audio_url, audio_duration_sec, video_url, video_duration_sec,
+        transaction_id, member_id, merchant_id, dispute_category, dispute_reason,
+        evidence_url, audio_url, audio_duration_sec, video_url, video_duration_sec,
         status, sla_deadline_at
     ) VALUES (
-        v_tx.id, v_member.id, v_tx.merchant_id, trim(p_dispute_reason),
-        p_audio_url, p_audio_sec, p_video_url, p_video_sec,
-        'awaiting_merchant_friendly', now() + interval '48 hours'
+        v_tx.id, v_member.id, v_tx.merchant_id, v_cat, trim(p_dispute_reason),
+        NULLIF(trim(COALESCE(p_evidence_url, '')), ''), p_audio_url, p_audio_sec, p_video_url, p_video_sec,
+        v_init_status, sawyan.now_utc() + v_sla_hours
     ) RETURNING id INTO v_id;
 
     INSERT INTO sawyan.notifications (recipient_type, recipient_id, event_name, channel, payload)
     VALUES ('merchant', v_tx.merchant_id, 'DisputeTicketOpened', 'in_app',
-            jsonb_build_object('dispute_id', v_id, 'transaction_id', v_tx.id, 'sw_short_code', v_tx.sw_short_code));
+            jsonb_build_object('dispute_id', v_id, 'transaction_id', v_tx.id, 'sw_short_code', v_tx.sw_short_code, 'category', v_cat, 'fast_tracked', (v_init_status = 'escalated_to_admin')));
 
-    RETURN jsonb_build_object('success', true, 'dispute_id', v_id, 'status', 'awaiting_merchant_friendly');
+    RETURN jsonb_build_object(
+        'success', true,
+        'dispute_id', v_id,
+        'dispute_category', v_cat,
+        'status', v_init_status,
+        'fast_tracked', (v_init_status = 'escalated_to_admin')
+    );
+END;
+$$;
+
+-- 6-أ. معاينة أثر المرتجع للعضو قبل الضغط على موافقة (S08 Return Impact Preview)
+CREATE OR REPLACE FUNCTION sawyan.preview_pos_return_impact(
+    p_member_id      UUID,
+    p_transaction_id UUID,
+    p_session_token  TEXT DEFAULT NULL
+) RETURNS JSONB
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    v_member       sawyan.members%ROWTYPE;
+    v_tx           sawyan.transactions%ROWTYPE;
+    v_country      sawyan.countries%ROWTYPE;
+    v_box          sawyan.monthly_target_boxes%ROWTYPE;
+    v_period_ym    CHAR(7);
+    v_curr_ym      CHAR(7);
+    v_before_usd   NUMERIC(18,6);
+    v_after_usd    NUMERIC(18,6);
+    v_target_usd   NUMERIC(18,2);
+    v_was_qual     BOOLEAN := false;
+    v_stays_qual   BOOLEAN := false;
+    v_shield_used  BOOLEAN := false;
+    v_shortfall    NUMERIC(18,2) := 0.00;
+    v_next_carry   NUMERIC(18,2) := 0.00;
+BEGIN
+    v_member := sawyan.verify_member_session(p_member_id, p_session_token);
+    SELECT * INTO v_tx FROM sawyan.transactions WHERE id = p_transaction_id AND member_id = v_member.id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'TX_NOT_FOUND_OR_UNAUTHORIZED';
+    END IF;
+
+    SELECT * INTO v_country FROM sawyan.countries WHERE id = v_tx.country_id;
+    v_curr_ym   := to_char(sawyan.now_utc() AT TIME ZONE v_country.iana_timezone, 'YYYY-MM');
+    v_period_ym := COALESCE(
+        v_tx.commission_snapshot->>'effective_period_ym',
+        to_char(COALESCE(v_tx.completed_at, v_tx.created_at) AT TIME ZONE v_country.iana_timezone, 'YYYY-MM')
+    );
+
+    SELECT * INTO v_box
+      FROM sawyan.monthly_target_boxes
+     WHERE member_id = v_member.id AND country_id = v_country.id AND period_ym = v_period_ym;
+
+    v_target_usd := COALESCE(v_box.target_required_usd, v_country.monthly_target_usd);
+    v_before_usd := COALESCE(v_box.carry_on_in_usd + v_box.current_month_purchases_usd, 0.000000);
+    v_after_usd  := GREATEST(0.000000, v_before_usd - v_tx.income_plan_share_usd);
+    v_was_qual   := (v_before_usd >= v_target_usd) AND NOT COALESCE(v_member.is_tombstone_banned, false);
+    v_stays_qual := (v_after_usd >= v_target_usd) AND NOT COALESCE(v_member.is_tombstone_banned, false);
+    v_shield_used := v_was_qual AND v_stays_qual AND (COALESCE(v_box.carry_on_in_usd, 0) > 0) AND ((v_before_usd - COALESCE(v_box.carry_on_in_usd, 0) - v_tx.income_plan_share_usd) < v_target_usd);
+    v_shortfall  := CASE WHEN v_stays_qual THEN 0.00 ELSE ROUND((v_target_usd - v_after_usd)::numeric, 2) END;
+    v_next_carry := CASE WHEN v_stays_qual THEN ROUND((v_after_usd - v_target_usd)::numeric, 2) ELSE ROUND(v_after_usd::numeric, 2) END;
+
+    RETURN jsonb_build_object(
+        'transaction_id', v_tx.id,
+        'sw_short_code', v_tx.sw_short_code,
+        'period_ym', v_period_ym,
+        'is_closed_month_window', (v_period_ym < v_curr_ym),
+        'deducted_plan_usd', ROUND(v_tx.income_plan_share_usd::numeric, 2),
+        'target_required_usd', v_target_usd,
+        'box_before_usd', ROUND(v_before_usd::numeric, 2),
+        'box_after_usd', ROUND(v_after_usd::numeric, 2),
+        'was_qualified', v_was_qual,
+        'stays_qualified', v_stays_qual,
+        'carry_on_shield_used', v_shield_used,
+        'shortfall_to_requalify_usd', v_shortfall,
+        'next_month_carry_on_usd', v_next_carry
+    );
+END;
+$$;
+
+-- 6-ب. رد العضو من تطبيقه بالموافقة أو الرفض على طلب المرتجع (In-App Two-Step Confirmation)
+CREATE OR REPLACE FUNCTION sawyan.member_respond_pos_return(
+    p_member_id         UUID,
+    p_return_request_id UUID,
+    p_decision          VARCHAR, -- 'approve' | 'reject'
+    p_session_token     TEXT DEFAULT NULL
+) RETURNS JSONB
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    v_member  sawyan.members%ROWTYPE;
+    v_req     sawyan.return_requests%ROWTYPE;
+    v_dec     VARCHAR(20);
+    v_rev_res JSONB;
+BEGIN
+    v_member := sawyan.verify_member_session(p_member_id, p_session_token);
+    v_dec := lower(trim(COALESCE(p_decision, '')));
+    IF v_dec NOT IN ('approve', 'reject') THEN
+        RAISE EXCEPTION 'INVALID_RETURN_DECISION: %', p_decision;
+    END IF;
+
+    SELECT * INTO v_req
+      FROM sawyan.return_requests
+     WHERE id = p_return_request_id AND member_id = v_member.id
+     FOR UPDATE;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'RETURN_REQUEST_NOT_FOUND';
+    END IF;
+
+    IF v_req.status IN ('approved_in_app', 'approved_otp') THEN
+        RETURN jsonb_build_object('success', true, 'status', v_req.status, 'already_processed', true);
+    END IF;
+    IF v_req.status <> 'pending_otp' THEN
+        RAISE EXCEPTION 'RETURN_REQUEST_NOT_PENDING: status=%', v_req.status;
+    END IF;
+    IF v_req.expires_at <= sawyan.now_utc() THEN
+        UPDATE sawyan.return_requests SET status = 'expired', resolved_at = sawyan.now_utc() WHERE id = v_req.id;
+        RETURN jsonb_build_object('success', false, 'error', 'RETURN_REQUEST_EXPIRED');
+    END IF;
+
+    IF v_dec = 'approve' THEN
+        UPDATE sawyan.return_requests
+           SET status      = 'approved_in_app',
+               resolved_at = sawyan.now_utc()
+         WHERE id = v_req.id;
+
+        v_rev_res := sawyan.process_transaction_reversal_clawback(
+            v_req.transaction_id,
+            v_member.id,
+            v_req.reason,
+            v_req.id
+        );
+
+        RETURN jsonb_build_object(
+            'success', true,
+            'status', 'approved_in_app',
+            'return_request_id', v_req.id,
+            'reversal', v_rev_res
+        );
+    ELSE
+        UPDATE sawyan.return_requests
+           SET status      = 'rejected_member',
+               resolved_at = sawyan.now_utc()
+         WHERE id = v_req.id;
+
+        INSERT INTO sawyan.notifications (recipient_type, recipient_id, event_name, channel, payload)
+        VALUES (
+            'merchant',
+            v_req.merchant_id,
+            'PosReturnRejectedByMember',
+            'in_app',
+            jsonb_build_object('return_request_id', v_req.id, 'transaction_id', v_req.transaction_id)
+        );
+
+        RETURN jsonb_build_object(
+            'success', true,
+            'status', 'rejected_member',
+            'return_request_id', v_req.id
+        );
+    END IF;
 END;
 $$;
 
@@ -976,7 +1213,9 @@ GRANT EXECUTE ON FUNCTION sawyan.authenticate_member_login(TEXT, TEXT) TO anon, 
 GRANT EXECUTE ON FUNCTION sawyan.get_public_merchants_catalog(CHAR, VARCHAR) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.get_member_dashboard_bundle(UUID, TEXT, CHAR, CHAR) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.manage_member_crm_contact(UUID, VARCHAR, TEXT, UUID, VARCHAR, VARCHAR, TEXT) TO anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION sawyan.submit_member_dispute(UUID, UUID, TEXT, TEXT, TEXT, SMALLINT, TEXT, SMALLINT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION sawyan.submit_member_dispute(UUID, UUID, TEXT, TEXT, TEXT, SMALLINT, TEXT, SMALLINT, VARCHAR, TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION sawyan.preview_pos_return_impact(UUID, UUID, TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION sawyan.member_respond_pos_return(UUID, UUID, VARCHAR, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.submit_member_review(UUID, UUID, SMALLINT, TEXT, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.update_member_profile_settings(UUID, TEXT, VARCHAR, VARCHAR, VARCHAR, UUID, VARCHAR, TEXT, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.submit_member_pending_purchase(UUID, UUID, UUID, NUMERIC, VARCHAR, UUID, TEXT, TEXT) TO anon, authenticated, service_role;

@@ -8,12 +8,15 @@
 --   4. Implements S10 Price-Gouging Report RPC
 -- ============================================================================
 
--- 1. الخطوتان 5 و6 من التسوية الشهرية: المطابقة الصفرية + IAS 21 + S03 + ترحيل المحافظ + Hard Lock
+-- 1. الخطوتان 5 و6 من التسوية الشهرية: المطابقة الصفرية + IAS 21 + S03 + ترحيل المحافظ + Hard Lock (مع عزل الدول وفرز النزاعات 1-A)
+DROP FUNCTION IF EXISTS sawyan.finalize_settlement_payout_step5_6(CHAR, UUID, UUID, NUMERIC);
+
 CREATE OR REPLACE FUNCTION sawyan.finalize_settlement_payout_step5_6(
     p_period_ym          CHAR(7),
     p_maker_admin_id     UUID,
     p_checker_admin_id   UUID,
-    p_ias21_fx_delta_usd NUMERIC(18,2) DEFAULT 0.00
+    p_ias21_fx_delta_usd NUMERIC(18,2) DEFAULT 0.00,
+    p_country_code       CHAR(2) DEFAULT NULL
 ) RETURNS JSONB
 LANGUAGE plpgsql
 VOLATILE
@@ -24,6 +27,10 @@ DECLARE
     v_maker          sawyan.admins%ROWTYPE;
     v_checker        sawyan.admins%ROWTYPE;
     v_settings       sawyan.settings%ROWTYPE;
+    v_target_cid     INT := NULL;
+    v_target_cc      CHAR(2) := NULL;
+    v_lock_rec       RECORD;
+    v_pivot_rec      RECORD;
     v_cycle_cnt      INT := 0;
     v_sum_dr         NUMERIC(18,2);
     v_sum_cr         NUMERIC(18,2);
@@ -31,10 +38,12 @@ DECLARE
     v_ias_entry_id   UUID := NULL;
     v_comp_rec       RECORD;
     v_comp_je_id     UUID;
+    v_round_rec      RECORD;
     v_tot_rounding   NUMERIC(18,2) := 0.00;
     v_round_je_id    UUID;
     v_ben_rec        RECORD;
     v_s03            JSONB;
+    v_s03_item       JSONB;
     v_total_net      NUMERIC(18,2);
     v_payable        NUMERIC(18,2);
     v_excess         NUMERIC(18,2);
@@ -57,28 +66,108 @@ BEGIN
     SELECT * INTO v_checker FROM sawyan.admins WHERE id = p_checker_admin_id AND is_active = true;
     IF NOT FOUND THEN RAISE EXCEPTION 'CHECKER_ADMIN_NOT_ACTIVE'; END IF;
 
-    -- قفل كافة دورات الشهر المستهدف
-    PERFORM 1 FROM sawyan.settlement_cycles WHERE period_ym = p_period_ym FOR UPDATE;
+    IF NULLIF(upper(trim(COALESCE(p_country_code, ''))), '') IS NOT NULL
+       AND upper(trim(p_country_code)) <> 'ALL'
+    THEN
+        SELECT id, country_code INTO v_target_cid, v_target_cc
+          FROM sawyan.countries
+         WHERE country_code = upper(trim(p_country_code));
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'COUNTRY_NOT_FOUND: %', p_country_code;
+        END IF;
+    END IF;
+
+    -- ترتيب الأقفال الموحد (T04): قراءة المعرّفات بلا قفل -> pg_advisory_xact_lock مرتباً -> FOR UPDATE
+    FOR v_lock_rec IN
+        SELECT country_id, period_ym
+          FROM sawyan.settlement_cycles
+         WHERE period_ym = p_period_ym
+           AND step_status = 4
+           AND is_hard_locked = false
+           AND payout_executed_at IS NULL
+           AND (v_target_cid IS NULL OR country_id = v_target_cid)
+         ORDER BY country_id ASC
+    LOOP
+        PERFORM pg_advisory_xact_lock(hashtext('sawyan_period_lock_' || v_lock_rec.country_id::text || '_' || v_lock_rec.period_ym));
+    END LOOP;
+
+    PERFORM 1
+      FROM sawyan.settlement_cycles
+     WHERE period_ym = p_period_ym
+       AND (v_target_cid IS NULL OR country_id = v_target_cid)
+     FOR UPDATE;
+
     SELECT COUNT(*) INTO v_cycle_cnt
       FROM sawyan.settlement_cycles
-     WHERE period_ym = p_period_ym AND step_status = 4 AND is_hard_locked = false;
+     WHERE period_ym = p_period_ym
+       AND step_status = 4
+       AND is_hard_locked = false
+       AND payout_executed_at IS NULL
+       AND (v_target_cid IS NULL OR country_id = v_target_cid);
 
     IF v_cycle_cnt = 0 THEN
         RAISE EXCEPTION 'NO_STEP4_OPEN_CYCLES_FOR_PERIOD: %', p_period_ym;
     END IF;
 
-    -- التحقق من عدم وجود تذاكر نزاع مفتوحة على فواتير مكتملة تخص هذه الدورة قبل القفل الصلب (T06)
+    -- رفض الصرف إذا كانت المسودة موسومة بالحاجة لإعادة الحساب بعد مرتجع أو اعتماد Soft Hold متأخر (T03)
     IF EXISTS (
         SELECT 1
-          FROM sawyan.dispute_tickets d
-          JOIN sawyan.transactions t ON t.id = d.transaction_id
-          JOIN sawyan.countries c ON c.id = t.country_id
-         WHERE d.status IN ('awaiting_merchant_friendly', 'escalated_to_admin')
-           AND t.status = 'completed'
-           AND COALESCE(t.commission_snapshot->>'effective_period_ym',
-                        to_char(t.created_at AT TIME ZONE c.iana_timezone, 'YYYY-MM')) = p_period_ym
+          FROM sawyan.settlement_cycles
+         WHERE period_ym = p_period_ym
+           AND is_hard_locked = false
+           AND (v_target_cid IS NULL OR country_id = v_target_cid)
+           AND recalc_required = true
     ) THEN
-        RAISE EXCEPTION 'OPEN_PRE_PAYOUT_DISPUTES_EXIST: Resolve open disputes for period % before finalizing Step 5-6 payout.', p_period_ym;
+        RAISE EXCEPTION 'DRAFT_STALE_RECALC_REQUIRED: Settlement draft for period % requires recalculation before Step 5-6 payout.', p_period_ym;
+    END IF;
+
+    -- الفرز الذكي ثنائي الفئة للنزاعات قبل الصرف (الخيار 1-أ الموصى به بالإجماع 26/26):
+    -- التذكرة غير الكاسرة للتأهل لا توقف الصرف؛ أما التذكرة الكاسرة للتأهل في الدولة المستهدفة (أو في دولة إقامة صاحب D1 بها) فتوقف زر الصرف لهذه الدولة المتأثرة فقط
+    SELECT q.member_id, q.country_code, q.sample_dispute_id
+      INTO v_pivot_rec
+      FROM (
+          SELECT t.member_id,
+                 t.country_id,
+                 c.country_code,
+                 MIN(d.id::text) AS sample_dispute_id,
+                 SUM(t.income_plan_share_usd) AS disputed_usd
+            FROM sawyan.dispute_tickets d
+            JOIN sawyan.transactions t ON t.id = d.transaction_id
+            JOIN sawyan.countries c ON c.id = t.country_id
+            JOIN sawyan.members mem ON mem.id = t.member_id
+           WHERE d.status IN ('awaiting_merchant_friendly', 'escalated_to_admin')
+             AND t.status = 'completed'
+             AND d.dispute_category IN ('return_stalled', 'merchant_return_escalation')
+             AND COALESCE(t.commission_snapshot->>'effective_period_ym',
+                          to_char(COALESCE(t.completed_at, t.created_at) AT TIME ZONE c.iana_timezone, 'YYYY-MM')) = p_period_ym
+             AND (
+                 v_target_cid IS NULL
+                 OR t.country_id = v_target_cid
+                 OR (
+                     t.country_id = mem.residency_country_id
+                     AND EXISTS (
+                         SELECT 1
+                           FROM sawyan.compensatory_settlements cs
+                           JOIN sawyan.settlement_cycles sc ON sc.id = cs.settlement_cycle_id
+                          WHERE sc.period_ym = p_period_ym
+                            AND sc.country_id = v_target_cid
+                            AND cs.member_id = mem.id
+                     )
+                 )
+             )
+           GROUP BY t.member_id, t.country_id, c.country_code
+      ) q
+      JOIN sawyan.monthly_target_boxes b
+        ON b.member_id = q.member_id
+       AND b.country_id = q.country_id
+       AND b.period_ym = p_period_ym
+     WHERE (b.carry_on_in_usd + b.current_month_purchases_usd) >= b.target_required_usd
+       AND ((b.carry_on_in_usd + b.current_month_purchases_usd) - q.disputed_usd) < b.target_required_usd
+     LIMIT 1;
+
+    IF FOUND THEN
+        RAISE EXCEPTION 'QUALIFICATION_BREAKING_DISPUTE_OPEN: Resolve qualification-breaking return dispute [ticket=% member=% country=%] before releasing payout for period %.',
+            v_pivot_rec.sample_dispute_id, v_pivot_rec.member_id, v_pivot_rec.country_code, p_period_ym;
     END IF;
 
     SELECT * INTO v_settings FROM sawyan.settings
@@ -97,6 +186,7 @@ BEGIN
       FROM sawyan.pool_transactions pt
       JOIN sawyan.settlement_cycles sc ON sc.id = pt.settlement_cycle_id
      WHERE sc.period_ym = p_period_ym
+       AND (v_target_cid IS NULL OR sc.country_id = v_target_cid)
        AND ROUND((pt.total_distributed_usd + pt.rounding_diff_usd)::numeric, 2) <> pt.target_consumed_usd;
     IF v_bad_pools > 0 THEN
         RAISE EXCEPTION 'ZERO_DISCREPANCY_POOL_MISMATCH: count=%', v_bad_pools;
@@ -104,8 +194,8 @@ BEGIN
 
     -- قيد إعادة تقييم العملات IAS 21 عند وجود فروق عملة (D28)
     IF COALESCE(p_ias21_fx_delta_usd, 0.00) <> 0.00 THEN
-        INSERT INTO sawyan.journal_entries (source_type, source_id, fx_rate_used, description)
-        VALUES ('IAS21_REVALUATION', gen_random_uuid(), 1.000000, 'IAS 21 Period-End FX Revaluation: ' || p_period_ym)
+        INSERT INTO sawyan.journal_entries (source_type, source_id, country_id, fx_rate_used, description)
+        VALUES ('IAS21_REVALUATION', gen_random_uuid(), v_target_cid, 1.000000, 'IAS 21 Period-End FX Revaluation: ' || p_period_ym || COALESCE(' (' || v_target_cc || ')', ''))
         RETURNING id INTO v_ias_entry_id;
 
         IF p_ias21_fx_delta_usd > 0 THEN
@@ -119,12 +209,18 @@ BEGIN
         END IF;
     END IF;
 
-    -- قيود تسوية الأهداف التعويضية لحسابات الخزانة 4102 و4103 (D1)
+    -- قيود تسوية الأهداف التعويضية لحسابات الخزانة 4102 و4103 مع حارس منع التكرار (D1)
     FOR v_comp_rec IN
         SELECT cs.*
           FROM sawyan.compensatory_settlements cs
           JOIN sawyan.settlement_cycles sc ON sc.id = cs.settlement_cycle_id
          WHERE sc.period_ym = p_period_ym
+           AND sc.is_hard_locked = false
+           AND (v_target_cid IS NULL OR sc.country_id = v_target_cid)
+           AND NOT EXISTS (
+               SELECT 1 FROM sawyan.journal_entries je
+                WHERE je.source_type = 'COMPENSATORY_SETTLEMENT' AND je.source_id = cs.id
+           )
     LOOP
         IF (v_comp_rec.treasury_counterpart_usd + v_comp_rec.admin_fee_usd) > 0 THEN
             INSERT INTO sawyan.journal_entries (settlement_cycle_id, source_type, source_id, country_id, fx_rate_used, description)
@@ -142,22 +238,33 @@ BEGIN
         END IF;
     END LOOP;
 
-    -- قيد فروق التقريب من القطع TRUNC إلى حساب 4301 (D11 / F07)
-    SELECT COALESCE(ROUND(SUM(pt.rounding_diff_usd)::numeric, 2), 0.00)
-      INTO v_tot_rounding
-      FROM sawyan.pool_transactions pt
-      JOIN sawyan.settlement_cycles sc ON sc.id = pt.settlement_cycle_id
-     WHERE sc.period_ym = p_period_ym;
+    -- قيد فروق التقريب من القطع TRUNC لكل دورة مع حارس منع التكرار إلى حساب 4301 (D11 / F07)
+    FOR v_round_rec IN
+        SELECT sc.id AS cycle_id, sc.country_id,
+               COALESCE(ROUND(SUM(pt.rounding_diff_usd)::numeric, 2), 0.00) AS rsum
+          FROM sawyan.settlement_cycles sc
+          JOIN sawyan.pool_transactions pt ON pt.settlement_cycle_id = sc.id
+         WHERE sc.period_ym = p_period_ym
+           AND sc.is_hard_locked = false
+           AND (v_target_cid IS NULL OR sc.country_id = v_target_cid)
+           AND NOT EXISTS (
+               SELECT 1 FROM sawyan.journal_entries je
+                WHERE je.settlement_cycle_id = sc.id AND je.source_type = 'ROUNDING_ADJUSTMENT'
+           )
+         GROUP BY sc.id, sc.country_id
+    LOOP
+        IF v_round_rec.rsum > 0 THEN
+            INSERT INTO sawyan.journal_entries (settlement_cycle_id, source_type, source_id, country_id, fx_rate_used, description)
+            VALUES (v_round_rec.cycle_id, 'ROUNDING_ADJUSTMENT', gen_random_uuid(), v_round_rec.country_id, 1.000000, 'TRUNC Cent Remainders to 4301: ' || p_period_ym)
+            RETURNING id INTO v_round_je_id;
 
-    IF v_tot_rounding > 0 THEN
-        INSERT INTO sawyan.journal_entries (source_type, source_id, fx_rate_used, description)
-        VALUES ('ROUNDING_ADJUSTMENT', gen_random_uuid(), 1.000000, 'TRUNC Cent Remainders to 4301: ' || p_period_ym)
-        RETURNING id INTO v_round_je_id;
+            INSERT INTO sawyan.journal_lines (journal_entry_id, account_code, entity_type, debit_usd, credit_usd, amount_local, currency_code) VALUES
+            (v_round_je_id, '2201', 'treasury', v_round_rec.rsum, 0.00, v_round_rec.rsum, 'USD'),
+            (v_round_je_id, '4301', 'treasury', 0.00, v_round_rec.rsum, v_round_rec.rsum, 'USD');
 
-        INSERT INTO sawyan.journal_lines (journal_entry_id, account_code, entity_type, debit_usd, credit_usd, amount_local, currency_code) VALUES
-        (v_round_je_id, '2201', 'treasury', v_tot_rounding, 0.00, v_tot_rounding, 'USD'),
-        (v_round_je_id, '4301', 'treasury', 0.00, v_tot_rounding, v_tot_rounding, 'USD');
-    END IF;
+            v_tot_rounding := v_tot_rounding + v_round_rec.rsum;
+        END IF;
+    END LOOP;
 
     -- ترحيل صافي أرباح المستفيدين بعد تطبيق S03 Pro-Rata وضريبة المنبع WHT إلى المحافظ (يوم 15)
     FOR v_ben_rec IN
@@ -167,12 +274,23 @@ BEGIN
           JOIN sawyan.settlement_cycles sc ON sc.id = pt.settlement_cycle_id
           JOIN sawyan.members m ON m.id = cd.beneficiary_id
          WHERE sc.period_ym = p_period_ym
+           AND (v_target_cid IS NULL OR sc.country_id = v_target_cid)
            AND cd.added_to_wallet = false
     LOOP
         v_s03 := sawyan.calculate_s03_pro_rata_payout(v_ben_rec.beneficiary_id, p_period_ym);
-        v_total_net := COALESCE((v_s03->>'total_net_usd')::numeric(18,2), 0.00);
-        v_payable   := COALESCE((v_s03->>'payable_usd')::numeric(18,2), 0.00);
-        v_excess    := COALESCE((v_s03->>'s03_suspense_excess_usd')::numeric(18,2), 0.00);
+        IF v_target_cid IS NULL THEN
+            v_total_net := COALESCE((v_s03->>'total_net_usd')::numeric(18,2), 0.00);
+            v_payable   := COALESCE((v_s03->>'payable_usd')::numeric(18,2), 0.00);
+            v_excess    := COALESCE((v_s03->>'s03_suspense_excess_usd')::numeric(18,2), 0.00);
+        ELSE
+            SELECT elem INTO v_s03_item
+              FROM jsonb_array_elements(COALESCE(v_s03->'pro_rata_breakdown', '[]'::jsonb)) elem
+             WHERE elem->>'country_code' = v_target_cc
+             LIMIT 1;
+            v_total_net := GREATEST(0.00, COALESCE((v_s03_item->>'gross_net_usd')::numeric(18,2), 0.00));
+            v_payable   := GREATEST(0.00, COALESCE((v_s03_item->>'payable_usd')::numeric(18,2), 0.00));
+            v_excess    := GREATEST(0.00, COALESCE((v_s03_item->>'s03_excess_usd')::numeric(18,2), 0.00));
+        END IF;
 
         IF v_total_net > 0 THEN
             SELECT * INTO v_res_country FROM sawyan.countries WHERE id = v_ben_rec.residency_country_id;
@@ -187,7 +305,7 @@ BEGIN
             SELECT id INTO v_wallet_id FROM sawyan.wallets WHERE member_id = v_ben_rec.beneficiary_id FOR UPDATE;
 
             INSERT INTO sawyan.journal_entries (source_type, source_id, country_id, fx_rate_used, description)
-            VALUES ('MONTHLY_DISTRIBUTION', v_ben_rec.beneficiary_id, v_res_country.id, 1.000000, 'Day-15 Commission Release: ' || p_period_ym)
+            VALUES ('MONTHLY_DISTRIBUTION', v_ben_rec.beneficiary_id, COALESCE(v_target_cid, v_res_country.id), 1.000000, 'Day-15 Commission Release: ' || p_period_ym || COALESCE(' (' || v_target_cc || ')', ''))
             RETURNING id INTO v_dist_je_id;
 
             INSERT INTO sawyan.journal_lines (journal_entry_id, account_code, entity_type, entity_id, debit_usd, credit_usd, amount_local, currency_code)
@@ -234,6 +352,7 @@ BEGIN
               JOIN sawyan.settlement_cycles sc ON sc.id = pt.settlement_cycle_id
              WHERE cd.pool_transaction_id = pt.id
                AND sc.period_ym = p_period_ym
+               AND (v_target_cid IS NULL OR sc.country_id = v_target_cid)
                AND cd.beneficiary_id = v_ben_rec.beneficiary_id
                AND cd.added_to_wallet = false;
 
@@ -246,26 +365,30 @@ BEGIN
     UPDATE sawyan.settlement_cycles
        SET step_status                   = 6,
            zero_discrepancy_passed       = true,
+           recalc_required               = false,
            ias21_fx_revaluation_entry_id = COALESCE(v_ias_entry_id, ias21_fx_revaluation_entry_id),
            maker_admin_id                = p_maker_admin_id,
            checker_admin_id              = p_checker_admin_id,
            is_hard_locked                = true,
            payout_executed_at            = COALESCE(payout_executed_at, now())
-     WHERE period_ym = p_period_ym AND is_hard_locked = false;
+     WHERE period_ym = p_period_ym
+       AND is_hard_locked = false
+       AND (v_target_cid IS NULL OR country_id = v_target_cid);
 
     PERFORM sawyan.append_audit_log(
         'admin',
         p_checker_admin_id,
         'settlement_period_hard_locked_step6',
         'settlement_cycles',
-        p_period_ym,
+        COALESCE(v_target_cc || ':', '') || p_period_ym,
         jsonb_build_object('step_status', 4),
-        jsonb_build_object('step_status', 6, 'credited_members', v_credited_cnt, 'total_net_credited_usd', v_credited_sum, 'maker_admin_id', p_maker_admin_id)
+        jsonb_build_object('step_status', 6, 'country_code', COALESCE(v_target_cc, 'ALL'), 'credited_members', v_credited_cnt, 'total_net_credited_usd', v_credited_sum, 'maker_admin_id', p_maker_admin_id)
     );
 
     RETURN jsonb_build_object(
         'status', 'hard_locked_step_6',
         'period_ym', p_period_ym,
+        'country_code', COALESCE(v_target_cc, 'ALL'),
         'cycles_locked', v_cycle_cnt,
         'credited_members_count', v_credited_cnt,
         'total_net_credited_usd', v_credited_sum,
@@ -512,7 +635,9 @@ GRANT EXECUTE ON FUNCTION sawyan.authenticate_member_login(TEXT, TEXT) TO anon, 
 -- ب) دوال العضو المحمية داخلياً بفحص الجلسة الإلزامي (verify_member_session)
 GRANT EXECUTE ON FUNCTION sawyan.get_member_dashboard_bundle(UUID, TEXT, CHAR, CHAR) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.manage_member_crm_contact(UUID, VARCHAR, TEXT, UUID, VARCHAR, VARCHAR, TEXT) TO anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION sawyan.submit_member_dispute(UUID, UUID, TEXT, TEXT, TEXT, SMALLINT, TEXT, SMALLINT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION sawyan.submit_member_dispute(UUID, UUID, TEXT, TEXT, TEXT, SMALLINT, TEXT, SMALLINT, VARCHAR, TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION sawyan.preview_pos_return_impact(UUID, UUID, TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION sawyan.member_respond_pos_return(UUID, UUID, VARCHAR, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.submit_member_review(UUID, UUID, SMALLINT, TEXT, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.update_member_profile_settings(UUID, TEXT, VARCHAR, VARCHAR, VARCHAR, UUID, VARCHAR, TEXT, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.submit_member_pending_purchase(UUID, UUID, UUID, NUMERIC, VARCHAR, UUID, TEXT, TEXT) TO anon, authenticated, service_role;

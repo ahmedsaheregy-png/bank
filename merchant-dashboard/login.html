@@ -19,6 +19,18 @@
             <h1>🏪 تسجيل الدخول — بوابة التاجر</h1>
             <p class="subtitle">أدخل كود التاجر أو البريد الإلكتروني أو الهاتف المسجل</p>
 
+            <div id="demoMerchantLoginBox" style="display:none;margin:0 0 16px;padding:12px;border-radius:12px;background:#fffbeb;border:1.5px dashed #f59e0b;text-align:center;">
+                <p style="margin:0 0 8px;font-size:0.84rem;color:#92400e;font-weight:700;">🧪 متاح في الموقع الموازي للتجربة فقط (Schema: sawyan_demo)</p>
+                <div style="display:grid;gap:8px;">
+                    <button type="button" id="demoEgMerchantBtn" class="btn btn-outline btn-block" style="border-color:#d97706;color:#92400e;font-weight:800;">
+                        ⚡ دخول تجريبي — سوبر ماركت النخبة مصر (M-EG-001 • كاشير EMP-01 PIN: 2580)
+                    </button>
+                    <button type="button" id="demoTrMerchantBtn" class="btn btn-outline btn-block" style="border-color:#0284c7;color:#0369a1;font-weight:800;">
+                        ⚡ دخول تجريبي — مطعم إسطنبول الذهبي تركيا (M-TR-001)
+                    </button>
+                </div>
+            </div>
+
             <form id="loginForm" class="auth-form">
                 <div class="form-group">
                     <label>كود التاجر أو البريد الإلكتروني أو الهاتف</label>
@@ -32,18 +44,6 @@
 
                 <button type="submit" id="loginBtn" class="btn btn-primary btn-block">دخول لوحة التاجر ونقطة البيع</button>
 
-                <div id="demoMerchantLoginBox" style="display:none;margin-top:14px;padding:12px;border-radius:12px;background:#fffbeb;border:1.5px dashed #f59e0b;text-align:center;">
-                    <p style="margin:0 0 8px;font-size:0.84rem;color:#92400e;font-weight:700;">🧪 متاح في الموقع الموازي للتجربة فقط (Schema: sawyan_demo)</p>
-                    <div style="display:grid;gap:8px;">
-                        <button type="button" id="demoEgMerchantBtn" class="btn btn-outline btn-block" style="border-color:#d97706;color:#92400e;font-weight:800;">
-                            ⚡ دخول تجريبي — سوبر ماركت النخبة مصر (M-EG-001 • كاشير EMP-01 PIN: 2580)
-                        </button>
-                        <button type="button" id="demoTrMerchantBtn" class="btn btn-outline btn-block" style="border-color:#0284c7;color:#0369a1;font-weight:800;">
-                            ⚡ دخول تجريبي — مطعم إسطنبول الذهبي تركيا (M-TR-001)
-                        </button>
-                    </div>
-                </div>
-
                 <div class="auth-footer">
                     <p><a href="forgot-password.html" class="forgot-link">نسيت كلمة المرور؟</a></p>
                     <p>ليس لديك حساب تاجر؟ <a href="register.html">سجل متجرك في 3 دقائق</a></p>
@@ -55,7 +55,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../shared/config/supabase.js"></script>
-    <script src="../shared/api/sawyan-api.js"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261118_quicklogin"></script>
     <script src="../shared/components/logo.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -70,7 +70,7 @@
                     btn.textContent = '⏳ جاري التحقق...';
                 }
                 try {
-                    for (let i = 0; i < 15 && (!window.SAWYAN || !window.SAWYAN.supabase); i++) {
+                    for (let i = 0; i < 30 && (!window.SAWYAN || !window.SAWYAN.supabase); i++) {
                         await new Promise(r => setTimeout(r, 100));
                     }
                     const res = await window.SAWYAN.API.authenticateMerchantLogin(identifier, password);
@@ -94,6 +94,9 @@
                 if (box) box.style.display = 'block';
                 document.getElementById('demoEgMerchantBtn')?.addEventListener('click', () => performMerchantLogin('M-EG-001', 'Demo@Merchant2026'));
                 document.getElementById('demoTrMerchantBtn')?.addEventListener('click', () => performMerchantLogin('M-TR-001', 'Demo@Merchant2026'));
+                if (new URLSearchParams(window.location.search).get('quick') === 'merchant') {
+                    performMerchantLogin('M-EG-001', 'Demo@Merchant2026');
+                }
             }
 
             document.getElementById('loginForm').addEventListener('submit', async function (e) {

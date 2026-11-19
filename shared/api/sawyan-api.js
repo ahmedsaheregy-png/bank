@@ -324,7 +324,8 @@
 
         getSavedAdmin() {
             try {
-                const raw = localStorage.getItem(SawyanAPI._storageKey('sawyan_admin'));
+                const k = SawyanAPI._storageKey('sawyan_admin');
+                const raw = sessionStorage.getItem(k) || localStorage.getItem(k);
                 return raw ? JSON.parse(raw) : null;
             } catch (e) {
                 return null;
@@ -333,7 +334,8 @@
 
         getAdminSessionToken() {
             try {
-                return localStorage.getItem(SawyanAPI._storageKey('sawyan_admin_session_token')) || null;
+                const k = SawyanAPI._storageKey('sawyan_admin_session_token');
+                return sessionStorage.getItem(k) || localStorage.getItem(k) || null;
             } catch (e) {
                 return null;
             }
@@ -341,20 +343,29 @@
 
         saveAdminSession(adminObj, sessionToken) {
             try {
+                const kAdm = SawyanAPI._storageKey('sawyan_admin');
+                const kTok = SawyanAPI._storageKey('sawyan_admin_session_token');
                 if (adminObj) {
-                    localStorage.setItem(SawyanAPI._storageKey('sawyan_admin'), JSON.stringify(adminObj));
-                    localStorage.setItem('sawyan_admin', JSON.stringify(adminObj));
+                    const serialized = JSON.stringify(adminObj);
+                    sessionStorage.setItem(kAdm, serialized);
+                    localStorage.setItem(kAdm, serialized);
+                    localStorage.setItem('sawyan_admin', serialized);
                 }
                 if (sessionToken) {
-                    localStorage.setItem(SawyanAPI._storageKey('sawyan_admin_session_token'), sessionToken);
+                    sessionStorage.setItem(kTok, sessionToken);
+                    localStorage.setItem(kTok, sessionToken);
                 }
             } catch (e) {}
         },
 
         clearAdminSession() {
             try {
-                localStorage.removeItem(SawyanAPI._storageKey('sawyan_admin'));
-                localStorage.removeItem(SawyanAPI._storageKey('sawyan_admin_session_token'));
+                const kAdm = SawyanAPI._storageKey('sawyan_admin');
+                const kTok = SawyanAPI._storageKey('sawyan_admin_session_token');
+                sessionStorage.removeItem(kAdm);
+                sessionStorage.removeItem(kTok);
+                localStorage.removeItem(kAdm);
+                localStorage.removeItem(kTok);
                 localStorage.removeItem('sawyan_admin');
                 localStorage.removeItem('sawyan_user_type');
             } catch (e) {}

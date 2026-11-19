@@ -160,10 +160,13 @@
         }
 
         if (window.SAWYAN.API.isDemoMode()) {
+            const founderActive = isSovereignFounder(adm);
+            const checkerActive = adm.role === 'approver' && !founderActive;
             bar.innerHTML =
                 '<span style="font-size:0.75rem;color:#64748b;font-weight:800;">تبديل الدور الحي:</span>' +
+                '<button type="button" id="switchFounderBtn" onclick="sawyanSwitchDemoRole(\'founder\')" style="padding:5px 10px;border-radius:8px;border:1px solid ' + (founderActive ? '#b45309' : '#cbd5e1') + ';background:' + (founderActive ? '#b45309' : '#ffffff') + ';color:' + (founderActive ? '#ffffff' : '#0f172a') + ';font-family:Tajawal,sans-serif;font-size:0.76rem;font-weight:800;cursor:pointer;">👑 المؤسس (إدارة مطلقة)</button>' +
                 '<button type="button" id="switchMakerBtn" onclick="sawyanSwitchDemoRole(\'maker\')" style="padding:5px 10px;border-radius:8px;border:1px solid ' + (adm.role === 'finance' ? '#1d4ed8' : '#cbd5e1') + ';background:' + (adm.role === 'finance' ? '#1d4ed8' : '#ffffff') + ';color:' + (adm.role === 'finance' ? '#ffffff' : '#0f172a') + ';font-family:Tajawal,sans-serif;font-size:0.76rem;font-weight:800;cursor:pointer;">💼 Maker (مالي)</button>' +
-                '<button type="button" id="switchCheckerBtn" onclick="sawyanSwitchDemoRole(\'checker\')" style="padding:5px 10px;border-radius:8px;border:1px solid ' + (adm.role === 'approver' ? '#059669' : '#cbd5e1') + ';background:' + (adm.role === 'approver' ? '#059669' : '#ffffff') + ';color:' + (adm.role === 'approver' ? '#ffffff' : '#0f172a') + ';font-family:Tajawal,sans-serif;font-size:0.76rem;font-weight:800;cursor:pointer;">✅ Checker (مُعتمِد)</button>' +
+                '<button type="button" id="switchCheckerBtn" onclick="sawyanSwitchDemoRole(\'checker\')" style="padding:5px 10px;border-radius:8px;border:1px solid ' + (checkerActive ? '#059669' : '#cbd5e1') + ';background:' + (checkerActive ? '#059669' : '#ffffff') + ';color:' + (checkerActive ? '#ffffff' : '#0f172a') + ';font-family:Tajawal,sans-serif;font-size:0.76rem;font-weight:800;cursor:pointer;">✅ Checker (مُعتمِد)</button>' +
                 '<button type="button" id="switchAuditorBtn" onclick="sawyanSwitchDemoRole(\'auditor\')" style="padding:5px 10px;border-radius:8px;border:1px solid ' + (adm.role === 'auditor' ? '#d97706' : '#cbd5e1') + ';background:' + (adm.role === 'auditor' ? '#d97706' : '#ffffff') + ';color:' + (adm.role === 'auditor' ? '#ffffff' : '#0f172a') + ';font-family:Tajawal,sans-serif;font-size:0.76rem;font-weight:800;cursor:pointer;">🔍 Auditor (قراءة فقط)</button>';
         } else {
             bar.innerHTML = '<span style="font-size:0.76rem;background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7;padding:4px 10px;border-radius:999px;font-weight:800;">🔒 جلسة إنتاج سيادية موثقة (`sawyan`)</span>';
@@ -173,6 +176,7 @@
     window.sawyanSwitchDemoRole = async function (which) {
         if (!window.SAWYAN || !window.SAWYAN.API || !window.SAWYAN.API.isDemoMode()) return;
         const creds = {
+            founder: { email: 'demo.founder@sawyan.local', password: 'Demo@Founder2026' },
             maker: { email: 'demo.maker@sawyan.local', password: 'Demo@Maker2026' },
             checker: { email: 'demo.checker@sawyan.local', password: 'Demo@Checker2026' },
             auditor: { email: 'demo.auditor@sawyan.local', password: 'Demo@Auditor2026' }

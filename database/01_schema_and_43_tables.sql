@@ -1,7 +1,7 @@
 -- ============================================================================
--- SAWYAN ECOSYSTEM — V3.0 PRODUCTION & PARALLEL SCHEMA (43 TABLES)
--- Constitutional Reference: الملف_التقني_للمطورين.md (V3.0 - Chapters 3 & 4)
--- Decisions Enforced: D0-D28, S01-S10, Multi-Branch, B2B Tax, PSP Recon
+-- SAWYAN ECOSYSTEM — V3.1 PRODUCTION & PARALLEL SCHEMA (44 TABLES)
+-- Constitutional Reference: الملف_التقني_للمطورين.md (V3.1 - Chapters 3 & 4)
+-- Decisions Enforced: D0-D28, S01-S10, Multi-Branch, B2B Tax, PSP Recon, D5 OTP
 -- ============================================================================
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
@@ -30,6 +30,7 @@ CREATE TABLE sawyan.countries (
     tax_exclusive              BOOLEAN NOT NULL DEFAULT true CHECK (tax_exclusive = true),
     payout_day                 SMALLINT NOT NULL DEFAULT 15 CHECK (payout_day BETWEEN 2 AND 28),
     return_cutoff_day          SMALLINT NOT NULL DEFAULT 14 CHECK (return_cutoff_day < payout_day),
+    payout_release_hour        SMALLINT NOT NULL DEFAULT 18 CHECK (payout_release_hour BETWEEN 0 AND 23),
     legal_opinion_verified     BOOLEAN NOT NULL DEFAULT false,
     legal_opinion_doc_url      TEXT,
     local_terms_version        VARCHAR(32),
@@ -212,6 +213,7 @@ CREATE TABLE sawyan.settlement_cycles (
     closure_utc_instant           TIMESTAMPTZ NOT NULL,
     step_status                   SMALLINT NOT NULL DEFAULT 1 CHECK (step_status BETWEEN 1 AND 6),
     zero_discrepancy_passed       BOOLEAN NOT NULL DEFAULT false,
+    recalc_required               BOOLEAN NOT NULL DEFAULT false,
     ias21_fx_revaluation_entry_id UUID,
     maker_admin_id                UUID REFERENCES sawyan.admins(id),
     checker_admin_id              UUID REFERENCES sawyan.admins(id),
@@ -296,6 +298,8 @@ CREATE TABLE sawyan.transactions (
     commission_snapshot     JSONB NOT NULL,
     accounting_period_id    BIGINT REFERENCES sawyan.settlement_cycles(id),
     pool_transaction_id     BIGINT REFERENCES sawyan.pool_transactions(id),
+    completed_at            TIMESTAMPTZ,
+    reversed_at             TIMESTAMPTZ,
     created_at              TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -394,7 +398,7 @@ CREATE TABLE sawyan.journal_entries (
     source_type         VARCHAR(40) NOT NULL CHECK (source_type IN (
         'INVOICE', 'MERCHANT_TOPUP', 'PSP_SETTLEMENT', 'COMPENSATORY_SETTLEMENT',
         'MONTHLY_DISTRIBUTION', 'SURPLUS_SUSPENSE', 'WITHDRAWAL', 'CLAWBACK_REVERSAL',
-        'IAS21_REVALUATION', 'TAX_WHT', 'TAX_VAT_B2B', 'ROUNDING_ADJUSTMENT'
+        'IAS21_REVALUATION', 'TAX_WHT', 'TAX_VAT_B2B', 'ROUNDING_ADJUSTMENT', 'MANUAL_AUDIT_ADJUSTMENT'
     )),
     source_id           UUID NOT NULL,
     country_id          INT REFERENCES sawyan.countries(id),
@@ -635,7 +639,11 @@ CREATE TABLE sawyan.dispute_tickets (
     transaction_id     UUID NOT NULL REFERENCES sawyan.transactions(id),
     member_id          UUID NOT NULL REFERENCES sawyan.members(id),
     merchant_id        UUID NOT NULL REFERENCES sawyan.merchants(id),
+    dispute_category   VARCHAR(30) NOT NULL DEFAULT 'general' CHECK (dispute_category IN (
+        'general', 'return_stalled', 'pending_rejected', 'amount_mismatch', 'merchant_return_escalation'
+    )),
     dispute_reason     TEXT NOT NULL,
+    evidence_url       TEXT,
     audio_url          TEXT,
     audio_duration_sec SMALLINT CHECK (audio_duration_sec IS NULL OR audio_duration_sec <= 60),
     video_url          TEXT,
@@ -773,6 +781,25 @@ CREATE TABLE sawyan.audit_logs (
     row_hash       CHAR(64) NOT NULL
 );
 
+-- 44. sawyan.return_requests (مصافحة المرتجع المزدوجة بـ OTP أو موافقة التطبيق قبل تسليم النقد — D5 + M8 + S05)
+CREATE TABLE sawyan.return_requests (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    transaction_id    UUID NOT NULL REFERENCES sawyan.transactions(id),
+    merchant_id       UUID NOT NULL REFERENCES sawyan.merchants(id),
+    member_id         UUID NOT NULL REFERENCES sawyan.members(id),
+    reason            TEXT NOT NULL,
+    otp_sha256        CHAR(64) NOT NULL,
+    failed_attempts   SMALLINT NOT NULL DEFAULT 0 CHECK (failed_attempts >= 0),
+    max_attempts      SMALLINT NOT NULL DEFAULT 5 CHECK (max_attempts >= 1),
+    status            VARCHAR(25) NOT NULL DEFAULT 'pending_otp' CHECK (status IN (
+        'pending_otp', 'approved_otp', 'approved_in_app', 'rejected_member', 'locked', 'expired', 'escalated_to_admin'
+    )),
+    proof_url         TEXT,
+    expires_at        TIMESTAMPTZ NOT NULL,
+    resolved_at       TIMESTAMPTZ,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- ============================================================================
 -- STRATEGIC PERFORMANCE INDEXES
 -- ============================================================================
@@ -791,6 +818,8 @@ CREATE INDEX idx_settings_bitemporal ON sawyan.settings (country_id, effective_f
 CREATE INDEX idx_journal_lines_entry ON sawyan.journal_lines (journal_entry_id);
 CREATE INDEX idx_journal_lines_acct ON sawyan.journal_lines (account_code);
 CREATE INDEX idx_notifications_recipient ON sawyan.notifications (recipient_id, is_read, created_at DESC);
+CREATE INDEX idx_return_requests_tx_status ON sawyan.return_requests (transaction_id, status);
+CREATE INDEX idx_return_requests_member_pending ON sawyan.return_requests (member_id, status) WHERE status = 'pending_otp';
 
 -- ============================================================================
 -- STRUCTURAL DATA INTEGRITY & IMMUTABILITY TRIGGERS
