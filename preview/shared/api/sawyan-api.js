@@ -1528,10 +1528,23 @@
                 }
             };
 
+            const pathNow = String(window.location.pathname || '').toLowerCase();
+            let sessionSuffix = '';
+            if (pathNow.includes('/member-dashboard/')) {
+                const mem = SawyanAPI.getSavedMember();
+                if (mem && mem.member_code) sessionSuffix = ` • حساب عضو #${mem.member_code}`;
+            } else if (pathNow.includes('/merchant-dashboard/')) {
+                const mer = SawyanAPI.getSavedMerchant();
+                if (mer && mer.merchant_code) sessionSuffix = ` • حساب تاجر ${mer.merchant_code}`;
+            } else if (pathNow.includes('/admin-dashboard/')) {
+                const adm = SawyanAPI.getSavedAdmin();
+                if (adm && adm.role) sessionSuffix = ` • بوابة الإدارة (${adm.role})`;
+            }
+
             const left = document.createElement('span');
             left.textContent = isDemo
-                ? '🧪 الموقع الموازي للتجربة (Parallel Sandbox — Schema: sawyan_demo • شجرة تجريبية 48 عضواً)'
-                : '🟢 الموقع الأصلي الحي (Production — Schema: sawyan • الجذر المؤسس #0)';
+                ? `🧪 الموقع الموازي للتجربة (Sandbox — sawyan_demo)${sessionSuffix}`
+                : `🟢 الموقع الأصلي الحي (Production — SAWYAN)${sessionSuffix}`;
 
             const link = document.createElement('a');
             link.href = targetUrl;
