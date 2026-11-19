@@ -74,8 +74,8 @@ def sha256_file(path):
 
 def check_dual_site_parity():
     print("=== [1/4] Verifying 100% SHA-256 Parity Across Root (/) and Parallel (/preview/) ===")
-    targets_dirs = ["shared", "css", "js", "public", "member-dashboard", "member-demo"]
-    targets_files = ["index.html", "auth-gateway.html", "member-showcase.html"]
+    targets_dirs = ["shared", "css", "js", "public", "member-dashboard", "merchant-dashboard", "admin-dashboard"]
+    targets_files = ["index.html", "auth-gateway.html"]
     count = 0
 
     for fname in targets_files:

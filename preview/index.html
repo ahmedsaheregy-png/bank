@@ -84,7 +84,7 @@
             <div class="mobile-menu-links">
                 <a href="#features">⭐ المميزات</a>
                 <a href="#marketplace-explorer">🏪 التجار المميزون</a>
-                <a href="public/merchants.html" id="mobileAllMerchantsLink">📋 عرض جميع التجار (856+)</a>
+                <a href="public/merchants.html" id="mobileAllMerchantsLink">📋 عرض جميع التجار</a>
                 <a href="#how-it-works">⚙️ آلية العمل</a>
                 <a href="public/verify.html">🔎 التحقق من الفاتورة</a>
                 <a href="member-dashboard/login.html?quick=member">📱 جرّب كعضو (مع الحاسبة)</a>
@@ -156,19 +156,19 @@
 
                 <div class="hero-compact-metrics">
                     <div class="hero-metric-pill">
-                        <strong id="stat-members">12,547</strong>
+                        <strong id="stat-members">0</strong>
                         <span>عضو نشط</span>
                     </div>
                     <div class="hero-metric-pill">
-                        <strong id="stat-merchants">856</strong>
+                        <strong id="stat-merchants">0</strong>
                         <span id="heroMetricMerchantsLabel">تاجر معتمد</span>
                     </div>
                     <div class="hero-metric-pill">
-                        <strong id="heroStatReturns">2.5 مليون+</strong>
+                        <strong id="heroStatReturns">0.00</strong>
                         <span id="heroStatReturnsLabel">عائدات موزعة للأعضاء</span>
                     </div>
                     <div class="hero-metric-pill">
-                        <strong id="stat-transactions">98,432</strong>
+                        <strong id="stat-transactions">0</strong>
                         <span>عملية مكتملة</span>
                     </div>
                 </div>
@@ -185,7 +185,10 @@
                     <div class="wallet-preview-card" data-spec-id="public-hero-wallet-card" style="background: linear-gradient(145deg, #0f2744 0%, #064e3b 100%); color:#ffffff; border-radius:22px; padding:24px; width:100%; box-shadow:0 24px 54px rgba(15,39,68,0.24); border:1px solid rgba(255,255,255,0.16); position:relative; z-index:2;">
                         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px;">
                             <span style="font-weight:800; font-size:0.98rem; color:#a7f3d0;">💳 محفظتي (الاستهلاك الاستثماري)</span>
-                            <span id="walletPreviewGeoTag" style="background:rgba(255,255,255,0.16); padding:4px 10px; border-radius:999px; font-size:0.78rem; font-weight:700;">🌍 عالمي (USD)</span>
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <span style="background:rgba(251,191,36,0.18); color:#fde68a; border:1px solid rgba(251,191,36,0.4); padding:2px 8px; border-radius:999px; font-size:0.68rem; font-weight:800;">نموذج توضيحي للمحفظة</span>
+                                <span id="walletPreviewGeoTag" style="background:rgba(255,255,255,0.16); padding:4px 10px; border-radius:999px; font-size:0.78rem; font-weight:700;">🌍 عالمي (USD)</span>
+                            </div>
                         </div>
 
                         <div style="font-size:0.85rem; color:#cbd5e1;">الرصيد المتاح</div>
@@ -394,22 +397,22 @@
             <div class="stats-grid">
                 <div class="stat-box">
                     <div class="stat-icon">👥</div>
-                    <div class="stat-number">12,547+</div>
+                    <div class="stat-number" id="bigStatMembers">0</div>
                     <div class="stat-label">عضو نشط</div>
                 </div>
                 <div class="stat-box">
                     <div class="stat-icon">🏪</div>
-                    <div class="stat-number">856+</div>
+                    <div class="stat-number" id="bigStatMerchants">0</div>
                     <div class="stat-label">تاجر معتمد</div>
                 </div>
                 <div class="stat-box">
                     <div class="stat-icon">💳</div>
-                    <div class="stat-number">98,432</div>
+                    <div class="stat-number" id="bigStatTransactions">0</div>
                     <div class="stat-label">عملية مكتملة</div>
                 </div>
                 <div class="stat-box">
                     <div class="stat-icon">💰</div>
-                    <div class="stat-number">2.5 مليون+</div>
+                    <div class="stat-number" id="bigStatReturns">0.00</div>
                     <div class="stat-label" id="bigStatReturnsLabel">عائدات موزعة للأعضاء</div>
                 </div>
             </div>
@@ -495,15 +498,15 @@
                 </p>
 
                 <form class="verifier-input-row" id="homeVerifierForm">
-                    <input type="text" id="homeVerifierInput" value="SW-8821" placeholder="أدخل كود الفاتورة (مثال: SW-8821 أو T178001)" aria-label="كود الفاتورة">
+                    <input type="text" id="homeVerifierInput" value="" placeholder="أدخل كود الفاتورة المرجعي (مثال: SW-1001)" aria-label="كود الفاتورة">
                     <button type="submit" class="btn btn-primary">تحقق الآن 🔎</button>
                 </form>
 
                 <div style="display:flex; justify-content:center; gap:8px; flex-wrap:wrap; margin-top:8px; font-size:0.84rem; color:#475569;">
-                    <span>أكواد تجريبية سريعة:</span>
-                    <button type="button" class="geo-city-chip sample-verify-code" data-code="SW-8821">SW-8821</button>
-                    <button type="button" class="geo-city-chip sample-verify-code" data-code="T178001">T178001</button>
-                    <button type="button" class="geo-city-chip sample-verify-code" data-code="SW-4910">SW-4910</button>
+                    <span id="homeVerifierDemoChips" style="display:inline-flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <span>أكواد تجريبية سريعة:</span>
+                        <button type="button" class="geo-city-chip sample-verify-code" data-code="SW-1001">SW-1001</button>
+                    </span>
                     <a href="public/verify.html" style="font-weight:800; color:#047857; margin-right:8px; align-self:center;">فتح صفحة التحقق الكاملة ↗</a>
                 </div>
 

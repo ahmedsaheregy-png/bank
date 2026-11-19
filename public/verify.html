@@ -168,16 +168,13 @@
                 </div>
 
                 <form id="verifyForm" class="verify-form-row">
-                    <input type="text" id="verifyCodeInput" placeholder="أدخل كود الفاتورة مثل: SW-8821" value="SW-8821" aria-label="كود الفاتورة" required>
+                    <input type="text" id="verifyCodeInput" placeholder="أدخل كود الفاتورة المرجعي مثل: SW-1001" value="" aria-label="كود الفاتورة" required>
                     <button type="submit" id="verifySubmitBtn" class="btn btn-primary">فحص الكود الآن 🔎</button>
                 </form>
 
-                <div style="display:flex; justify-content:center; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.86rem;">
-                    <span style="font-weight:700; color:#475569;">أكواد موثقة للتجربة:</span>
+                <div id="verifyDemoChips" style="display:flex; justify-content:center; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.86rem;">
+                    <span style="font-weight:700; color:#475569;">كود فاتورة موثقة للتجربة:</span>
                     <button type="button" class="geo-city-chip sample-code-btn" data-code="SW-1001">SW-1001 (فاتورة قاعدة البيانات الحية • مصر)</button>
-                    <button type="button" class="geo-city-chip sample-code-btn" data-code="SW-8821">SW-8821 (عينة واجهة • مصر)</button>
-                    <button type="button" class="geo-city-chip sample-code-btn" data-code="T178001">T178001 (عينة واجهة • السعودية)</button>
-                    <button type="button" class="geo-city-chip sample-code-btn" data-code="SW-4910">SW-4910 (معلقة • تركيا)</button>
                 </div>
 
                 <div style="text-align:center;">
@@ -369,7 +366,10 @@
                 hydrateLogoAndTheme();
 
                 var params = new URLSearchParams(window.location.search);
-                var defaultCode = (window.SAWYAN && window.SAWYAN.API && !window.SAWYAN.API.isDemoMode()) ? '' : 'SW-1001';
+                var isProdSite = Boolean(window.SAWYAN && window.SAWYAN.API && !window.SAWYAN.API.isDemoMode());
+                var demoChipsEl = byId('verifyDemoChips');
+                if (demoChipsEl && isProdSite) demoChipsEl.style.display = 'none';
+                var defaultCode = isProdSite ? '' : 'SW-1001';
                 var initialCode = (params.get('code') || defaultCode).trim().toUpperCase();
                 var input = byId('verifyCodeInput');
                 if (input && initialCode) input.value = initialCode;

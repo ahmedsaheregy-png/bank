@@ -234,61 +234,7 @@ async function rejectTransaction(transactionId) {
     await rejectPendingTx(transactionId);
 }
 
-async function loadAllTransactions() {
-    const page = document.getElementById('transactionsPage');
-    page.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-            <div>
-                <h2 style="margin:0; font-size:1.2rem; color:#0f172a; font-weight:800;">💳 العمليات المكتملة وسجل المبيعات</h2>
-                <p style="margin:4px 0 0; color:#64748b; font-size:0.82rem;">كشف حساب تفصيلي بمبيعات أعضاء سويا ومطابقة درج الكاشير</p>
-            </div>
-            <button onclick="alert('📊 تم تصدير كشف حساب العمليات بصيغة Excel / PDF بنجاح لمطابقة الوردية')" style="background:#0f172a; color:white; border:none; padding:8px 14px; border-radius:8px; font-weight:700; font-size:0.82rem; cursor:pointer; font-family:'Tajawal';">
-                📥 تصدير كشف الحساب (Excel)
-            </button>
-        </div>
-
-        <div style="background:white; border:1px solid #cbd5e1; border-radius:12px; overflow:hidden;">
-            <table style="width:100%; border-collapse:collapse; text-align:right; font-size:0.85rem;">
-                <thead style="background:#f1f5f9; border-bottom:1.5px solid #cbd5e1; font-weight:800; color:#334155;">
-                    <tr>
-                        <th style="padding:10px 14px;">رقم العملية</th>
-                        <th style="padding:10px 14px;">العضو</th>
-                        <th style="padding:10px 14px;">المسار</th>
-                        <th style="padding:10px 14px;">قيمة الفاتورة</th>
-                        <th style="padding:10px 14px;">عمولة المتجر (10%)</th>
-                        <th style="padding:10px 14px;">الوقت والتاريخ</th>
-                    </tr>
-                </thead>
-                <tbody style="divide-y:1px solid #e2e8f0;">
-                    <tr style="border-bottom:1px solid #f1f5f9;">
-                        <td style="padding:10px 14px; font-weight:800; font-family:monospace;">#TX-1092</td>
-                        <td style="padding:10px 14px; font-weight:700;">خالد حسن (#125)</td>
-                        <td style="padding:10px 14px;"><span style="background:#ecfdf5; color:#047857; padding:2px 6px; border-radius:4px; font-size:0.75rem; font-weight:800;">مسار A (فوري)</span></td>
-                        <td style="padding:10px 14px; font-weight:900; color:#0f172a;">1,250.00 ج.م</td>
-                        <td style="padding:10px 14px; color:#059669; font-weight:800;">125.00 ج.م</td>
-                        <td style="padding:10px 14px; color:#64748b; font-size:0.78rem;">اليوم 04:30 م</td>
-                    </tr>
-                    <tr style="border-bottom:1px solid #f1f5f9;">
-                        <td style="padding:10px 14px; font-weight:800; font-family:monospace;">#TX-1088</td>
-                        <td style="padding:10px 14px; font-weight:700;">إبراهيم عادل (#135)</td>
-                        <td style="padding:10px 14px;"><span style="background:#ecfdf5; color:#047857; padding:2px 6px; border-radius:4px; font-size:0.75rem; font-weight:800;">مسار A (فوري)</span></td>
-                        <td style="padding:10px 14px; font-weight:900; color:#0f172a;">825.00 ج.م</td>
-                        <td style="padding:10px 14px; color:#059669; font-weight:800;">82.50 ج.م</td>
-                        <td style="padding:10px 14px; color:#64748b; font-size:0.78rem;">اليوم 02:15 م</td>
-                    </tr>
-                    <tr style="border-bottom:1px solid #f1f5f9;">
-                        <td style="padding:10px 14px; font-weight:800; font-family:monospace;">#TX-1075</td>
-                        <td style="padding:10px 14px; font-weight:700;">سارة أحمد (#140)</td>
-                        <td style="padding:10px 14px;"><span style="background:#eff6ff; color:#1d4ed8; padding:2px 6px; border-radius:4px; font-size:0.75rem; font-weight:800;">مسار B (فاتورة)</span></td>
-                        <td style="padding:10px 14px; font-weight:900; color:#0f172a;">450.00 ج.م</td>
-                        <td style="padding:10px 14px; color:#059669; font-weight:800;">45.00 ج.م</td>
-                        <td style="padding:10px 14px; color:#64748b; font-size:0.78rem;">أمس 08:20 م</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    `;
-}
+// Live loadAllTransactions() & shift closing report defined at Stage 5 POS handler below.
 function loadFinancialReport() {
     const page = document.getElementById('financialPage');
     if (!page) return;
@@ -325,9 +271,31 @@ function loadFinancialReport() {
             </div>
 
             <!-- شريط الأمان المالي الاستراتيجي -->
-            <div data-spec-id="merchant-financial-d15-ladder" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:10px; padding:10px 14px; font-size:0.8rem; color:#e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <div style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:10px; padding:10px 14px; font-size:0.8rem; color:#e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                 <span id="liveSafetyCapStrip">🛡️ <strong>حد الأمان المحاسبي:</strong> جاري حساب سعة التغطية المباشرة من رصيد الشحن المسبق...</span>
                 <span id="liveDedRateBadge" style="color:#a7f3d0; font-weight:800; font-family:monospace;">نسبة العمولة التعاقدية: —%</span>
+            </div>
+        </div>
+
+        <!-- 1b. سلم الحماية والإنذار المبكر للشحن المسبق (D15) -->
+        <div id="finD15LadderCard" data-spec-id="merchant-financial-d15-ladder" style="background:white; border:1.5px solid #cbd5e1; border-radius:14px; padding:14px 18px; margin-bottom:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+                <div style="font-weight:900; font-size:0.96rem; color:#0f172a;">🪜 سلم الأمان المالي والإنذار المبكر لرصيد التاجر (قرار D15)</div>
+                <span id="finD15LadderZoneTag" style="background:#ecfdf5; color:#047857; padding:3px 10px; border-radius:999px; font-size:0.78rem; font-weight:800;">جاري فحص النطاق...</span>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(175px, 1fr)); gap:8px; font-size:0.78rem;">
+                <div id="d15TierGREEN" style="border:1.5px solid #10b981; background:#f0fdf4; border-radius:10px; padding:9px 11px;">
+                    <b style="color:#047857;">🟢 فوق 30% (منطقة خضراء)</b><div style="color:#334155;margin-top:2px;">ظهور كامل بالرادار + صلاحية بث العروض الخاطفة</div>
+                </div>
+                <div id="d15TierYELLOW" style="border:1.5px solid #f59e0b; background:#fffbeb; border-radius:10px; padding:9px 11px;">
+                    <b style="color:#b45309;">🟡 &le; 30% (إنذار أول)</b><div style="color:#334155;margin-top:2px;">تنبيه مبكر لإعادة شحن الرصيد وتوقيف البث الترويجي</div>
+                </div>
+                <div id="d15TierRED" style="border:1.5px solid #ea580c; background:#fff7ed; border-radius:10px; padding:9px 11px;">
+                    <b style="color:#c2410c;">🟠 &le; 20% (إنذار حرج)</b><div style="color:#334155;margin-top:2px;">تحذير عاجل قبل العزل التلقائي</div>
+                </div>
+                <div id="d15TierISOLATED" style="border:1.5px solid #dc2626; background:#fef2f2; border-radius:10px; padding:9px 11px;">
+                    <b style="color:#991b1b;">🔴 &le; 10% (عزل + FIFO)</b><div style="color:#334155;margin-top:2px;">إخفاء وقائي من الرادار وتحويل الفواتير لطابور FIFO</div>
+                </div>
             </div>
         </div>
 
@@ -348,7 +316,8 @@ function loadFinancialReport() {
         </div>
 
         <!-- 3. شريط التبويبات المحاسبية الثلاثة -->
-        <div data-spec-id="merchant-financial-ledger-tabs" style="display:flex; border-bottom:2px solid #e2e8f0; margin-bottom:14px; gap:8px;">
+        <div data-spec-id="merchant-financial-ledger-tabs">
+        <div style="display:flex; border-bottom:2px solid #e2e8f0; margin-bottom:14px; gap:8px;">
             <button id="finTabBtn1" onclick="switchFinancialTab(1)" style="background:transparent; border:none; border-bottom:3px solid #059669; color:#059669; font-weight:900; font-size:0.9rem; padding:8px 16px; cursor:pointer; font-family:'Tajawal';">
                 🧾 كشف استهلاك الشحن والمبيعات (أين صُرف؟)
             </button>
@@ -409,6 +378,7 @@ function loadFinancialReport() {
                 جاري تحميل الفواتير الضريبية المزدوجة B2B من قاعدة البيانات...
             </div>
         </div>
+        </div>
     `;
 }
 
@@ -445,80 +415,7 @@ function exportFinancialStatementPDF() {
 function changeSettlementMonth(val) {
     if (typeof loadFinancialReport === 'function') loadFinancialReport();
 }
-function loadSettings() {
-    const page = document.getElementById('settingsPage');
-    page.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-            <div>
-                <h2 style="margin:0; font-size:1.2rem; color:#0f172a; font-weight:800;">⚙️ إعدادات المتجر وبيانات التعاقد</h2>
-                <p style="margin:4px 0 0; color:#64748b; font-size:0.82rem;">إدارة بيانات الفرع، ساعات العمل، ومراجعة نسب العمولة المعتمدة</p>
-            </div>
-            <button onclick="alert('✅ تم حفظ تعديلات بيانات المتجر بنجاح');" style="background:#059669; color:white; border:none; padding:8px 16px; border-radius:8px; font-weight:800; font-size:0.85rem; cursor:pointer; font-family:'Tajawal';">
-                💾 حفظ التعديلات
-            </button>
-        </div>
-
-        <div style="display:grid; grid-template-columns:1.2fr 1fr; gap:16px;">
-            <!-- بيانات المتجر الأساسية -->
-            <div style="background:white; border:1px solid #cbd5e1; border-radius:12px; padding:16px;">
-                <div style="font-weight:900; font-size:0.95rem; color:#0f172a; margin-bottom:12px; border-bottom:1px solid #f1f5f9; padding-bottom:8px;">🏪 بيانات المتجر والفرع</div>
-                
-                <div style="margin-bottom:10px;">
-                    <label style="display:block; font-size:0.8rem; font-weight:700; color:#64748b; margin-bottom:3px;">اسم المتجر التجاري:</label>
-                    <input type="text" value="سوبر ماركت الفارق المركزي" style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid #cbd5e1; font-weight:700; font-family:'Tajawal'; font-size:0.85rem;">
-                </div>
-
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
-                    <div>
-                        <label style="display:block; font-size:0.8rem; font-weight:700; color:#64748b; margin-bottom:3px;">كود المتجر التعريفي:</label>
-                        <input type="text" value="EG-MKT-101" readonly style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid #cbd5e1; background:#f8fafc; font-weight:800; font-family:monospace; font-size:0.85rem;">
-                    </div>
-                    <div>
-                        <label style="display:block; font-size:0.8rem; font-weight:700; color:#64748b; margin-bottom:3px;">الفرع:</label>
-                        <input type="text" value="فرع مدينة نصر (شارع عباس العقاد)" style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid #cbd5e1; font-weight:700; font-family:'Tajawal'; font-size:0.85rem;">
-                    </div>
-                </div>
-
-                <div style="margin-bottom:10px;">
-                    <label style="display:block; font-size:0.8rem; font-weight:700; color:#64748b; margin-bottom:3px;">ساعات العمل اليومية:</label>
-                    <input type="text" value="يومياً من 08:00 صباحاً حتى 01:00 بعد منتصف الليل" style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid #cbd5e1; font-weight:700; font-family:'Tajawal'; font-size:0.85rem;">
-                </div>
-
-                <div>
-                    <label style="display:block; font-size:0.8rem; font-weight:700; color:#64748b; margin-bottom:3px;">رقم هاتف المحل / الكاشير:</label>
-                    <input type="tel" value="01098765432" style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid #cbd5e1; font-weight:700; font-family:monospace; font-size:0.85rem;">
-                </div>
-            </div>
-
-            <!-- بطاقة نسبة العمولة المؤمنة والـ GPS -->
-            <div style="display:flex; flex-direction:column; gap:12px;">
-                <!-- نسبة الخصم التعاقدية (مقروءة فقط) -->
-                <div style="background:#f0fdf4; border:1.5px solid #10b981; border-radius:12px; padding:14px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                        <div style="font-weight:900; font-size:0.9rem; color:#065f46;">🔒 نسبة العمولة التعاقدية الرسمية:</div>
-                        <span style="background:#10b981; color:white; font-size:0.75rem; font-weight:800; padding:2px 6px; border-radius:4px;">معتمدة بالعقد</span>
-                    </div>
-                    <div style="font-size:1.8rem; font-weight:900; color:#047857; font-family:monospace;">10.0% <span style="font-size:0.85rem; font-family:'Tajawal'; color:#065f46;">(عائدات خطة الدخل وعمولة الشبكة)</span></div>
-                    <div style="font-size:0.75rem; color:#047857; margin-top:4px; line-height:1.4;">
-                        تُخصم آلياً من رصيد الشحن المسبق مع إصدار فاتورة ضريبية مزدوجة B2B رسمية.<br>
-                        <span style="color:#64748b;">(تعديل النسبة التعاقدية محصور باعتماد Maker–Checker لدى إدارة المنصة).</span>
-                    </div>
-                </div>
-
-                <!-- إحداثيات المتجر على الخريطة والرادار -->
-                <div style="background:white; border:1px solid #cbd5e1; border-radius:12px; padding:14px;">
-                    <div style="font-weight:900; font-size:0.88rem; color:#0f172a; margin-bottom:6px;">📍 إحداثيات المتجر في رادار الأعضاء:</div>
-                    <div style="font-size:0.78rem; color:#334155; margin-bottom:8px;">
-                        الإحداثيات الحالية: <strong>30.0561° N, 31.3412° E</strong> (مدينة نصر).
-                    </div>
-                    <button onclick="alert('🗺️ فتح خريطة تعديل دبوس موقع المتجر لضبط دقة الرادار');" style="width:100%; background:white; color:#1d4ed8; border:1px solid #bfdbfe; padding:8px; border-radius:6px; font-weight:700; font-size:0.8rem; cursor:pointer; font-family:'Tajawal';">
-                        🗺️ تحديث موضع المتجر على الخريطة
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-}
+// Live loadSettings() defined at D25 Settings & Cashier section below.
 
 async function saveSettings() {
     const businessName = document.getElementById('settingsBusinessName')?.value?.trim() || null;
@@ -699,6 +596,10 @@ function loadQRScannerPage() {
         console.error('QR Scanner page element not found');
         return;
     }
+    const p = (typeof merchantBundle !== 'undefined' && merchantBundle?.profile) || (typeof merchantData !== 'undefined' && merchantData) || {};
+    const storeTitle = escM(p.business_name || 'متجر SAWYAN');
+    const storeCode = escM(p.merchant_code || '-');
+    const dedPct = Number(p.deduction_percent || 10).toFixed(1);
 
     page.innerHTML = `
         <div class="qr-scanner-page" style="max-width: 800px; margin: 0 auto;">
@@ -708,15 +609,15 @@ function loadQRScannerPage() {
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <div style="width: 48px; height: 48px; background: #ecfdf5; border: 1.5px solid #10b981; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem;">🏬</div>
                     <div>
-                        <div style="font-weight: 900; font-size: 1.1rem; color: #0f172a;">سوبر ماركت الفارق المركزي</div>
+                        <div style="font-weight: 900; font-size: 1.1rem; color: #0f172a;">${storeTitle}</div>
                         <div style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">
-                            كود التاجر: <strong style="color: #059669; font-family: monospace;">#EG-MKT-101</strong> • <span style="background: #ecfdf5; color: #047857; padding: 1px 8px; border-radius: 6px; font-weight: 800; font-size: 0.75rem;">🟢 متجر معتمد ونشط</span>
+                            كود التاجر: <strong style="color: #059669; font-family: monospace;">#${storeCode}</strong> • <span style="background: #ecfdf5; color: #047857; padding: 1px 8px; border-radius: 6px; font-weight: 800; font-size: 0.75rem;">${p.is_isolated ? '🔴 معزول مؤقتاً' : '🟢 متجر معتمد ونشط'}</span>
                         </div>
                     </div>
                 </div>
                 <div style="text-align: left;">
                     <div style="font-size: 0.74rem; color: #64748b; font-weight: 700;">نسبة عمولات سويا:</div>
-                    <div style="font-weight: 900; color: #059669; font-size: 1.2rem; font-family: monospace;">10.0% معتمدة</div>
+                    <div style="font-weight: 900; color: #059669; font-size: 1.2rem; font-family: monospace;">${dedPct}% معتمدة</div>
                 </div>
             </div>
 
@@ -750,7 +651,7 @@ function loadQRScannerPage() {
                             🔢 كود العميل / العضو: <span style="color: #ef4444;">*</span>
                         </label>
                         <div style="display: flex; gap: 8px;">
-                            <input type="text" id="manualQRInput" value="" placeholder="أدخل كود العضو (مثال: 1 أو 124)" 
+                            <input type="text" id="manualQRInput" value="" placeholder="أدخل كود العضو الرقمي" 
                                 oninput="handleManualCodeInput(this.value)" 
                                 onkeydown="if(event.key==='Enter') focusBillAmount()"
                                 style="width: 100%; padding: 10px 14px; border: 2px solid #cbd5e1; border-radius: 10px; font-weight: 900; font-size: 1.1rem; font-family: monospace; outline: none; transition: border-color 0.2s;"
@@ -759,7 +660,7 @@ function loadQRScannerPage() {
                                 ✓
                             </button>
                         </div>
-                        <div style="font-size: 0.72rem; color: #64748b; margin-top: 4px;">جرب كتابة: <strong>1</strong> أو <strong>124</strong> أو <strong>125</strong> أو <strong>101</strong></div>
+                        <div style="font-size: 0.72rem; color: #64748b; margin-top: 4px;">يبحث لحظياً في قاعدة بيانات الأعضاء النشطين مع إخفاء بيانات التواصل (D26)</div>
                     </div>
 
                     <!-- حقل 2: مكان اسم العميل الثابت والمحدد بوضوح -->
@@ -1467,14 +1368,6 @@ loadQRScannerPage = function () {
         `;
         btn.parentNode.insertBefore(block, btn);
     }
-    // تحديث ترويسة المتجر الحية داخل qrScannerPage
-    const page = document.getElementById('qrScannerPage');
-    if (page && p.business_name) {
-        page.innerHTML = page.innerHTML
-            .replace(/سوبر ماركت الفارق المركزي/g, escM(p.business_name))
-            .replace(/#EG-MKT-101/g, '#' + escM(p.merchant_code))
-            .replace(/10\.0% معتمدة/g, `${Number(p.deduction_percent || 10).toFixed(1)}% معتمدة`);
-    }
 };
 
 // ============================================================================
@@ -1994,6 +1887,26 @@ loadFinancialReport = async function () {
     }
     const dedBadge = document.getElementById('liveDedRateBadge');
     if (dedBadge) dedBadge.textContent = `نسبة العمولة التعاقدية: ${pct.toFixed(1)}% معتمدة`;
+
+    const freePct = Number(p.free_balance_pct ?? 100);
+    const activeZone = p.zone_status || (p.is_isolated ? 'ISOLATED' : 'GREEN');
+    const ladderTag = document.getElementById('finD15LadderZoneTag');
+    if (ladderTag) {
+        const zLbl = {
+            GREEN: `🟢 المنطقة الخضراء (${freePct.toFixed(1)}%)`,
+            YELLOW: `🟡 إنذار شحن مبكر (${freePct.toFixed(1)}%)`,
+            RED: `🟠 إنذار حرج (${freePct.toFixed(1)}%)`,
+            ISOLATED: `🔴 معزول وقائياً + FIFO (${freePct.toFixed(1)}%)`
+        };
+        ladderTag.textContent = zLbl[activeZone] || `${activeZone} (${freePct.toFixed(1)}%)`;
+    }
+    ['GREEN', 'YELLOW', 'RED', 'ISOLATED'].forEach(z => {
+        const card = document.getElementById('d15Tier' + z);
+        if (card) {
+            card.style.boxShadow = z === activeZone ? '0 0 0 2.5px #0f172a' : 'none';
+            card.style.opacity = z === activeZone ? '1' : '0.68';
+        }
+    });
 
     const txs = merchantBundle?.completed_transactions || [];
     const topups = merchantBundle?.topup_history || [];

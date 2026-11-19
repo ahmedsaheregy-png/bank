@@ -48,8 +48,10 @@
                 });
                 renderFeaturedMerchants();
                 const statEl = byId('stat-merchants');
-                if (statEl && isProdEnvironment()) {
-                    statEl.textContent = String(livePortalMerchants.length);
+                const bigMerchEl = byId('bigStatMerchants');
+                if (isProdEnvironment()) {
+                    if (statEl) statEl.textContent = String(livePortalMerchants.length);
+                    if (bigMerchEl) bigMerchEl.textContent = String(livePortalMerchants.length);
                 }
             }
         } catch (err) {
@@ -427,15 +429,18 @@
         const allInGeo = sourcePool.filter(function (m) {
             return cfg.code === 'ALL' ? true : m.country === cfg.code;
         });
-        if (byId('stat-merchants')) {
-            if (isProdEnvironment()) {
-                byId('stat-merchants').textContent = cfg.code === 'PIONEER' ? 'قريباً' : `${allInGeo.length}`;
-            } else {
-                byId('stat-merchants').textContent = cfg.code === 'ALL'
-                    ? '856'
-                    : (cfg.code === 'PIONEER' ? 'قريباً' : `${allInGeo.length}`);
-            }
-        }
+        const isProd = isProdEnvironment();
+        const merchCountText = cfg.code === 'PIONEER' ? 'قريباً' : `${allInGeo.length}`;
+        if (byId('stat-merchants')) byId('stat-merchants').textContent = merchCountText;
+        if (byId('bigStatMerchants')) byId('bigStatMerchants').textContent = merchCountText;
+        if (byId('stat-members')) byId('stat-members').textContent = isProd ? '0' : '60';
+        if (byId('bigStatMembers')) byId('bigStatMembers').textContent = isProd ? '0' : '60';
+        if (byId('stat-transactions')) byId('stat-transactions').textContent = isProd ? '0' : '5';
+        if (byId('bigStatTransactions')) byId('bigStatTransactions').textContent = isProd ? '0' : '5';
+        if (byId('heroStatReturns')) byId('heroStatReturns').textContent = isProd ? '0.00' : 'مربوط بالدفتر';
+        if (byId('bigStatReturns')) byId('bigStatReturns').textContent = isProd ? '0.00' : 'مربوط بالدفتر';
+        const verifierChips = byId('homeVerifierDemoChips');
+        if (verifierChips) verifierChips.style.display = isProd ? 'none' : 'inline-flex';
         if (byId('heroMetricMerchantsLabel')) {
             byId('heroMetricMerchantsLabel').textContent = cfg.code === 'ALL' ? 'تاجر معتمد' : `متاجر مميزة (${cfg.name})`;
         }
@@ -688,7 +693,7 @@
 
         document.querySelectorAll('.sample-verify-code').forEach(function (chip) {
             chip.addEventListener('click', function () {
-                const c = chip.getAttribute('data-code') || 'SW-8821';
+                const c = chip.getAttribute('data-code') || 'SW-1001';
                 input.value = c;
                 runVerify(c);
             });

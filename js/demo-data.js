@@ -261,7 +261,7 @@ const globalDemoMerchants = [
     {
         id: 'EG01',
         code: 'EG-MKT-101',
-        businessName: 'سوبر ماركت الفارق المركزي',
+        businessName: 'سوبر ماركت النخبة المركزي',
         category: 'سوبرماركت',
         categorySlug: 'supermarket',
         generalCommissionRate: 10,
@@ -687,11 +687,11 @@ const demoMerchants = globalDemoMerchants;
 
 // سجل فواتير موثقة للتجربة في صفحة التحقق العلنية verify.html (مع تقنيع بيانات العضو وفق D26)
 const demoVerifyTransactions = {
-    'SW-8821': {
-        code: 'SW-8821',
+    'SW-1001': {
+        code: 'SW-1001',
         status: 'completed',
         statusText: '✅ مكتملة ومعتمدة في صندوق الهدف',
-        merchantName: 'سوبر ماركت الفارق المركزي',
+        merchantName: 'سوبر ماركت النخبة المركزي',
         merchantCode: 'EG-MKT-101',
         country: 'مصر — القاهرة',
         memberMasked: 'أحمد م. — #1042',
