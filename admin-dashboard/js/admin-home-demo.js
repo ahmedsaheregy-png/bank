@@ -98,9 +98,9 @@ window.SAWYAN_ADMIN_DEMO = {
         D.period_label = (k.period_ym || '2026-11') + ' — قاعدة البيانات الحية (' + schema + ')';
         D.members = {
             total: Number(k.members_total !== undefined ? k.members_total : mems.length),
-            active: mems.filter(function (m) { return !m.is_tombstone_banned && m.is_active_in_tree !== false; }).length,
-            pending_kyc: mems.filter(function (m) { return m.kyc_status === 'pending'; }).length,
-            suspended: mems.filter(function (m) { return !!m.is_tombstone_banned; }).length
+            active: Number(k.members_active !== undefined ? k.members_active : mems.filter(function (m) { return !m.is_tombstone_banned && m.is_active_in_tree !== false; }).length),
+            pending_kyc: Number(k.members_pending_kyc !== undefined ? k.members_pending_kyc : mems.filter(function (m) { return m.kyc_status === 'pending'; }).length),
+            suspended: Number(k.members_banned !== undefined ? k.members_banned : mems.filter(function (m) { return !!m.is_tombstone_banned; }).length)
         };
         D.merchants = {
             total: Number(k.merchants_total !== undefined ? k.merchants_total : mers.length),

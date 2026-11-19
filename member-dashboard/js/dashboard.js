@@ -1103,13 +1103,13 @@ function loadTree() {
                                         <div style="display:flex;justify-content:space-between;align-items:center;gap:4px;">
                                             <strong style="font-size:0.84rem;">#${n.member_code} [${esc(n.residency_country_code || '')}]</strong>
                                             <span style="background:${pal.bg === '#ffffff' ? '#64748b' : pal.bg};color:${vColor === 'WHITE' ? '#ffffff' : pal.circleText};font-size:0.68rem;padding:1px 6px;border-radius:999px;">
-                                                ${n.stopper_slot ? esc(n.stopper_slot) : pal.label}
+                                                ${isRootSelf ? (vColor === 'GREEN' ? `👑 1/${lensPlan.s01}` : `👑 ${pctVal}%`) : (n.stopper_slot ? esc(n.stopper_slot) : pal.label)}
                                             </span>
                                         </div>
                                         <div style="font-size:0.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;">${esc(n.full_name)}</div>
                                         <div style="font-size:0.72rem;opacity:0.9;display:flex;justify-content:space-between;margin-top:4px;">
-                                            <span>${esc(n.placement_side)} • ${Number(n.target_pct || 0)}%</span>
-                                            <span>${waPhone ? '💬 متاح' : '🔒 مقنّع'}</span>
+                                            <span>${isRootSelf ? '👑 قمة شجرتك' : esc(n.placement_side)} • ${Number(n.target_pct || 0)}%</span>
+                                            <span>${isRootSelf ? '👑 أنت' : (waPhone ? '💬 متاح' : '🔒 مقنّع')}</span>
                                         </div>
                                     </div>
                                 `;
@@ -1364,14 +1364,28 @@ window.openTreeNodeDetailModal = function (memberCode) {
         ? `${esc(node.real_sponsor_name)} (#${node.real_sponsor_code})`
         : '🔒 مقنّع خارج نطاق 2Me–11Me (D26)';
 
+    const isSelfModal = (parseInt(String(node.structural_me || '1').replace(/\D/g, ''), 10) || 1) === 1;
+    const modalVColor = node.visual_color || node.node_color || 'WHITE';
+    const modalColorLabels = {
+        GREEN: '🟢 مؤهل (100%)',
+        ORANGE: `🟠 جاري التجميع (${Math.round(Number(node.target_pct || 0))}%)`,
+        WHITE: '⚪ غير مؤهل بعد (0%)',
+        GRAY: '🔘 فريق رديف (بعد الستوبر)',
+        BLACK: '⬛ خارج العدسة الحالية'
+    };
+    const modalBadgeText = isSelfModal
+        ? (modalVColor === 'GREEN' ? `👑 مؤهل • مقعد ${esc(node.stopper_slot || '1/11')}` : `👑 أنت • ${modalColorLabels[modalVColor] || 'غير مؤهل بعد'}`)
+        : (node.stopper_slot ? `مقعد ${esc(node.stopper_slot)}` : (modalColorLabels[modalVColor] || esc(modalVColor)));
+    const subTotalIncSelf = Number(node.subtree_total || 0) + 1;
+
     content.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;border-bottom:2px solid #e2e8f0;padding-bottom:10px;margin-bottom:12px;">
             <div>
                 <h3 style="margin:0;color:#0f172a;">👤 ${esc(node.full_name)} <small style="color:#059669;">(#${node.member_code})</small></h3>
-                <div style="font-size:0.82rem;color:#64748b;">${esc(node.structural_me)} • الجيل العام #${node.company_gen || 1} • دولة الإقامة: ${esc(node.residency_country_code || '')}</div>
+                <div style="font-size:0.82rem;color:#64748b;">${isSelfModal ? '👑 قمة شجرتك (الجيل 1)' : esc(node.structural_me)} • الجيل العام #${node.company_gen || 1} • دولة الإقامة: ${esc(node.residency_country_code || '')}</div>
             </div>
             <span style="background:#0f172a;color:#fff;padding:4px 10px;border-radius:999px;font-size:0.78rem;font-weight:800;">
-                ${node.stopper_slot ? `مقعد ${esc(node.stopper_slot)}` : esc(node.visual_color || node.node_color)}
+                ${modalBadgeText}
             </span>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px;font-size:0.84rem;margin-bottom:12px;">
@@ -1388,8 +1402,8 @@ window.openTreeNodeDetailModal = function (memberCode) {
                 <strong>متبقي ${revRem} مقعداً حتى ستوبر 11/11</strong>
             </div>
             <div style="background:#eff6ff;padding:10px;border-radius:10px;border:1px solid #bfdbfe;">
-                <div style="color:#1e40af;">🌳 شبكة هذا العضو</div>
-                <strong>${Number(node.subtree_total || 0)} (يمين ${Number(node.subtree_right || 0)} / يسار ${Number(node.subtree_left || 0)})</strong>
+                <div style="color:#1e40af;">🌳 إجمالي شجرة هذا العضو</div>
+                <strong>${subTotalIncSelf} ${subTotalIncSelf === 1 ? 'عضو' : 'عضواً'} (هو + ${Number(node.subtree_total || 0)} تحته: يمين ${Number(node.subtree_right || 0)} / يسار ${Number(node.subtree_left || 0)})</strong>
             </div>
             <div style="background:#fffbeb;padding:10px;border-radius:10px;border:1px solid #fde68a;">
                 <div style="color:#92400e;">🎯 تقدم الصندوق هذا الشهر</div>
@@ -1400,7 +1414,7 @@ window.openTreeNodeDetailModal = function (memberCode) {
                 <strong>${fmtUsd(node.node_actual_share_usd)}</strong> (متوقع: ${fmtUsd(node.node_expected_share_usd)})
             </div>
         </div>
-        ${wa ? `<a href="https://wa.me/${wa}" target="_blank" class="btn btn-primary btn-block" style="text-align:center;">💬 مراسلة العضو عبر واتساب (${esc(node.phone)})</a>` : '<div style="text-align:center;color:#64748b;font-size:0.82rem;">🔒 رقم الهاتف محجوب دستورياً خارج نطاق 2Me–11Me (القرار D26)</div>'}
+        ${isSelfModal ? '<div style="text-align:center;color:#065f46;background:#ecfdf5;border:1px solid #a7f3d0;padding:8px;border-radius:10px;font-size:0.84rem;font-weight:700;">👑 هذه عقدتك الشخصية في قمة شجرتك — يمكنك متابعة فريقك من الدوائر أدناه</div>' : (wa ? `<a href="https://wa.me/${wa}" target="_blank" class="btn btn-primary btn-block" style="text-align:center;">💬 مراسلة العضو عبر واتساب (${esc(node.phone)})</a>` : '<div style="text-align:center;color:#64748b;font-size:0.82rem;">🔒 رقم الهاتف محجوب دستورياً خارج نطاق 2Me–11Me (القرار D26)</div>')}
     `;
     modal.style.display = 'flex';
 };

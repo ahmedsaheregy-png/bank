@@ -313,10 +313,10 @@
             '</div>' +
             '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;font-size:0.82rem;">' +
                 '<div style="background:rgba(255,255,255,0.08);padding:8px 11px;border-radius:10px;">👥 الأعضاء بالقاعدة: <b>' + Number(k.members_total || 0) + '</b> (+ #0)</div>' +
-                '<div style="background:rgba(255,255,255,0.08);padding:8px 11px;border-radius:10px;">🏪 التجار النشطون: <b>' + Number(k.merchants_active || 0) + ' / ' + Number(k.merchants_total || 0) + '</b></div>' +
-                '<div style="background:rgba(255,255,255,0.08);padding:8px 11px;border-radius:10px;">💳 فواتير مكتملة: <b>' + Number(k.transactions_completed || 0) + '</b></div>' +
-                '<div style="background:rgba(255,255,255,0.08);padding:8px 11px;border-radius:10px;">🏦 خزانة 25%: <b>$' + fmt2(k.treasury_revenue_usd) + '</b></div>' +
-                '<div style="background:rgba(255,255,255,0.08);padding:8px 11px;border-radius:10px;">🎯 التزام الخطة 75%: <b>$' + fmt2(k.plan_pool_liability_usd) + '</b></div>' +
+                '<div style="background:rgba(255,255,255,0.08);padding:8px 11px;border-radius:10px;white-space:nowrap;">🏪 التجار النشطون: <b>' + Number(k.merchants_active || 0) + ' / ' + Number(k.merchants_total || 0) + '</b></div>' +
+                '<div style="background:rgba(255,255,255,0.08);padding:8px 11px;border-radius:10px;white-space:nowrap;">💳 فواتير مكتملة: <b>' + Number(k.transactions_completed || 0) + '</b></div>' +
+                '<div style="background:rgba(255,255,255,0.08);padding:8px 11px;border-radius:10px;white-space:nowrap;">🏦 صافي الخزانة (25%): <b>$' + fmt2(k.treasury_revenue_usd) + '</b></div>' +
+                '<div style="background:rgba(255,255,255,0.08);padding:8px 11px;border-radius:10px;white-space:nowrap;">🎯 متبقي وعاء الخطة (2201): <b>$' + fmt2(k.plan_pool_liability_usd) + '</b></div>' +
                 '<div style="background:rgba(255,255,255,0.08);padding:8px 11px;border-radius:10px;">⚖️ المطابقة الصفرية: <b style="color:' + (zd.is_zero_discrepancy_intact ? '#6ee7b7' : '#fca5a5') + ';">' + (zd.is_zero_discrepancy_intact ? '✅ فرق $0.00' : '⛔ خلل!') + '</b></div>' +
             '</div>';
 

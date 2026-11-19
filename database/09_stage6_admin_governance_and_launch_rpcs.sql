@@ -463,6 +463,9 @@ BEGIN
     v_kpis := jsonb_build_object(
         'period_ym', v_period_ym,
         'members_total', (SELECT COUNT(*) FROM sawyan.members WHERE member_code > 0),
+        'members_active', (SELECT COUNT(*) FROM sawyan.members WHERE member_code > 0 AND is_tombstone_banned = false AND is_active_in_tree = true),
+        'members_pending_kyc', (SELECT COUNT(*) FROM sawyan.members WHERE member_code > 0 AND kyc_status = 'pending'),
+        'members_banned', (SELECT COUNT(*) FROM sawyan.members WHERE member_code > 0 AND is_tombstone_banned = true),
         'members_with_root', (SELECT COUNT(*) FROM sawyan.members),
         'qualified_members_period', (SELECT COUNT(DISTINCT member_id) FROM sawyan.monthly_target_boxes WHERE period_ym = v_period_ym AND is_qualified = true),
         'merchants_total', (SELECT COUNT(*) FROM sawyan.merchants),
