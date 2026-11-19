@@ -425,7 +425,7 @@ function renderHomePage() {
                     ${esc(fmtLocalFromUsd(actualMonthUsd))} <span style="font-size:0.86rem;font-weight:700;">(${fmtUsd(actualMonthUsd)})</span>
                 </div>
                 <div style="font-size:0.8rem;color:#92400e;line-height:1.55;">
-                    <div>🟢 مؤهل فعلي بالستوبر: <strong>${Number(tree.commission_team_count || 0)}</strong> مقعد</div>
+                    <div>🟢 مؤهلون من فريقك: <strong>${(tree.nodes || []).filter(n => (parseInt(String(n.structural_me || '1').replace(/\D/g, ''), 10) || 1) >= 2 && n.team_bucket === 'COMMISSION_TEAM').length}</strong> (ومقعدك الشخصي 1/${homePlan.s01})</div>
                     <div>🟠 برتقالي محتمل عند إكمالهم الهدف: <strong>+${esc(fmtLocalFromUsd(expectedOrangeUsd))}</strong> (${fmtUsd(expectedOrangeUsd)})</div>
                 </div>
                 <button type="button" onclick="goToPage('tree')" class="btn btn-outline btn-sm" style="margin-top:10px;border-color:#d97706;color:#92400e;">🌳 استعرض شجرة العمولات كاملة</button>
@@ -1466,7 +1466,7 @@ function loadWalletDetails() {
     page.innerHTML = `
         <div class="wallet-page">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
-                <h2 style="margin:0;">💰 المحفظة والمطابقة الثلاثية (Ch. 6.2 #3)</h2>
+                <h2 style="margin:0;">💰 المحفظة والمطابقة الثلاثية الموثّقة</h2>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
                     <button type="button" class="btn btn-outline btn-sm" onclick="openAddPayoutMethodModal()">+ إضافة وسيلة استلام (تهدئة 72h)</button>
                     <button type="button" data-spec-id="member-wallet-withdraw-btn" class="btn btn-primary btn-sm" onclick="openRequestWithdrawalModal()">💸 طلب سحب أرباح موثق</button>
@@ -1475,9 +1475,9 @@ function loadWalletDetails() {
 
             <div class="wallet-main-card">
                 <div class="balance-info">
-                    <span class="balance-label">الرصيد المتاح للسحب بالعملة المحلية (ومرجعه المحاسبي USD)</span>
-                    <span class="balance-amount">${esc(fmtLocalFromUsd(availableUsd))}</span>
-                    <small style="opacity:0.9;">الرصيد المحاسبي المرجعي: <strong>${fmtUsd(availableUsd)}</strong> • حالة KYC: <strong>${esc(profile.kyc_status || 'unverified')}</strong></small>
+                    <span class="balance-label" style="display:block;margin-bottom:4px;">الرصيد المتاح للسحب بالعملة المحلية (ومرجعه المحاسبي USD)</span>
+                    <span class="balance-amount" style="display:block;margin:4px 0 6px;">${esc(fmtLocalFromUsd(availableUsd))}</span>
+                    <small style="display:block;opacity:0.95;">الرصيد المحاسبي المرجعي: <strong>${fmtUsd(availableUsd)}</strong> • حالة توثيق الهوية: <strong>${profile.kyc_status === 'verified' ? 'موثّقة ✓' : profile.kyc_status === 'pending' ? 'قيد المراجعة' : 'غير موثّقة'}</strong></small>
                 </div>
             </div>
 
@@ -2388,9 +2388,9 @@ async function loadSettings() {
 
         <div data-spec-id="member-settings-kyc" style="background:#ffffff;border:1.5px solid ${p.kyc_status === 'verified' ? '#10b981' : '#cbd5e1'};border-radius:16px;padding:18px;margin-top:14px;">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-                <h3 style="margin:0;font-size:1rem;">🪪 توثيق الهوية الوطنية (شرط أول سحب — D7)</h3>
+                <h3 style="margin:0;font-size:1rem;">🪪 توثيق الهوية الوطنية (شرط أول سحب)</h3>
                 <span style="padding:4px 12px;border-radius:999px;font-size:0.8rem;font-weight:800;background:${p.kyc_status === 'verified' ? '#d1fae5' : p.kyc_status === 'pending' ? '#fef3c7' : '#fee2e2'};color:${p.kyc_status === 'verified' ? '#065f46' : p.kyc_status === 'pending' ? '#92400e' : '#991b1b'};">
-                    ${esc(p.kyc_status || 'unverified')}
+                    ${p.kyc_status === 'verified' ? '✅ الهوية موثّقة' : p.kyc_status === 'pending' ? '⏳ قيد المراجعة' : '⚠️ غير موثّقة'}
                 </span>
             </div>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;">

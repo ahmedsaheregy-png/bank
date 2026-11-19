@@ -1542,6 +1542,7 @@
             }
 
             const left = document.createElement('span');
+            left.style.cssText = 'color:#ffffff !important;font-weight:800;';
             left.textContent = isDemo
                 ? `🧪 الموقع الموازي للتجربة (Sandbox — sawyan_demo)${sessionSuffix}`
                 : `🟢 الموقع الأصلي الحي (Production — SAWYAN)${sessionSuffix}`;

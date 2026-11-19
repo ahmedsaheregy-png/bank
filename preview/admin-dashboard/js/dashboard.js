@@ -3,7 +3,7 @@ let currentAdmin = null;
 
 document.addEventListener('DOMContentLoaded', async function () {
     if (window.SAWYAN && window.SAWYAN.Logo) {
-        document.getElementById('logoContainer').innerHTML = window.SAWYAN.Logo.icon();
+        document.getElementById('logoContainer').innerHTML = `<a href="../index.html" class="logo-link" style="text-decoration:none;">${window.SAWYAN.Logo.svg('light-on-dark')}</a>`;
     }
 
     await checkAuth();
