@@ -552,10 +552,13 @@
                         </div>
 
                         <div class="form-group" style="flex: 1;">
-                            <label style="font-weight: 800; font-size: 0.86rem; color: #0f172a;">الحي / المنطقة <span class="required-star">*</span></label>
-                            <select id="districtSelect" class="form-control" style="font-weight: 700;">
+                            <label style="font-weight: 800; font-size: 0.86rem; color: #0f172a;">الحي / المنطقة</label>
+                            <select id="districtSelect" class="form-control" style="font-weight: 700;" onchange="handleDistrictSelectChange(this.value)">
                                 <option value="مدينة نصر" selected>مدينة نصر</option>
                             </select>
+                            <input type="text" id="manualDistrictInput" maxlength="60" class="form-control"
+                                style="display:none; font-weight:700; margin-top:6px;"
+                                placeholder="اكتب اسم الحي أو المنطقة (اختياري)">
                         </div>
                     </div>
 
@@ -823,20 +826,64 @@
             }
 
             function handleCityChange(cityKey) {
-                const countryCode = document.getElementById('countryOfResidence').value;
+                const countryCode = (document.getElementById('countryOfResidence')?.value || 'EG').toUpperCase();
                 const c = getCountryEntry(countryCode);
-                const cityObj = (c && c.cities[cityKey]) ? c.cities[cityKey] : c.cities[Object.keys(c.cities)[0]];
-                if (!cityObj) return;
-
+                const citySel = document.getElementById('citySelect');
                 const districtSelect = document.getElementById('districtSelect');
-                districtSelect.innerHTML = '';
-                cityObj.districts.forEach((dist, idx) => {
-                    const opt = document.createElement('option');
-                    opt.value = dist;
-                    opt.innerText = dist;
-                    if (idx === 0) opt.selected = true;
-                    districtSelect.appendChild(opt);
-                });
+                const manualDistrictInput = document.getElementById('manualDistrictInput');
+                if (!districtSelect) return;
+
+                let cityObj = (c && c.cities && c.cities[cityKey]) ? c.cities[cityKey] : null;
+                if (!cityObj && c && c.cities && citySel && citySel.selectedOptions && citySel.selectedOptions[0]) {
+                    const selectedLabel = (citySel.selectedOptions[0].textContent || '').trim();
+                    for (const k of Object.keys(c.cities)) {
+                        const cname = (c.cities[k].name || '').trim();
+                        if (cname && selectedLabel && (selectedLabel.includes(cname) || cname.includes(selectedLabel))) {
+                            cityObj = c.cities[k];
+                            break;
+                        }
+                    }
+                }
+
+                const hasRealDistricts = !!(cityObj && Array.isArray(cityObj.districts) && cityObj.districts.length > 0 && cityObj.districts[0] !== 'وسط المدينة / المنطقة الرئيسية');
+
+                if (hasRealDistricts) {
+                    districtSelect.style.display = 'block';
+                    districtSelect.innerHTML = '';
+                    cityObj.districts.forEach((dist, idx) => {
+                        const opt = document.createElement('option');
+                        opt.value = dist;
+                        opt.innerText = dist;
+                        if (idx === 0) opt.selected = true;
+                        districtSelect.appendChild(opt);
+                    });
+                    const customOpt = document.createElement('option');
+                    customOpt.value = '__MANUAL__';
+                    customOpt.innerText = '✏️ حي / منطقة أخرى (كتابة يدوية)';
+                    districtSelect.appendChild(customOpt);
+                    if (manualDistrictInput) {
+                        manualDistrictInput.style.display = 'none';
+                        manualDistrictInput.value = '';
+                    }
+                } else {
+                    districtSelect.style.display = 'none';
+                    districtSelect.innerHTML = '<option value="__MANUAL__" selected>كتابة يدوية</option>';
+                    if (manualDistrictInput) {
+                        manualDistrictInput.style.display = 'block';
+                    }
+                }
+            }
+
+            function handleDistrictSelectChange(val) {
+                const manualDistrictInput = document.getElementById('manualDistrictInput');
+                if (!manualDistrictInput) return;
+                if (val === '__MANUAL__') {
+                    manualDistrictInput.style.display = 'block';
+                    manualDistrictInput.focus();
+                } else {
+                    manualDistrictInput.style.display = 'none';
+                    manualDistrictInput.value = '';
+                }
             }
 
             function validatePhoneDigits(el) {
@@ -918,11 +965,11 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../shared/config/supabase.js"></script>
-    <script src="../shared/api/sawyan-api.js"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261119_auth_audit"></script>
     <script src="../shared/components/logo.js"></script>
     <script src="../js/demo-data.js"></script>
     <script src="../shared/data/countries.js"></script>
-    <script src="js/register.js?v=20261119_all_countries"></script>
+    <script src="js/register.js?v=20261119_auth_audit"></script>
 </body>
 
 </html>

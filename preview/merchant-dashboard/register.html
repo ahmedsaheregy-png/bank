@@ -339,35 +339,40 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../shared/config/supabase.js"></script>
-    <script src="../shared/api/sawyan-api.js"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261119_auth_audit"></script>
     <script src="../shared/components/logo.js"></script>
-    <script src="js/register.js"></script>
+    <script src="../shared/data/countries.js"></script>
+    <script src="js/register.js?v=20261119_auth_audit"></script>
 
     <script>
         // إظهار/إخفاء الأقسام حسب نوع التاجر
-        document.getElementById('merchantType').addEventListener('change', function () {
+        function syncMerchantTypeSections() {
+            const sel = document.getElementById('merchantType');
             const physicalSection = document.getElementById('physicalLocationSection');
             const onlineSection = document.getElementById('onlineStoreSection');
             const workingHoursSection = document.getElementById('workingHoursSection');
+            if (!sel) return;
 
-            if (this.value === 'physical') {
-                physicalSection.style.display = 'block';
-                workingHoursSection.style.display = 'block';
-                onlineSection.style.display = 'none';
-            } else if (this.value === 'online') {
-                physicalSection.style.display = 'none';
-                workingHoursSection.style.display = 'none';
-                onlineSection.style.display = 'block';
-            } else if (this.value === 'both') {
-                physicalSection.style.display = 'block';
-                workingHoursSection.style.display = 'block';
-                onlineSection.style.display = 'block';
+            if (sel.value === 'physical') {
+                if (physicalSection) physicalSection.style.display = 'block';
+                if (workingHoursSection) workingHoursSection.style.display = 'block';
+                if (onlineSection) onlineSection.style.display = 'none';
+            } else if (sel.value === 'online') {
+                if (physicalSection) physicalSection.style.display = 'none';
+                if (workingHoursSection) workingHoursSection.style.display = 'none';
+                if (onlineSection) onlineSection.style.display = 'block';
+            } else if (sel.value === 'both') {
+                if (physicalSection) physicalSection.style.display = 'block';
+                if (workingHoursSection) workingHoursSection.style.display = 'block';
+                if (onlineSection) onlineSection.style.display = 'block';
             } else {
-                physicalSection.style.display = 'none';
-                workingHoursSection.style.display = 'none';
-                onlineSection.style.display = 'none';
+                if (physicalSection) physicalSection.style.display = 'none';
+                if (workingHoursSection) workingHoursSection.style.display = 'none';
+                if (onlineSection) onlineSection.style.display = 'none';
             }
-        });
+        }
+        document.getElementById('merchantType')?.addEventListener('change', syncMerchantTypeSections);
+        document.addEventListener('DOMContentLoaded', syncMerchantTypeSections);
     </script>
 </body>
 

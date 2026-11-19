@@ -89,11 +89,33 @@ async function handleMerchantRegister(e) {
         return;
     }
 
-    const dialDefaults = { EG: '+20', TR: '+90', SA: '+966', DE: '+49', US: '+1' };
     const cleanDigits = phoneRaw.replace(/\D/g, '').replace(/^0+/, '');
+    if (cleanDigits.length < 7) {
+        alert('⚠️ يرجى إدخال رقم هاتف نشط صحيح (7 أرقام على الأقل).');
+        return;
+    }
+    let resolvedDial = '+20';
+    if (window.SAWYAN_COUNTRIES_DATA && Array.isArray(window.SAWYAN_COUNTRIES_DATA)) {
+        const hit = window.SAWYAN_COUNTRIES_DATA.find(c => c.code === countryCode);
+        if (hit && hit.dial) resolvedDial = hit.dial;
+    } else {
+        const fallbackDial = { EG: '+20', TR: '+90', SA: '+966', AE: '+971', DE: '+49', US: '+1' };
+        resolvedDial = fallbackDial[countryCode] || '+20';
+    }
     const fullPhone = phoneRaw.startsWith('+')
         ? ('+' + phoneRaw.replace(/\D/g, ''))
-        : `${dialDefaults[countryCode] || '+20'}${cleanDigits}`;
+        : `${resolvedDial}${cleanDigits}`;
+
+    const googleMapsUrl = (document.getElementById('googleMapsUrl')?.value || '').trim();
+    const webhookUrl = (document.getElementById('webhookUrl')?.value || '').trim();
+    const facebookUrl = (document.getElementById('facebookUrl')?.value || '').trim();
+    const instagramUrl = (document.getElementById('instagramUrl')?.value || '').trim();
+    const twitterUrl = (document.getElementById('twitterUrl')?.value || '').trim();
+    const tiktokUrl = (document.getElementById('tiktokUrl')?.value || '').trim();
+    const logoUrl = (document.getElementById('logoUrl')?.value || '').trim();
+    const coverImageUrl = (document.getElementById('coverImageUrl')?.value || '').trim();
+    const imagesRaw = (document.getElementById('images')?.value || '').trim();
+    const imagesList = imagesRaw ? imagesRaw.split(',').map(s => s.trim()).filter(Boolean) : null;
 
     if (btn) {
         btn.disabled = true;
@@ -122,7 +144,18 @@ async function handleMerchantRegister(e) {
             metadata: {
                 description: businessDescription || null,
                 website_url: websiteUrl || null,
+                webhook_url: webhookUrl || null,
                 whatsapp: whatsapp || null,
+                google_maps_url: googleMapsUrl || null,
+                social: {
+                    facebook: facebookUrl || null,
+                    instagram: instagramUrl || null,
+                    twitter: twitterUrl || null,
+                    tiktok: tiktokUrl || null
+                },
+                logo_url: logoUrl || null,
+                cover_image_url: coverImageUrl || null,
+                images: imagesList,
                 working_hours: collectWorkingHours()
             }
         });
@@ -138,6 +171,20 @@ async function handleMerchantRegister(e) {
         const msg = String(err.message || '');
         if (msg.includes('COUNTRY_GATE_INACTIVE_D13')) {
             alert('⛔ هذه الدولة قيد الإعداد القانوني والضريبي في بوابة تفعيل الدول (D13) ولم تُفتح للتسجيل التجاري بعد.');
+        } else if (msg.includes('MERCHANT_PHONE_ALREADY_REGISTERED')) {
+            alert('⚠️ رقم الهاتف مسجل مسبقاً لمتجر آخر — جرّب تسجيل الدخول أو استعادة كلمة المرور.');
+        } else if (msg.includes('MERCHANT_EMAIL_ALREADY_REGISTERED') || msg.includes('merchants_email_key')) {
+            alert('⚠️ البريد الإلكتروني مسجل مسبقاً لمتجر آخر.');
+        } else if (msg.includes('ONBOARDER_MEMBER_NOT_FOUND')) {
+            alert('⚠️ كود العضو المرشِّح للمتجر غير موجود — تأكد من الرقم أو اتركه فارغاً.');
+        } else if (msg.includes('INVALID_CASHIER_PIN_FORMAT')) {
+            alert('⚠️ رمز PIN الكاشير يجب أن يكون 4 أرقام بالضبط.');
+        } else if (msg.includes('WEAK_OR_DEFAULT_PASSWORD_FORBIDDEN')) {
+            alert('⚠️ كلمة المرور ضعيفة جداً — يلزم 8 أحرف على الأقل وغير افتراضية.');
+        } else if (msg.includes('INVALID_DEDUCTION_PERCENT_RANGE')) {
+            alert('⚠️ نسبة العمولة يجب أن تكون بين 1% و 40%.');
+        } else if (msg.includes('VALID_PHONE_REQUIRED')) {
+            alert('⚠️ يرجى إدخال رقم هاتف صحيح بمفتاح الدولة.');
         } else {
             alert('❌ تعذر تسجيل المتجر: ' + msg);
         }

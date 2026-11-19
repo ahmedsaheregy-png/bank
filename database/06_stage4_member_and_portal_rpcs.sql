@@ -221,6 +221,11 @@ SET search_path = ''
 AS $$
 DECLARE
     v_ident         TEXT;
+    v_code_try      TEXT;
+    v_phone_clean   TEXT;
+    v_digits        TEXT;
+    v_local_suffix  TEXT;
+    v_match_count   INT;
     v_member        sawyan.members%ROWTYPE;
     v_pwd_hash      TEXT;
     v_country_code  CHAR(2);
@@ -237,12 +242,35 @@ BEGIN
         RAISE EXCEPTION 'WEAK_OR_DEFAULT_PASSWORD_REJECTED';
     END IF;
 
-    IF v_ident ~ '^\d+$' THEN
-        SELECT * INTO v_member FROM sawyan.members WHERE member_code = v_ident::bigint LIMIT 1;
-    ELSIF position('@' IN v_ident) > 0 THEN
+    v_code_try := regexp_replace(upper(v_ident), '^(#|SWY-?|MEM-?)', '');
+    v_phone_clean := regexp_replace(v_ident, '[\s\-\(\)]+', '', 'g');
+    v_digits := regexp_replace(v_phone_clean, '[^0-9]', '', 'g');
+
+    IF position('@' IN v_ident) > 0 THEN
         SELECT * INTO v_member FROM sawyan.members WHERE lower(email) = lower(v_ident) LIMIT 1;
+    ELSIF v_code_try ~ '^\d{1,9}$' AND left(v_ident, 1) <> '+' AND NOT (left(v_ident, 1) = '0' AND length(v_ident) >= 8) THEN
+        SELECT * INTO v_member FROM sawyan.members WHERE member_code = v_code_try::bigint LIMIT 1;
     ELSE
-        SELECT * INTO v_member FROM sawyan.members WHERE phone = v_ident LIMIT 1;
+        SELECT * INTO v_member
+          FROM sawyan.members
+         WHERE phone = v_phone_clean
+            OR phone = '+' || v_digits
+         LIMIT 1;
+
+        IF NOT FOUND AND length(v_digits) >= 8 THEN
+            v_local_suffix := regexp_replace(v_digits, '^0+', '');
+            IF length(v_local_suffix) >= 8 THEN
+                SELECT count(*) INTO v_match_count
+                  FROM sawyan.members
+                 WHERE regexp_replace(phone, '[^0-9]', '', 'g') LIKE '%' || v_local_suffix;
+                IF v_match_count = 1 THEN
+                    SELECT * INTO v_member
+                      FROM sawyan.members
+                     WHERE regexp_replace(phone, '[^0-9]', '', 'g') LIKE '%' || v_local_suffix
+                     LIMIT 1;
+                END IF;
+            END IF;
+        END IF;
     END IF;
 
     IF NOT FOUND THEN
@@ -291,6 +319,7 @@ BEGIN
             'residency_country_id', v_member.residency_country_id,
             'manual_district_fallback', v_member.manual_district_fallback,
             'kyc_status', v_member.kyc_status,
+            'must_change_password', COALESCE((v_member.metadata->>'must_change_password')::boolean, false),
             'metadata', v_member.metadata - 'pwd_bcrypt' - 'active_session_token',
             'created_at', v_member.created_at
         ),
@@ -618,6 +647,7 @@ BEGIN
             'sponsor_code', v_sponsor.member_code,
             'sponsor_name', v_sponsor.full_name,
             'kyc_status', v_member.kyc_status,
+            'must_change_password', COALESCE((v_member.metadata->>'must_change_password')::boolean, false),
             'metadata', v_member.metadata - 'pwd_bcrypt' - 'active_session_token',
             'created_at', v_member.created_at
         ),

@@ -338,7 +338,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../shared/config/supabase.js"></script>
-    <script src="../shared/api/sawyan-api.js"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261119_auth_audit"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const params = new URLSearchParams(window.location.search);
@@ -361,7 +361,11 @@
             if (topic.includes('password_recovery') && subj) {
                 subj.value = 'password_recovery';
                 const msg = document.getElementById('message');
-                if (msg && memCode) msg.value = 'طلب استعادة كلمة المرور للعضوية رقم #' + memCode + ' — مستعد لتأكيد ملكية الهاتف المسجل.';
+                if (msg && memCode) {
+                    msg.value = 'طلب استعادة كلمة المرور للعضوية رقم #' + memCode + ' — مستعد لتأكيد ملكية الهاتف المسجل.';
+                } else if (msg && topic === 'merchant_password_recovery') {
+                    msg.value = 'طلب استعادة كلمة المرور لحساب تاجر (كود المتجر: M-...) — مستعد لتأكيد ملكية الهاتف والسجل التجاري.';
+                }
             }
         });
 

@@ -41,6 +41,7 @@
                         placeholder="أدخل كلمة المرور (8 أحرف على الأقل)">
                 </div>
 
+                <div id="loginErrorBox" style="display:none;background:#fef2f2;border:1.5px solid #fecaca;color:#991b1b;padding:10px 14px;border-radius:10px;font-size:0.86rem;font-weight:700;margin-bottom:12px;"></div>
                 <button type="submit" id="loginBtn" class="btn btn-primary btn-block">دخول</button>
 
                 <div class="auth-footer">
@@ -54,7 +55,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../shared/config/supabase.js"></script>
-    <script src="../shared/api/sawyan-api.js?v=20261118_quicklogin"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261119_auth_audit"></script>
     <script src="../shared/components/logo.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -62,8 +63,27 @@
                 document.getElementById('logoContainer').innerHTML = window.SAWYAN.Logo.full();
             }
 
+            function showErr(raw) {
+                const box = document.getElementById('loginErrorBox');
+                const m = String(raw || '');
+                let msg = m || 'بيانات الدخول غير صحيحة';
+                if (m.includes('INVALID_CREDENTIALS')) msg = 'بيانات الدخول غير صحيحة — تأكد من كود العضوية أو الهاتف أو البريد وكلمة المرور.';
+                else if (m.includes('ROOT_PORTAL_ACCESS_FORBIDDEN')) msg = 'حساب الجذر #0 مخصص للإدارة السيادية ولا يُفتح من بوابة الأعضاء.';
+                else if (m.includes('MEMBER_ACCOUNT_INACTIVE')) msg = 'الحساب غير نشط أو مجمّد حالياً — تواصل مع الدعم الفني.';
+                else if (m.includes('WEAK_OR_DEFAULT_PASSWORD_REJECTED')) msg = 'كلمة المرور الافتراضية 123456 مرفوضة أمنياً.';
+                else if (m.includes('MISSING_CREDENTIALS')) msg = 'يرجى إدخال معرف الحساب وكلمة المرور.';
+                if (box) {
+                    box.textContent = '❌ ' + msg;
+                    box.style.display = 'block';
+                } else {
+                    alert('❌ ' + msg);
+                }
+            }
+
             async function performLogin(identifier, password) {
                 const btn = document.getElementById('loginBtn');
+                const box = document.getElementById('loginErrorBox');
+                if (box) { box.style.display = 'none'; box.textContent = ''; }
                 if (btn) {
                     btn.disabled = true;
                     btn.textContent = 'جاري التحقق...';
@@ -74,12 +94,12 @@
                     }
                     const res = await window.SAWYAN.API.authenticateMemberLogin(identifier, password);
                     if (!res || !res.success || !res.member) {
-                        throw new Error('بيانات الدخول غير صحيحة');
+                        throw new Error('INVALID_CREDENTIALS');
                     }
                     window.SAWYAN.API.saveMemberSession(res.member, res.session_token);
                     window.location.href = 'dashboard.html';
                 } catch (error) {
-                    alert('❌ تعذر الدخول: ' + error.message);
+                    showErr(error.message);
                 } finally {
                     if (btn) {
                         btn.disabled = false;

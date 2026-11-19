@@ -217,6 +217,9 @@ function populateLiveCities(countryCode, preferredCity) {
             if (found) citySel.value = found.value;
         }
     }
+    if (typeof window.handleCityChange === 'function') {
+        window.handleCityChange(citySel.value);
+    }
 }
 
 async function verifyFounderRootToken(token) {
@@ -373,7 +376,11 @@ async function handleRegister(e) {
     const cityVal = citySel ? citySel.value : '';
     const customCity = (document.getElementById('manualCityCustomInput')?.value || '').trim();
     const cityName = cityVal === 'OTHER_MANUAL' ? customCity : (citySel && citySel.selectedOptions[0] ? citySel.selectedOptions[0].textContent : '');
-    const districtVal = (document.getElementById('districtSelect')?.value || '').trim();
+    const distSel = document.getElementById('districtSelect');
+    const manualDistEl = document.getElementById('manualDistrictInput');
+    const districtVal = (manualDistEl && manualDistEl.style.display !== 'none')
+        ? (manualDistEl.value || '').trim()
+        : ((distSel && distSel.value && distSel.value !== '__MANUAL__') ? distSel.value.trim() : '');
     const email = (document.getElementById('email')?.value || '').trim() || null;
     const gender = document.getElementById('gender')?.value || '';
     const nationalId = (document.getElementById('nationalId')?.value || '').trim();
@@ -416,6 +423,10 @@ async function handleRegister(e) {
     }
 
     const nationalDigits = phoneRaw.replace(/\D/g, '').replace(/^0+/, '');
+    if (nationalDigits.length < 7) {
+        alert('⚠️ يرجى إدخال رقم هاتف صحيح (7 أرقام على الأقل).');
+        return;
+    }
     const cleanDial = dialCode.startsWith('+') ? dialCode : `+${dialCode}`;
     const fullPhone = phoneRaw.startsWith('+')
         ? ('+' + phoneRaw.replace(/\D/g, ''))
@@ -425,6 +436,8 @@ async function handleRegister(e) {
     if (cityVal && cityVal.startsWith('GEO_')) {
         parsedGeonameId = parseInt(cityVal.replace('GEO_', ''), 10) || null;
     }
+
+    const composedDistrict = [cityName, districtVal].filter(Boolean).join(' - ').slice(0, 60) || null;
 
     submitBtn.classList.add('btn-loading');
     submitBtn.textContent = 'جاري إنشاء الحساب والتسكين الذري...';
@@ -447,7 +460,7 @@ async function handleRegister(e) {
             residencyCountryCode: countryRes,
             nationalityCountryCode: nationality,
             cityGeonameId: parsedGeonameId,
-            manualDistrict: [cityName, districtVal].filter(Boolean).join(' - ') || null,
+            manualDistrict: composedDistrict,
             email,
             metadata: metaPayload
         });
@@ -466,18 +479,29 @@ async function handleRegister(e) {
         }
         document.getElementById('registerForm').style.display = 'none';
 
+        const escHtml = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
         const card = document.querySelector('.auth-card');
         const box = document.createElement('div');
         box.style.cssText = 'text-align:center;padding:24px;background:#ecfdf5;border:2px solid #10b981;border-radius:14px;margin-top:16px;color:#065f46;';
         box.innerHTML = `
             <h2 style="margin:0 0 12px;">🎉 تم التسجيل والتسكين بنجاح!</h2>
-            <p style="margin:6px 0;">كود عضويتك الدائم: <strong>#${res.member.member_code}</strong></p>
-            <p style="margin:6px 0;">الراعي: <strong>${res.member.sponsor_name || 'الشركة (#0)'}</strong> | الذراع: <strong>${res.member.placement_side}</strong> (الجيل ${res.member.generation_in_tree})</p>
+            <p style="margin:6px 0;">كود عضويتك الدائم: <strong>#${escHtml(res.member.member_code)}</strong></p>
+            <p style="margin:6px 0;">الراعي: <strong>${escHtml(res.member.sponsor_name || 'الشركة (#0)')}</strong> | الذراع: <strong>${escHtml(res.member.placement_side)}</strong> (الجيل ${escHtml(res.member.generation_in_tree)})</p>
             <a href="dashboard.html" class="btn btn-primary btn-block" style="margin-top:16px;display:inline-block;">الدخول إلى لوحة العضو ←</a>
         `;
         if (card) card.appendChild(box);
     } catch (error) {
-        alert('❌ تعذر التسجيل: ' + error.message);
+        const raw = String(error?.message || '');
+        let friendly = raw;
+        if (raw.includes('PHONE_ALREADY_REGISTERED')) friendly = 'رقم الهاتف مسجل مسبقاً في النظام — جرّب تسجيل الدخول أو استعادة كلمة المرور.';
+        else if (raw.includes('EMAIL_ALREADY_REGISTERED')) friendly = 'البريد الإلكتروني مسجل مسبقاً لحساب آخر.';
+        else if (raw.includes('SPONSOR_NOT_FOUND')) friendly = 'كود الراعي غير موجود أو غير نشط.';
+        else if (raw.includes('ROOT_SPONSOR_RESTRICTED_TO_ADMIN')) friendly = 'الجذر #0 مخصص لروابط الدعوة التأسيسية الصادرة من المؤسس فقط.';
+        else if (raw.includes('INVALID_OR_EXPIRED_ROOT_INVITE_TOKEN')) friendly = 'رابط الدعوة التأسيسي غير صالح أو منتهي الصلاحية أو مستخدم مسبقاً.';
+        else if (raw.includes('WEAK_OR_DEFAULT_PASSWORD_REJECTED')) friendly = 'كلمة المرور ضعيفة جداً — يلزم 8 أحرف على الأقل وغير افتراضية.';
+        else if (raw.includes('INVALID_FULL_NAME')) friendly = 'يرجى إدخال الاسم الكامل (3 أحرف على الأقل).';
+        else if (raw.includes('INVALID_PHONE_NUMBER')) friendly = 'صيغة رقم الهاتف غير صحيحة.';
+        alert('❌ تعذر التسجيل: ' + friendly);
         submitBtn.classList.remove('btn-loading');
         submitBtn.textContent = '✅ إنشاء حساب العضوية والتسكين بالشجرة فوراً';
         submitBtn.disabled = false;

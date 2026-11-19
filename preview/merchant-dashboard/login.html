@@ -42,6 +42,7 @@
                     <input type="password" id="password" required minlength="8" class="form-control" placeholder="أدخل كلمة المرور المشفرة">
                 </div>
 
+                <div id="loginErrorBox" style="display:none;background:#fef2f2;border:1.5px solid #fecaca;color:#991b1b;padding:10px 14px;border-radius:10px;font-size:0.86rem;font-weight:700;margin-bottom:12px;"></div>
                 <button type="submit" id="loginBtn" class="btn btn-primary btn-block">دخول لوحة التاجر ونقطة البيع</button>
 
                 <div class="auth-footer">
@@ -55,7 +56,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../shared/config/supabase.js"></script>
-    <script src="../shared/api/sawyan-api.js?v=20261118_quicklogin"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261119_auth_audit"></script>
     <script src="../shared/components/logo.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -63,8 +64,26 @@
                 document.getElementById('logoContainer').innerHTML = window.SAWYAN.Logo.full();
             }
 
+            function showErr(raw) {
+                const box = document.getElementById('loginErrorBox');
+                const m = String(raw || '');
+                let msg = m || 'بيانات دخول التاجر غير صحيحة';
+                if (m.includes('INVALID_MERCHANT_CREDENTIALS')) msg = 'بيانات دخول التاجر غير صحيحة — تأكد من كود التاجر أو البريد أو الهاتف وكلمة المرور.';
+                else if (m.includes('MERCHANT_ACCOUNT_INACTIVE')) msg = 'حساب التاجر موقوف أو غير نشط حالياً — تواصل مع علاقات التجار.';
+                else if (m.includes('WEAK_OR_DEFAULT_PASSWORD_REJECTED')) msg = 'كلمة المرور الافتراضية 123456 مرفوضة أمنياً.';
+                else if (m.includes('CREDENTIALS_REQUIRED')) msg = 'يرجى إدخال معرف التاجر وكلمة المرور.';
+                if (box) {
+                    box.textContent = '❌ ' + msg;
+                    box.style.display = 'block';
+                } else {
+                    alert('❌ ' + msg);
+                }
+            }
+
             async function performMerchantLogin(identifier, password) {
                 const btn = document.getElementById('loginBtn');
+                const box = document.getElementById('loginErrorBox');
+                if (box) { box.style.display = 'none'; box.textContent = ''; }
                 if (btn) {
                     btn.disabled = true;
                     btn.textContent = '⏳ جاري التحقق...';
@@ -75,12 +94,12 @@
                     }
                     const res = await window.SAWYAN.API.authenticateMerchantLogin(identifier, password);
                     if (!res || !res.success || !res.merchant) {
-                        throw new Error('بيانات دخول التاجر غير صحيحة');
+                        throw new Error('INVALID_MERCHANT_CREDENTIALS');
                     }
                     window.SAWYAN.API.saveMerchantSession(res.merchant, res.session_token);
                     window.location.href = 'dashboard.html';
                 } catch (err) {
-                    alert('❌ تعذر الدخول: ' + err.message);
+                    showErr(err.message);
                 } finally {
                     if (btn) {
                         btn.disabled = false;

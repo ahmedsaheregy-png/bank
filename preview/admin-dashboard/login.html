@@ -138,7 +138,8 @@
                 <button type="submit" id="adminLoginBtn" class="btn btn-primary btn-block">🔐 توثيق الجلسة والدخول</button>
 
                 <div class="auth-footer">
-                    <p style="margin-top: 1rem;"><a href="../index.html">← العودة للبوابة الرئيسية</a></p>
+                    <p style="font-size:0.8rem;color:#64748b;margin-bottom:8px;">نسيت كلمة المرور الإدارية؟ تواصل مع المؤسس السيادي لإعادة التعيين الموثّق.</p>
+                    <p style="margin-top: 0.75rem;"><a href="../index.html">← العودة للبوابة الرئيسية</a></p>
                 </div>
             </form>
         </div>
@@ -146,12 +147,18 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../shared/config/supabase.js"></script>
-    <script src="../shared/api/sawyan-api.js?v=20261118_quicklogin"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261119_auth_audit"></script>
     <script src="../shared/components/logo.js"></script>
     <script>
-        function showLoginError(msg) {
+        function showLoginError(raw) {
             const box = document.getElementById('loginAlert');
             if (!box) return;
+            const m = String(raw || '');
+            let msg = m || 'تعذر التحقق من بيانات الدخول الإدارية';
+            if (m.includes('ADMIN_INVALID_CREDENTIALS')) msg = 'البريد المؤسسي أو كلمة المرور غير صحيحة.';
+            else if (m.includes('ADMIN_ACCOUNT_DEACTIVATED')) msg = 'تم إيقاف هذا الحساب الإداري — راجع المؤسس السيادي.';
+            else if (m.includes('ADMIN_LOGIN_MISSING_CREDENTIALS')) msg = 'يرجى إدخال البريد المؤسسي وكلمة المرور.';
+            else if (m.includes('CONSTITUTIONAL_SECURITY_VIOLATION')) msg = 'كلمة المرور الافتراضية 123456 محظورة أمنياً.';
             box.className = 'login-alert error';
             box.textContent = '⛔ ' + msg;
         }

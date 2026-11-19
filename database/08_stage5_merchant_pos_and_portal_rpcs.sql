@@ -141,6 +141,22 @@ BEGIN
 
     IF p_onboarded_by_member_code IS NOT NULL AND p_onboarded_by_member_code > 0 THEN
         SELECT id INTO v_onboarder_id FROM sawyan.members WHERE member_code = p_onboarded_by_member_code AND is_tombstone_banned = false;
+        IF v_onboarder_id IS NULL THEN
+            RAISE EXCEPTION 'ONBOARDER_MEMBER_NOT_FOUND: %', p_onboarded_by_member_code;
+        END IF;
+    END IF;
+
+    IF p_initial_cashier_pin IS NOT NULL AND trim(p_initial_cashier_pin) <> '' AND trim(p_initial_cashier_pin) !~ '^\d{4}$' THEN
+        RAISE EXCEPTION 'INVALID_CASHIER_PIN_FORMAT';
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM sawyan.merchants WHERE phone = v_clean_phone) THEN
+        RAISE EXCEPTION 'MERCHANT_PHONE_ALREADY_REGISTERED';
+    END IF;
+
+    v_clean_email := lower(NULLIF(trim(COALESCE(p_email, '')), ''));
+    IF v_clean_email IS NOT NULL AND EXISTS (SELECT 1 FROM sawyan.merchants WHERE lower(email) = v_clean_email) THEN
+        RAISE EXCEPTION 'MERCHANT_EMAIL_ALREADY_REGISTERED';
     END IF;
 
     PERFORM pg_advisory_xact_lock(hashtext('sawyan_merchant_code_seq'));
@@ -151,7 +167,6 @@ BEGIN
         v_seq_num := v_seq_num + 1;
     END LOOP;
 
-    v_clean_email := lower(NULLIF(trim(COALESCE(p_email, '')), ''));
     IF v_clean_email IS NULL THEN
         v_clean_email := lower(replace(v_mcode, '-', '')) || '@merchants.sawyan.global';
     END IF;
@@ -231,22 +246,49 @@ SECURITY DEFINER
 SET search_path = pg_catalog, pg_temp
 AS $$
 DECLARE
-    v_ident   TEXT;
-    v_merch   sawyan.merchants%ROWTYPE;
-    v_country sawyan.countries%ROWTYPE;
-    v_token   TEXT;
+    v_ident        TEXT;
+    v_phone_clean  TEXT;
+    v_digits       TEXT;
+    v_local_suffix TEXT;
+    v_match_count  INT;
+    v_merch        sawyan.merchants%ROWTYPE;
+    v_country      sawyan.countries%ROWTYPE;
+    v_token        TEXT;
 BEGIN
     v_ident := trim(COALESCE(p_identifier, ''));
     IF v_ident = '' OR COALESCE(p_password, '') = '' THEN
         RAISE EXCEPTION 'CREDENTIALS_REQUIRED';
     END IF;
 
+    IF trim(p_password) = '123456' THEN
+        RAISE EXCEPTION 'WEAK_OR_DEFAULT_PASSWORD_REJECTED';
+    END IF;
+
+    v_phone_clean := regexp_replace(v_ident, '[\s\-\(\)]+', '', 'g');
+    v_digits := regexp_replace(v_phone_clean, '[^0-9]', '', 'g');
+
     SELECT * INTO v_merch
       FROM sawyan.merchants
      WHERE upper(merchant_code) = upper(v_ident)
         OR lower(email) = lower(v_ident)
-        OR phone = v_ident
+        OR phone = v_phone_clean
+        OR (v_digits <> '' AND phone = '+' || v_digits)
      LIMIT 1;
+
+    IF NOT FOUND AND length(v_digits) >= 8 AND position('@' IN v_ident) = 0 THEN
+        v_local_suffix := regexp_replace(v_digits, '^0+', '');
+        IF length(v_local_suffix) >= 8 THEN
+            SELECT count(*) INTO v_match_count
+              FROM sawyan.merchants
+             WHERE regexp_replace(phone, '[^0-9]', '', 'g') LIKE '%' || v_local_suffix;
+            IF v_match_count = 1 THEN
+                SELECT * INTO v_merch
+                  FROM sawyan.merchants
+                 WHERE regexp_replace(phone, '[^0-9]', '', 'g') LIKE '%' || v_local_suffix
+                 LIMIT 1;
+            END IF;
+        END IF;
+    END IF;
 
     IF NOT FOUND THEN
         RAISE EXCEPTION 'INVALID_MERCHANT_CREDENTIALS';
@@ -279,7 +321,8 @@ BEGIN
             'merchant_type', v_merch.merchant_type,
             'deduction_percent', v_merch.deduction_percent,
             'country_code', v_country.country_code,
-            'currency_code', v_country.currency_code
+            'currency_code', v_country.currency_code,
+            'must_change_password', COALESCE((v_merch.metadata->>'must_change_password')::boolean, false)
         )
     );
 END;
