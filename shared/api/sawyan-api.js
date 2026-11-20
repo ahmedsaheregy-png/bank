@@ -1522,12 +1522,16 @@
         mountEnvironmentSwitchBar() {
             if (typeof document === 'undefined' || document.getElementById('sawyanEnvRibbon')) return;
             const isDemo = SawyanAPI.isDemoMode();
-            const targetUrl = SawyanAPI.getSiblingEnvironmentUrl();
+            const pathNow = String(window.location.pathname || '').toLowerCase();
+            const isMemberPortal = pathNow.includes('/member-dashboard/');
+            const isMerchantPortal = pathNow.includes('/merchant-dashboard/');
+            const isAdminPortal = pathNow.includes('/admin-dashboard/');
+
+            // On Production public pages, visitors see the dedicated top trust & nav bars — never an internal env bar
+            if (!isDemo && !isMemberPortal && !isMerchantPortal && !isAdminPortal) return;
+
             const bar = document.createElement('div');
             bar.id = 'sawyanEnvRibbon';
-            bar.style.cssText = isDemo
-                ? 'background:#78350f;color:#fef3c7;font-family:Tajawal,sans-serif;font-size:12px;font-weight:700;padding:5px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border-bottom:2px solid #f59e0b;position:fixed;top:0;left:0;right:0;width:100%;box-sizing:border-box;z-index:9999;'
-                : 'background:#064e3b;color:#d1fae5;font-family:Tajawal,sans-serif;font-size:12px;font-weight:700;padding:5px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border-bottom:2px solid #10b981;position:fixed;top:0;left:0;right:0;width:100%;box-sizing:border-box;z-index:9999;';
 
             const syncLayoutBelowRibbon = () => {
                 const h = bar.offsetHeight || 34;
@@ -1544,32 +1548,102 @@
                 }
             };
 
-            const pathNow = String(window.location.pathname || '').toLowerCase();
-            let sessionSuffix = '';
-            if (pathNow.includes('/member-dashboard/')) {
-                const mem = SawyanAPI.getSavedMember();
-                if (mem && mem.member_code) sessionSuffix = ` • حساب عضو #${mem.member_code}`;
-            } else if (pathNow.includes('/merchant-dashboard/')) {
-                const mer = SawyanAPI.getSavedMerchant();
-                if (mer && mer.merchant_code) sessionSuffix = ` • حساب تاجر ${mer.merchant_code}`;
-            } else if (pathNow.includes('/admin-dashboard/')) {
-                const adm = SawyanAPI.getSavedAdmin();
-                if (adm && adm.role) sessionSuffix = ` • بوابة الإدارة (${adm.role})`;
+            if (!isDemo && (isMemberPortal || isMerchantPortal)) {
+                bar.style.cssText = 'background:linear-gradient(90deg,#064e3b 0%,#065f46 100%);color:#ecfdf5;font-family:Tajawal,sans-serif;font-size:12px;font-weight:700;padding:6px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1.5px solid #10b981;position:fixed;top:0;left:0;right:0;width:100%;box-sizing:border-box;z-index:9999;';
+
+                if (isMemberPortal) {
+                    const mem = SawyanAPI.getSavedMember();
+                    const identityWrap = document.createElement('span');
+                    identityWrap.id = 'sawyanMemberRibbonIdentity';
+                    identityWrap.style.cssText = 'display:inline-flex;align-items:center;gap:7px;flex-wrap:wrap;color:#ffffff !important;font-weight:800;';
+
+                    if (mem && mem.member_code) {
+                        const greet = document.createElement('span');
+                        greet.id = 'sawyanMemberRibbonGreeting';
+                        greet.textContent = `👋 أهلاً، ${mem.full_name || 'عضو SAWYAN'}`;
+                        const badge = document.createElement('span');
+                        badge.style.cssText = 'background:rgba(16,185,129,0.22);border:1px solid rgba(52,211,153,0.5);color:#a7f3d0;padding:2px 9px;border-radius:999px;font-size:11px;white-space:nowrap;';
+                        badge.textContent = `عضوية #${mem.member_code}`;
+                        identityWrap.appendChild(greet);
+                        identityWrap.appendChild(badge);
+                        bar.appendChild(identityWrap);
+
+                        if (pathNow.includes('dashboard')) {
+                            const actions = document.createElement('div');
+                            actions.style.cssText = 'display:inline-flex;align-items:center;gap:6px;flex-shrink:0;';
+
+                            const pillCss = 'background:rgba(255,255,255,0.14);color:#ffffff;padding:3px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.34);white-space:nowrap;font-family:Tajawal,sans-serif;font-size:11.5px;font-weight:800;cursor:pointer;';
+
+                            const qrBtn = document.createElement('button');
+                            qrBtn.type = 'button';
+                            qrBtn.textContent = '📷 كود QR';
+                            qrBtn.style.cssText = pillCss;
+                            qrBtn.onclick = () => {
+                                if (typeof window.goToPage === 'function') window.goToPage('home');
+                                setTimeout(() => {
+                                    const el = document.getElementById('qrCode');
+                                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                }, 80);
+                            };
+
+                            const merchBtn = document.createElement('button');
+                            merchBtn.type = 'button';
+                            merchBtn.textContent = '🏪 التجار';
+                            merchBtn.style.cssText = pillCss;
+                            merchBtn.onclick = () => {
+                                if (typeof window.goToPage === 'function') window.goToPage('merchants');
+                            };
+
+                            actions.appendChild(qrBtn);
+                            actions.appendChild(merchBtn);
+                            bar.appendChild(actions);
+                        }
+                    } else {
+                        identityWrap.textContent = '🌿 SAWYAN • منصة الاستهلاك الاستثماري العالمية';
+                        bar.appendChild(identityWrap);
+                    }
+                } else {
+                    const mer = SawyanAPI.getSavedMerchant();
+                    const merchSpan = document.createElement('span');
+                    merchSpan.style.cssText = 'color:#ffffff !important;font-weight:800;';
+                    merchSpan.textContent = (mer && (mer.business_name || mer.merchant_code))
+                        ? `🏪 ${mer.business_name || 'تاجر SAWYAN'}${mer.merchant_code ? ` • كود ${mer.merchant_code}` : ''}`
+                        : '🏪 بوابة التاجر • SAWYAN';
+                    bar.appendChild(merchSpan);
+                }
+            } else {
+                const targetUrl = SawyanAPI.getSiblingEnvironmentUrl();
+                bar.style.cssText = isDemo
+                    ? 'background:#78350f;color:#fef3c7;font-family:Tajawal,sans-serif;font-size:12px;font-weight:700;padding:5px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border-bottom:2px solid #f59e0b;position:fixed;top:0;left:0;right:0;width:100%;box-sizing:border-box;z-index:9999;'
+                    : 'background:#064e3b;color:#d1fae5;font-family:Tajawal,sans-serif;font-size:12px;font-weight:700;padding:5px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border-bottom:2px solid #10b981;position:fixed;top:0;left:0;right:0;width:100%;box-sizing:border-box;z-index:9999;';
+
+                let sessionSuffix = '';
+                if (isMemberPortal) {
+                    const mem = SawyanAPI.getSavedMember();
+                    if (mem && mem.member_code) sessionSuffix = ` • حساب عضو #${mem.member_code}`;
+                } else if (isMerchantPortal) {
+                    const mer = SawyanAPI.getSavedMerchant();
+                    if (mer && mer.merchant_code) sessionSuffix = ` • حساب تاجر ${mer.merchant_code}`;
+                } else if (isAdminPortal) {
+                    const adm = SawyanAPI.getSavedAdmin();
+                    if (adm && adm.role) sessionSuffix = ` • بوابة الإدارة (${adm.role})`;
+                }
+
+                const left = document.createElement('span');
+                left.style.cssText = 'color:#ffffff !important;font-weight:800;';
+                left.textContent = isDemo
+                    ? `🧪 الموقع الموازي للتجربة (Sandbox — sawyan_demo)${sessionSuffix}`
+                    : `🟢 الموقع الأصلي الحي (Production — SAWYAN)${sessionSuffix}`;
+
+                const link = document.createElement('a');
+                link.href = targetUrl;
+                link.textContent = isDemo ? 'الانتقال إلى الموقع الأصلي (Production) ↗' : 'الانتقال إلى الموقع الموازي للتجربة (/preview/) ↗';
+                link.style.cssText = 'background:rgba(255,255,255,0.16);color:#ffffff;padding:3px 10px;border-radius:999px;text-decoration:none;border:1px solid rgba(255,255,255,0.35);white-space:nowrap;';
+
+                bar.appendChild(left);
+                bar.appendChild(link);
             }
 
-            const left = document.createElement('span');
-            left.style.cssText = 'color:#ffffff !important;font-weight:800;';
-            left.textContent = isDemo
-                ? `🧪 الموقع الموازي للتجربة (Sandbox — sawyan_demo)${sessionSuffix}`
-                : `🟢 الموقع الأصلي الحي (Production — SAWYAN)${sessionSuffix}`;
-
-            const link = document.createElement('a');
-            link.href = targetUrl;
-            link.textContent = isDemo ? 'الانتقال إلى الموقع الأصلي (Production) ↗' : 'الانتقال إلى الموقع الموازي للتجربة (/preview/) ↗';
-            link.style.cssText = 'background:rgba(255,255,255,0.16);color:#ffffff;padding:3px 10px;border-radius:999px;text-decoration:none;border:1px solid rgba(255,255,255,0.35);white-space:nowrap;';
-
-            bar.appendChild(left);
-            bar.appendChild(link);
             if (document.body) {
                 document.body.insertBefore(bar, document.body.firstChild);
                 syncLayoutBelowRibbon();

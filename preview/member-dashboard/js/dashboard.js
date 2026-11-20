@@ -192,6 +192,8 @@ async function refreshDashboardBundle(lensCountry = activeLensCountry) {
             const codeEl = document.getElementById('memberCode');
             if (nameEl) nameEl.textContent = memberBundle.profile.full_name || 'عضو';
             if (codeEl) codeEl.textContent = `كود العضوية: #${memberBundle.profile.member_code} • ${memberBundle.profile.country_code}`;
+            const ribbonGreet = document.getElementById('sawyanMemberRibbonGreeting');
+            if (ribbonGreet) ribbonGreet.textContent = `👋 أهلاً، ${memberBundle.profile.full_name || 'عضو SAWYAN'}`;
         }
 
         if (window.SAWYAN && window.SAWYAN.Notifications && Array.isArray(memberBundle.notifications)) {
@@ -344,8 +346,45 @@ window.copyMemberStaticBarcode = function () {
     alert(`✅ تم نسخ رمز الهوية الثابت للكاشير: ${txt}`);
 };
 
+function fmtBiDi(val) {
+    return `<span dir="ltr" style="display:inline-block;unicode-bidi:isolate;white-space:nowrap;">${esc(val)}</span>`;
+}
+
+function computeMonthlyPurchaseStats(txs, periodYm, homePlan) {
+    const plan = homePlan || getCountryPlanInfo();
+    const fx = Number(plan.fx || 1) > 0 ? Number(plan.fx || 1) : 1;
+    const targetCur = String(plan.currencyCode || 'USD').toUpperCase();
+    let count = 0;
+    let grossLocal = 0;
+    let planShareLocal = 0;
+
+    (Array.isArray(txs) ? txs : []).forEach(t => {
+        if (!t || t.status !== 'completed') return;
+        if (periodYm && String(t.created_at || '').slice(0, 7) !== periodYm) return;
+        const rawAmt = Number(t.total_amount || 0);
+        const rawPlanLocal = Number(t.income_plan_share_local || 0);
+        const rawPlanUsd = Number(t.income_plan_share_usd || 0);
+        const txCur = String(t.currency_code || targetCur).toUpperCase();
+
+        let amtLocal = rawAmt;
+        let planLocal = rawPlanLocal;
+        if (txCur !== targetCur) {
+            planLocal = rawPlanUsd * fx;
+            const ratio = (rawAmt > 0 && rawPlanLocal > 0) ? (rawPlanLocal / rawAmt) : 0;
+            amtLocal = ratio > 0 ? (planLocal / ratio) : rawAmt;
+        }
+        grossLocal += amtLocal;
+        planShareLocal += planLocal;
+        count += 1;
+    });
+
+    const weightedAvgPct = grossLocal > 0 ? (planShareLocal / grossLocal) * 100 : 0;
+    return { count, grossLocal, planShareLocal, weightedAvgPct };
+}
+window.computeSawyanMonthlyPurchaseStats = computeMonthlyPurchaseStats;
+
 // ---------------------------------------------------------------------------
-// Screen 1: Home (3-State Target Box, Estimated Earnings, Team Radar, Static QR, Calc, Recent)
+// Screen 1: Home (3-State Target Box, Dark Earnings Card, Team Radar, Static QR, Recent)
 // ---------------------------------------------------------------------------
 function renderHomePage() {
     if (!memberBundle) return;
@@ -358,9 +397,15 @@ function renderHomePage() {
     const balEl = document.getElementById('walletBalance');
     const txCntEl = document.getElementById('totalTransactions');
     const teamEl = document.getElementById('teamSize');
+    const teamSubEl = document.getElementById('teamSizeSub');
+    const downlineCount = tree.total_team_count !== undefined
+        ? Number(tree.total_team_count)
+        : Math.max(0, (tree.nodes ? tree.nodes.length - 1 : 0));
+    const treeTotalIncludingSelf = downlineCount + 1;
     if (balEl) balEl.textContent = fmtLocalFromUsd(w.balance_usd);
     if (txCntEl) txCntEl.textContent = txs.length;
-    if (teamEl) teamEl.textContent = tree.total_team_count !== undefined ? tree.total_team_count : Math.max(0, (tree.nodes ? tree.nodes.length - 1 : 0));
+    if (teamEl) teamEl.textContent = String(treeTotalIncludingSelf);
+    if (teamSubEl) teamSubEl.textContent = `أنت + ${downlineCount} بالفريق`;
 
     let homeEnhBox = document.getElementById('memberHomeInteractiveDeck');
     if (!homeEnhBox) {
@@ -375,91 +420,177 @@ function renderHomePage() {
     const homePlan = getCountryPlanInfo(profile.country_code);
     const homeBox = boxes.find(b => b.country_code === profile.country_code && b.period_ym === memberBundle.period_ym) || boxes[0];
     const req = Number((homeBox && homeBox.target_required_usd) || homePlan.targetUsd || 24.75);
-    const net = Number((homeBox && homeBox.net_accumulated_usd) || 0);
     const carryUsd = Number((homeBox && homeBox.carry_on_in_usd) || 0);
     const monthUsd = Number((homeBox && homeBox.current_month_purchases_usd) || 0);
-    const isQual = Boolean(homeBox && homeBox.is_qualified);
-    const boxCountry = (homeBox && homeBox.country_code) || profile.country_code || 'EG';
+    const rawNet = Number((homeBox && homeBox.net_accumulated_usd) || 0);
+    const combinedNetUsd = homeBox ? Math.max(0, rawNet) : Math.max(0, monthUsd + carryUsd);
+    const isQual = Boolean((homeBox && homeBox.is_qualified) || combinedNetUsd >= req);
     const boxPeriod = (homeBox && homeBox.period_ym) || memberBundle.period_ym || '';
+    const monthNum = (() => {
+        const m = parseInt(String(boxPeriod || '').split('-')[1] || '', 10);
+        return (m >= 1 && m <= 12) ? m : (new Date().getMonth() + 1);
+    })();
     const unitShareUsd = calcMemberUnitShareUsd(req, homePlan.s02);
-    const pct = Math.max(0, Math.min(100, Math.round((net / Math.max(req, 0.01)) * 100)));
-    const remainingUsd = Math.max(0, req - net);
-    const stateCls = isQual ? 'green-state' : (net > 0 ? 'orange-state' : 'white-state');
-    const stateBadgeBg = isQual ? '#10b981' : (net > 0 ? '#f59e0b' : '#64748b');
-    const stateBadgeText = isQual ? '✅ مؤهل أخضر (100%)' : (net > 0 ? `🟠 جاري التجميع (${pct}%)` : '⚪ أبيض (بانتظار أول شراء)');
+    const pct = Math.max(0, Math.min(100, Math.round((combinedNetUsd / Math.max(req, 0.01)) * 100)));
+    const remainingUsd = Math.max(0, req - combinedNetUsd);
+    const stateCls = isQual ? 'green-state' : (combinedNetUsd > 0 ? 'orange-state' : 'white-state');
+    const stateBadgeBg = isQual ? '#10b981' : (combinedNetUsd > 0 ? '#f59e0b' : '#64748b');
+    const stateBadgeText = isQual
+        ? '🟢 مؤهل أخضر (100%)'
+        : (combinedNetUsd > 0 ? `🟠 جاري التجميع (${pct}%)` : '⚪ بانتظار أول شراء');
+
+    const monthStats = computeMonthlyPurchaseStats(txs, boxPeriod, homePlan);
+    const grossMonthFormatted = `${monthStats.grossLocal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${homePlan.currencyCode}`;
+    const avgPctFormatted = monthStats.grossLocal > 0 ? `${monthStats.weightedAvgPct.toFixed(1)}%` : '0%';
 
     const actualMonthUsd = Number(tree.actual_earnings_usd || 0);
     const expectedOrangeUsd = Number(tree.expected_orange_earnings_usd || 0);
     const nodes = Array.isArray(tree.nodes) ? tree.nodes : [];
-    const teamRadar = nodes.filter(n => {
+
+    const greenTeamCount = nodes.filter(n => {
         const d = parseInt(String(n.structural_me || '1').replace(/\D/g, ''), 10) || 1;
-        return d >= 2 && d <= 11 && (n.node_color === 'ORANGE' || n.node_color === 'GREEN');
-    }).slice(0, 6);
+        return d >= 2 && n.team_bucket === 'COMMISSION_TEAM';
+    }).length;
+    const orangeTeamCount = nodes.filter(n => {
+        const d = parseInt(String(n.structural_me || '1').replace(/\D/g, ''), 10) || 1;
+        return d >= 2 && n.team_bucket !== 'RESERVE_TEAM' && n.visual_color !== 'GRAY' && n.visual_color !== 'BLACK' && n.node_color === 'ORANGE';
+    }).length;
+
+    const selfActualUsd = isQual ? unitShareUsd : 0;
+    const actualTotalUsd = actualMonthUsd + selfActualUsd;
+    const greenQualifiedTotalCount = greenTeamCount + (isQual ? 1 : 0);
+    const expectedTotalInclAllUsd = actualMonthUsd + expectedOrangeUsd + unitShareUsd;
+
+    const teamRadar = nodes
+        .filter(n => {
+            const d = parseInt(String(n.structural_me || '1').replace(/\D/g, ''), 10) || 1;
+            return d >= 2 && d <= 11 && (n.node_color === 'ORANGE' || n.node_color === 'GREEN');
+        })
+        .sort((a, b) => {
+            const aOrd = a.node_color === 'ORANGE' ? 0 : 1;
+            const bOrd = b.node_color === 'ORANGE' ? 0 : 1;
+            if (aOrd !== bOrd) return aOrd - bOrd;
+            return Number(b.target_pct || 0) - Number(a.target_pct || 0);
+        })
+        .slice(0, 6);
 
     homeEnhBox.innerHTML = `
-        <!-- 1. صندوق الهدف الشهري ذو الـ 3 حالات -->
-        <div class="target-box-card ${stateCls}" data-spec-id="member-home-target-box">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-                <strong style="font-size:1.05rem;color:#0f172a;">🎯 صندوق الهدف الشهري (${esc(boxPeriod)} — ${esc(boxCountry)})</strong>
-                <span style="padding:4px 12px;border-radius:999px;font-size:0.82rem;font-weight:800;background:${stateBadgeBg};color:#ffffff;">${stateBadgeText}</span>
+        <!-- 1. الصندوق الأبيض للهدف الشهري (يدمج الشهر + المرحل في العداد تلقائياً) -->
+        <div class="target-box-card ${stateCls}" data-spec-id="member-home-target-box" style="background:#ffffff;border:1.5px solid #e2e8f0;border-top:4px solid ${stateBadgeBg};border-radius:16px;padding:18px;margin:14px 0;box-shadow:0 4px 16px rgba(15,23,42,0.06);">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+                <strong style="font-size:1.08rem;color:#0f172a;">🎯 الهدف الشهري لشهر (${monthNum})</strong>
+                <div style="display:inline-flex;align-items:center;gap:7px;flex-wrap:wrap;">
+                    <span style="font-size:0.84rem;font-weight:800;color:#475569;">الحالة:</span>
+                    <span style="padding:4px 12px;border-radius:999px;font-size:0.82rem;font-weight:800;background:${stateBadgeBg};color:#ffffff;white-space:nowrap;">${stateBadgeText}</span>
+                </div>
             </div>
-            <div style="height:10px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-bottom:10px;">
-                <div style="width:${pct}%;height:100%;background:${stateBadgeBg};transition:width 0.35s;"></div>
+
+            <div style="height:12px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-bottom:10px;">
+                <div style="width:${pct}%;height:100%;background:${stateBadgeBg};border-radius:999px;transition:width 0.35s;"></div>
             </div>
-            <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:0.85rem;color:#334155;align-items:center;">
-                <span>المحقق الصافي: <strong>${esc(fmtLocalFromUsd(net))} / ${esc(fmtLocalFromUsd(req))}</strong></span>
-                <span>المرحّل (Carry On): <strong>${esc(fmtLocalFromUsd(carryUsd))}</strong></span>
-                <span>مشتريات الشهر: <strong>${esc(fmtLocalFromUsd(monthUsd))}</strong></span>
-                ${!isQual ? `<span style="color:#b45309;font-weight:800;">المتبقي للتأهل: ${esc(fmtLocalFromUsd(remainingUsd))}</span>` : ''}
-                <span style="background:#ecfdf5;border:1px solid #6ee7b7;color:#065f46;padding:4px 10px;border-radius:8px;font-weight:800;">
-                    💎 حصة الفرد المؤهل (الهدف ÷ ${homePlan.s02}): <strong>${esc(fmtLocalFromUsd(unitShareUsd))}</strong> <small>(${fmtUsd(unitShareUsd)})</small>
-                </span>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;font-size:0.95rem;color:#0f172a;">
+                <div>تم تحقيق <strong>${fmtBiDi(fmtLocalFromUsd(combinedNetUsd))}</strong> من <strong>${fmtBiDi(fmtLocalFromUsd(req))}</strong></div>
+                <span style="background:#f1f5f9;color:#0f172a;padding:2px 10px;border-radius:999px;font-size:0.82rem;font-weight:900;">${pct}%</span>
+            </div>
+
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:12px;">
+                <div style="font-size:0.82rem;font-weight:800;color:#475569;margin-bottom:8px;">عبارة عن:</div>
+                <div style="display:grid;gap:6px;font-size:0.86rem;color:#1e293b;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <span>أ) هذا الشهر <small style="color:#64748b;">(ما دخل لخطة الدخل حتى اللحظة)</small>:</span>
+                        <strong>${fmtBiDi(fmtLocalFromUsd(monthUsd))}</strong>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <span>ب) مرحّل من أشهر سابقة <small style="color:#64748b;">(Carry On)</small>:</span>
+                        <strong>${fmtBiDi(fmtLocalFromUsd(carryUsd))}</strong>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px dashed #cbd5e1;padding-top:7px;margin-top:2px;">
+                        <span style="font-weight:800;color:${isQual ? '#047857' : '#b45309'};">باقي للتأهل:</span>
+                        <strong style="color:${isQual ? '#047857' : '#b45309'};">${isQual ? 'مكتمل 100% ✅' : fmtBiDi(fmtLocalFromUsd(remainingUsd))}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
+                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                    <span style="font-size:0.81rem;font-weight:700;color:#166534;">🛒 إجمالي مشترياتك بهذا الشهر</span>
+                    <strong style="font-size:0.9rem;color:#064e3b;">${fmtBiDi(grossMonthFormatted)}</strong>
+                </div>
+                <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                    <span style="font-size:0.81rem;font-weight:700;color:#1e40af;">📊 متوسط نسبة الهدف من المشتريات</span>
+                    <strong style="font-size:0.9rem;color:#1e3a8a;">${avgPctFormatted}</strong>
+                </div>
             </div>
         </div>
 
-        <!-- 2. بطاقة الأرباح التقديرية المعلقة + رادار أهداف الفريق -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px;margin:14px 0;">
-            <div data-spec-id="member-home-pending-card" style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1.5px solid #f59e0b;border-radius:16px;padding:18px;box-shadow:0 4px 14px rgba(245,158,11,0.12);">
-                <div style="font-size:0.82rem;font-weight:800;color:#92400e;">✨ الأرباح التقديرية لفريقك هذا الشهر</div>
-                <div style="font-size:1.45rem;font-weight:900;color:#78350f;margin:6px 0;">
-                    ${esc(fmtLocalFromUsd(actualMonthUsd))} <span style="font-size:0.86rem;font-weight:700;">(${fmtUsd(actualMonthUsd)})</span>
-                </div>
-                <div style="font-size:0.8rem;color:#92400e;line-height:1.55;">
-                    <div>🟢 مؤهلون من فريقك: <strong>${(tree.nodes || []).filter(n => (parseInt(String(n.structural_me || '1').replace(/\D/g, ''), 10) || 1) >= 2 && n.team_bucket === 'COMMISSION_TEAM').length}</strong> • حالتك: <strong>${isQual ? `مؤهل (1/${homePlan.s01})` : `غير مؤهل بعد (${Math.round(pct)}%)`}</strong></div>
-                    <div>🟠 برتقالي محتمل عند إكمالهم الهدف: <strong>+${esc(fmtLocalFromUsd(expectedOrangeUsd))}</strong> (${fmtUsd(expectedOrangeUsd)})</div>
-                </div>
-                <button type="button" onclick="goToPage('tree')" class="btn btn-outline btn-sm" style="margin-top:10px;border-color:#d97706;color:#92400e;">🌳 استعرض شجرة العمولات كاملة</button>
+        <!-- 2. بطاقة ملخص الأرباح الزمردية الفاخرة (تستبدل البطاقة الصفراء + الحاسبة) -->
+        <div data-spec-id="member-home-pending-card" style="background:linear-gradient(135deg,#064e3b 0%,#0f172a 100%);color:#ffffff;border-radius:16px;padding:18px;margin:14px 0;box-shadow:0 8px 24px rgba(6,78,59,0.22);border:1px solid rgba(16,185,129,0.38);">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+                <strong style="font-size:1.05rem;color:#6ee7b7;">💰 ملخص أرباحك لهذا الشهر (شهر ${monthNum})</strong>
+                <button type="button" onclick="goToPage('tree')" style="background:rgba(255,255,255,0.14);color:#ffffff;border:1px solid rgba(255,255,255,0.3);border-radius:999px;padding:5px 14px;font-family:Tajawal,sans-serif;font-size:0.8rem;font-weight:800;cursor:pointer;">🌳 استعرض شجرة العمولات</button>
             </div>
 
-            <div data-spec-id="member-home-team-radar" style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:16px;padding:18px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;">
-                    <strong style="font-size:0.95rem;color:#0f172a;">🎯 رادار أهداف الفريق (2Me–11Me)</strong>
-                    <button type="button" onclick="goToPage('tree')" class="btn btn-outline btn-sm" style="padding:3px 9px;font-size:0.75rem;">عرض الكل</button>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;">
+                <div style="background:rgba(16,185,129,0.14);border:1px solid rgba(52,211,153,0.42);border-radius:12px;padding:14px;">
+                    <div style="font-size:0.8rem;color:#a7f3d0;font-weight:800;">💵 أرباح فعلية لهذا الشهر</div>
+                    <div style="font-size:1.38rem;font-weight:900;color:#ffffff;margin:6px 0 4px;">
+                        ${fmtBiDi(fmtLocalFromUsd(actualTotalUsd))}
+                        <span style="font-size:0.78rem;font-weight:700;color:#a7f3d0;">(${fmtBiDi(fmtUsd(actualTotalUsd))})</span>
+                    </div>
+                    <div style="font-size:0.8rem;color:#e2e8f0;">عن المؤهلين حتى الآن وعددهم: <strong style="color:#6ee7b7;">${greenQualifiedTotalCount}</strong> <small style="color:#cbd5e1;">(الخضر فقط${isQual ? ` — أنت + ${greenTeamCount} بفريقك` : ''})</small></div>
+                    ${!isQual && greenTeamCount > 0 ? `<div style="font-size:0.74rem;color:#fde68a;margin-top:4px;">⏳ عمولاتهم (${fmtBiDi(fmtLocalFromUsd(actualMonthUsd))}) تُصرف فور إكمال هدفك</div>` : ''}
                 </div>
-                ${teamRadar.length === 0
-                    ? `<div style="padding:12px;background:#f8fafc;border-radius:10px;color:#64748b;font-size:0.82rem;">لا يوجد أعضاء مؤهلون أو برتقاليون ضمن نطاق 2Me–11Me هذا الشهر حتى الآن.</div>`
-                    : `<div style="display:grid;gap:7px;">
-                        ${teamRadar.map(n => {
-                            const wa = n.phone_visible && n.phone ? String(n.phone).replace(/\D/g, '') : '';
-                            const msg = encodeURIComponent(`أهلاً ${n.full_name} 🌟 تقدمك في صندوق الهدف الشهري على SAWYAN ممتاز (${Number(n.target_pct || 0)}%).`);
-                            return `
-                                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;background:${n.node_color === 'GREEN' ? '#ecfdf5' : '#fffbeb'};border:1px solid ${n.node_color === 'GREEN' ? '#a7f3d0' : '#fde68a'};border-radius:10px;padding:7px 10px;font-size:0.8rem;">
-                                    <div>
-                                        <strong>#${n.member_code} ${esc(n.full_name)}</strong>
-                                        <small style="color:#475569;">(${esc(n.structural_me)} • ${Number(n.target_pct || 0)}%)</small>
-                                    </div>
-                                    ${wa ? `<a href="https://wa.me/${wa}?text=${msg}" target="_blank" style="background:#16a34a;color:#fff;padding:2px 8px;border-radius:6px;text-decoration:none;font-weight:800;font-size:0.74rem;">💬 واتساب</a>` : '<span style="color:#64748b;font-size:0.74rem;">🔒 محمي</span>'}
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>`}
+
+                <div style="background:rgba(245,158,11,0.14);border:1px solid rgba(251,191,36,0.42);border-radius:12px;padding:14px;">
+                    <div style="font-size:0.8rem;color:#fde68a;font-weight:800;">🚀 أرباح متوقعة شاملة الذين بدأوا</div>
+                    <div style="font-size:1.38rem;font-weight:900;color:#ffffff;margin:6px 0 4px;">
+                        ${fmtBiDi(fmtLocalFromUsd(expectedTotalInclAllUsd))}
+                        <span style="font-size:0.78rem;font-weight:700;color:#fde68a;">(${fmtBiDi(fmtUsd(expectedTotalInclAllUsd))})</span>
+                    </div>
+                    <div style="font-size:0.8rem;color:#e2e8f0;">وعددهم: <strong style="color:#fde68a;">${orangeTeamCount}</strong> <small style="color:#cbd5e1;">(البرتقاليون فقط)</small></div>
+                    <div style="font-size:0.73rem;color:#cbd5e1;margin-top:4px;">تشمل أرباح الخضر + البرتقاليين + عمولتك عند إكمال هدفك</div>
+                </div>
+
+                <div style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:14px;">
+                    <div style="font-size:0.8rem;color:#cbd5e1;font-weight:800;">💎 حصتك عن كل مؤهل في فريقك:</div>
+                    <div style="font-size:1.38rem;font-weight:900;color:#6ee7b7;margin:6px 0 4px;">
+                        ${fmtBiDi(fmtLocalFromUsd(unitShareUsd))}
+                        <span style="font-size:0.78rem;font-weight:700;color:#e2e8f0;">(${fmtBiDi(fmtUsd(unitShareUsd))})</span>
+                    </div>
+                    <div style="font-size:0.78rem;color:#cbd5e1;">قيمة الهدف الشهري ÷ ${homePlan.s02} أجيال</div>
+                </div>
             </div>
+        </div>
+
+        <!-- 3. رادار متابعة فريقك (القريبون من التأهل في نطاق عمولتك) -->
+        <div data-spec-id="member-home-team-radar" style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:16px;padding:18px;margin:14px 0;box-shadow:0 4px 14px rgba(15,23,42,0.05);">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+                <div>
+                    <strong style="font-size:0.98rem;color:#0f172a;display:block;">📡 رادار متابعة فريقك (القريبون من التأهل)</strong>
+                    <div style="font-size:0.78rem;color:#64748b;margin-top:2px;">يعرض أعضاء فريقك في نطاق عمولتك (2Me–11Me) الذين بدأوا الشراء هذا الشهر (البرتقاليون أولاً ثم الخضر) لمتابعتهم وتشجيعهم بضغطة زر.</div>
+                </div>
+                <button type="button" onclick="goToPage('tree')" class="btn btn-outline btn-sm" style="padding:4px 11px;font-size:0.76rem;white-space:nowrap;">عرض الشجرة كاملة</button>
+            </div>
+            ${teamRadar.length === 0
+                ? `<div style="padding:12px;background:#f8fafc;border-radius:10px;color:#64748b;font-size:0.83rem;">لا يوجد أعضاء بدأوا الشراء ضمن نطاق 2Me–11Me هذا الشهر حتى الآن.</div>`
+                : `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:8px;">
+                    ${teamRadar.map(n => {
+                        const wa = n.phone_visible && n.phone ? String(n.phone).replace(/\D/g, '') : '';
+                        const msg = encodeURIComponent(`أهلاً ${n.full_name} 🌟 تقدمك في الهدف الشهري على SAWYAN ممتاز (${Number(n.target_pct || 0)}%).`);
+                        return `
+                            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;background:${n.node_color === 'GREEN' ? '#ecfdf5' : '#fffbeb'};border:1px solid ${n.node_color === 'GREEN' ? '#a7f3d0' : '#fde68a'};border-radius:10px;padding:8px 11px;font-size:0.81rem;">
+                                <div>
+                                    <strong>#${n.member_code} ${esc(n.full_name)}</strong>
+                                    <div style="color:#475569;font-size:0.75rem;">${n.node_color === 'GREEN' ? '🟢 مؤهل' : '🟠 جاري التجميع'} • ${esc(n.structural_me)} • ${Number(n.target_pct || 0)}%</div>
+                                </div>
+                                ${wa ? `<a href="https://wa.me/${wa}?text=${msg}" target="_blank" style="background:#16a34a;color:#fff;padding:4px 10px;border-radius:8px;text-decoration:none;font-weight:800;font-size:0.75rem;white-space:nowrap;">💬 واتساب</a>` : '<span style="color:#64748b;font-size:0.74rem;white-space:nowrap;">🔒 محمي</span>'}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>`}
         </div>
     `;
-
-    if (typeof window.recalcMemberHomeCalculator === 'function') {
-        window.recalcMemberHomeCalculator();
-    }
 
     renderPendingReturnRequestsCard(homeEnhBox);
 
@@ -584,6 +715,11 @@ function loadAllTransactions() {
         if (txFilterState.country !== 'ALL' && String(t.currency_code || '') !== txFilterState.country) return false;
         return true;
     });
+    const homePlan = getCountryPlanInfo(memberBundle?.profile?.country_code);
+    const txPlan = txFilterState.country === 'ALL'
+        ? homePlan
+        : { ...homePlan, currencyCode: txFilterState.country };
+    const txStats = computeMonthlyPurchaseStats(filteredTxs, null, txPlan);
 
     page.innerHTML = `
         <h2>💳 العمليات المكتملة والفواتير الموثقة (${txs.length})</h2>
@@ -603,6 +739,23 @@ function loadAllTransactions() {
             </div>
         </div>
 
+        ${txFilterState.period === 'open' ? `
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:14px;">
+                <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:11px 14px;">
+                    <div style="font-size:0.78rem;color:#475569;font-weight:700;">🛒 إجمالي المشتريات المكتملة (${txStats.count} فاتورة)</div>
+                    <strong style="font-size:1.02rem;color:#0f172a;display:block;margin-top:3px;">${fmtBiDi(`${txStats.grossLocal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${txPlan.currencyCode}`)}</strong>
+                </div>
+                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:11px 14px;">
+                    <div style="font-size:0.78rem;color:#166534;font-weight:700;">🎯 ما دخل لخطة الدخل</div>
+                    <strong style="font-size:1.02rem;color:#065f46;display:block;margin-top:3px;">${fmtBiDi(`${txStats.planShareLocal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${txPlan.currencyCode}`)}</strong>
+                </div>
+                <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:11px 14px;">
+                    <div style="font-size:0.78rem;color:#1e40af;font-weight:700;">📊 متوسط نسبة الهدف من المشتريات</div>
+                    <strong style="font-size:1.02rem;color:#1e3a8a;display:block;margin-top:3px;">${txStats.grossLocal > 0 ? `${txStats.weightedAvgPct.toFixed(1)}%` : '0%'}</strong>
+                </div>
+            </div>
+        ` : ''}
+
         <div data-spec-id="member-tx-list">
             ${txFilterState.period === 'closed'
                 ? (archive.length === 0
@@ -618,7 +771,11 @@ function loadAllTransactions() {
                         </tr>`).join('')}</tbody></table></div>`)
                 : (filteredTxs.length === 0 ? '<p class="empty-state">لا توجد معاملات مسجلة مطابقة للفلتر.</p>' : `
                     <div style="display:grid;gap:12px;">
-                        ${filteredTxs.map(t => `
+                        ${filteredTxs.map(t => {
+                            const invPct = Number(t.total_amount || 0) > 0
+                                ? ((Number(t.income_plan_share_local || 0) / Number(t.total_amount)) * 100).toFixed(1)
+                                : '0.0';
+                            return `
                             <div style="background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:16px;">
                                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
                                     <div>
@@ -627,7 +784,7 @@ function loadAllTransactions() {
                                     </div>
                                     <div style="text-align:left;">
                                         <div style="font-weight:800;">${Number(t.total_amount).toFixed(2)} ${esc(t.currency_code)}</div>
-                                        <div style="font-size:0.8rem;color:#047857;">عائد خطة الدخل المضاف: ${Number(t.income_plan_share_local || 0).toFixed(2)} ${esc(t.currency_code)}</div>
+                                        <div style="font-size:0.8rem;color:#047857;">عائد خطة الدخل المضاف: ${Number(t.income_plan_share_local || 0).toFixed(2)} ${esc(t.currency_code)} <strong style="color:#1e40af;">(${invPct}% للهدف)</strong></div>
                                     </div>
                                 </div>
                                 <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
@@ -638,8 +795,8 @@ function loadAllTransactions() {
                                         <button type="button" class="btn btn-outline btn-sm" style="border-color:#dc2626;color:#dc2626;" onclick="openPriceGougingModal('${t.id}', '${esc(t.merchant_name)}', '${Number(t.total_amount).toFixed(2)}')">🚨 بلاغ رفع سعر (S10)</button>
                                     </div>
                                 </div>
-                            </div>
-                        `).join('')}
+                            </div>`;
+                        }).join('')}
                     </div>
                 `)}
         </div>
@@ -976,7 +1133,7 @@ function loadTree() {
                     <h2 style="margin:0;font-size:1.12rem;font-weight:900;color:#34d399;">🌐 الشجرة الدولية التفاعلية (${lensPlan.s01} جيلاً • S01)</h2>
                     <div style="font-size:0.79rem;color:#cbd5e1;margin-top:2px;">
                         أنت: <strong style="color:#ffffff;">${esc((memberBundle.profile && memberBundle.profile.full_name) || '')} (#${esc((memberBundle.profile && memberBundle.profile.member_code) || '')})</strong>
-                        • حصة الفرد: <strong style="color:#fde047;">${esc(fmtCountryLocal(lensPlan.unitShareUsd, lensPlan))}</strong>
+                        • حصتك عن كل مؤهل في فريقك: <strong style="color:#fde047;">${esc(fmtCountryLocal(lensPlan.unitShareUsd, lensPlan))}</strong>
                     </div>
                 </div>
                 <div style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.22);padding:5px 12px;border-radius:10px;font-family:monospace;font-weight:900;font-size:0.86rem;color:#fef08a;direction:ltr;">
@@ -1504,7 +1661,7 @@ function loadWalletDetails() {
 
             <div data-spec-id="member-wallet-fx-reconcile-card" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(205px,1fr));gap:12px;margin:16px 0;">
                 <div style="background:#f0fdf4;border:1.5px solid #10b981;border-radius:14px;padding:14px;">
-                    <div style="font-size:0.8rem;color:#065f46;">💎 حصة الفرد المؤهل بدولتك (${esc(hp.countryCode)})</div>
+                    <div style="font-size:0.8rem;color:#065f46;">💎 حصتك عن كل مؤهل في فريقك (${esc(hp.countryCode)})</div>
                     <strong style="font-size:1.15rem;color:#047857;display:block;margin-top:4px;">${esc(fmtLocalFromUsd(hp.unitShareUsd))}</strong>
                     <small style="color:#065f46;">${fmtUsd(hp.unitShareUsd)} = الهدف (${fmtUsd(hp.targetUsd)}) ÷ ${hp.s02}</small>
                 </div>

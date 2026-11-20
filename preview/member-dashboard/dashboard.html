@@ -110,8 +110,9 @@
                         <div class="stat-card">
                             <div class="stat-icon">👥</div>
                             <div class="stat-info">
-                                <div class="stat-label">حجم الفريق</div>
-                                <div class="stat-value" id="teamSize">0</div>
+                                <div class="stat-label">حجم الشجرة</div>
+                                <div class="stat-value" id="teamSize">1</div>
+                                <div id="teamSizeSub" style="font-size:0.74rem;color:#64748b;margin-top:2px;font-weight:600;"></div>
                             </div>
                         </div>
                     </div>
@@ -122,33 +123,6 @@
                         <p>اعرض هذا الكود الثابت للتاجر لتوثيق الفاتورة وتفعيل عائدات الاستهلاك الاستثماري</p>
                         <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:8px;">
                             <button type="button" class="btn btn-outline btn-sm" id="copyMemberBarcodeBtn" onclick="copyMemberStaticBarcode()">📋 نسخ كود العضوية</button>
-                        </div>
-                    </div>
-
-                    <!-- حاسبة عائدات الاستهلاك الاستثماري والفريق داخل لوحة العضو -->
-                    <div class="investment-calculator-card" data-spec-id="member-home-calculator" style="background:#ffffff; border:1px solid #cbd5e1; border-radius:16px; padding:20px; margin:20px 0; box-shadow:0 4px 16px rgba(15,23,42,0.05);">
-                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
-                            <h2 style="margin:0; font-size:1.15rem; color:#065f46;">🧮 حاسبة عائدات الاستهلاك الاستثماري والفريق</h2>
-                        </div>
-                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:14px;">
-                            <div>
-                                <label for="dashCalcSpend" style="display:block; font-size:0.84rem; font-weight:700; margin-bottom:4px;">قيمة مشترياتك الشهرية (ج.م / ر.س)</label>
-                                <input type="number" id="dashCalcSpend" value="1500" min="1" style="width:100%; padding:10px; border:1.5px solid #cbd5e1; border-radius:10px;">
-                            </div>
-                            <div>
-                                <label for="dashCalcRate" style="display:block; font-size:0.84rem; font-weight:700; margin-bottom:4px;">نسبة عائدات فريقك من هذا التاجر (%)</label>
-                                <input type="number" id="dashCalcRate" value="9" min="1" max="30" style="width:100%; padding:10px; border:1.5px solid #cbd5e1; border-radius:10px;">
-                            </div>
-                            <div>
-                                <label for="dashCalcTeam" style="display:block; font-size:0.84rem; font-weight:700; margin-bottom:4px;">عدد الأعضاء الفاعلين في فريقك</label>
-                                <input type="number" id="dashCalcTeam" value="12" min="0" max="500" style="width:100%; padding:10px; border:1.5px solid #cbd5e1; border-radius:10px;">
-                            </div>
-                        </div>
-                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(175px, 1fr)); gap:10px; background:linear-gradient(135deg,#0f2744,#065f46); color:#ffffff; padding:14px; border-radius:12px;">
-                            <div><span style="display:block; font-size:0.78rem; color:#cbd5e1;">💎 حصة الفرد المؤهل (الهدف ÷ 11)</span><strong id="dashCalcShareOut" style="font-size:1.12rem; color:#6ee7b7;">112.50 ج.م ($2.25)</strong></div>
-                            <div><span style="display:block; font-size:0.78rem; color:#cbd5e1;">ما يدخل صندوق هدفك من مشترياتك</span><strong id="dashCalcOwnOut" style="font-size:1.15rem; color:#6ee7b7;">135.00</strong></div>
-                            <div><span style="display:block; font-size:0.78rem; color:#cbd5e1;">عائدك من الأعضاء المؤهلين بفريقك</span><strong id="dashCalcTeamOut" style="font-size:1.15rem; color:#6ee7b7;">1,462.50</strong></div>
-                            <div><span id="dashCalcTargetLabel" style="display:block; font-size:0.78rem; color:#cbd5e1;">تغطية صندوق الهدف (24.75$ مرجعي)</span><strong id="dashCalcTargetOut" style="font-size:1.05rem; color:#fef08a;">100% مكتمل ✓</strong></div>
                         </div>
                     </div>
 
@@ -245,7 +219,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="../shared/config/supabase.js"></script>
-    <script src="../shared/api/sawyan-api.js?v=20261119_world_geo"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261119_home_pro"></script>
     <script src="../shared/components/logo.js"></script>
     <script src="../shared/components/notifications.js"></script>
     <script src="../shared/components/image-upload.js"></script>
@@ -257,54 +231,10 @@
     <script src="../shared/payments/mock-provider.js"></script>
     <script src="../shared/payments/payment-init.js"></script>
     <script src="../shared/data/countries.js?v=20261119_world_geo"></script>
-    <script src="js/dashboard.js?v=20261119_world_geo"></script>
+    <script src="js/dashboard.js?v=20261119_home_pro"></script>
     <script>
-        // تهيئة الإشعارات وحاسبة الاستهلاك الاستثماري بعد تحميل البيانات
+        // تهيئة الإشعارات بعد تحميل البيانات
         document.addEventListener('DOMContentLoaded', function () {
-            (function initDashCalculator() {
-                const spendEl = document.getElementById('dashCalcSpend');
-                const rateEl = document.getElementById('dashCalcRate');
-                const teamEl = document.getElementById('dashCalcTeam');
-                const shareOut = document.getElementById('dashCalcShareOut');
-                const ownOut = document.getElementById('dashCalcOwnOut');
-                const teamOut = document.getElementById('dashCalcTeamOut');
-                const targetLabel = document.getElementById('dashCalcTargetLabel');
-                const targetOut = document.getElementById('dashCalcTargetOut');
-                if (!spendEl || !rateEl || !teamEl) return;
-
-                function recalc() {
-                    const plan = (typeof window.getSawyanMemberCountryPlan === 'function')
-                        ? window.getSawyanMemberCountryPlan()
-                        : { fx: 50, currencyCode: 'EGP', targetUsd: 24.75, s02: 11, unitShareUsd: 2.25 };
-                    const fx = Number(plan.fx || 50) > 0 ? Number(plan.fx || 50) : 50;
-                    const cur = plan.currencyCode || 'EGP';
-                    const targetLocal = Number(plan.targetUsd || 24.75) * fx;
-                    const unitShareUsd = Number(plan.unitShareUsd || 2.25);
-                    const unitShareLocal = unitShareUsd * fx;
-
-                    const spend = parseFloat(spendEl.value) || 0;
-                    const netRate = parseFloat(rateEl.value) || 0;
-                    const teamCount = parseInt(teamEl.value, 10) || 0;
-
-                    const ownBoxAddLocal = spend * (netRate / 100);
-                    const pct = Math.min(100, Math.round((ownBoxAddLocal / Math.max(targetLocal, 0.01)) * 100));
-                    const ownCreatorShareLocal = pct >= 100 ? unitShareLocal : 0;
-                    const teamTotalLocal = (teamCount * unitShareLocal) + ownCreatorShareLocal;
-
-                    if (shareOut) shareOut.textContent = `${unitShareLocal.toFixed(2)} ${cur} ($${unitShareUsd.toFixed(2)})`;
-                    if (ownOut) ownOut.textContent = `${ownBoxAddLocal.toFixed(2)} ${cur}`;
-                    if (teamOut) teamOut.textContent = `${teamTotalLocal.toFixed(2)} ${cur}`;
-                    if (targetLabel) targetLabel.textContent = `تغطية صندوق الهدف (${targetLocal.toFixed(2)} ${cur} / $${Number(plan.targetUsd || 24.75).toFixed(2)})`;
-                    if (targetOut) targetOut.textContent = pct >= 100 ? '100% مكتمل ✓' : `${pct}% من الهدف`;
-                }
-
-                window.recalcMemberHomeCalculator = recalc;
-                spendEl.addEventListener('input', recalc);
-                rateEl.addEventListener('input', recalc);
-                teamEl.addEventListener('input', recalc);
-                recalc();
-            })();
-
             setTimeout(() => {
                 const member = JSON.parse(localStorage.getItem('sawyan_member') || '{}');
                 if (member.id && window.SAWYAN && window.SAWYAN.Notifications) {
