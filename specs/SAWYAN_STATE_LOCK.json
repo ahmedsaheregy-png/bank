@@ -1,7 +1,7 @@
 {
   "state_version": "3.0.0",
   "active_milestone": "v3_full_zero_defect_sealed",
-  "manifest_sha256": "3823859b6429c35f255a18189f1e06ccb1658e7df04be12e7591a6ec33ab7f5e",
+  "manifest_sha256": "16caa82e7698ed8a3f3c20c74824201a62fac40c3790db75010b459aa6f29864",
   "strict_parity_enabled": true,
   "phase_a_docs_verified": true,
   "phase_0_locks_installed": true,

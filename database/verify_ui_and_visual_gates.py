@@ -262,12 +262,22 @@ def verify_portal_in_browser(context, base_url, portal_name, login_path, manifes
             else:
                 notes.append(f"[{portal_name}] 100% of required data-spec-id markers verified across {len(screen_specs)} screens")
 
-            # Navigate back to home before viewport sweep, and also capture tree screenshot at 1440x900
+            # Navigate back to home before viewport sweep, and also capture tree screenshots at 1440x900
             if portal_name == "member" and save_screenshots:
                 page.locator('.sidebar-nav .nav-item[data-page="tree"]').first.click()
                 page.wait_for_timeout(600)
                 os.makedirs(AUDIT_DIR, exist_ok=True)
                 page.screenshot(path=os.path.join(AUDIT_DIR, "member_tree_1440.png"), full_page=False)
+
+            if portal_name == "admin" and save_screenshots:
+                page.locator('.sidebar-nav .nav-item[data-page="networkTree"]').first.click()
+                try:
+                    page.wait_for_selector('.tree-circle-node, .atree-node-wrap', timeout=6000)
+                except Exception:
+                    pass
+                page.wait_for_timeout(500)
+                os.makedirs(AUDIT_DIR, exist_ok=True)
+                page.screenshot(path=os.path.join(AUDIT_DIR, "admin_networkTree_1440.png"), full_page=False)
 
             if page.locator('.sidebar-nav .nav-item[data-page="home"]').count() > 0:
                 page.locator('.sidebar-nav .nav-item[data-page="home"]').first.click()
@@ -282,21 +292,31 @@ def verify_portal_in_browser(context, base_url, portal_name, login_path, manifes
         ]:
             page.set_viewport_size({"width": vp["width"], "height": vp["height"]})
             page.wait_for_timeout(350)
-            # Also check Member Tree screen on 680px & 375px!
+            # Also check Member Tree and Admin Network Tree screens on 680px & 375px!
             pages_to_check = ["home"]
             if portal_name == "member":
                 pages_to_check = ["home", "tree"]
+            elif portal_name == "admin":
+                pages_to_check = ["home", "networkTree"]
             for chk_pg in pages_to_check:
                 if chk_pg != "home":
                     if vp["width"] >= 600 and page.locator(f'.sidebar-nav .nav-item[data-page="{chk_pg}"]').count() > 0:
                         page.locator(f'.sidebar-nav .nav-item[data-page="{chk_pg}"]').first.click()
                         page.wait_for_timeout(350)
                     elif vp["width"] < 600:
-                        if page.locator(f'.bottom-nav .bottom-nav-item[data-page="{chk_pg}"]').count() > 0:
+                        if portal_name == "admin" and chk_pg == "networkTree":
+                            page.evaluate("if (typeof openAdminNetworkTree === 'function') openAdminNetworkTree(); else if (typeof goToPage === 'function') goToPage('networkTree');")
+                        elif page.locator(f'.bottom-nav .bottom-nav-item[data-page="{chk_pg}"]').count() > 0:
                             page.locator(f'.bottom-nav .bottom-nav-item[data-page="{chk_pg}"]').first.click()
                         else:
                             page.evaluate(f"if (typeof goToPage === 'function') goToPage('{chk_pg}');")
                         page.wait_for_timeout(350)
+                    if portal_name == "admin" and chk_pg == "networkTree":
+                        try:
+                            page.wait_for_selector('.tree-circle-node, .atree-node-wrap', timeout=6000)
+                        except Exception:
+                            pass
+                        page.wait_for_timeout(450)
                 m = inspect_layout_metrics(page)
                 if m["overlapArea"] > 0:
                     failures.append(

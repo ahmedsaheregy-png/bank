@@ -169,6 +169,7 @@
         "decisionsLab",
         "governanceOps",
         "members",
+        "networkTree",
         "merchants",
         "transactions",
         "commissions",
@@ -190,12 +191,23 @@
         ],
         "academyAdmin": [
           "admin-academy-lms"
+        ],
+        "networkTree": [
+          "admin-network-tree",
+          "admin-tree-lens-bar",
+          "admin-tree-kpis",
+          "admin-tree-controls",
+          "admin-tree-view-toggle",
+          "admin-tree-earth-viewport",
+          "admin-tree-hud-dpad",
+          "admin-tree-detail-table"
         ]
       },
       "required_rpcs": [
         "get_admin_sovereign_overview",
         "admin_search_and_reply_ops",
-        "admin_manage_academy_lms"
+        "admin_manage_academy_lms",
+        "get_admin_full_tree"
       ]
     }
   }

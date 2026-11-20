@@ -248,8 +248,11 @@
             '</div>' +
 
             '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
-                '<h3 style="margin:0 0 10px 0;font-size:0.98rem;">🌳 قادة الجيل الأول المسكّنون مباشرةً تحت الجذر `#0` (' + leaders.length + ')</h3>' +
-                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>كود القائد</th><th>الاسم الكامل</th><th>الهاتف</th><th>الدولة</th><th>حجم فريقه</th><th>رابط إحالة القائد</th></tr></thead><tbody>' +
+                '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">' +
+                    '<h3 style="margin:0;font-size:0.98rem;">🌳 قادة الجيل الأول المسكّنون مباشرةً تحت الجذر `#0` (' + leaders.length + ')</h3>' +
+                    '<button type="button" class="btn-sm btn-primary" onclick="if (typeof openAdminNetworkTree === \'function\') openAdminNetworkTree(0)">🌳 عرض الشجرة الكاملة من #0</button>' +
+                '</div>' +
+                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>كود القائد</th><th>الاسم الكامل</th><th>الهاتف</th><th>الدولة</th><th>حجم فريقه</th><th>إجراءات ورابط الإحالة</th></tr></thead><tbody>' +
                 (leaders.length === 0 ? '<tr><td colspan="6" class="empty-state">لا يوجد قادة مسكّنون تحت `#0` حتى الآن</td></tr>' : leaders.map(function (l) {
                     const refUrl = baseRoot + '/member-dashboard/register.html?ref=' + l.member_code + '&country=' + encodeURIComponent(l.country_code || 'EG');
                     return '<tr>' +
@@ -258,7 +261,7 @@
                         '<td>' + esc(l.phone) + '</td>' +
                         '<td>' + esc(l.country_code) + '</td>' +
                         '<td><b>' + Number(l.team_size || 0) + '</b> عضو</td>' +
-                        '<td><button type="button" class="btn-sm btn-primary" onclick="navigator.clipboard.writeText(\'' + esc(refUrl) + '\');alert(\'تم نسخ رابط إحالة القائد #' + l.member_code + '\')">📋 نسخ رابط القائد</button></td>' +
+                        '<td><div style="display:flex;gap:5px;flex-wrap:wrap;"><button type="button" class="btn-sm btn-outline" onclick="if (typeof openAdminNetworkTree === \'function\') openAdminNetworkTree(' + Number(l.member_code) + ')">🌳 شجرته</button><button type="button" class="btn-sm btn-primary" onclick="navigator.clipboard.writeText(\'' + esc(refUrl) + '\');alert(\'تم نسخ رابط إحالة القائد #' + l.member_code + '\')">📋 نسخ رابط القائد</button></div></td>' +
                     '</tr>';
                 }).join('')) +
                 '</tbody></table></div>' +
@@ -600,6 +603,7 @@
                 '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
                     '<input id="svLiveMemSearch" type="text" value="' + esc(q || '') + '" placeholder="ابحث بالكود أو الهاتف أو الاسم..." class="form-control" style="width:240px;">' +
                     '<button type="button" class="btn btn-primary" onclick="loadMembers(document.getElementById(\'svLiveMemSearch\').value)">🔎 بحث سيرفري</button>' +
+                    '<button type="button" class="btn btn-outline" onclick="if (typeof openAdminNetworkTree === \'function\') openAdminNetworkTree(0)">🌳 عرض الشجرة (دوائر)</button>' +
                     '<button type="button" class="btn btn-outline" onclick="openSovereignOpsCenter(\'root0\')">👑 تأسيس قائد تحت #0</button>' +
                 '</div>' +
             '</div>' +
@@ -619,6 +623,7 @@
                             '</td>' +
                             '<td>' + (m.is_tombstone_banned ? '<span class="badge badge-danger">محظور Tombstone</span>' : '<span class="badge badge-success">نشط</span>') + '</td>' +
                             '<td><div style="display:flex;gap:5px;flex-wrap:wrap;">' +
+                                '<button type="button" class="btn-sm btn-outline" onclick="if (typeof openAdminNetworkTree === \'function\') openAdminNetworkTree(' + Number(m.member_code) + ')">🌳 شجرته</button>' +
                                 '<button type="button" class="btn-sm btn-primary" onclick=\'svOpenLiveKycModal(' + JSON.stringify(m).replace(/'/g, '&#39;') + ')\'>🪪 فحص الهوية</button>' +
                                 '<button type="button" class="btn-sm btn-warning" onclick="svOpenUserPasswordResetModal(\'member\',\'#' + m.member_code + '\')">🔑 كلمة مرور</button>' +
                                 '<button type="button" class="btn-sm ' + (m.is_tombstone_banned ? 'btn-success' : 'btn-danger') + '" onclick="svToggleMemberBan(\'' + m.id + '\',' + (!m.is_tombstone_banned) + ')">' + (m.is_tombstone_banned ? 'فك الحظر' : 'حظر') + '</button>' +

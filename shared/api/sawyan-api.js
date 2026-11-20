@@ -1501,6 +1501,26 @@
             });
         },
 
+        async getAdminFullTree({
+            adminId = null,
+            sessionToken = null,
+            rootMemberCode = 0,
+            periodYm = null,
+            countryCode = null,
+            maxDepth = 15
+        } = {}) {
+            const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id);
+            const tok = sessionToken || SawyanAPI.getAdminSessionToken();
+            return await callRpc('get_admin_full_tree', {
+                p_admin_id: adm,
+                p_session_token: tok,
+                p_root_member_code: Number(rootMemberCode || 0),
+                p_period_ym: periodYm || null,
+                p_country_code: countryCode || null,
+                p_max_depth: Number(maxDepth || 15)
+            });
+        },
+
         getSiblingEnvironmentUrl() {
             if (typeof window === 'undefined') return '#';
             const loc = window.location;

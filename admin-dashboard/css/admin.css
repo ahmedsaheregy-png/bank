@@ -735,7 +735,223 @@
         padding: 16px;
     }
 
-    .support-stat-card .stat-value {
+        .support-stat-card .stat-value {
         font-size: 1.5rem;
+    }
+}
+
+/* ============================================================================
+   Sovereign Admin Full Circular Network Tree Explorer (atree-*)
+   ============================================================================ */
+.btn-sm.btn-outline {
+    background: #ffffff;
+    color: #0f172a;
+    border: 1.5px solid #cbd5e1;
+    font-weight: 800;
+}
+
+.btn-sm.btn-outline:hover {
+    border-color: #059669;
+    color: #047857;
+    background: #ecfdf5;
+}
+
+.atree-breadcrumb {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+    padding: 8px 11px;
+    border-radius: 10px;
+    background: rgba(15, 23, 42, 0.45);
+    border: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+.atree-crumb-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: #e2e8f0;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-family: 'Tajawal', sans-serif;
+    font-size: 0.76rem;
+    font-weight: 800;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.atree-crumb-btn:hover {
+    border-color: #34d399;
+    color: #ffffff;
+}
+
+.atree-crumb-btn.active {
+    background: #10b981;
+    color: #022c22;
+    border-color: #34d399;
+}
+
+.atree-viewport {
+    height: 580px;
+    min-height: 460px;
+}
+
+.atree-root-container {
+    position: relative;
+    z-index: 1;
+    width: max-content;
+    min-width: max-content;
+    padding: 6px 18px 28px;
+}
+
+.atree-branch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 34px;
+}
+
+.atree-children {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 20px;
+}
+
+.atree-node-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    text-align: center;
+    transition: transform 0.15s ease, opacity 0.18s ease;
+}
+
+.atree-node-wrap:hover {
+    transform: translateY(-2px);
+}
+
+.atree-node-wrap.atree-dimmed {
+    opacity: 0.24;
+}
+
+.atree-node-wrap.atree-highlighted .tree-circle-disc,
+.atree-node-wrap.atree-highlighted .atree-card-box {
+    box-shadow: 0 0 0 4px #f59e0b, 0 8px 20px rgba(15, 23, 42, 0.24) !important;
+}
+
+.atree-disc-company-root {
+    width: 92px !important;
+    height: 92px !important;
+    border: 4px solid #facc15 !important;
+    box-shadow: 0 8px 24px rgba(6, 78, 59, 0.35), 0 0 0 3px rgba(250, 204, 21, 0.32) !important;
+}
+
+.atree-node-caption {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.atree-node-name {
+    font-size: 0.74rem;
+    font-weight: 800;
+    color: #0f172a;
+    white-space: nowrap;
+    max-width: 108px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.atree-node-subtag {
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: #334155;
+    background: rgba(255, 255, 255, 0.88);
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    padding: 1px 7px;
+    white-space: nowrap;
+}
+
+.atree-card-box {
+    border-radius: 12px;
+    padding: 8px 10px;
+    min-width: 168px;
+    max-width: 192px;
+    text-align: right;
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.08);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.atree-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8rem;
+}
+
+.atree-card-pill {
+    font-size: 0.66rem;
+    font-weight: 800;
+    padding: 1px 7px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.atree-card-title {
+    font-size: 0.79rem;
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 3px;
+}
+
+.atree-card-meta {
+    font-size: 0.7rem;
+    opacity: 0.9;
+    display: flex;
+    justify-content: space-between;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.atree-card-sub {
+    font-size: 0.68rem;
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px dashed rgba(100, 116, 139, 0.35);
+    color: #334155;
+}
+
+@media (max-width: 780px) {
+    .atree-viewport {
+        height: 500px;
+        min-height: 410px;
+    }
+
+    .atree-children {
+        gap: 14px;
+    }
+}
+
+@media (max-width: 599px) {
+    .atree-viewport {
+        height: 430px;
+        min-height: 350px;
+    }
+
+    .atree-branch {
+        gap: 28px;
+    }
+
+    .atree-children {
+        gap: 12px;
     }
 }

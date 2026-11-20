@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="../shared/css/variables.css">
     <link rel="stylesheet" href="../shared/css/logo.css">
     <link rel="stylesheet" href="../member-dashboard/css/dashboard.css">
-    <link rel="stylesheet" href="css/admin.css?v=20261119_acad_fix">
+    <link rel="stylesheet" href="css/admin.css?v=20261119_admintree">
     <link rel="stylesheet" href="css/admin_mobile_tables.css">
     <link rel="stylesheet" href="../shared/css/app-shell.css?v=20261119_v3shell">
 </head>
@@ -47,6 +47,10 @@
                 <a href="#" class="nav-item" data-page="members">
                     <span class="icon">👥</span>
                     <span>الأعضاء</span>
+                </a>
+                <a href="#" class="nav-item" id="svAdminTreeNavItem" data-page="networkTree">
+                    <span class="icon">🌳</span>
+                    <span>الشجرة الكاملة</span>
                 </a>
                 <a href="#" class="nav-item" data-page="merchants">
                     <span class="icon">🏪</span>
@@ -375,6 +379,9 @@
                 <!-- Standalone Training Academy LMS Department -->
                 <div id="academyAdminPage" class="page" data-spec-id="admin-academy-lms"></div>
 
+                <!-- Sovereign Full Company Circular Network Tree Explorer -->
+                <div id="networkTreePage" class="page" data-spec-id="admin-network-tree"></div>
+
                 <!-- Governance, Close, Reconciliation & Fraud Ops Page (Prototype) -->
                 <div id="governanceOpsPage" class="page"></div>
 
@@ -542,6 +549,9 @@
             <a href="#" class="more-menu-item" data-page="academyAdmin" onclick="closeMoreMenu(); if (typeof openAcademyAdminPage === 'function') openAcademyAdminPage('lessons'); return false;">
                 <span>🎓</span> الأكاديمية التدريبية
             </a>
+            <a href="#" class="more-menu-item" data-page="networkTree" onclick="closeMoreMenu(); if (typeof openAdminNetworkTree === 'function') openAdminNetworkTree(0); return false;">
+                <span>🌳</span> الشجرة الكاملة
+            </a>
             <a href="#" class="more-menu-item" data-page="sovereignLive" onclick="closeMoreMenu(); openSovereignLivePage('mc'); return false;">
                 <span>⚡</span> الحوكمة الحية وشركاء الشركة
             </a>
@@ -559,7 +569,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../shared/config/supabase.js?v=20261118_stage7"></script>
-    <script src="../shared/api/sawyan-api.js?v=20261119_eod_clean"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261119_admintree"></script>
     <script src="../shared/components/logo.js"></script>
     <script src="js/dashboard.js?v=20261119_academy"></script>
     <script src="js/dashboard-extended.js?v=20261118_stage7"></script>
@@ -568,8 +578,9 @@
     <script src="js/admin-screens-demo.js?v=20261119_v3clean"></script>
     <script src="js/admin-decisions-lab.js?v=20261119_eod_clean"></script>
     <script src="js/admin-v3-live-bridge.js?v=20261119_v3clean"></script>
-    <script src="js/admin-stage7-ops-hub.js?v=20261119_eod_clean"></script>
+    <script src="js/admin-stage7-ops-hub.js?v=20261119_admintree"></script>
     <script src="js/admin-academy-lms.js?v=20261119_v3clean"></script>
+    <script src="js/admin-tree-explorer.js?v=20261119_admintree"></script>
     <script src="../shared/js/app-shell.js?v=20261119_v3shell"></script>
 </body>
 
