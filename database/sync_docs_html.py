@@ -8,6 +8,7 @@ Pure Python stdlib (zero external pip dependencies).
 import html
 import os
 import re
+import sys
 
 DB_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_DIR = os.path.dirname(DB_DIR)
@@ -463,6 +464,16 @@ def main():
     print(f"[DOC HTML SYNC OK] TECHNICAL_SPECS.html ({r1['bytes']:,} bytes)")
     print(f"[DOC HTML SYNC OK] CONSTITUTION_V2.html ({r2['bytes']:,} bytes)")
     print("[DOC HTML SYNC OK] PROJECT_DOCUMENTATION.html date & summary refreshed")
+
+    if "--no-backup" not in sys.argv:
+        try:
+            if DB_DIR not in sys.path:
+                sys.path.insert(0, DB_DIR)
+            import sync_private_docs_backup
+
+            sync_private_docs_backup.sync_private_docs()
+        except Exception as exc:
+            print(f"[PRIVATE DOCS WARN] Auto-backup hook skipped: {exc}")
 
 
 if __name__ == "__main__":

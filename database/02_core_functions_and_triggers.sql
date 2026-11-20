@@ -21,6 +21,58 @@ AS $$
     END;
 $$;
 
+-- Security helper (Internal Only): validates base64 JPEG/PNG/WebP data URLs or safe HTTPS URLs.
+CREATE OR REPLACE FUNCTION sawyan.validate_attachment_data(
+    p_val         TEXT,
+    p_max_chars   INT DEFAULT 480000,
+    p_allow_https BOOLEAN DEFAULT true
+) RETURNS TEXT
+LANGUAGE plpgsql
+IMMUTABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $$
+DECLARE
+    v_clean TEXT;
+    v_host  TEXT;
+BEGIN
+    v_clean := NULLIF(trim(COALESCE(p_val, '')), '');
+    IF v_clean IS NULL THEN
+        RETURN NULL;
+    END IF;
+
+    IF length(v_clean) > GREATEST(COALESCE(p_max_chars, 480000), 1000) THEN
+        RAISE EXCEPTION 'ATTACHMENT_TOO_LARGE';
+    END IF;
+
+    IF v_clean ~* '^data:image/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=\r\n\s]+$' THEN
+        RETURN regexp_replace(v_clean, '[\r\n\s]+', '', 'g');
+    END IF;
+
+    IF p_allow_https AND v_clean ~* '^https://[^/\s?#]+(/[^\s]*)?$' THEN
+        v_host := lower(substring(v_clean FROM '^https://([^/:?#\s]+)'));
+        IF v_host IS NULL
+           OR v_host IN ('localhost', '0.0.0.0')
+           OR v_host ~ '^127\.'
+           OR v_host ~ '^10\.'
+           OR v_host ~ '^192\.168\.'
+           OR v_host ~ '^169\.254\.'
+           OR v_host ~ '^::1$'
+           OR v_host ~ '^\[::1\]$'
+           OR v_host ~ '^172\.(1[6-9]|2[0-9]|3[01])\.'
+        THEN
+            RAISE EXCEPTION 'INVALID_ATTACHMENT_FORMAT';
+        END IF;
+        RETURN v_clean;
+    END IF;
+
+    RAISE EXCEPTION 'INVALID_ATTACHMENT_FORMAT';
+END;
+$$;
+
+REVOKE ALL ON FUNCTION sawyan.validate_attachment_data(TEXT, INT, BOOLEAN) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION sawyan.validate_attachment_data(TEXT, INT, BOOLEAN) TO service_role;
+
 -- ============================================================================
 -- 1. AUTO-PLACEMENT TRIGGER (G01-G05, Advisory Lock, Root #0 & Closure Table)
 -- ============================================================================
@@ -286,6 +338,9 @@ DECLARE
     v_vat_amt_usd   NUMERIC(18,2);
     v_tax_inv_num   VARCHAR(50);
     v_tax_seq       BIGINT;
+    v_release_hold  NUMERIC(18,6) := 0.000000;
+    v_was_qualified BOOLEAN := false;
+    v_now_qualified BOOLEAN := false;
 BEGIN
     -- 1. قفل صف الفاتورة
     SELECT * INTO v_tx FROM sawyan.transactions WHERE id = p_transaction_id FOR UPDATE;
@@ -361,10 +416,16 @@ BEGIN
     END IF;
 
     -- 4. فحص الرصيد الحر المتاح للتاجر الأم ذرياً (D4)
+    v_release_hold := CASE
+        WHEN v_prev_status = 'pending'
+        THEN COALESCE((v_tx.commission_snapshot->>'soft_hold_amount')::numeric, v_tx.commission_amount)
+        ELSE 0.000000
+    END;
+
     v_free_balance := v_merchant.actual_cash_balance - v_merchant.soft_hold_balance + v_merchant.credit_limit;
-    IF v_tx.status = 'pending' THEN
-        -- استرداد ما حجزته هذه الفاتورة من Soft Hold إن كان محسوباً
-        v_free_balance := v_free_balance + LEAST(v_merchant.soft_hold_balance, v_tx.commission_amount);
+    IF v_prev_status = 'pending' AND v_release_hold > 0 THEN
+        -- استرداد ما حجزته هذه الفاتورة تحديداً من Soft Hold بدون المساس بفواتير أخرى
+        v_free_balance := v_free_balance + LEAST(v_merchant.soft_hold_balance, v_release_hold);
     END IF;
 
     IF v_free_balance < v_tx.commission_amount THEN
@@ -383,8 +444,8 @@ BEGIN
         -- عزل التاجر وفروعه عن الخريطة فوراً (D4 + V3)
         UPDATE sawyan.merchants
            SET is_isolated = true,
-               soft_hold_balance = CASE WHEN v_tx.status = 'pending'
-                                        THEN GREATEST(0, soft_hold_balance - v_tx.commission_amount)
+               soft_hold_balance = CASE WHEN v_prev_status = 'pending' AND v_release_hold > 0
+                                        THEN GREATEST(0, soft_hold_balance - v_release_hold)
                                         ELSE soft_hold_balance END
          WHERE id = v_merchant.id;
 
@@ -398,13 +459,13 @@ BEGIN
     v_plan_usd    := v_plan_local / v_tx.fx_rate_used;
 
     -- تحديد الشهر المحاسبي الفعلي (D4 + القرار #2):
-    -- 1) طابور FIFO غير الممول يدخل دائماً في الشهر المفتوح وقت شحن التاجر
+    -- 1) طابور FIFO غير الممول + عمليات الدفع المؤجل (cod/cheque) تدخل دائماً في الشهر المفتوح وقت الاعتماد/التحصيل الفعلي
     -- 2) الفواتير المعلقة الممولة مسبقاً (Soft Hold) من آخر يوم تدخل شهر الشراء الفعلي إذا اعتُمدت قبل القطع/الصرف وإلا فالشهر المفتوح
     v_local_now := sawyan.now_utc() AT TIME ZONE v_country.iana_timezone;
     v_curr_ym   := to_char(v_local_now, 'YYYY-MM');
     v_tx_ym     := to_char(v_tx.created_at AT TIME ZONE v_country.iana_timezone, 'YYYY-MM');
 
-    IF v_prev_status = 'awaiting_merchant_topup' THEN
+    IF v_prev_status = 'awaiting_merchant_topup' OR v_tx.payment_type IN ('cod', 'cheque') THEN
         v_period_ym := v_curr_ym;
     ELSE
         SELECT (
@@ -429,8 +490,8 @@ BEGIN
 
     UPDATE sawyan.merchants
        SET actual_cash_balance = actual_cash_balance - v_tx.commission_amount - v_vat_amt_local,
-           soft_hold_balance   = CASE WHEN v_tx.status = 'pending'
-                                      THEN GREATEST(0, soft_hold_balance - v_tx.commission_amount)
+           soft_hold_balance   = CASE WHEN v_prev_status = 'pending' AND v_release_hold > 0
+                                      THEN GREATEST(0, soft_hold_balance - v_release_hold)
                                       ELSE soft_hold_balance END
      WHERE id = v_merchant.id
     RETURNING * INTO v_merchant;
@@ -444,6 +505,11 @@ BEGIN
     END IF;
 
     -- 7. تغذية صندوق الهدف الشهري للعضو وتحديث حالة التأهل لحظياً (D23 + Real-Time S01 + حظر تأهيل Tombstone)
+    SELECT COALESCE(is_qualified, false) INTO v_was_qualified
+      FROM sawyan.monthly_target_boxes
+     WHERE member_id = v_tx.member_id AND country_id = v_tx.country_id AND period_ym = v_period_ym;
+    v_was_qualified := COALESCE(v_was_qualified, false);
+
     INSERT INTO sawyan.monthly_target_boxes (
         member_id, country_id, period_ym, current_month_purchases_usd, target_required_usd,
         is_qualified, qualification_source
@@ -461,7 +527,8 @@ BEGIN
                     AND NOT COALESCE(v_member.is_tombstone_banned, false)
                THEN CASE WHEN sawyan.monthly_target_boxes.carry_on_in_usd >= sawyan.monthly_target_boxes.target_required_usd THEN 'carry_on' ELSE 'local_purchases' END
                ELSE 'none'
-           END;
+           END
+    RETURNING is_qualified INTO v_now_qualified;
 
     -- 8. قيد دفتر الأستاذ المزدوج (Immutable Double-Entry Ledger) مع تسوية أي فرق سنت FX وحماية الفواتير الصغيرة chk_debit_xor_credit
     v_debit_usd   := ROUND((v_tx.commission_amount / v_tx.fx_rate_used)::numeric, 2);
@@ -538,6 +605,39 @@ BEGIN
            AND (country_id = v_country.id OR v_country.id = v_member.residency_country_id);
     END IF;
 
+    -- إشعار العضو باكتمال العملية وبحالة التأهل اللحظية (F01-clean, deduplicated with confirm_or_reject_pending_tx)
+    IF v_prev_status <> 'pending' OR p_actor_id IS DISTINCT FROM v_merchant.id THEN
+        INSERT INTO sawyan.notifications (recipient_type, recipient_id, event_name, channel, payload, dispatched_at)
+        VALUES (
+            'member', v_tx.member_id, 'TransactionCompleted', 'in_app',
+            jsonb_build_object(
+                'transaction_id', v_tx.id,
+                'sw_short_code', v_tx.sw_short_code,
+                'merchant_name', v_merchant.business_name,
+                'amount', v_tx.total_amount,
+                'currency_code', v_tx.currency_code,
+                'payment_type', v_tx.payment_type,
+                'reward_added_local', ROUND(v_plan_local::numeric, 2),
+                'period_ym', v_period_ym
+            ),
+            sawyan.now_utc()
+        );
+    END IF;
+
+    IF v_now_qualified AND NOT v_was_qualified THEN
+        INSERT INTO sawyan.notifications (recipient_type, recipient_id, event_name, channel, payload, dispatched_at)
+        VALUES (
+            'member', v_tx.member_id, 'MonthlyTargetQualified', 'in_app',
+            jsonb_build_object(
+                'period_ym', v_period_ym,
+                'country_code', v_country.country_code,
+                'target_required_usd', v_country.monthly_target_usd,
+                'trigger_tx_id', v_tx.id
+            ),
+            sawyan.now_utc()
+        );
+    END IF;
+
     RETURN jsonb_build_object(
         'status', 'completed',
         'plan_added_usd', v_plan_usd,
@@ -611,8 +711,12 @@ BEGIN
        AND effective_from <= now()
      ORDER BY country_id NULLS LAST, effective_from DESC LIMIT 1;
 
-    v_fx_rate := COALESCE((v_merchant.actual_cash_balance * 0) + NULLIF((SELECT fx_rate_used FROM sawyan.transactions WHERE merchant_id = p_merchant_id ORDER BY created_at DESC LIMIT 1), 0),
-                          CASE v_country.currency_code WHEN 'EGP' THEN 50.0 WHEN 'TRY' THEN 50.0 WHEN 'SAR' THEN 3.75 WHEN 'EUR' THEN 0.92 ELSE 1.0 END);
+    v_fx_rate := CASE
+        WHEN COALESCE(v_country.admin_fx_rate, 0) > 0
+             AND NOT (v_country.admin_fx_rate = 1.000000 AND v_country.currency_code IN ('EGP', 'TRY', 'SAR', 'AED', 'EUR'))
+        THEN v_country.admin_fx_rate
+        ELSE CASE v_country.currency_code WHEN 'EGP' THEN 50.0 WHEN 'TRY' THEN 50.0 WHEN 'SAR' THEN 3.75 WHEN 'AED' THEN 3.6725 WHEN 'EUR' THEN 0.92 ELSE 1.0 END
+    END;
 
     v_gross_usd := ROUND((p_topup_amount / v_fx_rate)::numeric, 2);
     v_fee_usd   := ROUND((p_psp_fee / v_fx_rate)::numeric, 2);
@@ -1645,6 +1749,8 @@ $$;
 -- ============================================================================
 
 -- 7.1 رادار التجار للأعضاء (يرجع الفروع النشطة ونسبة خطة الدخل الصافية فقط دون كشف 25% — القسم 7.2)
+DROP FUNCTION IF EXISTS sawyan.get_merchants_radar(NUMERIC, NUMERIC, NUMERIC, CHAR, VARCHAR);
+
 CREATE OR REPLACE FUNCTION sawyan.get_merchants_radar(
     p_lat          NUMERIC,
     p_lng          NUMERIC,
@@ -1660,7 +1766,9 @@ CREATE OR REPLACE FUNCTION sawyan.get_merchants_radar(
     distance_km       NUMERIC,
     plan_cashback_pct NUMERIC,
     latitude          NUMERIC,
-    longitude         NUMERIC
+    longitude         NUMERIC,
+    logo_url          TEXT,
+    cover_image_url   TEXT
 )
 LANGUAGE sql
 STABLE
@@ -1678,7 +1786,9 @@ AS $$
            ))))::numeric, 2) AS distance_km,
            ROUND((m.deduction_percent * ((100.0 - COALESCE(s.company_percent, 25.0)) / 100.0))::numeric, 2) AS plan_cashback_pct,
            mb.latitude,
-           mb.longitude
+           mb.longitude,
+           NULLIF(m.metadata->>'logo_url', '') AS logo_url,
+           NULLIF(m.metadata->>'cover_image_url', '') AS cover_image_url
       FROM sawyan.merchant_branches mb
       JOIN sawyan.merchants m ON m.id = mb.merchant_id
       JOIN sawyan.countries c ON c.id = m.country_id
@@ -1698,6 +1808,9 @@ AS $$
            )))) <= p_radius_km
      ORDER BY distance_km ASC;
 $$;
+
+REVOKE ALL ON FUNCTION sawyan.get_merchants_radar(NUMERIC, NUMERIC, NUMERIC, CHAR, VARCHAR) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION sawyan.get_merchants_radar(NUMERIC, NUMERIC, NUMERIC, CHAR, VARCHAR) TO anon, authenticated, service_role;
 
 -- 7.2 رادار كثافة الأعضاء للتجار بقيد إخفاء الهوية الإلزامي (k-Anonymity >= 10 — M18 + V7)
 CREATE OR REPLACE FUNCTION sawyan.get_merchant_members_density(
@@ -2312,7 +2425,7 @@ BEGIN
 END;
 $$;
 
--- 7.5 واجهة إنشاء فاتورة كاشير/معلق بالـ Soft Hold (حد طلبين للعضو + سقف 20% — Point 14)
+-- 7.5 واجهة إنشاء فاتورة كاشير/معلق بالـ Soft Hold (حد طلبين للعضو + سقف 20% + تأجيل الدليفري COD والشيكات)
 CREATE OR REPLACE FUNCTION sawyan.submit_pos_transaction(
     p_member_id           UUID,
     p_merchant_id         UUID,
@@ -2333,15 +2446,25 @@ AS $$
 DECLARE
     v_existing_idem    sawyan.idempotency_keys%ROWTYPE;
     v_merchant         sawyan.merchants%ROWTYPE;
+    v_branch           sawyan.merchant_branches%ROWTYPE;
     v_country          sawyan.countries%ROWTYPE;
     v_settings         sawyan.settings%ROWTYPE;
+    v_cashier          sawyan.cashier_employees%ROWTYPE;
     v_fx_rate          NUMERIC(18,6);
     v_comm_amt         NUMERIC(18,6);
     v_pending_cnt      INT;
     v_soft_hold_cap    NUMERIC(18,2);
+    v_free_bal         NUMERIC(18,2);
+    v_hold_amt         NUMERIC(18,6);
+    v_queue_cnt        INT;
+    v_pay_type         VARCHAR(30);
+    v_clean_receipt    TEXT;
     v_tx_id            UUID;
     v_res              JSONB;
 BEGIN
+    v_pay_type := lower(trim(COALESCE(NULLIF(p_payment_type, ''), 'cash')));
+    v_clean_receipt := sawyan.validate_attachment_data(p_receipt_media_url, 480000, true);
+
     -- فحص منع التكرار Idempotency-Key (V8 + S05)
     SELECT * INTO v_existing_idem FROM sawyan.idempotency_keys WHERE idempotency_key = p_idempotency_key;
     IF FOUND AND v_existing_idem.response_body IS NOT NULL THEN
@@ -2360,24 +2483,47 @@ BEGIN
     END IF;
 
     SELECT * INTO v_merchant FROM sawyan.merchants WHERE id = p_merchant_id FOR UPDATE;
+    IF NOT FOUND OR v_merchant.is_active IS NOT TRUE THEN
+        RAISE EXCEPTION 'MERCHANT_INACTIVE';
+    END IF;
+
+    SELECT * INTO v_branch
+      FROM sawyan.merchant_branches
+     WHERE id = p_branch_id AND merchant_id = p_merchant_id AND is_branch_active = true;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'INVALID_MERCHANT_BRANCH';
+    END IF;
+
     SELECT * INTO v_country  FROM sawyan.countries WHERE id = v_merchant.country_id;
     SELECT * INTO v_settings FROM sawyan.settings
      WHERE (country_id = v_merchant.country_id OR country_id IS NULL) AND effective_from <= now()
      ORDER BY country_id NULLS LAST, effective_from DESC LIMIT 1;
 
-    v_fx_rate := CASE v_country.currency_code WHEN 'EGP' THEN 50.0 WHEN 'TRY' THEN 50.0 WHEN 'SAR' THEN 3.75 WHEN 'EUR' THEN 0.92 ELSE 1.0 END;
+    v_fx_rate := CASE
+        WHEN COALESCE(v_country.admin_fx_rate, 0) > 0
+             AND NOT (v_country.admin_fx_rate = 1.000000 AND v_country.currency_code IN ('EGP', 'TRY', 'SAR', 'AED', 'EUR'))
+        THEN v_country.admin_fx_rate
+        ELSE CASE v_country.currency_code WHEN 'EGP' THEN 50.0 WHEN 'TRY' THEN 50.0 WHEN 'SAR' THEN 3.75 WHEN 'AED' THEN 3.6725 WHEN 'EUR' THEN 0.92 ELSE 1.0 END
+    END;
     v_comm_amt := ROUND((p_amount * (v_merchant.deduction_percent / 100.0))::numeric, 6);
 
     IF NOT p_is_instant_pin THEN
-        -- المسار (ب) المعلق: فحص حد طلبين للعضو لدى نفس التاجر + سقف 20% Soft Hold من الباقة (Point 14)
+        -- المسار (ب) المعلق للعضو: يُحظر على التاجر المعزول + فحص حد طلبين للعضو + سقف 20% Soft Hold من الباقة (Point 14)
+        IF v_merchant.is_isolated THEN
+            RAISE EXCEPTION 'MERCHANT_ISOLATED_PENDING_BLOCKED';
+        END IF;
+
         SELECT COUNT(*) INTO v_pending_cnt
           FROM sawyan.transactions
-         WHERE member_id = p_member_id AND merchant_id = p_merchant_id AND status = 'pending';
+         WHERE member_id = p_member_id
+           AND merchant_id = p_merchant_id
+           AND status = 'pending'
+           AND COALESCE((commission_snapshot->>'merchant_initiated')::boolean, false) = false;
         IF v_pending_cnt >= 2 THEN
             RAISE EXCEPTION 'MEMBER_PENDING_LIMIT_REACHED: Maximum 2 pending requests per merchant.';
         END IF;
 
-        v_soft_hold_cap := ROUND((v_merchant.package_base_amount * (v_settings.unconfirmed_soft_hold_cap_pct / 100.0))::numeric, 2);
+        v_soft_hold_cap := ROUND((GREATEST(v_merchant.package_base_amount, v_merchant.credit_limit) * (v_settings.unconfirmed_soft_hold_cap_pct / 100.0))::numeric, 2);
         IF (v_merchant.soft_hold_balance + v_comm_amt) > v_soft_hold_cap THEN
             RAISE EXCEPTION 'MERCHANT_SOFT_HOLD_CAP_20PCT_EXCEEDED';
         END IF;
@@ -2390,8 +2536,14 @@ BEGIN
         ) VALUES (
             p_member_id, p_merchant_id, p_branch_id, v_country.id, p_cashier_employee_id, p_sw_short_code,
             p_unique_payment_ref, p_idempotency_key, p_amount, p_amount, v_comm_amt,
-            v_country.currency_code, v_fx_rate, p_payment_type, 'pending', p_receipt_media_url,
-            now() + interval '48 hours', jsonb_build_object('deduction_percent', v_merchant.deduction_percent, 'company_percent', v_settings.company_percent)
+            v_country.currency_code, v_fx_rate, v_pay_type, 'pending', v_clean_receipt,
+            now() + interval '48 hours',
+            jsonb_build_object(
+                'deduction_percent', v_merchant.deduction_percent,
+                'company_percent', v_settings.company_percent,
+                'merchant_initiated', false,
+                'soft_hold_amount', v_comm_amt
+            )
         ) RETURNING id INTO v_tx_id;
 
         UPDATE sawyan.merchants
@@ -2399,8 +2551,100 @@ BEGIN
          WHERE id = v_merchant.id;
 
         v_res := jsonb_build_object('transaction_id', v_tx_id, 'status', 'pending', 'soft_hold_added', v_comm_amt);
+
+    ELSIF v_pay_type IN ('cod', 'cheque') THEN
+        -- المسار (أ) الدفع المؤجل (الدليفري COD أو الشيك البنكي): يظل pending حتى تأكيد التاجر للتسليم أو التحصيل الفعلي
+        IF p_cashier_employee_id IS NOT NULL THEN
+            SELECT * INTO v_cashier FROM sawyan.cashier_employees WHERE id = p_cashier_employee_id;
+            IF FOUND THEN
+                IF v_cashier.linked_member_id IS NOT NULL AND v_cashier.linked_member_id = p_member_id THEN
+                    INSERT INTO sawyan.transactions (
+                        member_id, merchant_id, branch_id, country_id, cashier_employee_id, sw_short_code,
+                        unique_payment_ref, idempotency_key, amount, total_amount, commission_amount,
+                        currency_code, fx_rate_used, payment_type, status, receipt_media_url, commission_snapshot
+                    ) VALUES (
+                        p_member_id, p_merchant_id, p_branch_id, v_country.id, p_cashier_employee_id, p_sw_short_code,
+                        p_unique_payment_ref, p_idempotency_key, p_amount, p_amount, v_comm_amt,
+                        v_country.currency_code, v_fx_rate, v_pay_type, 'rejected', v_clean_receipt,
+                        jsonb_build_object('deduction_percent', v_merchant.deduction_percent, 'company_percent', v_settings.company_percent, 'merchant_initiated', true, 'deferred_clearance', true, 'soft_hold_amount', 0.00)
+                    ) RETURNING id INTO v_tx_id;
+
+                    INSERT INTO sawyan.notifications (recipient_type, recipient_id, event_name, channel, payload)
+                    VALUES ('merchant', v_merchant.id, 'CashierSelfPinBlocked', 'in_app',
+                            jsonb_build_object('transaction_id', v_tx_id, 'employee_id', v_cashier.id, 'employee_code', v_cashier.employee_code));
+
+                    v_res := jsonb_build_object('status', 'rejected_self_cashier_pin', 'transaction_id', v_tx_id, 'notified_merchant', true);
+                    UPDATE sawyan.idempotency_keys SET response_status = 200, response_body = v_res WHERE idempotency_key = p_idempotency_key;
+                    RETURN v_res;
+                END IF;
+
+                IF v_cashier.max_tx_amount_limit IS NOT NULL AND p_amount > v_cashier.max_tx_amount_limit THEN
+                    RAISE EXCEPTION 'CASHIER_TX_LIMIT_EXCEEDED';
+                END IF;
+            END IF;
+        END IF;
+
+        v_free_bal := v_merchant.actual_cash_balance - v_merchant.soft_hold_balance + v_merchant.credit_limit;
+        IF v_free_bal >= v_comm_amt THEN
+            v_hold_amt := v_comm_amt;
+            UPDATE sawyan.merchants
+               SET soft_hold_balance = soft_hold_balance + v_hold_amt
+             WHERE id = v_merchant.id;
+        ELSE
+            SELECT COUNT(*) INTO v_queue_cnt
+              FROM sawyan.transactions
+             WHERE merchant_id = v_merchant.id
+               AND (
+                   status = 'awaiting_merchant_topup'
+                   OR (
+                       status = 'pending'
+                       AND COALESCE((commission_snapshot->>'soft_hold_amount')::numeric, 0) = 0
+                       AND COALESCE((commission_snapshot->>'deferred_clearance')::boolean, false) = true
+                   )
+               );
+            IF v_queue_cnt >= v_settings.unsecured_queue_cap THEN
+                RAISE EXCEPTION 'MERCHANT_QUEUE_FULL_BLOCKED: merchant_id=%', v_merchant.id;
+            END IF;
+            v_hold_amt := 0.00;
+        END IF;
+
+        INSERT INTO sawyan.transactions (
+            member_id, merchant_id, branch_id, country_id, cashier_employee_id, sw_short_code,
+            unique_payment_ref, idempotency_key, amount, total_amount, commission_amount,
+            currency_code, fx_rate_used, payment_type, status, receipt_media_url,
+            soft_hold_expires_at, commission_snapshot
+        ) VALUES (
+            p_member_id, p_merchant_id, p_branch_id, v_country.id, p_cashier_employee_id, p_sw_short_code,
+            p_unique_payment_ref, p_idempotency_key, p_amount, p_amount, v_comm_amt,
+            v_country.currency_code, v_fx_rate, v_pay_type, 'pending', v_clean_receipt,
+            now() + interval '30 days',
+            jsonb_build_object(
+                'deduction_percent', v_merchant.deduction_percent,
+                'company_percent', v_settings.company_percent,
+                'merchant_initiated', true,
+                'deferred_clearance', true,
+                'soft_hold_amount', v_hold_amt
+            )
+        ) RETURNING id INTO v_tx_id;
+
+        INSERT INTO sawyan.notifications (recipient_type, recipient_id, event_name, channel, payload, dispatched_at)
+        VALUES
+            ('merchant', v_merchant.id, 'DeferredSaleCreated', 'in_app',
+             jsonb_build_object('transaction_id', v_tx_id, 'sw_short_code', p_sw_short_code, 'payment_type', v_pay_type, 'amount', p_amount, 'currency_code', v_country.currency_code),
+             sawyan.now_utc()),
+            ('member', p_member_id, 'DeferredSaleCreated', 'in_app',
+             jsonb_build_object('transaction_id', v_tx_id, 'sw_short_code', p_sw_short_code, 'payment_type', v_pay_type, 'amount', p_amount, 'currency_code', v_country.currency_code),
+             sawyan.now_utc());
+
+        v_res := jsonb_build_object(
+            'transaction_id', v_tx_id,
+            'status', 'pending',
+            'deferred_clearance', true,
+            'soft_hold_added', v_hold_amt
+        );
+
     ELSE
-        -- التوثيق الفوري بـ PIN الكاشير أو مسح QR
+        -- التوثيق الفوري بـ PIN الكاشير أو شاشة POS التاجر للوسائل اللحظية الـ 8
         INSERT INTO sawyan.transactions (
             member_id, merchant_id, branch_id, country_id, cashier_employee_id, sw_short_code,
             unique_payment_ref, idempotency_key, amount, total_amount, commission_amount,
@@ -2408,8 +2652,13 @@ BEGIN
         ) VALUES (
             p_member_id, p_merchant_id, p_branch_id, v_country.id, p_cashier_employee_id, p_sw_short_code,
             p_unique_payment_ref, p_idempotency_key, p_amount, p_amount, v_comm_amt,
-            v_country.currency_code, v_fx_rate, p_payment_type, 'pending', p_receipt_media_url,
-            jsonb_build_object('deduction_percent', v_merchant.deduction_percent, 'company_percent', v_settings.company_percent)
+            v_country.currency_code, v_fx_rate, v_pay_type, 'pending', v_clean_receipt,
+            jsonb_build_object(
+                'deduction_percent', v_merchant.deduction_percent,
+                'company_percent', v_settings.company_percent,
+                'merchant_initiated', true,
+                'soft_hold_amount', 0.00
+            )
         ) RETURNING id INTO v_tx_id;
 
         v_res := sawyan.feed_monthly_target_box(v_tx_id, p_member_id) || jsonb_build_object('transaction_id', v_tx_id);

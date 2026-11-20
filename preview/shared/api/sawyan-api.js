@@ -459,6 +459,9 @@
             paymentType = 'cash',
             idempotencyKey = null,
             receiptUrl = null,
+            uniquePaymentRef = null,
+            employeeCode = null,
+            cashierPin = null,
             sessionToken = null
         }) {
             const tok = sessionToken || SawyanAPI.getSessionToken();
@@ -470,7 +473,10 @@
                 p_payment_type: paymentType,
                 p_idempotency_key: idempotencyKey || generateIdempotencyKey(),
                 p_session_token: tok,
-                p_receipt_url: receiptUrl
+                p_receipt_url: receiptUrl,
+                p_unique_payment_ref: uniquePaymentRef || null,
+                p_employee_code: employeeCode || null,
+                p_cashier_pin: cashierPin || null
             });
         },
 
@@ -551,6 +557,7 @@
             newPassword = null,
             homeLat = null,
             homeLng = null,
+            avatarUrl = null,
             sessionToken = null
         }) {
             const tok = sessionToken || SawyanAPI.getSessionToken();
@@ -565,7 +572,8 @@
                 p_current_password: currentPassword,
                 p_new_password: newPassword,
                 p_home_lat: homeLat !== null && homeLat !== undefined && homeLat !== '' ? Number(homeLat) : null,
-                p_home_lng: homeLng !== null && homeLng !== undefined && homeLng !== '' ? Number(homeLng) : null
+                p_home_lng: homeLng !== null && homeLng !== undefined && homeLng !== '' ? Number(homeLng) : null,
+                p_avatar_url: avatarUrl !== undefined ? avatarUrl : null
             });
         },
 
@@ -716,6 +724,7 @@
             cashierPin = null,
             swShortCode = null,
             uniquePaymentRef = null,
+            receiptMediaUrl = null,
             sessionToken = null
         }) {
             const tok = sessionToken || SawyanAPI.getMerchantSessionToken();
@@ -730,7 +739,8 @@
                 p_employee_code: employeeCode || null,
                 p_cashier_pin: cashierPin || null,
                 p_sw_short_code: swShortCode || null,
-                p_unique_payment_ref: uniquePaymentRef || null
+                p_unique_payment_ref: uniquePaymentRef || null,
+                p_receipt_media_url: receiptMediaUrl || null
             });
         },
 
@@ -772,9 +782,11 @@
             maxTxLimit = null,
             employeeId = null,
             branchId = null,
+            mediaPatch = null,
             sessionToken = null
         }) {
             const tok = sessionToken || SawyanAPI.getMerchantSessionToken();
+            const resolvedMediaPatch = mediaPatch || null;
             return await callRpc('manage_merchant_cashier_and_settings', {
                 p_merchant_id: merchantId,
                 p_action: action,
@@ -796,7 +808,8 @@
                 p_linked_member_code: linkedMemberCode ? Number(linkedMemberCode) : null,
                 p_max_tx_limit: maxTxLimit !== null && maxTxLimit !== '' ? Number(maxTxLimit) : null,
                 p_employee_id: employeeId,
-                p_branch_id: branchId
+                p_branch_id: branchId,
+                p_media_patch: resolvedMediaPatch
             });
         },
 
@@ -1161,7 +1174,8 @@
             contactName = null,
             contactPhone = null,
             contactEmail = null,
-            requesterId = null
+            requesterId = null,
+            sessionToken = null
         }) {
             return await callRpc('submit_support_or_recovery_ticket', {
                 p_requester_type: requesterType,
@@ -1171,7 +1185,8 @@
                 p_contact_name: contactName,
                 p_contact_phone: contactPhone,
                 p_contact_email: contactEmail,
-                p_requester_id: requesterId
+                p_requester_id: requesterId,
+                p_session_token: sessionToken || null
             });
         },
 
@@ -1549,12 +1564,17 @@
 
             // On Production public pages, visitors see the dedicated top trust & nav bars — never an internal env bar
             if (!isDemo && !isMemberPortal && !isMerchantPortal && !isAdminPortal) return;
+            // On Production member/merchant auth pages (login, register, forgot-password), the branded .auth-top-nav header serves as the top bar
+            if (!isDemo && (isMemberPortal || isMerchantPortal) && !pathNow.includes('dashboard.html')) return;
 
             const bar = document.createElement('div');
             bar.id = 'sawyanEnvRibbon';
 
             const syncLayoutBelowRibbon = () => {
                 const h = bar.offsetHeight || 34;
+                if (document.documentElement) {
+                    document.documentElement.style.setProperty('--sawyan-ribbon-h', h + 'px');
+                }
                 if (document.body) {
                     document.body.style.paddingTop = h + 'px';
                 }
@@ -1588,7 +1608,7 @@
                         identityWrap.appendChild(badge);
                         bar.appendChild(identityWrap);
 
-                        if (pathNow.includes('dashboard')) {
+                        if (pathNow.includes('dashboard.html')) {
                             const actions = document.createElement('div');
                             actions.style.cssText = 'display:inline-flex;align-items:center;gap:6px;flex-shrink:0;';
 

@@ -28,15 +28,15 @@ ON CONFLICT (account_code) DO NOTHING;
 
 -- 2. الدول الخمس التأسيسية (EG, TR نشطة — DE, SA, US جاهزة في بوابة تفعيل الدول D13)
 INSERT INTO sawyan.countries (
-    country_code, country_name_i18n, currency_code, iana_timezone, brand_display_title,
+    country_code, country_name_i18n, currency_code, iana_timezone, admin_fx_rate, brand_display_title,
     financial_stopper_usd, monthly_target_usd, compensatory_admin_fee_usd, vat_rate, wht_rate,
     tax_exclusive, payout_day, return_cutoff_day, legal_opinion_verified, local_terms_version, is_active
 ) VALUES
-('EG', '{"ar":"مصر","en":"Egypt","tr":"Mısır"}'::jsonb, 'EGP', 'Africa/Cairo', 'SAWYAN', 4605.75, 24.75, 0.00, 0.0000, 0.0000, true, 15, 14, true, 'v2.0-EG', true),
-('TR', '{"ar":"تركيا","en":"Turkey","tr":"Türkiye"}'::jsonb, 'TRY', 'Europe/Istanbul', 'SAWYAN', 4605.75, 24.75, 0.00, 0.0000, 0.0000, true, 15, 14, true, 'v2.0-TR', true),
-('SA', '{"ar":"السعودية","en":"Saudi Arabia","tr":"Suudi Arabistan"}'::jsonb, 'SAR', 'Asia/Riyadh', 'SAWYAN', 4605.75, 24.75, 0.00, 0.0000, 0.0000, true, 15, 14, false, 'v2.0-SA', false),
-('DE', '{"ar":"ألمانيا","en":"Germany","tr":"Almanya"}'::jsonb, 'EUR', 'Europe/Berlin', 'SAWYAN', 4605.75, 24.75, 0.00, 0.0000, 0.0000, true, 15, 14, false, 'v2.0-DE', false),
-('US', '{"ar":"الولايات المتحدة","en":"United States","tr":"ABD"}'::jsonb, 'USD', 'America/New_York', 'SAWYAN', 4605.75, 24.75, 0.00, 0.0000, 0.0000, true, 15, 14, false, 'v2.0-US', false)
+('EG', '{"ar":"مصر","en":"Egypt","tr":"Mısır"}'::jsonb, 'EGP', 'Africa/Cairo', 50.000000, 'SAWYAN', 4605.75, 24.75, 0.00, 0.0000, 0.0000, true, 15, 14, true, 'v2.0-EG', true),
+('TR', '{"ar":"تركيا","en":"Turkey","tr":"Türkiye"}'::jsonb, 'TRY', 'Europe/Istanbul', 50.000000, 'SAWYAN', 4605.75, 24.75, 0.00, 0.0000, 0.0000, true, 15, 14, true, 'v2.0-TR', true),
+('SA', '{"ar":"السعودية","en":"Saudi Arabia","tr":"Suudi Arabistan"}'::jsonb, 'SAR', 'Asia/Riyadh', 3.750000, 'SAWYAN', 4605.75, 24.75, 0.00, 0.0000, 0.0000, true, 15, 14, false, 'v2.0-SA', false),
+('DE', '{"ar":"ألمانيا","en":"Germany","tr":"Almanya"}'::jsonb, 'EUR', 'Europe/Berlin', 0.920000, 'SAWYAN', 4605.75, 24.75, 0.00, 0.0000, 0.0000, true, 15, 14, false, 'v2.0-DE', false),
+('US', '{"ar":"الولايات المتحدة","en":"United States","tr":"ABD"}'::jsonb, 'USD', 'America/New_York', 1.000000, 'SAWYAN', 4605.75, 24.75, 0.00, 0.0000, 0.0000, true, 15, 14, false, 'v2.0-US', false)
 ON CONFLICT (country_code) DO NOTHING;
 
 -- 3. مدن مرجعية من GeoNames (للبحث بـ GIN Trigram والرادار)

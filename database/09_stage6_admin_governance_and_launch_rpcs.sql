@@ -170,12 +170,11 @@ BEGIN
     v_saved_hash := COALESCE(v_admin.metadata->>'session_token_sha256', '');
     v_exp_str    := COALESCE(v_admin.metadata->>'session_expires_at', '');
 
-    IF v_saved_hash <> encode(extensions.digest(trim(p_session_token), 'sha256'), 'hex')
-       AND NOT (trim(p_session_token) ~ '^[0-9a-fA-F]{64}$') THEN
+    IF v_saved_hash = '' OR v_saved_hash <> encode(extensions.digest(trim(p_session_token), 'sha256'), 'hex') THEN
         RAISE EXCEPTION 'ADMIN_SESSION_INVALID: Session token mismatch.';
     END IF;
 
-    IF v_exp_str <> '' AND (v_exp_str::timestamptz) <= now() THEN
+    IF v_exp_str = '' OR (v_exp_str::timestamptz) <= now() THEN
         RAISE EXCEPTION 'ADMIN_SESSION_EXPIRED: Please sign in again.';
     END IF;
 
@@ -476,6 +475,25 @@ BEGIN
         'transactions_pending', (SELECT COUNT(*) FROM sawyan.transactions WHERE status IN ('pending', 'awaiting_merchant_topup')),
         'gmv_local_completed', (SELECT COALESCE(SUM(total_amount), 0.00) FROM sawyan.transactions WHERE status = 'completed'),
         'commission_local_completed', (SELECT COALESCE(SUM(commission_amount), 0.00) FROM sawyan.transactions WHERE status = 'completed'),
+        'gmv_usd_completed', (SELECT COALESCE(ROUND(SUM(total_amount / NULLIF(fx_rate_used, 0))::numeric, 2), 0.00) FROM sawyan.transactions WHERE status = 'completed'),
+        'commission_usd_completed', (SELECT COALESCE(ROUND(SUM(commission_amount / NULLIF(fx_rate_used, 0))::numeric, 2), 0.00) FROM sawyan.transactions WHERE status = 'completed'),
+        'gmv_and_commission_by_currency', COALESCE((
+            SELECT jsonb_agg(jsonb_build_object(
+                'currency_code', x.currency_code,
+                'gmv_local', x.gmv_local,
+                'commission_local', x.commission_local,
+                'tx_count', x.tx_count
+            ) ORDER BY x.currency_code)
+            FROM (
+                SELECT currency_code,
+                       ROUND(SUM(total_amount)::numeric, 2) AS gmv_local,
+                       ROUND(SUM(commission_amount)::numeric, 2) AS commission_local,
+                       COUNT(*) AS tx_count
+                  FROM sawyan.transactions
+                 WHERE status = 'completed'
+                 GROUP BY currency_code
+            ) x
+        ), '[]'::jsonb),
         'treasury_revenue_usd', (SELECT COALESCE(SUM(credit_usd - debit_usd), 0.00) FROM sawyan.journal_lines WHERE account_code IN ('4101', '4102', '4103')),
         'plan_pool_liability_usd', (SELECT COALESCE(SUM(credit_usd - debit_usd), 0.00) FROM sawyan.journal_lines WHERE account_code = '2201'),
         'merchant_prepaid_float_usd', (SELECT COALESCE(SUM(credit_usd - debit_usd), 0.00) FROM sawyan.journal_lines WHERE account_code = '2101'),
@@ -611,8 +629,13 @@ BEGIN
                       THEN ROUND((((m.actual_cash_balance - m.soft_hold_balance + m.credit_limit) / GREATEST(m.package_base_amount, m.credit_limit)) * 100.0)::numeric, 2)
                       ELSE 0.00 END AS free_balance_pct,
                  (SELECT COUNT(*) FROM sawyan.merchant_branches mb WHERE mb.merchant_id = m.id) AS branches_count,
+                 (SELECT COUNT(*) FROM sawyan.transactions t WHERE t.merchant_id = m.id AND t.status = 'completed') AS ops_count,
                  (SELECT COUNT(*) FROM sawyan.transactions t WHERE t.merchant_id = m.id AND t.status = 'awaiting_merchant_topup') AS fifo_queue_count,
-                 (SELECT COALESCE(SUM(t.total_amount), 0.00) FROM sawyan.transactions t WHERE t.merchant_id = m.id AND t.status = 'completed') AS gmv_completed
+                 (SELECT COALESCE(SUM(t.total_amount), 0.00) FROM sawyan.transactions t WHERE t.merchant_id = m.id AND t.status = 'completed') AS gmv_completed,
+                 NULLIF(m.metadata->>'logo_url', '') AS logo_url,
+                 NULLIF(m.metadata->>'cover_image_url', '') AS cover_image_url,
+                 CASE WHEN jsonb_typeof(m.metadata->'images') = 'array' THEN m.metadata->'images' ELSE '[]'::jsonb END AS images,
+                 COALESCE(m.metadata->'kyc_docs', '{}'::jsonb) AS kyc_docs
             FROM sawyan.merchants m
             JOIN sawyan.countries c ON c.id = m.country_id
            ORDER BY m.created_at DESC
@@ -626,14 +649,18 @@ BEGIN
           SELECT t.id, t.sw_short_code, t.unique_payment_ref, t.amount, t.total_amount,
                  t.commission_amount, t.company_share, t.income_plan_share_local,
                  t.income_plan_share_usd, t.vat_amount, t.currency_code, t.fx_rate_used,
-                 t.payment_type, t.status, t.created_at,
+                 c.country_code, t.payment_type, t.status, t.receipt_media_url, t.fifo_seq,
+                 t.completed_at, t.reversed_at, t.created_at,
                  (t.cashier_employee_id IS NOT NULL) AS is_instant_pin,
                  mem.member_code, mem.full_name AS member_name,
                  mer.merchant_code, mer.business_name AS merchant_name,
+                 mb.branch_name,
                  bti.invoice_number AS b2b_invoice_number
             FROM sawyan.transactions t
+            JOIN sawyan.countries c ON c.id = t.country_id
             JOIN sawyan.members mem ON mem.id = t.member_id
             JOIN sawyan.merchants mer ON mer.id = t.merchant_id
+            LEFT JOIN sawyan.merchant_branches mb ON mb.id = t.branch_id
             LEFT JOIN sawyan.b2b_tax_invoices bti ON bti.transaction_id = t.id AND bti.document_type = 'tax_invoice'
            ORDER BY t.created_at DESC
            LIMIT 60
@@ -1698,6 +1725,48 @@ BEGIN
 
         PERFORM sawyan.append_audit_log('admin', p_admin_id, 'merchant_' || v_dec, 'merchants', p_record_id, NULL, jsonb_build_object('notes', p_notes));
         RETURN jsonb_build_object('domain', v_dom, 'record_id', p_record_id, 'status', v_dec);
+
+    ELSIF v_dom = 'transaction' THEN
+        PERFORM sawyan.verify_admin_session(p_admin_id, p_session_token, ARRAY['approver', 'reviewer', 'finance', 'support'], true);
+        SELECT * INTO v_tx FROM sawyan.transactions WHERE id = p_record_id::uuid FOR UPDATE;
+        IF NOT FOUND THEN RAISE EXCEPTION 'TX_NOT_FOUND'; END IF;
+
+        IF v_dec = 'approve_escalated' THEN
+            IF v_tx.status <> 'pending' THEN
+                RAISE EXCEPTION 'TX_NOT_IN_PENDING_STATE: %', v_tx.status;
+            END IF;
+            v_claw_res := sawyan.feed_monthly_target_box(v_tx.id, p_admin_id);
+        ELSIF v_dec = 'reject_escalated' THEN
+            IF v_tx.status <> 'pending' THEN
+                RAISE EXCEPTION 'TX_NOT_IN_PENDING_STATE: %', v_tx.status;
+            END IF;
+            IF COALESCE((v_tx.commission_snapshot->>'soft_hold_amount')::numeric, v_tx.commission_amount) > 0 THEN
+                UPDATE sawyan.merchants
+                   SET soft_hold_balance = GREATEST(0, soft_hold_balance - COALESCE((v_tx.commission_snapshot->>'soft_hold_amount')::numeric, v_tx.commission_amount))
+                 WHERE id = v_tx.merchant_id;
+            END IF;
+            UPDATE sawyan.transactions
+               SET status = 'rejected',
+                   commission_snapshot = COALESCE(commission_snapshot, '{}'::jsonb) || jsonb_build_object('rejected_by_admin', p_admin_id, 'rejection_reason', COALESCE(p_notes, 'رفض إداري'))
+             WHERE id = v_tx.id;
+            INSERT INTO sawyan.notifications (recipient_type, recipient_id, event_name, channel, payload)
+            VALUES
+                ('member', v_tx.member_id, 'PendingInvoiceRejected', 'in_app',
+                 jsonb_build_object('transaction_id', v_tx.id, 'sw_short_code', v_tx.sw_short_code, 'reason', COALESCE(p_notes, 'قرار إداري'))),
+                ('merchant', v_tx.merchant_id, 'PendingInvoiceRejectedByAdmin', 'in_app',
+                 jsonb_build_object('transaction_id', v_tx.id, 'sw_short_code', v_tx.sw_short_code, 'reason', COALESCE(p_notes, 'قرار إداري')));
+        ELSIF v_dec = 'reverse_pre_payout' THEN
+            PERFORM sawyan.verify_admin_session(p_admin_id, p_session_token, ARRAY['approver', 'finance'], true);
+            IF v_tx.status <> 'completed' THEN
+                RAISE EXCEPTION 'REVERSAL_REQUIRES_COMPLETED_TX: tx_status=%', v_tx.status;
+            END IF;
+            v_claw_res := sawyan.process_transaction_reversal_clawback(v_tx.id, p_admin_id, COALESCE(p_notes, 'Admin pre-payout reversal'));
+        ELSE
+            RAISE EXCEPTION 'INVALID_TRANSACTION_DECISION: %', p_decision;
+        END IF;
+
+        PERFORM sawyan.append_audit_log('admin', p_admin_id, 'transaction_' || v_dec, 'transactions', p_record_id, NULL, jsonb_build_object('notes', p_notes, 'effect', v_claw_res));
+        RETURN jsonb_build_object('domain', v_dom, 'record_id', p_record_id, 'status', v_dec, 'ledger_effect', v_claw_res);
 
     ELSIF v_dom = 'withdrawal_payout' THEN
         PERFORM sawyan.verify_admin_session(p_admin_id, p_session_token, ARRAY['finance', 'approver'], true);

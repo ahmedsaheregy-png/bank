@@ -415,7 +415,7 @@ a:hover {
 /* ===== Navigation ===== */
 .preview-nav {
     position: fixed;
-    top: 0;
+    top: var(--sawyan-ribbon-h, 0px);
     left: 0;
     right: 0;
     z-index: var(--z-dropdown);
@@ -2584,7 +2584,7 @@ html:not([data-theme="dark"]) body {
 /* 2. Sticky Light Navbar + Always-Visible Geo-Pill */
 .preview-nav.portal-nav {
     position: sticky !important;
-    top: 0;
+    top: var(--sawyan-ribbon-h, 0px);
     background: rgba(255, 255, 255, 0.96) !important;
     backdrop-filter: blur(12px);
     border-bottom: 1px solid #e2e8f0 !important;
@@ -3066,11 +3066,16 @@ html:not([data-theme="dark"]) body {
     .hero-compact-metrics { grid-template-columns: 1fr; }
     .portal-nav .container { padding-left: 10px; padding-right: 10px; }
     .portal-nav .nav-content { gap: 4px; }
-    .portal-nav .nav-logo { min-width: 0; flex-shrink: 1; }
-    .portal-nav .sawyan-brand-mark { gap: 4px !important; }
-    .portal-nav .sawyan-brand-mark svg { width: 24px !important; height: 24px !important; }
-    .portal-nav .sawyan-brand-mark > span > span:first-child { font-size: 1.05rem !important; letter-spacing: 0.2px !important; }
-    .portal-nav .sawyan-brand-mark > span > span:nth-child(2) { display: none !important; }
+    .portal-nav .nav-logo,
+    .preview-nav .nav-logo { min-width: 0; flex-shrink: 1; }
+    .portal-nav .sawyan-brand-mark,
+    .preview-nav .sawyan-brand-mark { gap: 4px !important; }
+    .portal-nav .sawyan-brand-mark svg,
+    .preview-nav .sawyan-brand-mark svg { width: 24px !important; height: 24px !important; }
+    .portal-nav .sawyan-brand-mark > span > span:first-child,
+    .preview-nav .sawyan-brand-mark > span > span:first-child { font-size: 1.05rem !important; letter-spacing: 0.2px !important; }
+    .portal-nav .sawyan-brand-mark > span > span:nth-child(2),
+    .preview-nav .sawyan-brand-mark > span > span:nth-child(2) { display: none !important; }
     .nav-right-controls { gap: 4px; min-width: 0; }
     .geo-pill-btn { padding: 4px 6px; font-size: 0.7rem; max-width: 94px; gap: 3px; }
     .geo-pill-btn #navGeoLabel { overflow: hidden; text-overflow: ellipsis; max-width: 52px; display: inline-block; vertical-align: middle; }

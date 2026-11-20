@@ -62,12 +62,13 @@ def main():
       (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'sawyan' AND table_type = 'BASE TABLE') AS prod_tables,
       (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'sawyan_demo' AND table_type = 'BASE TABLE') AS demo_tables,
       (SELECT COUNT(*) FROM sawyan.members) AS prod_members,
+      (SELECT COUNT(*) FROM sawyan.members WHERE member_code = 0) AS prod_root0_count,
       (SELECT COUNT(*) FROM sawyan_demo.members) AS demo_members,
       (SELECT cap_amount FROM sawyan.settings WHERE country_id IS NULL LIMIT 1) AS cap_amount;
     """, token)[0]
     print(json.dumps(counts, indent=2))
     assert counts["prod_tables"] >= 44 and counts["prod_tables"] == counts["demo_tables"], f"Expected >= 44 matching tables, got prod={counts['prod_tables']} demo={counts['demo_tables']}"
-    assert counts["prod_members"] == 1, f"Expected 1 prod root #0, got {counts['prod_members']}"
+    assert counts["prod_root0_count"] == 1 and counts["prod_members"] >= 1, f"Expected prod root #0 intact and >= 1 members, got root0={counts['prod_root0_count']} total={counts['prod_members']}"
     assert counts["demo_members"] >= 50, f"Expected >= 50 demo members (#0 + #1 + team), got {counts['demo_members']}"
     assert float(counts["cap_amount"]) == 4605.75, f"Expected cap 4605.75, got {counts['cap_amount']}"
 

@@ -38,8 +38,12 @@
                         city: r.branch_name || '',
                         district: r.address || '',
                         description: r.address || r.branch_name || '',
-                        merchantType: 'physical',
+                        merchantType: r.merchant_type || 'physical',
                         cashbackRate: Number(r.plan_cashback_pct || 0),
+                        logoUrl: r.logo_url || null,
+                        coverImageUrl: r.cover_image_url || null,
+                        images: Array.isArray(r.images) ? r.images : [],
+                        image: r.cover_image_url || r.logo_url || null,
                         rating: 5.0,
                         reviewsCount: 1,
                         isVerified: true,
@@ -133,7 +137,9 @@
                 navLogo.innerHTML = window.SAWYAN.Logo.svg(isDark ? 'light-on-dark' : 'default');
             }
             if (footerLogo) {
-                footerLogo.innerHTML = window.SAWYAN.Logo.svg('light-on-dark');
+                footerLogo.innerHTML = typeof window.SAWYAN.Logo.link === 'function'
+                    ? window.SAWYAN.Logo.link('light-on-dark', { href: 'index.html' })
+                    : `<a href="index.html" class="logo-link sawyan-home-logo" aria-label="SAWYAN — الصفحة الرئيسية">${window.SAWYAN.Logo.svg('light-on-dark')}</a>`;
             }
         }
     }
@@ -275,9 +281,14 @@
         const locationText = `${m.countryName || ''} — ${m.city || ''}`;
         const detailHref = `public/merchants.html?country=${encodeURIComponent(m.country)}&city=${encodeURIComponent(m.cityKey || 'all')}&merchant=${encodeURIComponent(m.id)}`;
 
-        const heroVisual = m.image
-            ? `<img src="${escapeHtml(m.image)}" alt="${escapeHtml(m.businessName)}" class="merchant-hero-img" loading="lazy">`
+        const isSafeHero = m.image && /^(https:\/\/|data:image\/(jpeg|jpg|png|webp);base64,|assets\/|\.\.\/assets\/)/i.test(String(m.image));
+        const heroVisual = isSafeHero
+            ? `<img src="${escapeHtml(m.image)}" alt="${escapeHtml(m.businessName)}" class="merchant-hero-img" loading="lazy" onerror="this.style.display='none';this.parentElement.insertAdjacentHTML('afterbegin','<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:3rem;background:linear-gradient(135deg,#0f2744 0%,#065f46 100%);color:#fff;\\'>${icon}</div>')">`
             : `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:3rem; background:linear-gradient(135deg,#0f2744 0%,#065f46 100%); color:#ffffff;">${icon}</div>`;
+        const isSafeLogo = m.logoUrl && /^(https:\/\/|data:image\/(jpeg|jpg|png|webp);base64,|assets\/|\.\.\/assets\/)/i.test(String(m.logoUrl));
+        const badgeVisual = isSafeLogo
+            ? `<img src="${escapeHtml(m.logoUrl)}" alt="" style="width:28px;height:28px;border-radius:8px;object-fit:cover;border:1px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.2);" loading="lazy">`
+            : `<span class="merchant-icon-floating">${icon}</span>`;
 
         return `
             <article class="merchant-card" data-merchant-id="${escapeHtml(m.id)}" tabindex="0" role="link" aria-label="${escapeHtml(m.businessName)}">
@@ -285,7 +296,7 @@
                     ${heroVisual}
                     <div class="merchant-overlay">
                         <div class="merchant-overlay-content">
-                            <span class="merchant-icon-floating">${icon}</span>
+                            ${badgeVisual}
                             <span class="merchant-cashback-badge net-cashback-badge">عائدات فريقك من هذا التاجر (${netRate}%)</span>
                         </div>
                     </div>

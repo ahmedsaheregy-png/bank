@@ -14,7 +14,13 @@
         rel="stylesheet">
 
     <link rel="stylesheet" href="css/preview.css">
+    <link rel="stylesheet" href="shared/css/logo.css?v=20261119_logo_all">
     <style>
+        html, body {
+            max-width: 100%;
+            overflow-x: clip;
+        }
+
         body {
             background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #dbeafe 100%);
             min-height: 100vh;
@@ -198,7 +204,7 @@
     <nav class="preview-nav" id="navbar">
         <div class="container">
             <div class="nav-content">
-                <a href="index.html" class="nav-logo" id="navBrandLogo">
+                <a href="index.html" class="nav-logo sawyan-home-logo" id="navBrandLogo" data-sawyan-logo="default" aria-label="SAWYAN — الصفحة الرئيسية" title="العودة للصفحة الرئيسية">
                     <span style="font-weight:900; color:#047857;">SAWYAN</span>
                 </a>
 
@@ -223,7 +229,7 @@
         <!-- Mobile Menu Drawer -->
         <div class="mobile-menu" id="mobileMenu">
             <div class="mobile-menu-header">
-                <span class="mobile-menu-title">SAWYAN</span>
+                <a href="index.html" class="mobile-menu-title sawyan-home-logo" data-sawyan-logo="default" data-sawyan-compact="1" aria-label="SAWYAN الرئيسية">SAWYAN</a>
                 <button class="mobile-menu-close" onclick="closeMobileMenu()">&times;</button>
             </div>
             <div class="mobile-menu-links">
@@ -302,10 +308,10 @@
         </div>
     </section>
 
+    <script src="shared/components/logo.js?v=20261119_logo_all"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="shared/config/supabase.js"></script>
     <script src="shared/api/sawyan-api.js"></script>
-    <script src="shared/components/logo.js"></script>
     <script src="js/demo-data.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {

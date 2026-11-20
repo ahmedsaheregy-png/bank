@@ -123,17 +123,27 @@
     };
 
     function renderMerchantBankTopup(body) {
+        window._svMerBankProofUrl = null;
         body.innerHTML =
             '<div style="background:#ecfdf5;border:1.5px solid #6ee7b7;border-radius:12px;padding:16px;">' +
                 '<h4 style="margin:0 0 8px 0;color:#065f46;">🏦 إرسال إشعار تحويل بنكي لشحن رصيد الشحن المسبق (2101)</h4>' +
-                '<p style="font-size:0.82rem;color:#334155;margin:0 0 10px 0;">بعد تحويل مبلغ الشحن لحساب الشركة البنكي الرسمي، أدخل المبلغ ورقم مرجع الإيصال ليقوم المحاسب بمطابقته وشحن رصيدك مع إصدار فاتورة ضريبية B2B تلقائياً.</p>' +
-                '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">' +
+                '<p style="font-size:0.82rem;color:#334155;margin:0 0 10px 0;">بعد تحويل مبلغ الشحن لحساب الشركة البنكي الرسمي، أدخل المبلغ ورقم مرجع الإيصال وأرفق صورة إيصال التحويل ليقوم المحاسب بمطابقته وشحن رصيدك مع إصدار فاتورة ضريبية B2B تلقائياً.</p>' +
+                '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:8px;margin-bottom:10px;">' +
                     '<input id="svMerProofAmt" type="number" step="50" placeholder="المبلغ المحوّل بالعملة المحلية" class="form-control">' +
                     '<input id="svMerProofRef" type="text" placeholder="رقم مرجع الحوالة البنكية / InstaPay" class="form-control">' +
                 '</div>' +
                 '<input id="svMerProofNote" type="text" placeholder="اسم البنك المحوّل منه / ملاحظات إضافية" class="form-control" style="margin-bottom:10px;">' +
+                '<div id="svMerBankProofUploader" style="margin-bottom:10px;"></div>' +
                 '<button type="button" class="btn btn-primary" onclick="svSubmitMerchantBankProof()">📤 إرسال إشعار التحويل للإدارة المالية</button>' +
             '</div>';
+        if (window.SAWYAN && window.SAWYAN.ImageUpload) {
+            window.SAWYAN.ImageUpload.mountUploader(document.getElementById('svMerBankProofUploader'), {
+                label: '🧾 رفع صورة إيصال التحويل البنكي / InstaPay (اختياري وموصى به)',
+                maxDim: 1280,
+                maxChars: 360000,
+                onChange: function (v) { window._svMerBankProofUrl = v || null; }
+            });
+        }
     }
 
     window.svSubmitMerchantBankProof = async function () {
@@ -145,10 +155,13 @@
                 payload: {
                     amount_local: Number(document.getElementById('svMerProofAmt').value),
                     bank_ref: document.getElementById('svMerProofRef').value.trim(),
-                    receipt_note: document.getElementById('svMerProofNote').value.trim()
+                    receipt_note: document.getElementById('svMerProofNote').value.trim(),
+                    receipt_image_data: window._svMerBankProofUrl || null
                 }
             });
+            window._svMerBankProofUrl = null;
             alert('✅ تم إرسال إشعار التحويل البنكي للإدارة المالية للمطابقة الفورية!');
+            window.openMerchantStage7Modal('bank_topup');
         } catch (err) { alert('❌ ' + err.message); }
     };
 
@@ -239,7 +252,8 @@
                 subject: document.getElementById('svMerTktSubj').value.trim(),
                 message: document.getElementById('svMerTktBody').value.trim(),
                 contactName: m.business_name,
-                contactPhone: m.phone
+                contactPhone: m.phone,
+                sessionToken: window.SAWYAN.API.getMerchantSessionToken ? window.SAWYAN.API.getMerchantSessionToken() : null
             });
             alert('✅ تم فتح التذكرة برقم: ' + res.ticket_ref);
             window.openMerchantStage7Modal('support');

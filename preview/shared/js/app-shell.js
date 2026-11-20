@@ -159,7 +159,34 @@
         });
     }
 
+    function ensureDashboardBrandBar() {
+        const mainContent = document.querySelector('.main-content');
+        const homeHref = (window.SAWYAN && window.SAWYAN.Logo && typeof window.SAWYAN.Logo.homeHref === 'function')
+            ? window.SAWYAN.Logo.homeHref()
+            : '../index.html';
+
+        if (mainContent && !document.getElementById('appShellMobileBrandBar')) {
+            const bar = document.createElement('div');
+            bar.id = 'appShellMobileBrandBar';
+            bar.className = 'app-shell-mobile-brand-bar';
+            bar.setAttribute('role', 'banner');
+
+            const logoMarkup = (window.SAWYAN && window.SAWYAN.Logo && typeof window.SAWYAN.Logo.svg === 'function')
+                ? window.SAWYAN.Logo.svg('default', { compact: true })
+                : '<strong style="font-family:Poppins,sans-serif;font-weight:800;color:#0f2744;font-size:1.12rem;">SAWYAN</strong>';
+
+            bar.innerHTML = `<a href="${homeHref}" class="logo-link sawyan-home-logo" data-sawyan-logo="default" data-sawyan-compact="1" aria-label="SAWYAN — العودة للصفحة الرئيسية" title="العودة للصفحة الرئيسية">${logoMarkup}</a><a href="${homeHref}" class="app-shell-home-btn">🏠 الرئيسية</a>`;
+            mainContent.insertBefore(bar, mainContent.firstChild);
+        }
+
+        const sidebarLogoBox = document.querySelector('.sidebar #logoContainer');
+        if (sidebarLogoBox && !sidebarLogoBox.querySelector('.sawyan-brand-mark') && window.SAWYAN && window.SAWYAN.Logo && typeof window.SAWYAN.Logo.link === 'function') {
+            sidebarLogoBox.innerHTML = window.SAWYAN.Logo.link('light-on-dark', { href: homeHref });
+        }
+    }
+
     function boot() {
+        ensureDashboardBrandBar();
         setupRailToggle();
         syncMobileMoreMenuFromSidebar();
         enhanceTablesAndLabels();

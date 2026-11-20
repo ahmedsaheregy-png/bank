@@ -85,6 +85,8 @@ DECLARE
     v_new_member     sawyan.members%ROWTYPE;
     v_country_code   CHAR(2);
     v_city_id        BIGINT := p_city_geoname_id;
+    v_safe_meta      JSONB := '{}'::jsonb;
+    v_avatar         TEXT;
 BEGIN
     v_clean_name  := trim(COALESCE(p_full_name, ''));
     v_clean_phone := regexp_replace(trim(COALESCE(p_phone, '')), '\s+', '', 'g');
@@ -155,6 +157,31 @@ BEGIN
     v_pwd_hash := extensions.crypt(p_password, extensions.gen_salt('bf', 10));
     v_session_token := encode(extensions.gen_random_bytes(24), 'hex');
 
+    IF p_metadata IS NOT NULL AND pg_catalog.jsonb_typeof(p_metadata) = 'object' THEN
+        IF p_metadata ? 'gender' AND NULLIF(trim(COALESCE(p_metadata->>'gender', '')), '') IS NOT NULL THEN
+            v_safe_meta := v_safe_meta || jsonb_build_object('gender', left(trim(p_metadata->>'gender'), 20));
+        END IF;
+        IF p_metadata ? 'national_id_masked' AND NULLIF(trim(COALESCE(p_metadata->>'national_id_masked', '')), '') IS NOT NULL THEN
+            v_safe_meta := v_safe_meta || jsonb_build_object('national_id_masked', left(trim(p_metadata->>'national_id_masked'), 16));
+        END IF;
+        IF p_metadata ? 'preferred_lang' AND NULLIF(trim(COALESCE(p_metadata->>'preferred_lang', '')), '') IS NOT NULL THEN
+            v_safe_meta := v_safe_meta || jsonb_build_object('preferred_lang', left(trim(p_metadata->>'preferred_lang'), 10));
+        END IF;
+        IF p_metadata ? 'device_platform' AND NULLIF(trim(COALESCE(p_metadata->>'device_platform', '')), '') IS NOT NULL THEN
+            v_safe_meta := v_safe_meta || jsonb_build_object('device_platform', left(trim(p_metadata->>'device_platform'), 32));
+        END IF;
+        IF p_metadata ? 'referral_channel' AND NULLIF(trim(COALESCE(p_metadata->>'referral_channel', '')), '') IS NOT NULL THEN
+            v_safe_meta := v_safe_meta || jsonb_build_object('referral_channel', left(trim(p_metadata->>'referral_channel'), 40));
+        END IF;
+        IF p_metadata ? 'marketing_opt_in' THEN
+            v_safe_meta := v_safe_meta || jsonb_build_object('marketing_opt_in', COALESCE((p_metadata->>'marketing_opt_in')::boolean, false));
+        END IF;
+        v_avatar := sawyan.validate_attachment_data(p_metadata->>'avatar_url', 200000, true);
+        IF v_avatar IS NOT NULL THEN
+            v_safe_meta := v_safe_meta || jsonb_build_object('avatar_url', v_avatar);
+        END IF;
+    END IF;
+
     INSERT INTO sawyan.members (
         member_code, full_name, email, phone,
         nationality_country_id, residency_country_id, city_geoname_id, manual_district_fallback,
@@ -165,7 +192,7 @@ BEGIN
         v_nat_cid, v_res_cid, v_city_id, NULLIF(trim(COALESCE(p_manual_district, '')), ''),
         gen_random_uuid(), v_sponsor.id, 'left', 1,
         true, 'unverified', 'active',
-        COALESCE(p_metadata, '{}'::jsonb) || jsonb_build_object(
+        v_safe_meta || jsonb_build_object(
             'pwd_bcrypt', v_pwd_hash,
             'active_session_token', v_session_token
         )
@@ -319,8 +346,10 @@ BEGIN
             'residency_country_id', v_member.residency_country_id,
             'manual_district_fallback', v_member.manual_district_fallback,
             'kyc_status', v_member.kyc_status,
+            'avatar_url', NULLIF(v_member.metadata->>'avatar_url', ''),
+            'completed_tx_count', (SELECT COUNT(*) FROM sawyan.transactions WHERE member_id = v_member.id AND status = 'completed'),
             'must_change_password', COALESCE((v_member.metadata->>'must_change_password')::boolean, false),
-            'metadata', v_member.metadata - 'pwd_bcrypt' - 'active_session_token',
+            'metadata', v_member.metadata - 'pwd_bcrypt' - 'active_session_token' - 'pin_rl',
             'created_at', v_member.created_at
         ),
         'wallet', jsonb_build_object(
@@ -412,10 +441,11 @@ BEGIN
       JOIN sawyan.countries c ON c.id = b.country_id
      WHERE b.member_id = v_member.id;
 
-    -- 2) معاملات العضو (مع حجب company_share تماماً — D21/S01)
+    -- 2) معاملات العضو (مع حجب company_share تماماً — D21/S01، وإظهار الحصة المتوقعة في نموذج القراءة فقط)
     SELECT COALESCE(jsonb_agg(jsonb_build_object(
         'id', t.id,
         'sw_short_code', t.sw_short_code,
+        'unique_payment_ref', t.unique_payment_ref,
         'merchant_id', t.merchant_id,
         'merchant_name', mc.business_name,
         'branch_name', mb.branch_name,
@@ -423,8 +453,22 @@ BEGIN
         'currency_code', t.currency_code,
         'income_plan_share_local', ROUND(t.income_plan_share_local::numeric, 2),
         'income_plan_share_usd', ROUND(t.income_plan_share_usd::numeric, 2),
+        'expected_income_plan_share_local', CASE
+            WHEN t.status = 'completed' THEN ROUND(t.income_plan_share_local::numeric, 2)
+            ELSE ROUND((t.commission_amount * ((100.0 - COALESCE((t.commission_snapshot->>'company_percent')::numeric, 25.0)) / 100.0))::numeric, 2)
+        END,
+        'expected_income_plan_share_usd', CASE
+            WHEN t.status = 'completed' THEN ROUND(t.income_plan_share_usd::numeric, 2)
+            ELSE ROUND(((t.commission_amount * ((100.0 - COALESCE((t.commission_snapshot->>'company_percent')::numeric, 25.0)) / 100.0)) / NULLIF(t.fx_rate_used, 0))::numeric, 2)
+        END,
+        'effective_period_ym', COALESCE(
+            t.commission_snapshot->>'effective_period_ym',
+            to_char(COALESCE(t.completed_at, t.created_at) AT TIME ZONE COALESCE(c_tx.iana_timezone, v_country.iana_timezone, 'UTC'), 'YYYY-MM')
+        ),
+        'receipt_media_url', t.receipt_media_url,
         'payment_type', t.payment_type,
         'status', t.status,
+        'completed_at', t.completed_at,
         'created_at', t.created_at
     ) ORDER BY t.created_at DESC), '[]'::jsonb)
       INTO v_txs
@@ -435,7 +479,8 @@ BEGIN
            LIMIT 50
       ) t
       JOIN sawyan.merchants mc ON mc.id = t.merchant_id
-      JOIN sawyan.merchant_branches mb ON mb.id = t.branch_id;
+      JOIN sawyan.merchant_branches mb ON mb.id = t.branch_id
+      LEFT JOIN sawyan.countries c_tx ON c_tx.id = t.country_id;
 
     -- 3) حركات المحفظة المالية
     SELECT COALESCE(jsonb_agg(jsonb_build_object(
@@ -647,8 +692,10 @@ BEGIN
             'sponsor_code', v_sponsor.member_code,
             'sponsor_name', v_sponsor.full_name,
             'kyc_status', v_member.kyc_status,
+            'avatar_url', NULLIF(v_member.metadata->>'avatar_url', ''),
+            'completed_tx_count', (SELECT COUNT(*) FROM sawyan.transactions WHERE member_id = v_member.id AND status = 'completed'),
             'must_change_password', COALESCE((v_member.metadata->>'must_change_password')::boolean, false),
-            'metadata', v_member.metadata - 'pwd_bcrypt' - 'active_session_token',
+            'metadata', v_member.metadata - 'pwd_bcrypt' - 'active_session_token' - 'pin_rl',
             'created_at', v_member.created_at
         ),
         'wallet', jsonb_build_object(
@@ -843,8 +890,10 @@ DECLARE
     v_init_status      VARCHAR(30) := 'awaiting_merchant_friendly';
     v_sla_hours        INTERVAL := interval '48 hours';
     v_id               UUID;
+    v_clean_evidence   TEXT;
 BEGIN
     v_member := sawyan.verify_member_session(p_member_id, p_session_token);
+    v_clean_evidence := sawyan.validate_attachment_data(p_evidence_url, 480000, true);
     SELECT * INTO v_tx FROM sawyan.transactions WHERE id = p_transaction_id AND member_id = v_member.id;
     IF NOT FOUND THEN
         RAISE EXCEPTION 'TX_NOT_FOUND_OR_UNAUTHORIZED';
@@ -886,7 +935,7 @@ BEGIN
         END IF;
 
         -- قفل منع النزاع الكيدي الفارغ (S10 Anti-Sabotage): يتطلب دليلاً مادياً أو طلب مرتجع قائم
-        IF NULLIF(trim(COALESCE(p_evidence_url, p_video_url, p_audio_url, '')), '') IS NULL
+        IF COALESCE(v_clean_evidence, NULLIF(trim(COALESCE(p_video_url, p_audio_url, '')), '')) IS NULL
            AND NOT EXISTS (SELECT 1 FROM sawyan.return_requests rr WHERE rr.transaction_id = v_tx.id)
         THEN
             RAISE EXCEPTION 'RETURN_DISPUTE_EVIDENCE_REQUIRED: Stalled-return disputes require proof attachment or an active return request.';
@@ -924,7 +973,7 @@ BEGIN
         status, sla_deadline_at
     ) VALUES (
         v_tx.id, v_member.id, v_tx.merchant_id, v_cat, trim(p_dispute_reason),
-        NULLIF(trim(COALESCE(p_evidence_url, '')), ''), p_audio_url, p_audio_sec, p_video_url, p_video_sec,
+        v_clean_evidence, p_audio_url, p_audio_sec, p_video_url, p_video_sec,
         v_init_status, sawyan.now_utc() + v_sla_hours
     ) RETURNING id INTO v_id;
 
@@ -1130,6 +1179,7 @@ END;
 $$;
 
 DROP FUNCTION IF EXISTS sawyan.update_member_profile_settings(UUID, TEXT, VARCHAR, VARCHAR, VARCHAR, UUID, VARCHAR, TEXT, TEXT);
+DROP FUNCTION IF EXISTS sawyan.update_member_profile_settings(UUID, TEXT, VARCHAR, VARCHAR, VARCHAR, UUID, VARCHAR, TEXT, TEXT, NUMERIC, NUMERIC);
 CREATE OR REPLACE FUNCTION sawyan.update_member_profile_settings(
     p_member_id            UUID,
     p_session_token        TEXT DEFAULT NULL,
@@ -1141,18 +1191,20 @@ CREATE OR REPLACE FUNCTION sawyan.update_member_profile_settings(
     p_current_password     TEXT DEFAULT NULL,
     p_new_password         TEXT DEFAULT NULL,
     p_home_lat             NUMERIC DEFAULT NULL,
-    p_home_lng             NUMERIC DEFAULT NULL
+    p_home_lng             NUMERIC DEFAULT NULL,
+    p_avatar_url           TEXT DEFAULT NULL
 ) RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = pg_catalog, pg_temp
 AS $$
 DECLARE
-    v_member   sawyan.members%ROWTYPE;
-    v_meta     JSONB;
-    v_favs     JSONB;
-    v_new_favs JSONB := '[]'::jsonb;
-    v_old_hash TEXT;
+    v_member       sawyan.members%ROWTYPE;
+    v_meta         JSONB;
+    v_favs         JSONB;
+    v_new_favs     JSONB := '[]'::jsonb;
+    v_old_hash     TEXT;
+    v_clean_avatar TEXT;
 BEGIN
     v_member := sawyan.verify_member_session(p_member_id, p_session_token);
     v_meta := COALESCE(v_member.metadata, '{}'::jsonb);
@@ -1196,6 +1248,15 @@ BEGIN
         );
     END IF;
 
+    IF p_avatar_url IS NOT NULL THEN
+        IF trim(p_avatar_url) = '' THEN
+            v_meta := v_meta - 'avatar_url';
+        ELSE
+            v_clean_avatar := sawyan.validate_attachment_data(p_avatar_url, 200000, true);
+            v_meta := jsonb_set(v_meta, '{avatar_url}', to_jsonb(v_clean_avatar));
+        END IF;
+    END IF;
+
     UPDATE sawyan.members
        SET full_name = COALESCE(NULLIF(trim(p_full_name), ''), full_name),
            email = COALESCE(NULLIF(lower(trim(p_email)), ''), email),
@@ -1210,13 +1271,15 @@ BEGIN
         'full_name', v_member.full_name,
         'email', v_member.email,
         'manual_district_fallback', v_member.manual_district_fallback,
+        'avatar_url', NULLIF(v_member.metadata->>'avatar_url', ''),
         'home_gps', v_member.metadata->'home_gps',
         'favorite_merchant_ids', COALESCE(v_member.metadata->'favorite_merchant_ids', '[]'::jsonb)
     );
 END;
 $$;
 
--- 7. دليل التجار العام (بدون كشف 25% أو عمولات سرية — متاح بدون GPS للفلترة بالدولة والتصنيف)
+-- 7. دليل التجار العام (بدون كشف 25% أو عمولات سرية أو مستندات KYC — متاح بدون GPS للفلترة بالدولة والتصنيف)
+DROP FUNCTION IF EXISTS sawyan.get_public_merchants_catalog(CHAR, VARCHAR);
 CREATE OR REPLACE FUNCTION sawyan.get_public_merchants_catalog(
     p_country_code CHAR(2) DEFAULT NULL,
     p_category     VARCHAR DEFAULT NULL
@@ -1233,7 +1296,10 @@ CREATE OR REPLACE FUNCTION sawyan.get_public_merchants_catalog(
     address           TEXT,
     plan_cashback_pct NUMERIC,
     latitude          NUMERIC,
-    longitude         NUMERIC
+    longitude         NUMERIC,
+    logo_url          TEXT,
+    cover_image_url   TEXT,
+    images            JSONB
 )
 LANGUAGE sql
 STABLE
@@ -1252,7 +1318,10 @@ AS $$
            mb.address,
            ROUND((m.deduction_percent * ((100.0 - COALESCE(s.company_percent, 25.0)) / 100.0))::numeric, 2) AS plan_cashback_pct,
            mb.latitude,
-           mb.longitude
+           mb.longitude,
+           NULLIF(m.metadata->>'logo_url', '') AS logo_url,
+           NULLIF(m.metadata->>'cover_image_url', '') AS cover_image_url,
+           CASE WHEN pg_catalog.jsonb_typeof(m.metadata->'images') = 'array' THEN m.metadata->'images' ELSE '[]'::jsonb END AS images
       FROM sawyan.merchant_branches mb
       JOIN sawyan.merchants m ON m.id = mb.merchant_id
       JOIN sawyan.countries c ON c.id = m.country_id
@@ -1269,60 +1338,255 @@ AS $$
      ORDER BY m.business_name ASC, mb.is_main_branch DESC;
 $$;
 
--- 8. تقديم طلب توثيق معلق من العضو (المسار ب — محكوم بجلسة العضو + قيد طلبين + سقف 20% Soft Hold)
+-- 8. تقديم طلب توثيق من العضو (المسار ب المزدوج: وضع 1 فوري بـ PIN الكاشير | وضع 2 معلق بدون PIN)
+DROP FUNCTION IF EXISTS sawyan.submit_member_pending_purchase(UUID, UUID, UUID, NUMERIC, VARCHAR, UUID, TEXT, TEXT);
 CREATE OR REPLACE FUNCTION sawyan.submit_member_pending_purchase(
-    p_member_id       UUID,
-    p_merchant_id     UUID,
-    p_branch_id       UUID,
-    p_amount          NUMERIC(18,2),
-    p_payment_type    VARCHAR DEFAULT 'cash',
-    p_idempotency_key UUID DEFAULT NULL,
-    p_session_token   TEXT DEFAULT NULL,
-    p_receipt_url     TEXT DEFAULT NULL
+    p_member_id          UUID,
+    p_merchant_id        UUID,
+    p_branch_id          UUID,
+    p_amount             NUMERIC(18,2),
+    p_payment_type       VARCHAR DEFAULT 'cash',
+    p_idempotency_key    UUID DEFAULT NULL,
+    p_session_token      TEXT DEFAULT NULL,
+    p_receipt_url        TEXT DEFAULT NULL,
+    p_unique_payment_ref VARCHAR DEFAULT NULL,
+    p_employee_code      VARCHAR DEFAULT NULL,
+    p_cashier_pin        TEXT DEFAULT NULL
 ) RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = ''
+SET search_path = pg_catalog, pg_temp
 AS $$
 DECLARE
-    v_member     sawyan.members%ROWTYPE;
-    v_idem       UUID;
-    v_short_code VARCHAR(24);
-    v_ref        VARCHAR(128);
-    v_res        JSONB;
+    v_member       sawyan.members%ROWTYPE;
+    v_merchant     sawyan.merchants%ROWTYPE;
+    v_cashier      sawyan.cashier_employees%ROWTYPE;
+    v_idem         UUID;
+    v_branch_id    UUID;
+    v_short_code   VARCHAR(24);
+    v_ref          VARCHAR(128);
+    v_pay_type     VARCHAR(30);
+    v_clean_rec    TEXT;
+    v_emp_code     VARCHAR(30);
+    v_pin          TEXT;
+    v_is_instant   BOOLEAN := false;
+    v_rl_obj       JSONB;
+    v_rl_cnt       INT := 0;
+    v_rl_win       TIMESTAMPTZ;
+    v_cur_attempts SMALLINT := 0;
+    v_new_attempts SMALLINT := 0;
+    v_lock_until   TIMESTAMPTZ;
+    v_dummy_chk    TEXT;
+    v_res          JSONB;
 BEGIN
     v_member := sawyan.verify_member_session(p_member_id, p_session_token);
     IF p_amount IS NULL OR p_amount <= 0 THEN
         RAISE EXCEPTION 'INVALID_PURCHASE_AMOUNT';
     END IF;
 
+    v_pay_type := CASE lower(trim(COALESCE(p_payment_type, 'cash')))
+        WHEN 'card' THEN 'pos_card'
+        WHEN 'instapay' THEN 'instant_transfer'
+        WHEN 'wallet' THEN 'digital_wallet'
+        WHEN '' THEN 'cash'
+        ELSE lower(trim(p_payment_type))
+    END;
+    IF v_pay_type NOT IN (
+        'cash', 'pos_card', 'instant_transfer', 'iban_swift_sepa', 'digital_wallet',
+        'payment_gateway', 'bnpl', 'cheque', 'cod', 'marketplace_escrow'
+    ) THEN
+        RAISE EXCEPTION 'INVALID_PAYMENT_TYPE: %', p_payment_type;
+    END IF;
+
+    v_clean_rec := sawyan.validate_attachment_data(p_receipt_url, 480000, true);
+
+    SELECT * INTO v_merchant FROM sawyan.merchants WHERE id = p_merchant_id;
+    IF NOT FOUND OR v_merchant.is_active IS NOT TRUE THEN
+        RAISE EXCEPTION 'MERCHANT_INACTIVE';
+    END IF;
+
+    IF p_branch_id IS NOT NULL THEN
+        SELECT id INTO v_branch_id
+          FROM sawyan.merchant_branches
+         WHERE id = p_branch_id AND merchant_id = p_merchant_id AND is_branch_active = true;
+        IF v_branch_id IS NULL THEN
+            RAISE EXCEPTION 'INVALID_MERCHANT_BRANCH';
+        END IF;
+    ELSE
+        SELECT id INTO v_branch_id
+          FROM sawyan.merchant_branches
+         WHERE merchant_id = p_merchant_id AND is_branch_active = true
+         ORDER BY is_main_branch DESC, created_at ASC LIMIT 1;
+        IF v_branch_id IS NULL THEN
+            RAISE EXCEPTION 'NO_ACTIVE_MERCHANT_BRANCH';
+        END IF;
+    END IF;
+
     v_idem := COALESCE(p_idempotency_key, gen_random_uuid());
     v_short_code := 'SW-' || upper(substr(replace(v_idem::text, '-', ''), 1, 6));
-    v_ref := 'MBR-' || v_member.member_code || '-' || replace(v_idem::text, '-', '');
+    v_ref := COALESCE(NULLIF(trim(COALESCE(p_unique_payment_ref, '')), ''), 'MBR-' || v_member.member_code || '-' || replace(v_idem::text, '-', ''));
+
+    v_emp_code := NULLIF(upper(trim(COALESCE(p_employee_code, ''))), '');
+    v_pin      := NULLIF(trim(COALESCE(p_cashier_pin, '')), '');
+    v_is_instant := (v_emp_code IS NOT NULL OR v_pin IS NOT NULL);
+
+    IF v_is_instant THEN
+        IF v_pay_type IN ('cod', 'cheque') THEN
+            RAISE EXCEPTION 'DEFERRED_PAYMENT_REQUIRES_PENDING_MODE';
+        END IF;
+        IF v_emp_code IS NULL OR v_pin IS NULL OR v_pin !~ '^\d{4}$' THEN
+            RAISE EXCEPTION 'CASHIER_CODE_AND_4DIGIT_PIN_REQUIRED';
+        END IF;
+
+        -- Rate-limit per (member_id, merchant_id): max 5 wrong PIN failures / 15m
+        v_rl_obj := COALESCE(v_member.metadata #> ARRAY['pin_rl', p_merchant_id::text], '{}'::jsonb);
+        v_rl_cnt := COALESCE((v_rl_obj->>'cnt')::int, 0);
+        v_rl_win := CASE WHEN COALESCE(v_rl_obj->>'win', '') <> '' THEN (v_rl_obj->>'win')::timestamptz ELSE NULL END;
+        IF v_rl_win IS NOT NULL AND v_rl_win > (now() - interval '15 minutes') AND v_rl_cnt >= 5 THEN
+            RETURN jsonb_build_object(
+                'success', false,
+                'error_code', 'CASHIER_PIN_LOCKED_15M',
+                'locked_until', v_rl_win + interval '15 minutes'
+            );
+        END IF;
+
+        SELECT * INTO v_cashier
+          FROM sawyan.cashier_employees
+         WHERE merchant_id = p_merchant_id
+           AND upper(employee_code) = v_emp_code
+         FOR UPDATE;
+
+        IF NOT FOUND OR v_cashier.is_active IS NOT TRUE THEN
+            v_dummy_chk := extensions.crypt(v_pin, '$2a$06$abcdefghijklmnopqrstuu');
+            v_rl_cnt := CASE WHEN v_rl_win IS NULL OR v_rl_win <= (now() - interval '15 minutes') THEN 1 ELSE v_rl_cnt + 1 END;
+            v_rl_win := CASE WHEN v_rl_win IS NULL OR v_rl_win <= (now() - interval '15 minutes') THEN now() ELSE v_rl_win END;
+            UPDATE sawyan.members
+               SET metadata = jsonb_set(
+                   COALESCE(metadata, '{}'::jsonb),
+                   ARRAY['pin_rl', p_merchant_id::text],
+                   jsonb_build_object('cnt', v_rl_cnt, 'win', v_rl_win),
+                   true
+               )
+             WHERE id = v_member.id;
+            RETURN jsonb_build_object(
+                'success', false,
+                'error_code', CASE WHEN v_rl_cnt >= 5 THEN 'CASHIER_PIN_LOCKED_15M' ELSE 'INVALID_CASHIER_CREDENTIALS' END,
+                'remaining_attempts', GREATEST(0, 5 - v_rl_cnt)
+            );
+        END IF;
+
+        IF v_cashier.pin_locked_until IS NOT NULL AND v_cashier.pin_locked_until > now() THEN
+            RETURN jsonb_build_object(
+                'success', false,
+                'error_code', 'CASHIER_PIN_LOCKED_15M',
+                'locked_until', v_cashier.pin_locked_until
+            );
+        END IF;
+
+        v_cur_attempts := CASE
+            WHEN v_cashier.pin_locked_until IS NOT NULL AND v_cashier.pin_locked_until <= now() THEN 0
+            ELSE COALESCE(v_cashier.failed_pin_attempts, 0)
+        END;
+
+        IF v_cashier.pin_hash <> extensions.crypt(v_pin, v_cashier.pin_hash) THEN
+            v_new_attempts := v_cur_attempts + 1;
+            v_lock_until := CASE WHEN v_new_attempts >= 5 THEN now() + interval '15 minutes' ELSE NULL END;
+
+            UPDATE sawyan.cashier_employees
+               SET failed_pin_attempts = v_new_attempts,
+                   pin_locked_until    = v_lock_until
+             WHERE id = v_cashier.id;
+
+            v_rl_cnt := CASE WHEN v_rl_win IS NULL OR v_rl_win <= (now() - interval '15 minutes') THEN 1 ELSE v_rl_cnt + 1 END;
+            v_rl_win := CASE WHEN v_rl_win IS NULL OR v_rl_win <= (now() - interval '15 minutes') THEN now() ELSE v_rl_win END;
+            UPDATE sawyan.members
+               SET metadata = jsonb_set(
+                   COALESCE(metadata, '{}'::jsonb),
+                   ARRAY['pin_rl', p_merchant_id::text],
+                   jsonb_build_object('cnt', v_rl_cnt, 'win', v_rl_win),
+                   true
+               )
+             WHERE id = v_member.id;
+
+            IF v_new_attempts >= 5 THEN
+                INSERT INTO sawyan.notifications (recipient_type, recipient_id, event_name, channel, payload)
+                VALUES ('merchant', p_merchant_id, 'CashierPinLocked5Attempts', 'in_app',
+                        jsonb_build_object('employee_code', v_cashier.employee_code, 'locked_until', v_lock_until, 'member_code', v_member.member_code));
+            END IF;
+
+            RETURN jsonb_build_object(
+                'success', false,
+                'error_code', CASE WHEN v_new_attempts >= 5 THEN 'CASHIER_PIN_LOCKED_15M' ELSE 'INVALID_CASHIER_CREDENTIALS' END,
+                'failed_attempts', v_new_attempts,
+                'remaining_attempts', GREATEST(0, 5 - v_new_attempts),
+                'locked_until', v_lock_until
+            );
+        END IF;
+
+        IF v_cashier.failed_pin_attempts > 0 OR v_cashier.pin_locked_until IS NOT NULL THEN
+            UPDATE sawyan.cashier_employees
+               SET failed_pin_attempts = 0,
+                   pin_locked_until    = NULL
+             WHERE id = v_cashier.id;
+        END IF;
+        IF v_rl_cnt > 0 THEN
+            UPDATE sawyan.members
+               SET metadata = COALESCE(metadata, '{}'::jsonb) #- ARRAY['pin_rl', p_merchant_id::text]
+             WHERE id = v_member.id;
+        END IF;
+
+        IF v_cashier.max_tx_amount_limit IS NOT NULL AND p_amount > v_cashier.max_tx_amount_limit THEN
+            RETURN jsonb_build_object(
+                'success', false,
+                'error_code', 'CASHIER_TX_LIMIT_EXCEEDED',
+                'max_limit', v_cashier.max_tx_amount_limit
+            );
+        END IF;
+
+        v_res := sawyan.submit_pos_transaction(
+            v_member.id,
+            p_merchant_id,
+            COALESCE(v_branch_id, v_cashier.branch_id),
+            p_amount,
+            v_pay_type,
+            v_ref,
+            v_short_code,
+            v_idem,
+            v_cashier.id,
+            true,
+            v_clean_rec
+        );
+
+        RETURN v_res || jsonb_build_object(
+            'success', COALESCE((v_res->>'status') <> 'rejected_self_cashier_pin', true),
+            'sw_short_code', v_short_code,
+            'mode', 'instant_pin'
+        );
+    END IF;
 
     v_res := sawyan.submit_pos_transaction(
         v_member.id,
         p_merchant_id,
-        p_branch_id,
+        v_branch_id,
         p_amount,
-        COALESCE(p_payment_type, 'cash'),
+        v_pay_type,
         v_ref,
         v_short_code,
         v_idem,
         NULL,
         false,
-        p_receipt_url
+        v_clean_rec
     );
 
     INSERT INTO sawyan.notifications (recipient_type, recipient_id, event_name, channel, payload)
     VALUES ('merchant', p_merchant_id, 'PendingPurchaseRequested', 'in_app',
-            jsonb_build_object('sw_short_code', v_short_code, 'amount', p_amount, 'member_code', v_member.member_code));
+            jsonb_build_object('sw_short_code', v_short_code, 'amount', p_amount, 'payment_type', v_pay_type, 'member_code', v_member.member_code));
 
-    RETURN v_res || jsonb_build_object('sw_short_code', v_short_code);
+    RETURN v_res || jsonb_build_object('success', true, 'sw_short_code', v_short_code, 'mode', 'pending_remote');
 END;
 $$;
 
--- 8ب. إلغاء طلب التوثيق المعلق من قِبل العضو قبل تأكيد التاجر (مع تحرير الـ Soft Hold فوراً)
+-- 8ب. إلغاء طلب التوثيق المعلق من قِبل العضو قبل تأكيد التاجر (مع تحرير الـ Soft Hold الدقيق فوراً)
 CREATE OR REPLACE FUNCTION sawyan.cancel_member_pending_purchase(
     p_member_id      UUID,
     p_transaction_id UUID,
@@ -1334,8 +1598,9 @@ SECURITY DEFINER
 SET search_path = pg_catalog, pg_temp
 AS $$
 DECLARE
-    v_member sawyan.members%ROWTYPE;
-    v_tx     sawyan.transactions%ROWTYPE;
+    v_member       sawyan.members%ROWTYPE;
+    v_tx           sawyan.transactions%ROWTYPE;
+    v_release_hold NUMERIC(18,6);
 BEGIN
     v_member := sawyan.verify_member_session(p_member_id, p_session_token);
 
@@ -1352,9 +1617,12 @@ BEGIN
         RAISE EXCEPTION 'ONLY_PENDING_PURCHASE_CAN_BE_CANCELLED: %', v_tx.status;
     END IF;
 
-    UPDATE sawyan.merchants
-       SET soft_hold_balance = GREATEST(0, soft_hold_balance - v_tx.commission_amount)
-     WHERE id = v_tx.merchant_id;
+    v_release_hold := COALESCE((v_tx.commission_snapshot->>'soft_hold_amount')::numeric, v_tx.commission_amount);
+    IF v_release_hold > 0 THEN
+        UPDATE sawyan.merchants
+           SET soft_hold_balance = GREATEST(0, soft_hold_balance - v_release_hold)
+         WHERE id = v_tx.merchant_id;
+    END IF;
 
     UPDATE sawyan.transactions
        SET status = 'rejected',
@@ -1392,6 +1660,6 @@ GRANT EXECUTE ON FUNCTION sawyan.submit_member_dispute(UUID, UUID, TEXT, TEXT, T
 GRANT EXECUTE ON FUNCTION sawyan.preview_pos_return_impact(UUID, UUID, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.member_respond_pos_return(UUID, UUID, VARCHAR, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.submit_member_review(UUID, UUID, SMALLINT, TEXT, TEXT) TO anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION sawyan.update_member_profile_settings(UUID, TEXT, VARCHAR, VARCHAR, VARCHAR, UUID, VARCHAR, TEXT, TEXT, NUMERIC, NUMERIC) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION sawyan.update_member_profile_settings(UUID, TEXT, VARCHAR, VARCHAR, VARCHAR, UUID, VARCHAR, TEXT, TEXT, NUMERIC, NUMERIC, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.cancel_member_pending_purchase(UUID, UUID, TEXT) TO anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION sawyan.submit_member_pending_purchase(UUID, UUID, UUID, NUMERIC, VARCHAR, UUID, TEXT, TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION sawyan.submit_member_pending_purchase(UUID, UUID, UUID, NUMERIC, VARCHAR, UUID, TEXT, TEXT, VARCHAR, VARCHAR, TEXT) TO anon, authenticated, service_role;

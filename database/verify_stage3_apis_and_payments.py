@@ -102,11 +102,14 @@ def check_live_rest_rpcs(token):
             f"Root #0 block failed on {schema}: {st} {body}"
         )
 
-    # 2. Sponsor #1 lookup on Demo returns sponsor full name; on clean Prod returns found=False
+    # 2. Sponsor #1 lookup on Demo returns sponsor full name; on Prod non-existent sentinel returns found=False & any live match leaks zero PII
     st_demo, demo_sp = call_rest_rpc("lookup_sponsor_by_code", {"p_member_code": 1}, "sawyan_demo", anon_key)
     assert st_demo == 200 and demo_sp.get("found") is True and demo_sp.get("member_code") == 1, f"Demo #1 failed: {demo_sp}"
+    st_prod_miss, prod_miss = call_rest_rpc("lookup_sponsor_by_code", {"p_member_code": 999999}, "sawyan", anon_key)
+    assert st_prod_miss == 200 and prod_miss.get("found") is False, f"Non-existent prod sponsor should return found=False: {prod_miss}"
     st_prod, prod_sp = call_rest_rpc("lookup_sponsor_by_code", {"p_member_code": 1}, "sawyan", anon_key)
-    assert st_prod == 200 and prod_sp.get("found") is False, f"Clean prod should not have #1: {prod_sp}"
+    prod_sp_dump = json.dumps(prod_sp)
+    assert st_prod == 200 and "phone" not in prod_sp_dump and "email" not in prod_sp_dump and "pwd_bcrypt" not in prod_sp_dump, f"Prod sponsor lookup leaked PII: {prod_sp}"
 
     # 3. Public verify transaction on sawyan_demo (masked name, zero phone/split leakage)
     tx_rows = run_sql("SELECT sw_short_code, merchant_id FROM sawyan_demo.transactions ORDER BY created_at DESC LIMIT 1;", token)

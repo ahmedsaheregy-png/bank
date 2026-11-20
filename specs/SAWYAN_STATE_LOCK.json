@@ -10,5 +10,6 @@
   "frozen_items": [
     "OFFLINE_TOTP_MEMBER_QR_60S"
   ],
-  "notes": "strict_parity_enabled becomes true upon completing Phase 1 & Phase 2 and binds Stop Hook + Zero-Defect Gate to full D29/D30 visual & spec parity."
+  "last_full_audit_verified_at": "2026-11-19T22:10:00Z",
+  "notes": "strict_parity_enabled becomes true upon completing Phase 1 & Phase 2 and binds Stop Hook + Zero-Defect Gate to full D29/D30 visual & spec parity. Full attachment Option-B, 10-payment-type, Dual-Mode Path-B & Panel-2 security audit sealed 2026-11-19."
 }

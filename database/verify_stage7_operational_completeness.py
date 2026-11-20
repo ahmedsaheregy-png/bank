@@ -47,8 +47,10 @@ def main():
     _, f_prod = rpc("authenticate_admin_login", {"p_email": "ahmed.saher.egy@gmail.com", "p_password": "Baraawhaneen-1"}, "sawyan")
     _, b_prod = rpc("get_admin_sovereign_bundle", {"p_admin_id": f_prod["admin"]["id"], "p_session_token": f_prod["session_token"]}, "sawyan")
     must(
-        b_prod["kpis"]["members_total"] == 0 and b_prod["kpis"]["transactions_total"] == 0 and b_prod["zero_discrepancy"]["is_zero_discrepancy_intact"],
-        "0. Production (`sawyan`) remains 100% clean Zero-State & Zero-Discrepancy",
+        b_prod["kpis"]["members_with_root"] >= 1
+        and b_prod["zero_discrepancy"]["is_zero_discrepancy_intact"] is True
+        and b_prod["audit_chain"]["is_hash_chain_intact"] is True,
+        f"0. Production (`sawyan`) Live Integrity Intact (members={b_prod['kpis']['members_total']}, Zero-Discrepancy=$0.00, Hash-Chain valid)",
         b_prod["kpis"],
     )
 

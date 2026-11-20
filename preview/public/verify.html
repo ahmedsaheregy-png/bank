@@ -17,9 +17,9 @@
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/preview.css">
-    <link rel="stylesheet" href="../shared/css/logo.css">
+    <link rel="stylesheet" href="../shared/css/logo.css?v=20261119_logo_all">
     <style>
         .verify-hero {
             background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 50%, #ecfdf5 100%);
@@ -196,7 +196,9 @@
             <div class="footer-content">
                 <div>
                     <div id="footerBrandLogo" style="margin-bottom:8px;">
-                        <strong style="font-size:1.3rem; color:#10b981;">SAWYAN</strong>
+                        <a href="../index.html" class="logo-link sawyan-home-logo" aria-label="SAWYAN — الصفحة الرئيسية" title="العودة للصفحة الرئيسية">
+                            <strong style="font-size:1.3rem; color:#10b981;">SAWYAN</strong>
+                        </a>
                     </div>
                     <p style="color:#94a3b8; font-size:0.88rem;">منظومة تحقق شفافة ومقاومة للتلاعب لفواتير المتسوقين.</p>
                 </div>
@@ -215,10 +217,10 @@
         </div>
     </footer>
 
+    <script src="../shared/components/logo.js?v=20261119_logo_all"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../shared/config/supabase.js"></script>
     <script src="../shared/api/sawyan-api.js"></script>
-    <script src="../shared/components/logo.js"></script>
     <script src="../js/demo-data.js"></script>
     <script>
         (function () {
@@ -240,7 +242,11 @@
                 if (window.SAWYAN && window.SAWYAN.Logo && typeof window.SAWYAN.Logo.svg === 'function') {
                     var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
                     if (byId('navBrandLogo')) byId('navBrandLogo').innerHTML = window.SAWYAN.Logo.svg(isDark ? 'light-on-dark' : 'default');
-                    if (byId('footerBrandLogo')) byId('footerBrandLogo').innerHTML = window.SAWYAN.Logo.svg('light-on-dark');
+                    if (byId('footerBrandLogo')) {
+                        byId('footerBrandLogo').innerHTML = typeof window.SAWYAN.Logo.link === 'function'
+                            ? window.SAWYAN.Logo.link('light-on-dark', { href: '../index.html' })
+                            : '<a href="../index.html" class="logo-link sawyan-home-logo" aria-label="SAWYAN — الصفحة الرئيسية">' + window.SAWYAN.Logo.svg('light-on-dark') + '</a>';
+                    }
                 }
                 var btn = byId('themeToggleBtn');
                 if (btn) {

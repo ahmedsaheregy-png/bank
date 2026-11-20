@@ -586,9 +586,11 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 DECLARE
-    v_member sawyan.members%ROWTYPE;
-    v_tx     sawyan.transactions%ROWTYPE;
-    v_rep_id UUID;
+    v_member      sawyan.members%ROWTYPE;
+    v_tx          sawyan.transactions%ROWTYPE;
+    v_rep_id      UUID;
+    v_clean_shelf TEXT;
+    v_clean_rec   TEXT;
 BEGIN
     v_member := sawyan.verify_member_session(p_member_id, p_session_token);
 
@@ -601,7 +603,9 @@ BEGIN
         RAISE EXCEPTION 'CHARGED_PRICE_MUST_EXCEED_DECLARED_PRICE';
     END IF;
 
-    IF trim(COALESCE(p_shelf_photo_url, '')) = '' OR trim(COALESCE(p_receipt_url, '')) = '' THEN
+    v_clean_shelf := sawyan.validate_attachment_data(p_shelf_photo_url, 480000, true);
+    v_clean_rec   := sawyan.validate_attachment_data(p_receipt_url, 480000, true);
+    IF v_clean_shelf IS NULL OR v_clean_rec IS NULL THEN
         RAISE EXCEPTION 'SHELF_AND_RECEIPT_PHOTOS_REQUIRED';
     END IF;
 
@@ -609,7 +613,7 @@ BEGIN
         transaction_id, member_id, merchant_id, shelf_price_photo_url, receipt_photo_url,
         declared_price, charged_price, verification_status
     ) VALUES (
-        v_tx.id, v_member.id, v_tx.merchant_id, trim(p_shelf_photo_url), trim(p_receipt_url),
+        v_tx.id, v_member.id, v_tx.merchant_id, v_clean_shelf, v_clean_rec,
         p_declared_price, p_charged_price, 'pending'
     ) RETURNING id INTO v_rep_id;
 
@@ -640,8 +644,8 @@ GRANT EXECUTE ON FUNCTION sawyan.submit_member_dispute(UUID, UUID, TEXT, TEXT, T
 GRANT EXECUTE ON FUNCTION sawyan.preview_pos_return_impact(UUID, UUID, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.member_respond_pos_return(UUID, UUID, VARCHAR, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.submit_member_review(UUID, UUID, SMALLINT, TEXT, TEXT) TO anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION sawyan.update_member_profile_settings(UUID, TEXT, VARCHAR, VARCHAR, VARCHAR, UUID, VARCHAR, TEXT, TEXT, NUMERIC, NUMERIC) TO anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION sawyan.submit_member_pending_purchase(UUID, UUID, UUID, NUMERIC, VARCHAR, UUID, TEXT, TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION sawyan.update_member_profile_settings(UUID, TEXT, VARCHAR, VARCHAR, VARCHAR, UUID, VARCHAR, TEXT, TEXT, NUMERIC, NUMERIC, TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION sawyan.submit_member_pending_purchase(UUID, UUID, UUID, NUMERIC, VARCHAR, UUID, TEXT, TEXT, VARCHAR, VARCHAR, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.manage_member_payout_method(UUID, VARCHAR, TEXT, VARCHAR, VARCHAR, TEXT, UUID) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.request_member_withdrawal(UUID, UUID, NUMERIC, UUID, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.submit_price_gouging_report(UUID, UUID, NUMERIC, NUMERIC, TEXT, TEXT, TEXT) TO anon, authenticated, service_role;

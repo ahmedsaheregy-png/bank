@@ -9,7 +9,7 @@
         href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="../shared/css/variables.css">
-    <link rel="stylesheet" href="../shared/css/logo.css">
+    <link rel="stylesheet" href="../shared/css/logo.css?v=20261119_logo_all">
     <link rel="stylesheet" href="css/auth.css">
     <style>
         /* تصميم محسّن لمحدد الدولة ومفتاح الهاتف */
@@ -467,9 +467,17 @@
 </head>
 
 <body>
+    <header class="auth-top-nav" role="banner">
+        <div class="auth-top-nav-inner">
+            <a href="../index.html" class="nav-logo sawyan-home-logo" data-sawyan-logo="default" aria-label="SAWYAN — العودة للصفحة الرئيسية" title="العودة للصفحة الرئيسية">
+                <strong style="font-family:'Poppins',sans-serif;font-weight:800;color:#0f2744;font-size:1.25rem;">SAWYAN</strong>
+            </a>
+            <a href="../index.html" class="auth-home-pill">🏠 الرئيسية</a>
+        </div>
+    </header>
     <div class="auth-container">
         <div class="auth-card">
-            <div id="logoContainer" class="logo-section"></div>
+            <div id="logoContainer" class="logo-section" data-sawyan-logo="default"></div>
 
             <h1>تسجيل عضو جديد</h1>
             <p class="subtitle">انضم إلى منصة SAWYAN مجاناً</p>
@@ -637,6 +645,7 @@
 
                 <div class="auth-footer" style="margin-top: 16px; text-align: center;">
                     <p style="color: #64748b;">لديك حساب بالفعل؟ <a href="login.html" style="color: #10b981; font-weight: 800;">تسجيل الدخول</a></p>
+                    <p style="margin-top: 0.75rem;"><a href="../index.html" style="color: #047857; font-weight: 700;">← العودة للصفحة الرئيسية</a></p>
                 </div>
             </form>
 
@@ -971,10 +980,10 @@
         </div>
     </div>
 
+    <script src="../shared/components/logo.js?v=20261119_logo_all"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../shared/config/supabase.js"></script>
     <script src="../shared/api/sawyan-api.js?v=20261119_clean_ar_geo"></script>
-    <script src="../shared/components/logo.js"></script>
     <script src="../js/demo-data.js"></script>
     <script src="../shared/data/countries.js?v=20261119_clean_ar_geo"></script>
     <script src="js/register.js?v=20261119_clean_ar_geo"></script>

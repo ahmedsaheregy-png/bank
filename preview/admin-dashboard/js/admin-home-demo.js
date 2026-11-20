@@ -10,11 +10,15 @@ window.SAWYAN_ADMIN_DEMO = {
     merchants: { total: 0, active: 0, frozen: 0, pending_approval: 0, low_balance: 0 },
     ops_mtd: 0,
     gmv_mtd: 0,
+    gmv_usd_completed: 0,
     comm_total: 0,
+    commission_usd_completed: 0,
+    gmv_by_currency: [],
     commission_rate: 0.10,
     treasury_share: 0.25,
     plan_share: 0.75,
     prepaid_held: 0,
+    prepaid_held_usd: 0,
     low_balance_threshold: 500,
     pending: { withdrawals: 0, disputes: 0, support: 0, promo: 0 },
     daily_ops: [
@@ -113,10 +117,14 @@ window.SAWYAN_ADMIN_DEMO = {
         var completedTxs = txs.filter(function (t) { return t.status === 'completed'; });
         D.ops_mtd = Number(k.transactions_completed !== undefined ? k.transactions_completed : completedTxs.length);
         D.gmv_mtd = Number(k.gmv_local_completed || 0);
+        D.gmv_usd_completed = Number(k.gmv_usd_completed || 0);
         D.comm_total = Number(k.commission_local_completed || (D.gmv_mtd * D.commission_rate));
+        D.commission_usd_completed = Number(k.commission_usd_completed || 0);
+        D.gmv_by_currency = Array.isArray(k.gmv_and_commission_by_currency) ? k.gmv_and_commission_by_currency : [];
         D.prepaid_held = mers.reduce(function (s, m) {
             return s + Math.max(0, Number(m.actual_cash_balance || 0) - Number(m.soft_hold_balance || 0));
         }, 0);
+        D.prepaid_held_usd = Number(k.merchant_prepaid_float_usd || 0);
 
         D.pending = {
             withdrawals: Number(k.pending_withdrawals !== undefined ? k.pending_withdrawals : wds.filter(function (w) { return w.status === 'processing_payout'; }).length),
@@ -179,10 +187,16 @@ window.SAWYAN_ADMIN_DEMO = {
         var page = document.getElementById('homePage');
         if (!page) return;
 
-        var comm = D.comm_total !== undefined ? Number(D.comm_total) : (D.gmv_mtd * D.commission_rate);
-        var treasury = comm * D.treasury_share;
-        var plan = comm * D.plan_share;
-        var avgTicket = D.ops_mtd > 0 ? (D.gmv_mtd / D.ops_mtd) : 0;
+        var commUsd = Number(D.commission_usd_completed || 0);
+        var treasuryUsd = commUsd * D.treasury_share;
+        var planUsd = commUsd * D.plan_share;
+        var avgTicketUsd = D.ops_mtd > 0 ? (Number(D.gmv_usd_completed || 0) / D.ops_mtd) : 0;
+        var curSummary = Array.isArray(D.gmv_by_currency) && D.gmv_by_currency.length > 0
+            ? D.gmv_by_currency.map(function (c) { return fmt(c.gmv_local) + ' ' + esc(c.currency_code); }).join(' • ')
+            : 'إجمالي الفواتير المكتملة بالدفتر الحي';
+        var commByCurSummary = Array.isArray(D.gmv_by_currency) && D.gmv_by_currency.length > 0
+            ? '<br><small style="color:#64748b;">(' + D.gmv_by_currency.map(function (c) { return fmt(c.commission_local) + ' ' + esc(c.currency_code); }).join(' • ') + ')</small>'
+            : '';
         var weekTotal = D.daily_ops.reduce(function (s, x) { return s + x.v; }, 0);
         var maxV = Math.max(1, Math.max.apply(null, D.daily_ops.map(function (x) { return x.v; })));
 
@@ -227,21 +241,21 @@ window.SAWYAN_ADMIN_DEMO = {
             '<span style="background:#dcfce7; color:#065f46; border:1px solid #6ee7b7; padding:4px 12px; border-radius:8px; font-size:0.74rem; font-weight:800;">🟢 مرتبط بقاعدة البيانات الحية (' + esc(D.schema) + ')</span>' +
         '</div>' +
 
-        '<div data-spec-id="admin-home-kpis" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:14px; margin-bottom:18px;">' +
+        '<div data-spec-id="admin-home-kpis" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap:14px; margin-bottom:18px;">' +
             kpi('👥', 'إجمالي الأعضاء', fmt0(D.members.total), fmt0(D.members.active) + ' نشط • ' + D.members.pending_kyc + ' بانتظار توثيق الهوية • ' + D.members.suspended + ' محجوب', '#3b82f6') +
             kpi('🏪', 'إجمالي التجار', fmt0(D.merchants.total), D.merchants.active + ' نشط • ' + D.merchants.frozen + ' معزول • ' + D.merchants.pending_approval + ' بانتظار الاعتماد', '#10b981') +
-            kpi('💳', 'العمليات المكتملة', fmt0(D.ops_mtd), 'متوسط الفاتورة ' + fmt(avgTicket), '#6366f1') +
-            kpi('🛒', 'حجم المبيعات (GMV محلي)', fmt(D.gmv_mtd), 'إجمالي الفواتير المكتملة بالدفتر الحي', '#0ea5e9') +
-            kpi('💰', 'عمولات سويا المحصّلة', fmt(comm),
-                'خزينة الشركة (25%): <b>' + fmt(treasury) + '</b><br>خطة الدخل والأعضاء (75%): <b>' + fmt(plan) + '</b>', '#f59e0b') +
-            kpi('🛡️', 'أرصدة الشحن الحرة لدى التجار', fmt(D.prepaid_held),
-                'صافي أرصدة الشحن المتاحة بالقاعدة بعد خصم الحجز المؤقت', '#059669') +
+            kpi('💳', 'العمليات المكتملة', fmt0(D.ops_mtd), 'متوسط الفاتورة $' + fmt(avgTicketUsd), '#6366f1') +
+            kpi('🛒', 'حجم المبيعات (GMV موحد $)', '$' + fmt(D.gmv_usd_completed), curSummary, '#0ea5e9') +
+            kpi('💰', 'عمولات سويا المحصّلة ($)', '$' + fmt(commUsd),
+                'خزينة الشركة (25%): <b>$' + fmt(treasuryUsd) + '</b><br>خطة الدخل والأعضاء (75%): <b>$' + fmt(planUsd) + '</b>' + commByCurSummary, '#f59e0b') +
+            kpi('🛡️', 'التزام الشحن المسبق (2101)', '$' + fmt(D.prepaid_held_usd),
+                'صافي أرصدة الشحن الحرة المقومة بالدولار في دفتر الأستاذ', '#059669') +
         '</div>' +
 
         '<div style="background:white; border:1.5px solid #e2e8f0; border-radius:14px; padding:18px; margin-bottom:18px;">' +
             '<div style="font-weight:900; color:#0f172a; font-size:1.05rem; margin-bottom:4px;">⚡ يحتاج قرارك الآن</div>' +
             '<div style="font-size:0.78rem; color:#64748b; margin-bottom:12px;">كل بند يفتح الشاشة المختصة لاتخاذ القرار الحي</div>' +
-            '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:10px;">' +
+            '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap:10px;">' +
                 actionRow('📢', promoPendingCount(), 'طلبات إعلانات ترويجية من التجار', 'تُراجَع نصوصها قبل البث لهواتف الأعضاء', 'مراجعة الآن', 'scrollToPromoQueue()', 'actionRowPromo') +
                 actionRow('💸', D.pending.withdrawals, 'طلبات سحب أرباح الأعضاء', 'تحقق من الهوية وبيانات الحساب قبل التحويل', 'فتح طلبات السحب', "goAdminPage('withdrawals')") +
                 actionRow('🪪', D.members.pending_kyc, 'أعضاء بانتظار توثيق الهوية (KYC)', 'شرط لصرف أول سحب', 'فتح الأعضاء', "goAdminPage('members')") +
@@ -252,7 +266,7 @@ window.SAWYAN_ADMIN_DEMO = {
             '</div>' +
         '</div>' +
 
-        '<div data-spec-id="admin-home-charts" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:14px; margin-bottom:18px;">' +
+        '<div data-spec-id="admin-home-charts" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap:14px; margin-bottom:18px;">' +
             '<div style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:18px;">' +
                 '<div style="font-weight:900; color:#0f172a; margin-bottom:2px;">📈 توزيع العمليات الأسبوعي (من السجل الحي)</div>' +
                 '<div style="font-size:0.76rem; color:#64748b; margin-bottom:12px;">الإجمالي: <b>' + fmt0(weekTotal) + '</b> عملية</div>' +

@@ -9,14 +9,23 @@
         href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="../shared/css/variables.css">
-    <link rel="stylesheet" href="../shared/css/logo.css">
+    <link rel="stylesheet" href="../shared/css/logo.css?v=20261119_logo_all">
+    <link rel="stylesheet" href="../shared/css/image-upload.css">
     <link rel="stylesheet" href="../member-dashboard/css/auth.css">
 </head>
 
 <body>
+    <header class="auth-top-nav" role="banner">
+        <div class="auth-top-nav-inner">
+            <a href="../index.html" class="nav-logo sawyan-home-logo" data-sawyan-logo="default" aria-label="SAWYAN — العودة للصفحة الرئيسية" title="العودة للصفحة الرئيسية">
+                <strong style="font-family:'Poppins',sans-serif;font-weight:800;color:#0f2744;font-size:1.25rem;">SAWYAN</strong>
+            </a>
+            <a href="../index.html" class="auth-home-pill">🏠 الرئيسية</a>
+        </div>
+    </header>
     <div class="auth-container">
         <div class="auth-card">
-            <div id="logoContainer" class="logo-section"></div>
+            <div id="logoContainer" class="logo-section" data-sawyan-logo="default"></div>
 
             <h1>تسجيل تاجر جديد</h1>
             <p class="subtitle">انضم إلى شبكة SAWYAN</p>
@@ -301,24 +310,49 @@
                     </div>
                 </div>
 
-                <!-- الصور (اختياري حالياً) -->
+                <!-- الصور ووثائق النشاط -->
                 <div class="form-section optional-section">
-                    <h3>الصور <span class="optional-badge">(اختياري - يمكن إضافتها لاحقاً)</span></h3>
+                    <h3>الصور ووثائق التوثيق <span class="optional-badge">(رفع مباشر آمن أو رابط HTTPS)</span></h3>
 
                     <div class="form-group">
                         <label>شعار النشاط (Logo)</label>
-                        <input type="url" id="logoUrl" class="form-control" placeholder="رابط صورة الشعار">
+                        <div id="merchantLogoUploader"></div>
+                        <input type="hidden" id="logoUrl">
                     </div>
 
                     <div class="form-group">
-                        <label>صورة الغلاف</label>
-                        <input type="url" id="coverImageUrl" class="form-control" placeholder="رابط صورة الغلاف">
+                        <label>صورة الغلاف / الواجهة (Storefront Cover)</label>
+                        <div id="merchantCoverUploader"></div>
+                        <input type="hidden" id="coverImageUrl">
                     </div>
 
                     <div class="form-group">
-                        <label>صور النشاط (يمكن إضافة عدة روابط مفصولة بفاصلة)</label>
-                        <textarea id="images" class="form-control" rows="2"
-                            placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg"></textarea>
+                        <label>صور إضافية للنشاط (حد أقصى 4 صور)</label>
+                        <div id="merchantGalleryUploader"></div>
+                        <input type="hidden" id="images">
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap:12px;">
+                        <div class="form-group">
+                            <label>رقم السجل التجاري (اختياري)</label>
+                            <input type="text" id="commercialRegNo" class="form-control" placeholder="مثال: 1010456789">
+                        </div>
+                        <div class="form-group">
+                            <label>الرقم الضريبي (اختياري)</label>
+                            <input type="text" id="taxId" class="form-control" placeholder="مثال: 300-456-789">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>صورة السجل التجاري / الرخصة التجارية (KYC Docs)</label>
+                        <div id="merchantCommercialDocUploader"></div>
+                        <input type="hidden" id="commercialDocUrl">
+                    </div>
+
+                    <div class="form-group">
+                        <label>وثيقة البطاقة الضريبية أو إثبات المقر (اختياري)</label>
+                        <div id="merchantTaxDocUploader"></div>
+                        <input type="hidden" id="taxDocUrl">
                     </div>
                 </div>
 
@@ -337,11 +371,12 @@
         </div>
     </div>
 
+    <script src="../shared/components/logo.js?v=20261119_logo_all"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../shared/config/supabase.js"></script>
     <script src="../shared/api/sawyan-api.js?v=20261119_world_geo"></script>
-    <script src="../shared/components/logo.js"></script>
     <script src="../shared/data/countries.js?v=20261119_world_geo"></script>
+    <script src="../shared/components/image-upload.js"></script>
     <script src="js/register.js?v=20261119_world_geo"></script>
 
     <script>

@@ -1,17 +1,30 @@
 /* Auth Pages - نسخة محسنة */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html, body {
+    max-width: 100%;
+    overflow-x: clip;
+}
+
 body {
     font-family: var(--font-family-arabic);
     background: linear-gradient(135deg, var(--color-green-50), var(--color-blue-50));
     min-height: 100vh;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--spacing-4);
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: 0;
+    margin: 0;
 }
 
 .auth-container {
     width: 100%;
     max-width: 500px;
+    margin: auto;
+    padding: var(--spacing-6) var(--spacing-4);
 }
 
 .auth-card {
@@ -314,8 +327,8 @@ textarea.form-control {
 
 /* تحسين للشاشات الصغيرة جداً */
 @media (max-width: 400px) {
-    body {
-        padding: var(--spacing-2);
+    .auth-container {
+        padding: var(--spacing-3) var(--spacing-2);
     }
 
     .auth-card {
@@ -436,8 +449,7 @@ textarea.form-control {
 /* Safe area support */
 @supports (padding: max(0px)) {
     @media (max-width: 640px) {
-        body {
-            padding-top: max(var(--spacing-4), env(safe-area-inset-top));
+        .auth-container {
             padding-bottom: max(var(--spacing-4), env(safe-area-inset-bottom));
             padding-left: max(var(--spacing-4), env(safe-area-inset-left));
             padding-right: max(var(--spacing-4), env(safe-area-inset-right));

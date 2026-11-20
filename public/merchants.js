@@ -44,7 +44,11 @@
         if (window.SAWYAN && window.SAWYAN.Logo && typeof window.SAWYAN.Logo.svg === 'function') {
             const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
             if (byId('navBrandLogo')) byId('navBrandLogo').innerHTML = window.SAWYAN.Logo.svg(isDark ? 'light-on-dark' : 'default');
-            if (byId('footerBrandLogo')) byId('footerBrandLogo').innerHTML = window.SAWYAN.Logo.svg('light-on-dark');
+            if (byId('footerBrandLogo')) {
+                byId('footerBrandLogo').innerHTML = typeof window.SAWYAN.Logo.link === 'function'
+                    ? window.SAWYAN.Logo.link('light-on-dark', { href: '../index.html' })
+                    : `<a href="../index.html" class="logo-link sawyan-home-logo" aria-label="SAWYAN — الصفحة الرئيسية">${window.SAWYAN.Logo.svg('light-on-dark')}</a>`;
+            }
         }
         const themeBtn = byId('themeToggleBtn');
         if (themeBtn) {
@@ -210,9 +214,16 @@
             const typeText = m.merchantType === 'online'
                 ? '🌐 أونلاين'
                 : (m.merchantType === 'both' ? '🏪🌐 محلي وأونلاين' : '🏪 فرع محلي');
-            const resolvedImg = m.image && !/^(https?:|\/|\.\.\/)/.test(m.image) ? ('../' + m.image) : m.image;
-            const imgMarkup = resolvedImg
-                ? `<img src="${escapeHtml(resolvedImg)}" alt="${escapeHtml(m.businessName)}" style="width:100%; height:100%; object-fit:cover;">`
+            const rawImg = m.image || m.coverImageUrl || m.logoUrl || '';
+            const resolvedImg = rawImg && !/^(https?:|data:image\/|\/|\.\.\/)/i.test(rawImg) ? ('../' + rawImg) : rawImg;
+            const safeImg = resolvedImg && (
+                (window.SAWYAN && window.SAWYAN.ImageUpload && window.SAWYAN.ImageUpload.isSafeMediaUrl(resolvedImg))
+                || /^(\.\.\/)?assets\/[A-Za-z0-9_.\-/]+\.(png|jpe?g|webp)$/i.test(resolvedImg)
+                || /^https:\/\/[^/\s]+/i.test(resolvedImg)
+                || /^data:image\/(jpeg|jpg|png|webp);base64,/i.test(resolvedImg)
+            );
+            const imgMarkup = safeImg
+                ? `<img src="${escapeHtml(resolvedImg)}" alt="${escapeHtml(m.businessName)}" style="width:100%; height:100%; object-fit:cover;" loading="lazy" onerror="this.style.display='none';">`
                 : `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:3rem; background:linear-gradient(135deg,#0f2744 0%,#065f46 100%); color:#fff;">${icon}</div>`;
 
             return `
@@ -341,7 +352,42 @@
             ? '🌐 متجر إلكتروني'
             : (m.merchantType === 'both' ? '🏪🌐 فرع محلي ومتجر أونلاين' : '🏪 فرع محلي معتمد');
 
-        if (byId('modal-merchant-icon')) byId('modal-merchant-icon').textContent = icon;
+        if (byId('modal-merchant-icon')) {
+            const iconBox = byId('modal-merchant-icon');
+            const logoSafe = m.logoUrl && window.SAWYAN?.ImageUpload?.isSafeMediaUrl(m.logoUrl);
+            if (logoSafe) {
+                iconBox.innerHTML = `<img src="${escapeHtml(m.logoUrl)}" alt="${escapeHtml(m.businessName)}" style="width:56px;height:56px;border-radius:14px;object-fit:cover;border:2px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.22);">`;
+            } else {
+                iconBox.textContent = icon;
+            }
+        }
+        const headerBg = byId('modal-header-bg');
+        if (headerBg) {
+            const coverSrc = m.coverImageUrl || m.image || '';
+            const coverSafe = coverSrc && window.SAWYAN?.ImageUpload?.isSafeMediaUrl(coverSrc);
+            if (coverSafe) {
+                headerBg.style.backgroundImage = `linear-gradient(180deg, rgba(15,23,42,.35), rgba(15,23,42,.65)), url("${coverSrc.replace(/"/g, '')}")`;
+                headerBg.style.backgroundSize = 'cover';
+                headerBg.style.backgroundPosition = 'center';
+            } else {
+                headerBg.style.backgroundImage = '';
+            }
+        }
+        const galleryEl = byId('modal-merchant-gallery');
+        if (galleryEl) {
+            const pics = []
+                .concat(m.coverImageUrl ? [m.coverImageUrl] : [])
+                .concat(m.logoUrl && m.logoUrl !== m.coverImageUrl ? [m.logoUrl] : [])
+                .concat(Array.isArray(m.images) ? m.images : [])
+                .filter((u, idx, arr) => u && arr.indexOf(u) === idx && window.SAWYAN?.ImageUpload?.isSafeMediaUrl(u));
+            if (pics.length) {
+                galleryEl.style.display = 'grid';
+                galleryEl.innerHTML = pics.map((u, idx) => window.SAWYAN.ImageUpload.renderThumbHtml(u, `${m.businessName} (${idx + 1})`, { label: `صورة #${idx + 1}` })).join('');
+            } else {
+                galleryEl.style.display = 'none';
+                galleryEl.innerHTML = '';
+            }
+        }
         if (byId('modal-merchant-type-badge')) byId('modal-merchant-type-badge').textContent = typeText;
         if (byId('modal-merchant-name')) byId('modal-merchant-name').textContent = m.businessName;
         if (byId('modal-merchant-code')) byId('modal-merchant-code').textContent = m.code || m.id;
@@ -468,7 +514,10 @@
                         city: m.branch_name || (cfg.cities && cfg.cities.all) || '',
                         district: m.address || '',
                         merchantType: m.merchant_type || 'physical',
-                        image: null,
+                        logoUrl: m.logo_url || null,
+                        coverImageUrl: m.cover_image_url || null,
+                        images: Array.isArray(m.images) ? m.images : [],
+                        image: m.cover_image_url || m.logo_url || null,
                         description: m.address || 'متجر معتمد متصل بقاعدة بيانات SAWYAN الحية'
                     };
                 });

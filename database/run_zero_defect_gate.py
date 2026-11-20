@@ -27,6 +27,7 @@ INTERNAL_ONLY_FUNCTIONS = {
     "verify_admin_session",
     "append_audit_log",
     "filter_academy_url_is_safe",
+    "validate_attachment_data",
 }
 
 MIRROR_DIRS = ["assets", "css", "js", "public", "shared", "member-dashboard", "merchant-dashboard", "admin-dashboard"]

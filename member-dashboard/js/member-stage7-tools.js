@@ -124,13 +124,13 @@
                     const tgtU = Number(r.monthly_target_usd || 24.75);
                     const shU = r.unit_share_usd !== undefined ? Number(r.unit_share_usd) : (Math.floor(Math.round(tgtU * 100) / 11) / 100);
                     return '<tr>' +
-                        '<td><b>' + esc(r.full_name) + '</b> (#' + Number(r.member_code) + ')</td>' +
-                        '<td><b>' + Number(r.spatial_me_label) + 'Me</b></td>' +
-                        '<td>' + esc(r.country_code) + '</td>' +
-                        '<td><div style="font-weight:800;color:#059669;">' + Number(r.progress_pct) + '%</div></td>' +
-                        '<td>$' + Number(r.remaining_to_qualify_usd || 0).toFixed(2) + '</td>' +
-                        '<td><b style="color:#047857;">$' + shU.toFixed(2) + '</b></td>' +
-                        '<td><a href="' + esc(wa) + '" target="_blank" style="background:#16a34a;color:#fff;padding:4px 9px;border-radius:6px;text-decoration:none;font-size:0.76rem;font-weight:800;">💬 واتساب</a></td>' +
+                        '<td data-label="العضو"><b>' + esc(r.full_name) + '</b> (#' + Number(r.member_code) + ')</td>' +
+                        '<td data-label="الجيل المكاني"><b>' + Number(r.spatial_me_label) + 'Me</b></td>' +
+                        '<td data-label="الدولة">' + esc(r.country_code) + '</td>' +
+                        '<td data-label="إنجاز الهدف الشهري"><div style="font-weight:800;color:#059669;">' + Number(r.progress_pct) + '%</div></td>' +
+                        '<td data-label="المتبقي للتأهل">$' + Number(r.remaining_to_qualify_usd || 0).toFixed(2) + '</td>' +
+                        '<td data-label="💎 حصة الفرد (1/11)"><b style="color:#047857;">$' + shU.toFixed(2) + '</b></td>' +
+                        '<td data-label="متابعة سريعة"><a href="' + esc(wa) + '" target="_blank" style="background:#16a34a;color:#fff;padding:4px 9px;border-radius:6px;text-decoration:none;font-size:0.76rem;font-weight:800;">💬 واتساب</a></td>' +
                     '</tr>';
                 }).join('')) +
                 '</tbody></table></div>';
@@ -147,26 +147,41 @@
             '<div style="display:grid;gap:14px;">' +
                 '<div style="background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:12px;padding:14px;">' +
                     '<h4 style="margin:0 0 8px 0;">🪪 ١. رفع توثيق الهوية والإقامة (شرط أول سحب نقدي — D7)</h4>' +
-                    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-bottom:10px;">' +
+                    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:8px;margin-bottom:10px;">' +
                         '<input id="svMemKycName" type="text" value="' + esc(m.full_name || '') + '" placeholder="الاسم القانوني الرباعي المطابق للبنك" class="form-control">' +
                         '<select id="svMemKycType" class="form-control"><option value="national_id">بطاقة رقم قومي / هوية وطنية</option><option value="passport">جواز سفر ساري</option><option value="residency_permit">بطاقة إقامة رسمية</option></select>' +
                         '<input id="svMemKycNum" type="text" placeholder="رقم البطاقة / الجواز" class="form-control">' +
-                        '<input id="svMemKycFile" type="file" accept="image/*" class="form-control">' +
+                        '<div id="svMemKycFileUploader"></div>' +
                     '</div>' +
                     '<button type="button" class="btn btn-primary" onclick="svSubmitMemberKyc(\'kyc_verification\')">📤 إرسال مستند الهوية للمراجعة والتوثيق</button>' +
                 '</div>' +
 
                 '<div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:12px;padding:14px;">' +
                     '<h4 style="margin:0 0 6px 0;color:#92400e;">✈️ ٢. طلب نقل دولة الإقامة (يسري مطلع الشهر المحاسبي الجديد دون تقسيم شهرك الحالي)</h4>' +
-                    '<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;">' +
+                    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:8px;">' +
                         '<select id="svMemMoveCountry" class="form-control">' +
                             countries.map(function (c) { return '<option value="' + esc(c.country_code) + '">' + esc((c.country_name_i18n && c.country_name_i18n.ar) || c.country_code) + '</option>'; }).join('') +
                         '</select>' +
                         '<input id="svMemMoveDocNum" type="text" placeholder="رقم تأشيرة العمل / الإقامة الجديدة" class="form-control">' +
+                        '<div id="svMemMoveFileUploader"></div>' +
                         '<button type="button" class="btn btn-primary" onclick="svSubmitMemberKyc(\'residency_move\')">تقديم طلب النقل</button>' +
                     '</div>' +
                 '</div>' +
             '</div>';
+        if (window.SAWYAN && window.SAWYAN.ImageUpload) {
+            window._svMemKycUploaders = {
+                kyc: window.SAWYAN.ImageUpload.mountUploader(document.getElementById('svMemKycFileUploader'), {
+                    label: '🪪 رفع صورة وثيقة الهوية *',
+                    maxDim: 1200,
+                    maxChars: 340000
+                }),
+                move: window.SAWYAN.ImageUpload.mountUploader(document.getElementById('svMemMoveFileUploader'), {
+                    label: '✈️ رفع صورة مستند الإقامة (اختياري)',
+                    maxDim: 1200,
+                    maxChars: 340000
+                })
+            };
+        }
     }
 
     function readCompressedImage(fileInput) {
@@ -193,7 +208,10 @@
     window.svSubmitMemberKyc = async function (kind) {
         const m = curMember();
         try {
-            const imgData = await readCompressedImage(document.getElementById('svMemKycFile'));
+            const u = window._svMemKycUploaders || {};
+            const imgData = kind === 'residency_move'
+                ? ((u.move && u.move.getValue()) || await readCompressedImage(document.getElementById('svMemMoveFile')) || null)
+                : ((u.kyc && u.kyc.getValue()) || await readCompressedImage(document.getElementById('svMemKycFile')) || null);
             const docNum = kind === 'residency_move'
                 ? document.getElementById('svMemMoveDocNum').value.trim()
                 : document.getElementById('svMemKycNum').value.trim();
@@ -254,7 +272,8 @@
                 subject: document.getElementById('svMemTktSubj').value.trim(),
                 message: document.getElementById('svMemTktBody').value.trim(),
                 contactName: m.full_name,
-                contactPhone: m.phone
+                contactPhone: m.phone,
+                sessionToken: window.SAWYAN.API.getMemberSessionToken ? window.SAWYAN.API.getMemberSessionToken() : null
             });
             alert('✅ تم فتح التذكرة برقم: ' + res.ticket_ref);
             window.openMemberStage7Modal('support');

@@ -1381,9 +1381,9 @@
 
         var activePageEl = document.querySelector('.page.active');
         if (activePageEl) {
-            if (activePageEl.id === 'transactionsPage') renderTxnTable();
-            else if (activePageEl.id === 'commissionsPage') window.loadCommissions();
-            else if (activePageEl.id === 'disputesPage') window.loadDisputes();
+            if (activePageEl.id === 'transactionsPage' && typeof window.loadTransactions === 'function') window.loadTransactions();
+            else if (activePageEl.id === 'commissionsPage' && typeof window.loadCommissions === 'function') window.loadCommissions();
+            else if (activePageEl.id === 'disputesPage' && typeof window.loadDisputes === 'function') window.loadDisputes();
             else if (activePageEl.id === 'reportsPage') window.generateReport();
             else if (activePageEl.id === 'governanceOpsPage') renderGovernanceOps();
         }

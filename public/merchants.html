@@ -17,10 +17,11 @@
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../shared/css/image-upload.css">
     <link rel="stylesheet" href="../css/preview.css">
     <link rel="stylesheet" href="merchants.css">
-    <link rel="stylesheet" href="../shared/css/logo.css">
+    <link rel="stylesheet" href="../shared/css/logo.css?v=20261119_logo_all">
 </head>
 <body>
 
@@ -160,6 +161,7 @@
                 </div>
                 <div class="merchant-modal-category" id="modal-merchant-meta" style="margin-top:6px;">الفئة • 📍 الموقع</div>
                 <p class="merchant-modal-desc" id="modal-merchant-desc">الوصف</p>
+                <div id="modal-merchant-gallery" class="sw-media-gallery-grid" style="margin:12px 0;display:none;"></div>
 
                 <div class="merchant-modal-stats">
                     <div class="modal-stat">
@@ -226,7 +228,9 @@
             <div class="footer-content">
                 <div>
                     <div id="footerBrandLogo" style="margin-bottom:8px;">
-                        <strong style="font-size:1.3rem; color:#10b981;">SAWYAN</strong>
+                        <a href="../index.html" class="logo-link sawyan-home-logo" aria-label="SAWYAN — الصفحة الرئيسية" title="العودة للصفحة الرئيسية">
+                            <strong style="font-size:1.3rem; color:#10b981;">SAWYAN</strong>
+                        </a>
                     </div>
                     <p style="color:#94a3b8; font-size:0.88rem;">بوابة التجار المعتمدين — الاستهلاك الاستثماري (Buy and Make Money).</p>
                 </div>
@@ -245,10 +249,11 @@
         </div>
     </footer>
 
+    <script src="../shared/components/logo.js?v=20261119_logo_all"></script>
+    <script src="../shared/components/image-upload.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../shared/config/supabase.js"></script>
     <script src="../shared/api/sawyan-api.js"></script>
-    <script src="../shared/components/logo.js"></script>
     <script src="../js/demo-data.js"></script>
     <script src="merchants.js"></script>
 </body>

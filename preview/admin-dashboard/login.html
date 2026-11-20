@@ -9,7 +9,7 @@
         href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800;900&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="../shared/css/variables.css">
-    <link rel="stylesheet" href="../shared/css/logo.css">
+    <link rel="stylesheet" href="../shared/css/logo.css?v=20261119_logo_all">
     <link rel="stylesheet" href="../member-dashboard/css/auth.css">
     <style>
         .loading-overlay {
@@ -93,9 +93,18 @@
         <div class="loading-spinner"></div>
     </div>
 
+    <header class="auth-top-nav" role="banner">
+        <div class="auth-top-nav-inner">
+            <a href="../index.html" class="nav-logo sawyan-home-logo" data-sawyan-logo="default" aria-label="SAWYAN — العودة للصفحة الرئيسية" title="العودة للصفحة الرئيسية">
+                <strong style="font-family:'Poppins',sans-serif;font-weight:800;color:#0f2744;font-size:1.25rem;">SAWYAN</strong>
+            </a>
+            <a href="../index.html" class="auth-home-pill">🏠 الرئيسية</a>
+        </div>
+    </header>
+
     <div class="auth-container">
         <div class="auth-card">
-            <div id="logoContainer" class="logo-section"></div>
+            <div id="logoContainer" class="logo-section" data-sawyan-logo="default"></div>
 
             <h1>بوابة الحوكمة والإدارة السيادية</h1>
             <p class="subtitle">نظام الصلاحيات السبعة (RBAC) والاعتماد المزدوج الإجباري (Maker–Checker)</p>
@@ -145,10 +154,10 @@
         </div>
     </div>
 
+    <script src="../shared/components/logo.js?v=20261119_logo_all"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../shared/config/supabase.js"></script>
     <script src="../shared/api/sawyan-api.js?v=20261119_auth_audit"></script>
-    <script src="../shared/components/logo.js"></script>
     <script>
         function showLoginError(raw) {
             const box = document.getElementById('loginAlert');

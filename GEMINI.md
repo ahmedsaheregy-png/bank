@@ -2,7 +2,7 @@
 
 > Canonical constitutional reference: `docs/الملف_التقني_للمطورين.md` (Decisions `D0–D30`, Strategic Pillars `S01–S10`, 22 Mandatory Test Types, Golden Vectors `V1–V10` & `GV01–GV10`).
 
-## 1. Mandatory 7-Stage Execution Pipeline (Section 1.6)
+## 1. Mandatory 8-Stage Execution Pipeline (Section 1.6 + Verified Auto-Publish)
 1. **State-Lock & Spec Hydration:** Always read `specs/SAWYAN_STATE_LOCK.json` and `specs/ui_dom_rpc_manifest.json` before modifying code. Never rely on chat memory or compaction summaries.
 2. **Contract-First Delta Lock:** Verify `data-spec-id` UI contracts, DB columns, and `Frozen Review Register` (`بنود_غير_متأكد_للمراجعة.md` — TOTP 60s Offline Member QR remains **FROZEN / FORBIDDEN**).
 3. **DB & Authoritative Read-Model First (`D21`):** All calculations, placements, rollups, compensatory math, and pre-aggregated display fields must originate in `PostgreSQL` (`sawyan.*`), never in browser JavaScript.
@@ -12,7 +12,8 @@
    - Production (`/`) naturally renders zero-state directly from empty `sawyan.*` tables.
 5. **Dual-Schema Atomic Sync (`D10`):** Identical codebase serves `/` (`sawyan`) and `/preview/` (`sawyan_demo`). Always run `database/sync_dual_site_mirror.py` after every frontend edit in `preview/`.
 6. **Full-Stack & Visual Hard Gate (`D30`):** Deliver only after passing `database/verify_doc_sync.py`, `verify_all_golden_vectors.py`, `verify_stage8_academy_lms.py`, `verify_ui_and_visual_gates.py` (4 viewports: `1440×900`, `780×900`, `680×900`, `375×812` with `0px²` sidebar-content overlap and bi-directional `data-spec-id` parity), and `run_zero_defect_gate.py`.
-7. **State-Lock & Living Docs Seal:** Update verified hashes/status in `specs/SAWYAN_STATE_LOCK.json`, preserve `visual_audit/` screenshots, and document every new feature, screen, or RPC in `docs/الملف_التقني_للمطورين.md` and `docs/وصف_الموقع_البناء_2.md`, then regenerate HTML docs via `database/sync_docs_html.py` and verify via `database/verify_doc_sync.py`.
+7. **State-Lock & Living Docs Seal:** Update verified hashes/status in `specs/SAWYAN_STATE_LOCK.json`, preserve `visual_audit/` screenshots, and document every new feature, screen, or RPC in `docs/الملف_التقني_للمطورين.md` and `docs/وصف_الموقع_البناء_2.md`, then regenerate HTML docs via `database/sync_docs_html.py` (which automatically commits & pushes `docs/` to its separate private Git repo `docs/.git`, keeping `docs/` excluded from the public `bank` repo; you may also run `database/sync_private_docs_backup.py` directly after any `docs/` edit) and verify via `database/verify_doc_sync.py`.
+8. **Mandatory Verified Auto-Publish to GitHub (`origin/main`):** The user has granted standing authorization to automatically commit and push verified work at the end of every completed implementation or fix task. Before closing a task, run `D:\Python314\python.exe database/publish_verified_release.py -m "<conventional commit message>"` so both the public `bank` repository (`origin/main`) and private `docs/.git` stay pushed and isolated (never staging `docs/`, `.env*`, `visual_audit/`, or `database/backups/` in the public repo). `database/stop_hook_gate.py` enforces this gate automatically at turn end; include the pushed commit short SHA in the final response.
 
 ## 2. Database Deployment & Security Invariants (CRITICAL)
 - **NEVER run `database/deploy_v3_dual_schema.py` directly** — it executes `DROP SCHEMA IF EXISTS sawyan CASCADE; DROP SCHEMA IF EXISTS sawyan_demo CASCADE;`.

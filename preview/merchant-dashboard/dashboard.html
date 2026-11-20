@@ -9,11 +9,11 @@
         href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="../shared/css/variables.css">
-    <link rel="stylesheet" href="../shared/css/logo.css">
+    <link rel="stylesheet" href="../shared/css/logo.css?v=20261119_logo_all">
     <link rel="stylesheet" href="../shared/css/notifications.css">
     <link rel="stylesheet" href="../shared/css/image-upload.css">
     <link rel="stylesheet" href="../member-dashboard/css/dashboard.css">
-    <link rel="stylesheet" href="../shared/css/app-shell.css?v=20261119_v3shell">
+    <link rel="stylesheet" href="../shared/css/app-shell.css?v=20261119_logo_all">
     <!-- Leaflet for Merchant Radar Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -187,7 +187,37 @@
                     <form id="transactionForm" class="transaction-form" style="display: none;">
                         <div class="form-group">
                             <label>المبلغ الإجمالي *</label>
-                            <input type="number" id="amount" required class="form-control" step="0.01" min="0">
+                            <input type="number" id="amount" required class="form-control" step="0.01" min="1">
+                        </div>
+
+                        <div class="form-group">
+                            <label>وسيلة الدفع *</label>
+                            <select id="scanPaymentType" class="form-control" onchange="if(typeof toggleScanPaymentRef==='function')toggleScanPaymentRef()">
+                                <option value="cash">💵 نقدي في المحل (Cash)</option>
+                                <option value="pos_card">💳 بطاقة بنكية POS (Visa / Mastercard / مدى)</option>
+                                <option value="instant_transfer">⚡ تحويل فوري (InstaPay / STC Pay)</option>
+                                <option value="iban_swift_sepa">🏦 تحويل بنكي IBAN / SWIFT / SEPA</option>
+                                <option value="digital_wallet">📱 محفظة إلكترونية (Vodafone Cash / ...)</option>
+                                <option value="payment_gateway">🌐 بوابة دفع إلكتروني</option>
+                                <option value="bnpl">🗓️ تقسيط (Tabby / Tamara / ValU)</option>
+                                <option value="cheque">🧾 شيك بنكي (مؤجل التحصيل)</option>
+                                <option value="cod">🚚 دفع عند الاستلام / دليفري (COD)</option>
+                                <option value="marketplace_escrow">🛡️ ضامن سوق إلكتروني (Escrow)</option>
+                            </select>
+                            <div id="scanDeferredNotice" style="display:none;margin-top:6px;padding:8px 10px;border-radius:8px;background:#fffbeb;border:1px solid #fcd34d;color:#92400e;font-size:0.78rem;font-weight:700;">
+                                ⏳ تنبيه: الدفع عند الاستلام (COD) أو الشيك يُسجّل بحالة «معلق» وتُحتسب عمولته في الـ 11/الشهر بعد تأكيد التحصيل من قائمة المعلقات.
+                            </div>
+                        </div>
+
+                        <div class="form-group" id="scanUniqueRefGroup" style="display:none;">
+                            <label>رقم مرجع الدفع / RRN / رقم الشيك / البوليصة</label>
+                            <input type="text" id="scanUniquePaymentRef" class="form-control" placeholder="أدخل الرقم المرجعي الفريد لمنع التكرار">
+                        </div>
+
+                        <div class="form-group">
+                            <label>صورة الفاتورة أو إيصال الدفع (اختياري)</label>
+                            <div id="scanReceiptUploader"></div>
+                            <input type="hidden" id="scanReceiptUrl">
                         </div>
 
                         <!-- نوع العملية -->
@@ -263,11 +293,11 @@
         </div>
     </div>
 
+    <script src="../shared/components/logo.js?v=20261119_logo_all"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     <script src="../shared/config/supabase.js"></script>
-    <script src="../shared/api/sawyan-api.js?v=20261119_home_pro"></script>
-    <script src="../shared/components/logo.js"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261119_logo_all"></script>
     <script src="../shared/components/notifications.js"></script>
     <script src="../shared/components/image-upload.js"></script>
     <script src="../shared/payments/payment-provider.js"></script>
@@ -588,7 +618,7 @@ async function submitPromoRequestForReview() {
 }
 </script>
 <script src="js/merchant-stage7-tools.js?v=20261118_stage7"></script>
-<script src="../shared/js/app-shell.js?v=20261119_v3shell"></script>
+<script src="../shared/js/app-shell.js?v=20261119_logo_all"></script>
 
 </body>
 

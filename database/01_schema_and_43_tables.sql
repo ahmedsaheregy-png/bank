@@ -145,6 +145,8 @@ CREATE TABLE sawyan.merchants (
     webhook_url                     TEXT,
     webhook_secret_enc              BYTEA,
     is_active                       BOOLEAN NOT NULL DEFAULT false,
+    password_hash                   TEXT,
+    metadata                        JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at                      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

@@ -358,6 +358,8 @@ DECLARE
     v_tok_item       JSONB;
     v_tok_matched    BOOLEAN := false;
     v_seed_root_ok   BOOLEAN := false;
+    v_safe_meta      JSONB := '{}'::jsonb;
+    v_avatar         TEXT;
 BEGIN
     v_clean_name  := trim(COALESCE(p_full_name, ''));
     v_clean_phone := regexp_replace(trim(COALESCE(p_phone, '')), '\s+', '', 'g');
@@ -456,6 +458,31 @@ BEGIN
     v_pwd_hash := extensions.crypt(p_password, extensions.gen_salt('bf', 10));
     v_session_token := encode(extensions.gen_random_bytes(24), 'hex');
 
+    IF p_metadata IS NOT NULL AND jsonb_typeof(p_metadata) = 'object' THEN
+        IF p_metadata ? 'gender' AND NULLIF(trim(COALESCE(p_metadata->>'gender', '')), '') IS NOT NULL THEN
+            v_safe_meta := v_safe_meta || jsonb_build_object('gender', left(trim(p_metadata->>'gender'), 20));
+        END IF;
+        IF p_metadata ? 'national_id_masked' AND NULLIF(trim(COALESCE(p_metadata->>'national_id_masked', '')), '') IS NOT NULL THEN
+            v_safe_meta := v_safe_meta || jsonb_build_object('national_id_masked', left(trim(p_metadata->>'national_id_masked'), 16));
+        END IF;
+        IF p_metadata ? 'preferred_lang' AND NULLIF(trim(COALESCE(p_metadata->>'preferred_lang', '')), '') IS NOT NULL THEN
+            v_safe_meta := v_safe_meta || jsonb_build_object('preferred_lang', left(trim(p_metadata->>'preferred_lang'), 10));
+        END IF;
+        IF p_metadata ? 'device_platform' AND NULLIF(trim(COALESCE(p_metadata->>'device_platform', '')), '') IS NOT NULL THEN
+            v_safe_meta := v_safe_meta || jsonb_build_object('device_platform', left(trim(p_metadata->>'device_platform'), 32));
+        END IF;
+        IF p_metadata ? 'referral_channel' AND NULLIF(trim(COALESCE(p_metadata->>'referral_channel', '')), '') IS NOT NULL THEN
+            v_safe_meta := v_safe_meta || jsonb_build_object('referral_channel', left(trim(p_metadata->>'referral_channel'), 40));
+        END IF;
+        IF p_metadata ? 'marketing_opt_in' THEN
+            v_safe_meta := v_safe_meta || jsonb_build_object('marketing_opt_in', COALESCE((p_metadata->>'marketing_opt_in')::boolean, false));
+        END IF;
+        v_avatar := sawyan.validate_attachment_data(p_metadata->>'avatar_url', 200000, true);
+        IF v_avatar IS NOT NULL THEN
+            v_safe_meta := v_safe_meta || jsonb_build_object('avatar_url', v_avatar);
+        END IF;
+    END IF;
+
     INSERT INTO sawyan.members (
         member_code, full_name, email, phone,
         nationality_country_id, residency_country_id, city_geoname_id, manual_district_fallback,
@@ -468,7 +495,7 @@ BEGIN
         CASE WHEN v_seed_root_ok THEN 'root_direct' ELSE 'left' END,
         1,
         true, 'unverified', 'active',
-        (COALESCE(p_metadata, '{}'::jsonb) - 'root_invite_token') || jsonb_build_object(
+        v_safe_meta || jsonb_build_object(
             'pwd_bcrypt', v_pwd_hash,
             'active_session_token', v_session_token,
             'seed_root_approved', v_seed_root_ok
@@ -769,6 +796,7 @@ $$;
 -- ============================================================================
 -- 4. الفجوة (5): التذاكر الحية باتجاهين + استعادة كلمة المرور بقفل 72 ساعة + التغيير الذاتي
 -- ============================================================================
+DROP FUNCTION IF EXISTS sawyan.submit_support_or_recovery_ticket(VARCHAR, VARCHAR, TEXT, TEXT, VARCHAR, VARCHAR, VARCHAR, UUID);
 CREATE OR REPLACE FUNCTION sawyan.submit_support_or_recovery_ticket(
     p_requester_type VARCHAR, -- 'public' | 'member' | 'merchant'
     p_category       VARCHAR, -- 'password_recovery' | 'general' | 'kyc' | 'withdrawal' | 'merchant' | 'complaint'
@@ -777,7 +805,8 @@ CREATE OR REPLACE FUNCTION sawyan.submit_support_or_recovery_ticket(
     p_contact_name   VARCHAR DEFAULT NULL,
     p_contact_phone  VARCHAR DEFAULT NULL,
     p_contact_email  VARCHAR DEFAULT NULL,
-    p_requester_id   UUID    DEFAULT NULL
+    p_requester_id   UUID    DEFAULT NULL,
+    p_session_token  TEXT    DEFAULT NULL
 ) RETURNS JSONB
 LANGUAGE plpgsql
 VOLATILE
@@ -785,10 +814,13 @@ SECURITY DEFINER
 SET search_path = pg_catalog, pg_temp
 AS $$
 DECLARE
-    v_tid      UUID;
-    v_ref_code TEXT;
-    v_req_uuid UUID;
-    v_rtype    VARCHAR(20);
+    v_tid        UUID;
+    v_ref_code   TEXT;
+    v_req_uuid   UUID;
+    v_rtype      VARCHAR(20);
+    v_cat        VARCHAR(40);
+    v_verified   BOOLEAN := false;
+    v_jwt_role   TEXT;
 BEGIN
     IF length(trim(COALESCE(p_message, ''))) < 4 THEN
         RAISE EXCEPTION 'TICKET_MESSAGE_TOO_SHORT';
@@ -798,8 +830,45 @@ BEGIN
     IF v_rtype NOT IN ('public', 'member', 'merchant') THEN
         v_rtype := 'public';
     END IF;
+    v_cat := COALESCE(NULLIF(lower(trim(p_category)), ''), 'general');
+    v_jwt_role := NULLIF(current_setting('request.jwt.claim.role', true), '');
 
-    v_req_uuid := COALESCE(p_requester_id, gen_random_uuid());
+    IF v_rtype = 'member' THEN
+        IF NULLIF(trim(COALESCE(p_session_token, '')), '') IS NOT NULL AND p_requester_id IS NOT NULL THEN
+            PERFORM sawyan.verify_member_session(p_requester_id, p_session_token);
+            v_req_uuid := p_requester_id;
+            v_verified := true;
+        ELSIF v_jwt_role = 'service_role' AND p_requester_id IS NOT NULL THEN
+            v_req_uuid := p_requester_id;
+            v_verified := true;
+        ELSIF v_cat = 'password_recovery' AND p_requester_id IS NOT NULL AND EXISTS (SELECT 1 FROM sawyan.members WHERE id = p_requester_id) THEN
+            v_req_uuid := p_requester_id;
+            v_verified := false;
+        ELSE
+            v_rtype := 'public';
+            v_req_uuid := gen_random_uuid();
+            v_verified := false;
+        END IF;
+    ELSIF v_rtype = 'merchant' THEN
+        IF NULLIF(trim(COALESCE(p_session_token, '')), '') IS NOT NULL AND p_requester_id IS NOT NULL THEN
+            PERFORM sawyan.verify_merchant_session(p_requester_id, p_session_token);
+            v_req_uuid := p_requester_id;
+            v_verified := true;
+        ELSIF v_jwt_role = 'service_role' AND p_requester_id IS NOT NULL THEN
+            v_req_uuid := p_requester_id;
+            v_verified := true;
+        ELSIF v_cat = 'password_recovery' AND p_requester_id IS NOT NULL AND EXISTS (SELECT 1 FROM sawyan.merchants WHERE id = p_requester_id) THEN
+            v_req_uuid := p_requester_id;
+            v_verified := false;
+        ELSE
+            v_rtype := 'public';
+            v_req_uuid := gen_random_uuid();
+            v_verified := false;
+        END IF;
+    ELSE
+        v_req_uuid := gen_random_uuid();
+    END IF;
+
     v_ref_code := 'TKT-' || upper(substr(md5(random()::text || clock_timestamp()::text), 1, 6));
 
     INSERT INTO sawyan.support_tickets (
@@ -808,8 +877,8 @@ BEGIN
     ) VALUES (
         v_rtype,
         v_req_uuid,
-        COALESCE(NULLIF(trim(p_category), ''), 'general'),
-        CASE WHEN p_category = 'password_recovery' THEN 'high' ELSE 'normal' END,
+        v_cat,
+        CASE WHEN v_cat = 'password_recovery' THEN 'high' ELSE 'normal' END,
         'open',
         now() + interval '24 hours',
         COALESCE(NULLIF(trim(p_subject), ''), 'طلب دعم فني'),
@@ -818,13 +887,16 @@ BEGIN
             'ticket_ref', v_ref_code,
             'contact_name', COALESCE(trim(p_contact_name), ''),
             'contact_phone', COALESCE(trim(p_contact_phone), ''),
-            'contact_email', COALESCE(trim(p_contact_email), '')
+            'contact_email', COALESCE(trim(p_contact_email), ''),
+            'requester_verified', v_verified
         )
     ) RETURNING id INTO v_tid;
 
     RETURN jsonb_build_object(
         'ticket_id', v_tid,
         'ticket_ref', v_ref_code,
+        'requester_type', v_rtype,
+        'requester_verified', v_verified,
         'status', 'open',
         'sla_hours', 24
     );
@@ -1145,12 +1217,14 @@ SECURITY DEFINER
 SET search_path = pg_catalog, pg_temp
 AS $$
 DECLARE
-    v_mem     sawyan.members%ROWTYPE;
-    v_kind    VARCHAR(30);
-    v_tgt_cc  CHAR(2);
+    v_mem       sawyan.members%ROWTYPE;
+    v_kind      VARCHAR(30);
+    v_tgt_cc    CHAR(2);
+    v_clean_doc TEXT;
 BEGIN
     v_mem  := sawyan.verify_member_session(p_member_id, p_session_token);
     v_kind := lower(trim(COALESCE(p_request_kind, 'kyc_verification')));
+    v_clean_doc := COALESCE(sawyan.validate_attachment_data(p_document_image_data, 480000, true), '');
 
     IF length(trim(COALESCE(p_legal_full_name, ''))) < 5 OR length(trim(COALESCE(p_document_number, ''))) < 4 THEN
         RAISE EXCEPTION 'KYC_FULL_NAME_AND_DOC_NUMBER_REQUIRED';
@@ -1172,7 +1246,7 @@ BEGIN
                    'legal_full_name', trim(p_legal_full_name),
                    'document_type', COALESCE(p_document_type, 'residency_permit'),
                    'document_number', trim(p_document_number),
-                   'document_preview', COALESCE(p_document_image_data, ''),
+                   'document_preview', v_clean_doc,
                    'submitted_at', now(),
                    'effective_from', date_trunc('month', now() + interval '1 month'),
                    'status', 'pending_review'
@@ -1191,7 +1265,7 @@ BEGIN
                        'legal_full_name', trim(p_legal_full_name),
                        'document_type', COALESCE(p_document_type, 'national_id'),
                        'document_number', trim(p_document_number),
-                       'document_preview', COALESCE(p_document_image_data, ''),
+                       'document_preview', v_clean_doc,
                        'submitted_at', now(),
                        'rejection_note', NULL
                    )
@@ -1306,11 +1380,15 @@ DECLARE
     v_tx       sawyan.transactions%ROWTYPE;
     v_claw     JSONB;
     v_notif_id UUID;
+    v_rec_img  TEXT;
 BEGIN
     SELECT * INTO v_mer FROM sawyan.merchants WHERE id = p_merchant_id;
     IF NOT FOUND THEN RAISE EXCEPTION 'MERCHANT_NOT_FOUND'; END IF;
-    -- السماح للتاجر قيد التفعيل بقراءة فروعه أو رفع إيصال الشحن الأولي مع التحقق من التوكين
-    IF COALESCE(v_mer.metadata->>'active_session_token', '') <> trim(COALESCE(p_session_token, '')) THEN
+    -- السماح للتاجر قيد التفعيل بقراءة فروعه أو رفع إيصال الشحن الأولي مع التحقق الصارم من التوكين (منع التوكين الفارغ)
+    IF NULLIF(trim(COALESCE(p_session_token, '')), '') IS NULL
+       OR NULLIF(trim(COALESCE(v_mer.metadata->>'active_session_token', '')), '') IS NULL
+       OR (v_mer.metadata->>'active_session_token') <> trim(p_session_token)
+    THEN
         RAISE EXCEPTION 'MERCHANT_SESSION_INVALID';
     END IF;
 
@@ -1349,6 +1427,7 @@ BEGIN
         IF COALESCE((p_payload->>'amount_local')::numeric, 0) <= 0 OR length(trim(COALESCE(p_payload->>'bank_ref', ''))) < 3 THEN
             RAISE EXCEPTION 'TOPUP_AMOUNT_AND_BANK_REF_REQUIRED';
         END IF;
+        v_rec_img := sawyan.validate_attachment_data(p_payload->>'receipt_image_data', 480000, true);
         INSERT INTO sawyan.notifications (recipient_type, recipient_id, event_name, channel, payload)
         VALUES (
             'admin', v_mer.id, 'MerchantBankTopupProofPending', 'in_app',
@@ -1359,6 +1438,7 @@ BEGIN
                 'amount_local', (p_payload->>'amount_local')::numeric,
                 'bank_ref', trim(p_payload->>'bank_ref'),
                 'receipt_note', COALESCE(p_payload->>'receipt_note', ''),
+                'receipt_image_data', v_rec_img,
                 'submitted_at', now()
             )
         ) RETURNING id INTO v_notif_id;
@@ -1636,14 +1716,17 @@ SECURITY DEFINER
 SET search_path = pg_catalog, pg_temp
 AS $$
 DECLARE
-    v_adm     JSONB;
-    v_scope   VARCHAR(10);
-    v_q       TEXT;
-    v_results JSONB := '[]'::jsonb;
+    v_adm          JSONB;
+    v_scope        VARCHAR(10);
+    v_q            TEXT;
+    v_results      JSONB := '[]'::jsonb;
+    v_can_view_kyc BOOLEAN := false;
+    v_viewed_cnt   INT := 0;
 BEGIN
     v_adm := sawyan.verify_admin_session(p_admin_id, p_session_token, NULL, (lower(trim(p_action)) <> 'search'));
     SELECT COALESCE(metadata->>'country_scope', 'GLOBAL') INTO v_scope FROM sawyan.admins WHERE id = p_admin_id;
     v_q := lower(trim(COALESCE(p_query, '')));
+    v_can_view_kyc := COALESCE(v_adm->>'role', '') IN ('kyc_officer', 'approver', 'reviewer', 'auditor');
 
     IF lower(trim(p_action)) = 'reply_support_ticket' THEN
         PERFORM sawyan.verify_admin_session(p_admin_id, p_session_token, ARRAY['support', 'approver', 'reviewer'], true);
@@ -1658,7 +1741,9 @@ BEGIN
     END IF;
 
     IF lower(trim(p_entity)) = 'members' THEN
-        SELECT COALESCE(jsonb_agg(row_to_json(t)::jsonb), '[]'::jsonb) INTO v_results
+        SELECT COALESCE(jsonb_agg(row_to_json(t)::jsonb), '[]'::jsonb),
+               COUNT(*) FILTER (WHERE NULLIF(t.kyc_doc_len, 0) > 0 OR NULLIF(t.res_doc_len, 0) > 0)
+          INTO v_results, v_viewed_cnt
           FROM (
               SELECT m.id, m.member_code, m.full_name, m.email, m.phone,
                      c.country_code, m.kyc_status, m.kyc_docs_enc_ref,
@@ -1667,8 +1752,22 @@ BEGIN
                      COALESCE(w.balance_usd, 0.00) AS wallet_balance_usd,
                      COALESCE(w.total_earned_usd, 0.00) AS total_earned_usd,
                      COALESCE(w.s03_suspense_balance_usd, 0.00) AS s03_suspense_usd,
-                     m.metadata->'kyc_submission' AS kyc_submission,
-                     m.metadata->'pending_residency_move' AS pending_residency_move,
+                     CASE
+                         WHEN m.metadata ? 'kyc_submission' THEN
+                             CASE WHEN v_can_view_kyc THEN m.metadata->'kyc_submission'
+                                  ELSE (m.metadata->'kyc_submission') || '{"document_preview": null, "document_redacted": true}'::jsonb
+                             END
+                         ELSE NULL
+                     END AS kyc_submission,
+                     CASE
+                         WHEN m.metadata ? 'pending_residency_move' THEN
+                             CASE WHEN v_can_view_kyc THEN m.metadata->'pending_residency_move'
+                                  ELSE (m.metadata->'pending_residency_move') || '{"document_preview": null, "document_redacted": true}'::jsonb
+                             END
+                         ELSE NULL
+                     END AS pending_residency_move,
+                     COALESCE(length(m.metadata #>> '{kyc_submission,document_preview}'), 0) AS kyc_doc_len,
+                     COALESCE(length(m.metadata #>> '{pending_residency_move,document_preview}'), 0) AS res_doc_len,
                      m.created_at
                 FROM sawyan.members m
                 JOIN sawyan.countries c ON c.id = m.residency_country_id
@@ -1681,13 +1780,21 @@ BEGIN
                LIMIT 100
           ) t;
 
+        IF v_can_view_kyc AND v_viewed_cnt > 0 THEN
+            PERFORM sawyan.append_audit_log('admin', p_admin_id, 'kyc_document_viewed', 'members', 'kyc_view:' || v_scope || ':' || COALESCE(NULLIF(v_q, ''), 'all'), NULL, jsonb_build_object('role', v_adm->>'role', 'viewed_count', v_viewed_cnt, 'query', v_q));
+        END IF;
+
     ELSIF lower(trim(p_entity)) = 'merchants' THEN
         SELECT COALESCE(jsonb_agg(row_to_json(t)::jsonb), '[]'::jsonb) INTO v_results
           FROM (
               SELECT m.id, m.merchant_code, m.business_name, m.owner_name, m.email, m.phone,
                      c.country_code, c.currency_code, m.category, m.merchant_type,
-                     m.deduction_percent, m.actual_cash_balance, m.soft_hold_balance,
-                     m.credit_limit, m.is_active, m.is_isolated, m.created_at,
+                     m.deduction_percent, m.package_base_amount, m.actual_cash_balance, m.soft_hold_balance,
+                     m.credit_limit, m.tax_registration_no, m.is_active, m.is_isolated, m.created_at,
+                     NULLIF(m.metadata->>'logo_url', '') AS logo_url,
+                     NULLIF(m.metadata->>'cover_image_url', '') AS cover_image_url,
+                     CASE WHEN jsonb_typeof(m.metadata->'images') = 'array' THEN m.metadata->'images' ELSE '[]'::jsonb END AS images,
+                     COALESCE(m.metadata->'kyc_docs', '{}'::jsonb) AS kyc_docs,
                      (SELECT COUNT(*) FROM sawyan.transactions tx WHERE tx.merchant_id = m.id AND tx.status = 'completed') AS ops_count,
                      (SELECT COALESCE(SUM(tx.total_amount), 0.00) FROM sawyan.transactions tx WHERE tx.merchant_id = m.id AND tx.status = 'completed') AS gmv_local
                 FROM sawyan.merchants m
@@ -1698,6 +1805,66 @@ BEGIN
                LIMIT 100
           ) t;
 
+    ELSIF lower(trim(p_entity)) = 'transactions' THEN
+        SELECT COALESCE(jsonb_agg(row_to_json(t)::jsonb), '[]'::jsonb) INTO v_results
+          FROM (
+              SELECT tx.id, tx.sw_short_code, tx.unique_payment_ref, tx.amount, tx.total_amount,
+                     tx.commission_amount, tx.company_share, tx.income_plan_share_local,
+                     tx.income_plan_share_usd, tx.vat_amount, tx.currency_code, tx.fx_rate_used,
+                     c.country_code, tx.payment_type, tx.status, tx.receipt_media_url, tx.fifo_seq,
+                     tx.completed_at, tx.reversed_at, tx.created_at,
+                     (tx.cashier_employee_id IS NOT NULL) AS is_instant_pin,
+                     mem.member_code, mem.full_name AS member_name,
+                     mer.merchant_code, mer.business_name AS merchant_name,
+                     mb.branch_name,
+                     bti.invoice_number AS b2b_invoice_number
+                FROM sawyan.transactions tx
+                JOIN sawyan.countries c ON c.id = tx.country_id
+                JOIN sawyan.members mem ON mem.id = tx.member_id
+                JOIN sawyan.merchants mer ON mer.id = tx.merchant_id
+                LEFT JOIN sawyan.merchant_branches mb ON mb.id = tx.branch_id
+                LEFT JOIN sawyan.b2b_tax_invoices bti ON bti.transaction_id = tx.id AND bti.document_type = 'tax_invoice'
+               WHERE (v_scope = 'GLOBAL' OR c.country_code = v_scope)
+                 AND (
+                     v_q = ''
+                     OR lower(tx.sw_short_code) LIKE '%' || v_q || '%'
+                     OR lower(tx.unique_payment_ref) LIKE '%' || v_q || '%'
+                     OR lower(mer.business_name) LIKE '%' || v_q || '%'
+                     OR lower(mer.merchant_code) LIKE '%' || v_q || '%'
+                     OR mem.member_code::text = regexp_replace(v_q, '^#', '')
+                     OR lower(tx.status) = v_q
+                     OR lower(tx.payment_type) = v_q
+                 )
+               ORDER BY tx.created_at DESC
+               LIMIT 100
+          ) t;
+
+    ELSIF lower(trim(p_entity)) = 'disputes' THEN
+        SELECT COALESCE(jsonb_agg(row_to_json(t)::jsonb), '[]'::jsonb) INTO v_results
+          FROM (
+              SELECT d.*, tx.sw_short_code, tx.total_amount, tx.currency_code, tx.status AS tx_status,
+                     c.country_code AS tx_country_code,
+                     ROUND(tx.income_plan_share_usd::numeric, 2) AS income_plan_share_usd,
+                     mem.member_code, mem.full_name AS member_name,
+                     mer.merchant_code, mer.business_name AS merchant_name
+                FROM sawyan.dispute_tickets d
+                JOIN sawyan.transactions tx ON tx.id = d.transaction_id
+                JOIN sawyan.countries c ON c.id = tx.country_id
+                JOIN sawyan.members mem ON mem.id = d.member_id
+                JOIN sawyan.merchants mer ON mer.id = d.merchant_id
+               WHERE (v_scope = 'GLOBAL' OR c.country_code = v_scope)
+                 AND (
+                     v_q = ''
+                     OR lower(tx.sw_short_code) LIKE '%' || v_q || '%'
+                     OR lower(d.status) = v_q
+                     OR lower(COALESCE(d.dispute_category, '')) = v_q
+                     OR lower(mer.business_name) LIKE '%' || v_q || '%'
+                     OR mem.member_code::text = regexp_replace(v_q, '^#', '')
+                 )
+               ORDER BY d.created_at DESC
+               LIMIT 100
+          ) t;
+
     ELSIF lower(trim(p_entity)) = 'support_tickets' THEN
         SELECT COALESCE(jsonb_agg(row_to_json(t)::jsonb), '[]'::jsonb) INTO v_results
           FROM (
@@ -1705,6 +1872,7 @@ BEGIN
                      COALESCE(st.metadata->>'ticket_ref', substr(st.id::text, 1, 8)) AS ticket_ref,
                      st.requester_type, st.requester_id, st.category, st.priority, st.status,
                      st.subject, st.message_body, st.admin_reply,
+                     COALESCE((st.metadata->>'requester_verified')::boolean, false) AS requester_verified,
                      st.metadata->>'contact_name' AS contact_name,
                      st.metadata->>'contact_phone' AS contact_phone,
                      st.metadata->>'contact_email' AS contact_email,
@@ -1739,7 +1907,7 @@ REVOKE ALL ON FUNCTION sawyan.verify_root_invite_token(TEXT) FROM PUBLIC, anon, 
 REVOKE ALL ON FUNCTION sawyan.register_new_member(VARCHAR, VARCHAR, BIGINT, TEXT, CHAR, CHAR, BIGINT, VARCHAR, VARCHAR, JSONB) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION sawyan.admin_manage_root_leaders(UUID, TEXT, VARCHAR, VARCHAR, VARCHAR, CHAR, TEXT, VARCHAR, TEXT) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION sawyan.admin_manage_staff_accounts(UUID, TEXT, VARCHAR, UUID, VARCHAR, VARCHAR, VARCHAR, TEXT, VARCHAR) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION sawyan.submit_support_or_recovery_ticket(VARCHAR, VARCHAR, TEXT, TEXT, VARCHAR, VARCHAR, VARCHAR, UUID) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION sawyan.submit_support_or_recovery_ticket(VARCHAR, VARCHAR, TEXT, TEXT, VARCHAR, VARCHAR, VARCHAR, UUID, TEXT) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION sawyan.get_my_support_tickets(VARCHAR, UUID, TEXT) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION sawyan.admin_reset_user_password(UUID, TEXT, VARCHAR, TEXT, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION sawyan.change_own_password(VARCHAR, UUID, TEXT, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
@@ -1758,7 +1926,7 @@ GRANT EXECUTE ON FUNCTION sawyan.verify_root_invite_token(TEXT) TO anon, authent
 GRANT EXECUTE ON FUNCTION sawyan.register_new_member(VARCHAR, VARCHAR, BIGINT, TEXT, CHAR, CHAR, BIGINT, VARCHAR, VARCHAR, JSONB) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.admin_manage_root_leaders(UUID, TEXT, VARCHAR, VARCHAR, VARCHAR, CHAR, TEXT, VARCHAR, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.admin_manage_staff_accounts(UUID, TEXT, VARCHAR, UUID, VARCHAR, VARCHAR, VARCHAR, TEXT, VARCHAR) TO anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION sawyan.submit_support_or_recovery_ticket(VARCHAR, VARCHAR, TEXT, TEXT, VARCHAR, VARCHAR, VARCHAR, UUID) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION sawyan.submit_support_or_recovery_ticket(VARCHAR, VARCHAR, TEXT, TEXT, VARCHAR, VARCHAR, VARCHAR, UUID, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.get_my_support_tickets(VARCHAR, UUID, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.admin_reset_user_password(UUID, TEXT, VARCHAR, TEXT, TEXT, TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION sawyan.change_own_password(VARCHAR, UUID, TEXT, TEXT, TEXT) TO anon, authenticated, service_role;

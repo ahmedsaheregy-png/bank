@@ -585,13 +585,13 @@
                 '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>الكود</th><th>الشريك</th><th>النطاق</th><th>أساس الاحتساب</th><th>النسبة %</th><th>مرجع العقد</th><th>الحالة</th></tr></thead><tbody>' +
                 (partners.length === 0 ? '<tr><td colspan="7" class="empty-state">لا يوجد شركاء مسجلون حالياً</td></tr>' : partners.map(function (p) {
                     return '<tr>' +
-                        '<td><b>' + esc(p.partner_code) + '</b></td>' +
-                        '<td>' + esc(p.full_name) + '<br><small>' + esc(p.email) + '</small></td>' +
-                        '<td>' + esc(p.partnership_scope) + '</td>' +
-                        '<td>' + esc(p.profit_basis) + '</td>' +
-                        '<td><b>' + Number(p.profit_share_pct) + '%</b></td>' +
-                        '<td><code>' + esc(p.contract_ref) + '</code></td>' +
-                        '<td>' + (p.is_active ? '<span class="badge badge-success">نشط</span>' : '<span class="badge badge-danger">موقوف</span>') + '</td>' +
+                        '<td data-label="الكود"><b>' + esc(p.partner_code) + '</b></td>' +
+                        '<td data-label="الشريك">' + esc(p.full_name) + '<br><small>' + esc(p.email) + '</small></td>' +
+                        '<td data-label="النطاق">' + esc(p.partnership_scope) + '</td>' +
+                        '<td data-label="أساس الاحتساب">' + esc(p.profit_basis) + '</td>' +
+                        '<td data-label="النسبة %"><b>' + Number(p.profit_share_pct) + '%</b></td>' +
+                        '<td data-label="مرجع العقد"><code>' + esc(p.contract_ref) + '</code></td>' +
+                        '<td data-label="الحالة">' + (p.is_active ? '<span class="badge badge-success">نشط</span>' : '<span class="badge badge-danger">موقوف</span>') + '</td>' +
                     '</tr>';
                 }).join('')) +
                 '</tbody></table></div>' +
@@ -611,12 +611,12 @@
                 '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>كود الحساب</th><th>اسم الحساب المحاسبي</th><th>الطبيعة</th><th>إجمالي مدين ($)</th><th>إجمالي دائن ($)</th><th>الرصيد الصافي ($)</th></tr></thead><tbody>' +
                 tb.map(function (r) {
                     return '<tr>' +
-                        '<td><b>' + esc(r.account_code) + '</b></td>' +
-                        '<td>' + esc(r.account_name_ar) + '</td>' +
-                        '<td>' + (r.normal_balance === 'D' ? 'مدين (Dr)' : 'دائن (Cr)') + '</td>' +
-                        '<td>$' + fmt2(r.total_debit_usd) + '</td>' +
-                        '<td>$' + fmt2(r.total_credit_usd) + '</td>' +
-                        '<td><b>$' + fmt2(r.net_balance_usd) + '</b></td>' +
+                        '<td data-label="كود الحساب"><b>' + esc(r.account_code) + '</b></td>' +
+                        '<td data-label="اسم الحساب المحاسبي">' + esc(r.account_name_ar) + '</td>' +
+                        '<td data-label="الطبيعة">' + (r.normal_balance === 'D' ? 'مدين (Dr)' : 'دائن (Cr)') + '</td>' +
+                        '<td data-label="إجمالي مدين ($)">$' + fmt2(r.total_debit_usd) + '</td>' +
+                        '<td data-label="إجمالي دائن ($)">$' + fmt2(r.total_credit_usd) + '</td>' +
+                        '<td data-label="الرصيد الصافي ($)"><b>$' + fmt2(r.net_balance_usd) + '</b></td>' +
                     '</tr>';
                 }).join('') +
                 '</tbody></table></div>' +
@@ -627,12 +627,12 @@
                 '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>#</th><th>الفاعل</th><th>الإجراء</th><th>الجدول / السجل</th><th>التوقيت</th><th>بصمة السطر SHA-256</th></tr></thead><tbody>' +
                 (logs.length === 0 ? '<tr><td colspan="6" class="empty-state">لا توجد سجلات تدقيق بعد</td></tr>' : logs.slice(0, 15).map(function (l) {
                     return '<tr>' +
-                        '<td>' + Number(l.id) + '</td>' +
-                        '<td>' + esc(l.actor_type) + '</td>' +
-                        '<td><b>' + esc(l.action) + '</b></td>' +
-                        '<td>' + esc(l.table_name) + ' / <code>' + esc(String(l.record_id).slice(0, 14)) + '</code></td>' +
-                        '<td>' + esc(String(l.recorded_at || '').slice(0, 19).replace('T', ' ')) + '</td>' +
-                        '<td><code style="font-size:0.72rem;">' + esc(String(l.row_hash || '').slice(0, 18)) + '…</code></td>' +
+                        '<td data-label="#">' + Number(l.id) + '</td>' +
+                        '<td data-label="الفاعل">' + esc(l.actor_type) + '</td>' +
+                        '<td data-label="الإجراء"><b>' + esc(l.action) + '</b></td>' +
+                        '<td data-label="الجدول / السجل">' + esc(l.table_name) + ' / <code>' + esc(String(l.record_id).slice(0, 14)) + '</code></td>' +
+                        '<td data-label="التوقيت">' + esc(String(l.recorded_at || '').slice(0, 19).replace('T', ' ')) + '</td>' +
+                        '<td data-label="بصمة السطر SHA-256"><code style="font-size:0.72rem;">' + esc(String(l.row_hash || '').slice(0, 18)) + '…</code></td>' +
                     '</tr>';
                 }).join('')) +
                 '</tbody></table></div>' +
@@ -668,14 +668,17 @@
                             (isBreak ? '<button type="button" class="btn-sm btn-danger" onclick="svOpsAct(\'dispute_ticket\',\'' + d.id + '\',\'resolved_merchant_malicious_claim\')">بلاغ كيدي (30ي تجميد)</button>' : '') +
                           '</div>')
                         : 'تم الفصل';
+                    const evThumb = (d.evidence_url && window.SAWYAN && window.SAWYAN.ImageUpload)
+                        ? '<div style="margin-top:4px;">' + window.SAWYAN.ImageUpload.renderThumbHtml(d.evidence_url, '📎 إثبات النزاع ' + esc(d.sw_short_code)) + '</div>'
+                        : '';
                     return '<tr>' +
-                        '<td><b>' + esc(d.sw_short_code) + '</b> (' + fmt2(d.total_amount) + ' ' + esc(d.currency_code) + ')' + (d.tx_country_code ? '<br><small>' + esc(d.tx_country_code) + ' • ' + esc(d.dispute_period_ym || '') + '</small>' : '') + '</td>' +
-                        '<td>#' + Number(d.member_code) + ' ' + esc(d.member_name) + '</td>' +
-                        '<td>' + esc(d.merchant_name) + '</td>' +
-                        '<td><code>' + esc(d.dispute_category || 'general') + '</code><br>' + triageBadge + '</td>' +
-                        '<td>' + esc(d.dispute_reason) + (d.evidence_url ? '<br><a href="' + esc(d.evidence_url) + '" target="_blank" rel="noopener">📎 دليل الإثبات</a>' : '') + '</td>' +
-                        '<td><span class="badge badge-warning">' + esc(d.status) + '</span></td>' +
-                        '<td>' + btns + '</td>' +
+                        '<td data-label="الفاتورة"><b>' + esc(d.sw_short_code) + '</b> (' + fmt2(d.total_amount) + ' ' + esc(d.currency_code) + ')' + (d.tx_country_code ? '<br><small>' + esc(d.tx_country_code) + ' • ' + esc(d.dispute_period_ym || '') + '</small>' : '') + '</td>' +
+                        '<td data-label="العضو">#' + Number(d.member_code) + ' ' + esc(d.member_name) + '</td>' +
+                        '<td data-label="التاجر">' + esc(d.merchant_name) + '</td>' +
+                        '<td data-label="التصنيف وفرز الصرف (1-أ)"><code>' + esc(d.dispute_category || 'general') + '</code><br>' + triageBadge + '</td>' +
+                        '<td data-label="السبب والإثبات">' + esc(d.dispute_reason) + evThumb + '</td>' +
+                        '<td data-label="الحالة"><span class="badge badge-warning">' + esc(d.status) + '</span></td>' +
+                        '<td data-label="حكم الإدارة">' + btns + '</td>' +
                     '</tr>';
                 }).join('')) +
                 '</tbody></table></div>' +
@@ -687,22 +690,26 @@
                 (gouging.length === 0 && fraud.length === 0
                     ? '<tr><td colspan="5" class="empty-state">سجل المخالفات السعرية والغش الشبكي نظيف (0 بلاغات معلقة)</td></tr>'
                     : gouging.map(function (g) {
+                        const up = window.SAWYAN && window.SAWYAN.ImageUpload;
+                        const shThumb = (g.shelf_photo_url && up) ? up.renderThumbHtml(g.shelf_photo_url, '📸 سعر الرف') : '';
+                        const rcThumb = (g.receipt_url && up) ? up.renderThumbHtml(g.receipt_url, '🧾 الإيصال') : '';
+                        const thumbs = (shThumb || rcThumb) ? ('<div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;">' + shThumb + rcThumb + '</div>') : '';
                         return '<tr>' +
-                            '<td>بلاغ سعر: <b>' + esc(g.sw_short_code) + '</b></td>' +
-                            '<td>' + esc(g.merchant_name) + '</td>' +
-                            '<td>معلن: ' + fmt2(g.declared_price) + ' ← مخصوم: <b>' + fmt2(g.charged_price) + '</b></td>' +
-                            '<td>' + esc(g.verification_status) + '</td>' +
-                            '<td>' + (g.verification_status === 'pending'
+                            '<td data-label="الفاتورة / الإشارة">بلاغ سعر: <b>' + esc(g.sw_short_code) + '</b></td>' +
+                            '<td data-label="التاجر">' + esc(g.merchant_name) + '</td>' +
+                            '<td data-label="التفاصيل">معلن: ' + fmt2(g.declared_price) + ' ← مخصوم: <b>' + fmt2(g.charged_price) + '</b>' + thumbs + '</td>' +
+                            '<td data-label="الحالة">' + esc(g.verification_status) + '</td>' +
+                            '<td data-label="إجراء">' + (g.verification_status === 'pending'
                                 ? '<button type="button" class="btn-sm btn-danger" onclick="svOpsAct(\'price_gouging\',\'' + g.id + '\',\'verified_violation\')">تأكيد المخالفة</button>'
                                 : '—') + '</td>' +
                         '</tr>';
                     }).concat(fraud.map(function (f) {
                         return '<tr>' +
-                            '<td>إشارة غش: <b>' + esc(f.signal_type) + '</b> (' + esc(f.severity) + ')</td>' +
-                            '<td>' + esc(f.merchant_name || 'شبكي') + '</td>' +
-                            '<td><code>' + esc(JSON.stringify(f.evidence_payload || {}).slice(0, 70)) + '</code></td>' +
-                            '<td>' + esc(f.status) + '</td>' +
-                            '<td>' + (f.status === 'open'
+                            '<td data-label="الفاتورة / الإشارة">إشارة غش: <b>' + esc(f.signal_type) + '</b> (' + esc(f.severity) + ')</td>' +
+                            '<td data-label="التاجر">' + esc(f.merchant_name || 'شبكي') + '</td>' +
+                            '<td data-label="التفاصيل"><code>' + esc(JSON.stringify(f.evidence_payload || {}).slice(0, 70)) + '</code></td>' +
+                            '<td data-label="الحالة">' + esc(f.status) + '</td>' +
+                            '<td data-label="إجراء">' + (f.status === 'open'
                                 ? '<button type="button" class="btn-sm btn-primary" onclick="svOpsAct(\'fraud_signal\',\'' + f.id + '\',\'cleared\')">تبرئة بعد التحقيق</button>'
                                 : '—') + '</td>' +
                         '</tr>';
@@ -715,13 +722,13 @@
                 '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>الكود</th><th>الاسم</th><th>الدولة</th><th>صندوق الشهر ($)</th><th>المحفظة ($)</th><th>حالة KYC</th><th>إجراءات حية</th></tr></thead><tbody>' +
                 (members.length === 0 ? '<tr><td colspan="7" class="empty-state">لا يوجد أعضاء بعد (بخلاف الجذر #0)</td></tr>' : members.map(function (m) {
                     return '<tr>' +
-                        '<td><b>#' + Number(m.member_code) + '</b></td>' +
-                        '<td>' + esc(m.full_name) + (m.is_tombstone_banned ? ' <span class="badge badge-danger">Tombstone</span>' : '') + '</td>' +
-                        '<td>' + esc(m.residency_country_code) + '</td>' +
-                        '<td>$' + fmt2(m.current_purchases_usd) + (m.is_qualified_period ? ' 🟢' : '') + '</td>' +
-                        '<td>$' + fmt2(m.wallet_balance_usd) + '</td>' +
-                        '<td><span class="badge ' + (m.kyc_status === 'verified' ? 'badge-success' : 'badge-warning') + '">' + esc(m.kyc_status) + '</span></td>' +
-                        '<td><div style="display:flex;gap:5px;">' +
+                        '<td data-label="الكود"><b>#' + Number(m.member_code) + '</b></td>' +
+                        '<td data-label="الاسم">' + esc(m.full_name) + (m.is_tombstone_banned ? ' <span class="badge badge-danger">Tombstone</span>' : '') + '</td>' +
+                        '<td data-label="الدولة">' + esc(m.residency_country_code) + '</td>' +
+                        '<td data-label="صندوق الشهر ($)">$' + fmt2(m.current_purchases_usd) + (m.is_qualified_period ? ' 🟢' : '') + '</td>' +
+                        '<td data-label="المحفظة ($)">$' + fmt2(m.wallet_balance_usd) + '</td>' +
+                        '<td data-label="حالة KYC"><span class="badge ' + (m.kyc_status === 'verified' ? 'badge-success' : 'badge-warning') + '">' + esc(m.kyc_status) + '</span></td>' +
+                        '<td data-label="إجراءات حية"><div style="display:flex;gap:5px;">' +
                             (m.kyc_status !== 'verified' ? '<button type="button" class="btn-sm btn-success" onclick="svOpsAct(\'member_kyc\',\'' + m.id + '\',\'verified\')">اعتماد KYC</button>' : '') +
                             '<button type="button" class="btn-sm btn-warning" onclick="svOpsAct(\'member_tombstone\',\'' + m.id + '\',\'' + (m.is_tombstone_banned ? 'unban' : 'ban') + '\')">' + (m.is_tombstone_banned ? 'رفع الحجب' : 'حجب Tombstone') + '</button>' +
                         '</div></td>' +

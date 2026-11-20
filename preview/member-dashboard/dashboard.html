@@ -9,11 +9,11 @@
         href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="../shared/css/variables.css">
-    <link rel="stylesheet" href="../shared/css/logo.css">
+    <link rel="stylesheet" href="../shared/css/logo.css?v=20261119_logo_all">
     <link rel="stylesheet" href="../shared/css/notifications.css">
     <link rel="stylesheet" href="../shared/css/image-upload.css">
     <link rel="stylesheet" href="css/dashboard.css?v=20261119_world_geo">
-    <link rel="stylesheet" href="../shared/css/app-shell.css?v=20261119_v3shell">
+    <link rel="stylesheet" href="../shared/css/app-shell.css?v=20261119_logo_all">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
@@ -122,6 +122,7 @@
                         <div id="qrCode" class="qr-code"></div>
                         <p>اعرض هذا الكود الثابت للتاجر لتوثيق الفاتورة وتفعيل عائدات الاستهلاك الاستثماري</p>
                         <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:8px;">
+                            <button type="button" class="btn btn-primary btn-sm" id="homeDocPurchaseBtn" onclick="openMemberPurchaseModal()">🧾 توثيق فاتورة شراء (فوري بالمحل / أونلاين ودليفري)</button>
                             <button type="button" class="btn btn-outline btn-sm" id="copyMemberBarcodeBtn" onclick="copyMemberStaticBarcode()">📋 نسخ كود العضوية</button>
                         </div>
                     </div>
@@ -216,11 +217,11 @@
         </div>
     </div>
 
+    <script src="../shared/components/logo.js?v=20261119_logo_all"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="../shared/config/supabase.js"></script>
-    <script src="../shared/api/sawyan-api.js?v=20261119_home_pro"></script>
-    <script src="../shared/components/logo.js"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261119_logo_all"></script>
     <script src="../shared/components/notifications.js"></script>
     <script src="../shared/components/image-upload.js"></script>
     <script src="../shared/payments/payment-provider.js"></script>
@@ -247,7 +248,7 @@
         });
     </script>
     <script src="js/member-stage7-tools.js?v=20261118_stage7"></script>
-    <script src="../shared/js/app-shell.js?v=20261119_v3shell"></script>
+    <script src="../shared/js/app-shell.js?v=20261119_logo_all"></script>
 </body>
 
 </html>

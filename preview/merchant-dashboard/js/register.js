@@ -44,6 +44,45 @@ document.addEventListener('DOMContentLoaded', function () {
     const physSec = document.getElementById('physicalLocationSection');
     if (physSec) physSec.style.display = 'block';
 
+    if (window.SAWYAN && window.SAWYAN.ImageUpload) {
+        const up = window.SAWYAN.ImageUpload;
+        window._merchantRegUploaders = {
+            logo: up.mountUploader(document.getElementById('merchantLogoUploader'), {
+                label: '🏪 رفع شعار المتجر (Logo)',
+                maxDim: 800,
+                maxChars: 240000,
+                preserveTransparency: true,
+                onChange: (v) => { const el = document.getElementById('logoUrl'); if (el) el.value = v || ''; }
+            }),
+            cover: up.mountUploader(document.getElementById('merchantCoverUploader'), {
+                label: '🖼️ رفع صورة الغلاف / الواجهة',
+                maxDim: 1280,
+                maxChars: 340000,
+                onChange: (v) => { const el = document.getElementById('coverImageUrl'); if (el) el.value = v || ''; }
+            }),
+            gallery: up.mountUploader(document.getElementById('merchantGalleryUploader'), {
+                label: '📸 رفع صور النشاط والمعرض (حتى 4 صور)',
+                multiple: true,
+                maxItems: 4,
+                maxDim: 1024,
+                maxChars: 260000,
+                onChange: (arr) => { const el = document.getElementById('images'); if (el) el.value = Array.isArray(arr) && arr.length ? JSON.stringify(arr) : ''; }
+            }),
+            commercialDoc: up.mountUploader(document.getElementById('merchantCommercialDocUploader'), {
+                label: '📄 رفع صورة السجل التجاري / الرخصة',
+                maxDim: 1400,
+                maxChars: 380000,
+                onChange: (v) => { const el = document.getElementById('commercialDocUrl'); if (el) el.value = v || ''; }
+            }),
+            taxDoc: up.mountUploader(document.getElementById('merchantTaxDocUploader'), {
+                label: '🧾 رفع البطاقة الضريبية أو إثبات المقر (اختياري)',
+                maxDim: 1400,
+                maxChars: 380000,
+                onChange: (v) => { const el = document.getElementById('taxDocUrl'); if (el) el.value = v || ''; }
+            })
+        };
+    }
+
     const form = document.getElementById('registerForm');
     if (form) form.addEventListener('submit', handleMerchantRegister);
 });
@@ -113,10 +152,31 @@ async function handleMerchantRegister(e) {
     const instagramUrl = (document.getElementById('instagramUrl')?.value || '').trim();
     const twitterUrl = (document.getElementById('twitterUrl')?.value || '').trim();
     const tiktokUrl = (document.getElementById('tiktokUrl')?.value || '').trim();
-    const logoUrl = (document.getElementById('logoUrl')?.value || '').trim();
-    const coverImageUrl = (document.getElementById('coverImageUrl')?.value || '').trim();
+    const upReg = window._merchantRegUploaders || {};
+    const logoUrl = ((upReg.logo ? upReg.logo.getValue() : null) || document.getElementById('logoUrl')?.value || '').trim();
+    const coverImageUrl = ((upReg.cover ? upReg.cover.getValue() : null) || document.getElementById('coverImageUrl')?.value || '').trim();
+    const galleryVal = upReg.gallery ? upReg.gallery.getValue() : null;
     const imagesRaw = (document.getElementById('images')?.value || '').trim();
-    const imagesList = imagesRaw ? imagesRaw.split(',').map(s => s.trim()).filter(Boolean) : null;
+    let imagesList = Array.isArray(galleryVal) && galleryVal.length ? galleryVal : null;
+    if (!imagesList && imagesRaw) {
+        if (imagesRaw.startsWith('[')) {
+            try { imagesList = JSON.parse(imagesRaw); } catch (_e) { imagesList = null; }
+        } else if (imagesRaw.startsWith('data:image/')) {
+            imagesList = [imagesRaw];
+        } else {
+            imagesList = imagesRaw.split(',').map(s => s.trim()).filter(Boolean);
+        }
+    }
+    const commercialRegNo = (document.getElementById('commercialRegNo')?.value || '').trim();
+    const taxId = (document.getElementById('taxId')?.value || '').trim();
+    const commercialDocUrl = ((upReg.commercialDoc ? upReg.commercialDoc.getValue() : null) || document.getElementById('commercialDocUrl')?.value || '').trim();
+    const taxDocUrl = ((upReg.taxDoc ? upReg.taxDoc.getValue() : null) || document.getElementById('taxDocUrl')?.value || '').trim();
+    const kycDocs = (commercialDocUrl || taxDocUrl)
+        ? {
+            commercial_reg: commercialDocUrl || null,
+            tax_card: taxDocUrl || null
+        }
+        : null;
 
     if (btn) {
         btn.disabled = true;
@@ -157,6 +217,9 @@ async function handleMerchantRegister(e) {
                 logo_url: logoUrl || null,
                 cover_image_url: coverImageUrl || null,
                 images: imagesList,
+                commercial_reg_no: commercialRegNo || null,
+                tax_id: taxId || null,
+                kyc_docs: kycDocs,
                 working_hours: collectWorkingHours()
             }
         });
