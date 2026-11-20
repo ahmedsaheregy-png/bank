@@ -222,7 +222,7 @@ def main():
 
     # 4. Stage, re-verify isolation on staged index, commit & push
     if dirty_lines:
-        add_res = run_git(["add", "-A"])
+        add_res = run_git(["add", "-A"], timeout=60)
         if add_res.returncode != 0:
             print(f"[PUBLISH FAIL] git add failed: {add_res.stderr.strip()}", file=sys.stderr)
             sys.exit(1)
@@ -235,15 +235,19 @@ def main():
             sys.exit(1)
 
         if staged:
-            cmt_res = run_git(["commit", "-m", commit_msg])
+            try:
+                cmt_res = run_git(["commit", "-m", commit_msg], timeout=120)
+            except subprocess.TimeoutExpired:
+                print("[PUBLISH FAIL] git commit timed out after 120s.", file=sys.stderr)
+                sys.exit(1)
             if cmt_res.returncode != 0:
                 print(f"[PUBLISH FAIL] git commit failed: {cmt_res.stderr or cmt_res.stdout}", file=sys.stderr)
                 sys.exit(1)
 
     try:
-        push_res = run_git(["push", "-u", "origin", branch], timeout=60)
+        push_res = run_git(["push", "-u", "origin", branch], timeout=120)
     except subprocess.TimeoutExpired:
-        print(f"[PUBLISH FAIL] git push origin {branch} timed out after 60s.", file=sys.stderr)
+        print(f"[PUBLISH FAIL] git push origin {branch} timed out after 120s.", file=sys.stderr)
         sys.exit(1)
 
     if push_res.returncode != 0:
