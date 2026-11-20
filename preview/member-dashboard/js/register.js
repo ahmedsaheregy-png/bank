@@ -11,6 +11,7 @@
     let sponsorLookupTimeout = null;
     let verifiedSponsorRecord = null;
     let activeRootInviteToken = null;
+    let isSponsorLockedByReferral = false;
     let _geoCascade = null;
     let _geoPicker = null;
     let _layoutState = {};
@@ -138,7 +139,21 @@
         if (confirmBox) confirmBox.checked = false;
     }
 
-    async function lookupSponsor(codeRaw) {
+    function setSponsorFieldLock(locked) {
+        const sponsorInput = document.getElementById('sponsorCode');
+        if (!sponsorInput || activeRootInviteToken) return;
+        isSponsorLockedByReferral = Boolean(locked);
+        sponsorInput.readOnly = Boolean(locked);
+        if (locked) {
+            sponsorInput.setAttribute('aria-readonly', 'true');
+            sponsorInput.title = 'تم تثبيت كود الراعي تلقائياً من رابط الدعوة لحماية حق الداعي ومنع الخطأ';
+        } else {
+            sponsorInput.removeAttribute('aria-readonly');
+            sponsorInput.removeAttribute('title');
+        }
+    }
+
+    async function lookupSponsor(codeRaw, fromReferralLink = false) {
         if (activeRootInviteToken) return;
         const display = document.getElementById('sponsorNameDisplay');
         const text = document.getElementById('sponsorNameText');
@@ -150,6 +165,7 @@
 
         const numericCode = parseInt(String(codeRaw || '').trim(), 10);
         if (isNaN(numericCode) || numericCode < 0) {
+            setSponsorFieldLock(false);
             resetSponsorDisplay();
             return;
         }
@@ -162,6 +178,7 @@
             const res = await window.SAWYAN.API.lookupSponsorByCode(numericCode);
             if (!res || !res.found) {
                 verifiedSponsorRecord = null;
+                setSponsorFieldLock(false);
                 if (display) display.className = 'sponsor-name-display invalid';
                 if (text) text.textContent = `❌ كود الراعي #${numericCode} غير مسجل أو غير نشط`;
                 if (icon) icon.textContent = '❌';
@@ -170,16 +187,25 @@
                 return;
             }
             verifiedSponsorRecord = res;
+            if (fromReferralLink) {
+                setSponsorFieldLock(true);
+            }
             if (display) display.className = 'sponsor-name-display valid';
-            if (text) text.textContent = `أنت تسجل الآن في فريق: ${res.full_name} (#${res.member_code})`;
-            if (icon) icon.textContent = '✅';
+            if (text) {
+                text.textContent = fromReferralLink
+                    ? `🔒 تم تثبيت الراعي تلقائياً من رابط الدعوة — أنت تسجل الآن في فريق: ${res.full_name} (#${res.member_code})`
+                    : `أنت تسجل الآن في فريق: ${res.full_name} (#${res.member_code})`;
+            }
+            if (icon) icon.textContent = fromReferralLink ? '🔒' : '✅';
             if (sponsorIdInput) sponsorIdInput.value = res.member_id;
             if (confirmRow && confirmLabel && confirmBox) {
                 confirmLabel.textContent = `أؤكد الانضمام ضمن فريق: ${res.full_name} (#${res.member_code})`;
+                if (fromReferralLink) confirmBox.checked = true;
                 confirmRow.style.display = 'flex';
             }
         } catch (err) {
             verifiedSponsorRecord = null;
+            setSponsorFieldLock(false);
             const isRootBlock = String(err.message || '').includes('ROOT_SPONSOR_RESTRICTED_TO_ADMIN');
             if (display) display.className = 'sponsor-name-display invalid';
             if (text) {
@@ -197,17 +223,17 @@
         const sponsorCodeInput = document.getElementById('sponsorCode');
         if (!sponsorCodeInput) return;
         sponsorCodeInput.addEventListener('input', function (e) {
-            if (activeRootInviteToken) return;
+            if (activeRootInviteToken || isSponsorLockedByReferral) return;
             const code = e.target.value.trim();
             verifiedSponsorRecord = null;
             if (sponsorLookupTimeout) clearTimeout(sponsorLookupTimeout);
             if (!code) return resetSponsorDisplay();
-            sponsorLookupTimeout = setTimeout(() => lookupSponsor(code), 350);
+            sponsorLookupTimeout = setTimeout(() => lookupSponsor(code, false), 350);
         });
         sponsorCodeInput.addEventListener('blur', function (e) {
-            if (activeRootInviteToken) return;
+            if (activeRootInviteToken || isSponsorLockedByReferral) return;
             const code = e.target.value.trim();
-            if (code) lookupSponsor(code);
+            if (code) lookupSponsor(code, false);
         });
     }
 
@@ -342,7 +368,8 @@
             await verifyFounderRootToken(rootToken);
         } else if (urlRef && sponsorInput) {
             sponsorInput.value = urlRef;
-            setTimeout(() => lookupSponsor(urlRef), 200);
+            setSponsorFieldLock(true);
+            await lookupSponsor(urlRef, true);
         } else if (window.SAWYAN?.API?.isDemoMode() && sponsorInput && !sponsorInput.value) {
             sponsorInput.placeholder = 'للتجربة في الموقع الموازي يمكنك استخدام كود القائد: 1';
         }

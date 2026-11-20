@@ -449,11 +449,31 @@ def main():
                 must("رقم السجل الديناميكي" in dyn_lbl, "7g. Admin Builder field change reflects live on Merchant registration page", dyn_lbl)
                 rpc("admin_manage_registration_fields", {"p_admin_id": fid, "p_session_token": ftok, "p_action": "reset_defaults", "p_form_type": "merchant"}, "sawyan_demo")
 
-                # 7c. Member register page UI checks
+                # 7c. Member register page UI checks (direct editable vs referral ?ref=1 locked)
                 page.goto(f"http://127.0.0.1:{port}/preview/member-dashboard/register.html", wait_until="networkidle")
                 page.wait_for_selector("#memberRequiredFields [data-field-key='phone']", timeout=15000)
                 mem_geo_opts = page.locator("#countryOfResidence option").count()
                 must(mem_geo_opts >= 150, f"7h. Member register loads all {mem_geo_opts} world countries", mem_geo_opts)
+
+                direct_ro = page.eval_on_selector("#sponsorCode", "el => el.readOnly")
+                page.fill("#sponsorCode", "1")
+                page.wait_for_function("() => (document.getElementById('sponsorNameText')?.textContent || '').includes('#1')", timeout=10000)
+                direct_sp_txt = page.locator("#sponsorNameText").inner_text()
+                must(direct_ro is False and "#1" in direct_sp_txt, "7h-dir. Direct registration keeps sponsorCode editable and displays real name on typing #1", (direct_ro, direct_sp_txt))
+
+                page.goto(f"http://127.0.0.1:{port}/preview/member-dashboard/register.html?ref=1", wait_until="networkidle")
+                page.wait_for_function("() => (document.getElementById('sponsorNameText')?.textContent || '').includes('#1')", timeout=15000)
+                ref_state = page.evaluate("""() => ({
+                    val: document.getElementById('sponsorCode')?.value || '',
+                    ro: Boolean(document.getElementById('sponsorCode')?.readOnly),
+                    txt: document.getElementById('sponsorNameText')?.textContent || '',
+                    chk: Boolean(document.getElementById('sponsorConfirmCheckbox')?.checked)
+                })""")
+                must(
+                    ref_state["val"] == "1" and ref_state["ro"] is True and "🔒" in ref_state["txt"] and "#1" in ref_state["txt"] and ref_state["chk"] is True,
+                    "7h-ref. Referral URL (?ref=1) locks sponsorCode readOnly & displays real upline name immediately",
+                    ref_state,
+                )
 
                 # 7d. Admin Dashboard Form Builder + Pitch Radar UI checks (Demo session auto-bootstrap)
                 page.goto(f"http://127.0.0.1:{port}/preview/admin-dashboard/dashboard.html", wait_until="networkidle")
