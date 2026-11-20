@@ -667,7 +667,7 @@
             countryCode = 'EG',
             category = 'supermarket',
             merchantType = 'physical',
-            deductionPercent = 10.0,
+            deductionPercent = null,
             email = null,
             address = null,
             cityGeonameId = null,
@@ -675,8 +675,17 @@
             longitude = null,
             onboardedByMemberCode = null,
             initialCashierPin = null,
-            metadata = {}
+            metadata = null
         }) {
+            const resolvedDeduction = (deductionPercent !== null && deductionPercent !== undefined && deductionPercent !== '')
+                ? Number(deductionPercent)
+                : null;
+            const resolvedOnboarder = (onboardedByMemberCode !== null && onboardedByMemberCode !== undefined && onboardedByMemberCode !== '')
+                ? Number(onboardedByMemberCode)
+                : null;
+            const resolvedLat = latitude !== null && latitude !== undefined && latitude !== '' ? Number(latitude) : null;
+            const resolvedLng = longitude !== null && longitude !== undefined && longitude !== '' ? Number(longitude) : null;
+            const resolvedMetadata = metadata || null;
             return await callRpc('register_new_merchant', {
                 p_business_name: businessName,
                 p_owner_name: ownerName,
@@ -685,15 +694,15 @@
                 p_country_code: countryCode,
                 p_category: category,
                 p_merchant_type: merchantType,
-                p_deduction_percent: Number(deductionPercent || 10),
+                p_deduction_percent: resolvedDeduction,
                 p_email: email,
                 p_address: address,
                 p_city_geoname_id: cityGeonameId,
-                p_latitude: latitude !== null && latitude !== '' ? Number(latitude) : null,
-                p_longitude: longitude !== null && longitude !== '' ? Number(longitude) : null,
-                p_onboarded_by_member_code: onboardedByMemberCode ? Number(onboardedByMemberCode) : null,
+                p_latitude: resolvedLat,
+                p_longitude: resolvedLng,
+                p_onboarded_by_member_code: resolvedOnboarder,
                 p_initial_cashier_pin: initialCashierPin || null,
-                p_metadata: metadata || {}
+                p_metadata: resolvedMetadata
             });
         },
 
@@ -1149,7 +1158,8 @@
             email = null,
             role = null,
             password = null,
-            countryScope = 'GLOBAL'
+            countryScope = 'GLOBAL',
+            phone = null
         } = {}) {
             const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id);
             const tok = sessionToken || SawyanAPI.getAdminSessionToken();
@@ -1162,7 +1172,8 @@
                 p_email: email,
                 p_role: role,
                 p_password: password,
-                p_country_scope: countryScope
+                p_country_scope: countryScope,
+                p_phone: phone || null
             });
         },
 
@@ -1533,6 +1544,63 @@
                 p_period_ym: periodYm || null,
                 p_country_code: countryCode || null,
                 p_max_depth: Number(maxDepth || 15)
+            });
+        },
+
+        async getRegistrationFormConfig(formType = null) {
+            return await callRpc('get_registration_form_config', {
+                p_form_type: formType || null
+            });
+        },
+
+        async lookupOnboarderByCode(memberCode) {
+            const codeNum = (memberCode !== null && memberCode !== undefined && memberCode !== '') ? Number(memberCode) : null;
+            return await callRpc('lookup_onboarder_by_code', {
+                p_member_code: codeNum
+            });
+        },
+
+        async adminManageRegistrationFields({
+            adminId = null,
+            sessionToken = null,
+            action = 'list',
+            formType = null,
+            fields = null,
+            settings = null
+        } = {}) {
+            const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id);
+            const tok = sessionToken || SawyanAPI.getAdminSessionToken();
+            const fPayload = fields || null;
+            const sPayload = settings || null;
+            return await callRpc('admin_manage_registration_fields', {
+                p_admin_id: adm,
+                p_session_token: tok,
+                p_action: action,
+                p_form_type: formType || null,
+                p_fields: fPayload,
+                p_settings: sPayload
+            });
+        },
+
+        async getAnonymizedMembersMapPins({
+            centerLat,
+            centerLng,
+            radiusKm = 25,
+            countryCode = null,
+            merchantId = null,
+            adminId = null,
+            sessionToken = null
+        } = {}) {
+            const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id) || null;
+            const tok = sessionToken || SawyanAPI.getAdminSessionToken() || SawyanAPI.getMerchantSessionToken() || null;
+            return await callRpc('get_anonymized_members_map_pins', {
+                p_center_lat: Number(centerLat),
+                p_center_lng: Number(centerLng),
+                p_radius_km: Number(radiusKm || 25),
+                p_country_code: countryCode || null,
+                p_merchant_id: merchantId || null,
+                p_admin_id: adm,
+                p_session_token: tok
             });
         },
 

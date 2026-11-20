@@ -186,6 +186,105 @@ window.SAWYAN.getCountryByCode = function (code) {
 
 // دالة للحصول على مفتاح الهاتف بواسطة كود الدولة
 window.SAWYAN.getDialCodeByCountry = function (code) {
-    const country = window.SAWYAN.Countries.find(c => c.code === code);
+    const country = window.SAWYAN.Countries.find(c => c.code === String(code || '').toUpperCase());
     return country ? country.dialCode : '';
+};
+
+// قواعد الأرقام القياسية الدولية (ITU-T E.164) لعدد الأرقام بعد كود الدولة ولكل دول العالم
+window.SAWYAN.PhoneRules = {
+    EG: { minNsn: 10, maxNsn: 10, stripZero: true, mobileStart: ['1'], example: '1012345678' },
+    SA: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: ['5'], example: '501234567' },
+    TR: { minNsn: 10, maxNsn: 10, stripZero: true, mobileStart: ['5'], example: '5321234567' },
+    AE: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: ['5'], example: '501234567' },
+    KW: { minNsn: 8, maxNsn: 8, stripZero: true, mobileStart: null, example: '51234567' },
+    QA: { minNsn: 8, maxNsn: 8, stripZero: true, mobileStart: null, example: '33123456' },
+    BH: { minNsn: 8, maxNsn: 8, stripZero: true, mobileStart: null, example: '36123456' },
+    OM: { minNsn: 8, maxNsn: 8, stripZero: true, mobileStart: null, example: '91234567' },
+    JO: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: null, example: '791234567' },
+    LB: { minNsn: 7, maxNsn: 8, stripZero: true, mobileStart: null, example: '71123456' },
+    PS: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: null, example: '599123456' },
+    IQ: { minNsn: 10, maxNsn: 10, stripZero: true, mobileStart: null, example: '7701234567' },
+    SY: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: null, example: '931234567' },
+    YE: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: null, example: '771234567' },
+    SD: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: null, example: '912345678' },
+    LY: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: null, example: '912345678' },
+    TN: { minNsn: 8, maxNsn: 8, stripZero: true, mobileStart: null, example: '20123456' },
+    DZ: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: null, example: '551234567' },
+    MA: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: null, example: '612345678' },
+    MR: { minNsn: 8, maxNsn: 8, stripZero: true, mobileStart: null, example: '22123456' },
+    SO: { minNsn: 7, maxNsn: 9, stripZero: true, mobileStart: null, example: '615123456' },
+    DJ: { minNsn: 8, maxNsn: 8, stripZero: true, mobileStart: null, example: '77123456' },
+    KM: { minNsn: 7, maxNsn: 7, stripZero: true, mobileStart: null, example: '3212345' },
+    US: { minNsn: 10, maxNsn: 10, stripZero: false, mobileStart: null, example: '4155550199' },
+    CA: { minNsn: 10, maxNsn: 10, stripZero: false, mobileStart: null, example: '4165550199' },
+    DO: { minNsn: 10, maxNsn: 10, stripZero: false, mobileStart: null, example: '8095550199' },
+    JM: { minNsn: 10, maxNsn: 10, stripZero: false, mobileStart: null, example: '8765550199' },
+    GB: { minNsn: 10, maxNsn: 10, stripZero: true, mobileStart: null, example: '7700900123' },
+    DE: { minNsn: 10, maxNsn: 11, stripZero: true, mobileStart: null, example: '15123456789' },
+    FR: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: null, example: '612345678' },
+    IT: { minNsn: 9, maxNsn: 10, stripZero: false, mobileStart: null, example: '3123456789' },
+    ES: { minNsn: 9, maxNsn: 9, stripZero: false, mobileStart: null, example: '612345678' },
+    NL: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: null, example: '612345678' },
+    BE: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: null, example: '470123456' },
+    CH: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: null, example: '791234567' },
+    AT: { minNsn: 7, maxNsn: 10, stripZero: true, mobileStart: null, example: '6641234567' },
+    SE: { minNsn: 7, maxNsn: 10, stripZero: true, mobileStart: null, example: '701234567' },
+    NO: { minNsn: 8, maxNsn: 8, stripZero: false, mobileStart: null, example: '41234567' },
+    DK: { minNsn: 8, maxNsn: 8, stripZero: false, mobileStart: null, example: '20123456' },
+    PL: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: null, example: '512345678' },
+    PT: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: null, example: '912345678' },
+    GR: { minNsn: 10, maxNsn: 10, stripZero: true, mobileStart: null, example: '6912345678' },
+    RU: { minNsn: 10, maxNsn: 10, stripZero: true, mobileStart: null, example: '9161234567' },
+    KZ: { minNsn: 10, maxNsn: 10, stripZero: true, mobileStart: null, example: '7011234567' },
+    UA: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: null, example: '501234567' },
+    RO: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: null, example: '712345678' },
+    IN: { minNsn: 10, maxNsn: 10, stripZero: true, mobileStart: null, example: '9812345678' },
+    PK: { minNsn: 10, maxNsn: 10, stripZero: true, mobileStart: null, example: '3001234567' },
+    BD: { minNsn: 10, maxNsn: 10, stripZero: true, mobileStart: null, example: '1712345678' },
+    ID: { minNsn: 10, maxNsn: 11, stripZero: true, mobileStart: null, example: '81234567890' },
+    MY: { minNsn: 10, maxNsn: 10, stripZero: true, mobileStart: null, example: '1234567890' },
+    SG: { minNsn: 8, maxNsn: 8, stripZero: false, mobileStart: null, example: '81234567' },
+    CN: { minNsn: 10, maxNsn: 11, stripZero: true, mobileStart: null, example: '13812345678' },
+    JP: { minNsn: 10, maxNsn: 11, stripZero: true, mobileStart: null, example: '9012345678' },
+    KR: { minNsn: 10, maxNsn: 10, stripZero: true, mobileStart: null, example: '1012345678' },
+    AU: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: null, example: '412345678' },
+    NZ: { minNsn: 8, maxNsn: 10, stripZero: true, mobileStart: null, example: '211234567' },
+    BR: { minNsn: 10, maxNsn: 11, stripZero: true, mobileStart: null, example: '11987654321' },
+    MX: { minNsn: 10, maxNsn: 10, stripZero: true, mobileStart: null, example: '5512345678' },
+    AR: { minNsn: 10, maxNsn: 11, stripZero: true, mobileStart: null, example: '1112345678' },
+    CO: { minNsn: 10, maxNsn: 10, stripZero: true, mobileStart: null, example: '3001234567' },
+    PH: { minNsn: 10, maxNsn: 10, stripZero: true, mobileStart: null, example: '9171234567' },
+    ZA: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: null, example: '821234567' },
+    NG: { minNsn: 10, maxNsn: 10, stripZero: true, mobileStart: null, example: '8021234567' },
+    KE: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: null, example: '712345678' },
+    ET: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: null, example: '911234567' },
+    GH: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: null, example: '241234567' },
+    AZ: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: null, example: '501234567' },
+    GE: { minNsn: 9, maxNsn: 9, stripZero: true, mobileStart: null, example: '555123456' },
+    HK: { minNsn: 8, maxNsn: 8, stripZero: true, mobileStart: null, example: '51234567' }
+};
+
+window.SAWYAN.getPhoneRule = function (countryCode) {
+    const cc = String(countryCode || 'EG').trim().toUpperCase();
+    const c = window.SAWYAN.getCountryByCode(cc);
+    const dial = c ? c.dialCode : '+20';
+    const base = window.SAWYAN.PhoneRules[cc] || {
+        minNsn: 7,
+        maxNsn: 15,
+        stripZero: true,
+        mobileStart: null,
+        example: '12345678'
+    };
+    return {
+        countryCode: cc,
+        dialCode: dial,
+        dialDigits: dial.replace(/\D+/g, ''),
+        flag: c ? c.flag : '🌍',
+        nameAr: c ? c.nameAr : cc,
+        minNsn: base.minNsn,
+        maxNsn: base.maxNsn,
+        stripZero: base.stripZero !== false,
+        mobileStart: Array.isArray(base.mobileStart) ? base.mobileStart : null,
+        example: base.example || '12345678'
+    };
 };

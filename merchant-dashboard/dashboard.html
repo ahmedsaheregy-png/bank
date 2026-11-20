@@ -17,6 +17,25 @@
     <!-- Leaflet for Merchant Radar Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        select.form-control {
+            appearance: none;
+            -webkit-appearance: none;
+            background-color: #ffffff;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%230F172A' d='M3.2 5.5L8 10.7l4.8-5.2H3.2z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: left 10px center;
+            background-size: 13px 13px;
+            padding-left: 30px;
+            cursor: pointer;
+        }
+        .geo-picker-box { background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:12px; padding:12px; }
+        .geo-picker-actions { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
+        .geo-picker-actions .btn { flex:1 1 170px; font-size:0.84rem; }
+        .geo-url-row { display:flex; gap:8px; flex-wrap:wrap; }
+        .geo-url-row .form-control { flex:1 1 200px; min-width:0; }
+        .geo-status-bar { margin-top:8px; font-size:0.8rem; color:#475569; font-weight:700; }
+    </style>
 </head>
 
 <body>
@@ -296,15 +315,17 @@
     <script src="../shared/components/logo.js?v=20261119_logo_all"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-    <script src="../shared/config/supabase.js"></script>
-    <script src="../shared/api/sawyan-api.js?v=20261119_logo_all"></script>
+    <script src="../shared/config/supabase.js?v=20261118_stage7"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261120_stage9"></script>
+    <script src="../shared/data/countries.js?v=20261120_stage9"></script>
+    <script src="../shared/js/registration-engine.js?v=20261120_stage9"></script>
     <script src="../shared/components/notifications.js"></script>
     <script src="../shared/components/image-upload.js"></script>
     <script src="../shared/payments/payment-provider.js"></script>
     <script src="../shared/payments/payment-service.js"></script>
     <script src="../shared/payments/mock-provider.js"></script>
     <script src="../shared/payments/payment-init.js"></script>
-    <script src="js/dashboard.js?v=20261119_v3clean"></script>
+    <script src="js/dashboard.js?v=20261120_stage9"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             setTimeout(() => {
@@ -362,11 +383,11 @@
 
             <!-- الزر الذهبي للتاجر: فتح خريطة الأعضاء في تطبيق Google Maps الرسمي -->
             <div style="margin-bottom:12px;">
-                <a href="https://www.google.com/maps/search/مناطق+المعادي+ودجلة+والسرايات/@29.960,31.280,14z" target="_blank" style="display:flex; align-items:center; justify-content:center; gap:8px; width:100%; box-sizing:border-box; background:linear-gradient(135deg, #1e40af, #0284c7); color:white; text-decoration:none; padding:12px; border-radius:10px; font-weight:800; font-size:0.92rem; font-family:'Tajawal', sans-serif; text-align:center; box-shadow:0 4px 12px rgba(2,132,199,0.3);">
-                    <span>🌐 فتح خريطة تجمعات أعضاء سويا في تطبيق Google Maps الرسمي</span>
+                <a id="radarGmapsDirectLink" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" style="display:flex; align-items:center; justify-content:center; gap:8px; width:100%; box-sizing:border-box; background:linear-gradient(135deg, #1e40af, #0284c7); color:white; text-decoration:none; padding:12px; border-radius:10px; font-weight:800; font-size:0.92rem; font-family:'Tajawal', sans-serif; text-align:center; box-shadow:0 4px 12px rgba(2,132,199,0.3);">
+                    <span>🌐 فتح موقع المتجر والمنطقة في تطبيق Google Maps الرسمي</span>
                 </a>
-                <div style="font-size:0.72rem; color:#64748b; text-align:center; margin-top:4px;">
-                    * يفتح تطبيق Google Maps مع طبقة التجمعات السكنية لأعضاء سويا المحيطين بمتجرك بنطاق 3 كم.
+                <div id="radarAnonFlagsBanner" style="font-size:0.78rem; color:#065f46; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px; padding:6px 10px; text-align:center; margin-top:6px; font-weight:700;">
+                    🚩 تظهر أعلام الأعضاء باللون الأخضر دون أي أسماء أو بيانات شخصية لحماية الخصوصية.
                 </div>
             </div>
 
@@ -415,15 +436,20 @@
     });
     
     let merchantMapInstance = null;
-    function initMerchantMap() {
+    async function initMerchantMap() {
         const container = document.getElementById('merchantLeafletMap');
         if (!container || typeof L === 'undefined') return;
 
         const prof = (window.__merchantBundleCache && window.__merchantBundleCache.profile) || {};
-        const storeLat = Number(prof.latitude) || 30.0561;
-        const storeLng = Number(prof.longitude) || 31.3301;
+        const storeLat = Number(prof.latitude) || 30.0444;
+        const storeLng = Number(prof.longitude) || 31.2357;
         const storeName = prof.business_name || 'متجرك المعتمد';
         const storeAddr = prof.address || '';
+
+        const gmLink = document.getElementById('radarGmapsDirectLink');
+        if (gmLink) {
+            gmLink.href = `https://www.google.com/maps/search/?api=1&query=${storeLat},${storeLng}`;
+        }
 
         if (merchantMapInstance) {
             merchantMapInstance.remove();
@@ -438,10 +464,9 @@
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 18,
-            attribution: '© OpenStreetMap | رادار SAWYAN (M18 k-Anonymity)'
+            attribution: '© OpenStreetMap | رادار SAWYAN'
         }).addTo(merchantMapInstance);
 
-        // دوائر النطاق الجغرافي المقنّعة فقط (يحظر إظهار أي دبابيس فردية للأعضاء — M18)
         L.circle([storeLat, storeLng], { radius: 1000, color: '#10b981', fillOpacity: 0.12, weight: 1.5 }).addTo(merchantMapInstance);
         L.circle([storeLat, storeLng], { radius: 2000, color: '#f59e0b', fillOpacity: 0.08, weight: 1.5 }).addTo(merchantMapInstance);
         L.circle([storeLat, storeLng], { radius: 3000, color: '#3b82f6', fillOpacity: 0.04, weight: 1.5 }).addTo(merchantMapInstance);
@@ -454,6 +479,39 @@
         });
         L.marker([storeLat, storeLng], { icon: storeIcon }).addTo(merchantMapInstance)
             .bindPopup(`<div style="font-family:Tajawal; direction:rtl; text-align:center;"><strong>🏪 ${storeName}</strong><br>${storeAddr}</div>`);
+
+        // جلب الأعلام الخضراء المجهولة (بدون أسماء أو هواتف أو أكواد — تمويه ±150-350م)
+        const banner = document.getElementById('radarAnonFlagsBanner');
+        try {
+            if (window.SAWYAN && window.SAWYAN.API && typeof window.SAWYAN.API.getAnonymizedMembersMapPins === 'function' && prof.id) {
+                const pinRes = await window.SAWYAN.API.getAnonymizedMembersMapPins({
+                    centerLat: storeLat,
+                    centerLng: storeLng,
+                    radiusKm: 15,
+                    countryCode: prof.country_code || null,
+                    merchantId: prof.id
+                });
+                const pins = Array.isArray(pinRes && pinRes.pins) ? pinRes.pins : [];
+                const flagIcon = L.divIcon({
+                    html: '<div style="font-size:20px;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.35));">🚩</div>',
+                    className: 'member-anon-flag',
+                    iconSize: [22, 22],
+                    iconAnchor: [11, 20]
+                });
+                pins.forEach(p => {
+                    L.marker([Number(p.lat), Number(p.lng)], { icon: flagIcon })
+                        .addTo(merchantMapInstance)
+                        .bindPopup('<div style="font-family:Tajawal;direction:rtl;font-weight:700;">👤 عضو SAWYAN</div>');
+                });
+                if (banner) {
+                    banner.textContent = `🚩 يظهر على الخريطة ${Number(pinRes.total_pins || pins.length)} علم أخضر لأعضاء SAWYAN في محيط 15 كم (بدون أي بيانات شخصية أو أسماء).`;
+                }
+            }
+        } catch (_err) {
+            if (banner) {
+                banner.textContent = '🚩 الأعلام الخضراء مجهولة الهوية ومموّهة الإحداثيات لحماية خصوصية الأعضاء.';
+            }
+        }
     }
 
     function openMerchantMembersRadarModal() {

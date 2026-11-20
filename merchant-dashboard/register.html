@@ -4,14 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تسجيل تاجر - SAWYAN</title>
+    <title>تسجيل تاجر جديد - SAWYAN</title>
     <link
         href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="../shared/css/variables.css">
     <link rel="stylesheet" href="../shared/css/logo.css?v=20261119_logo_all">
     <link rel="stylesheet" href="../shared/css/image-upload.css">
-    <link rel="stylesheet" href="../member-dashboard/css/auth.css">
+    <link rel="stylesheet" href="../member-dashboard/css/auth.css?v=20261120_stage9">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 
 <body>
@@ -23,348 +25,276 @@
             <a href="../index.html" class="auth-home-pill">🏠 الرئيسية</a>
         </div>
     </header>
-    <div class="auth-container">
+
+    <div class="auth-container" style="max-width: 720px;">
         <div class="auth-card">
             <div id="logoContainer" class="logo-section" data-sawyan-logo="default"></div>
 
-            <h1>تسجيل تاجر جديد</h1>
-            <p class="subtitle">انضم إلى شبكة SAWYAN</p>
+            <h1 id="regPageTitle">تسجيل تاجر جديد</h1>
+            <p id="regPageSubtitle" class="subtitle">انضم إلى شبكة SAWYAN واستقطب آلاف المشترين لمتجرك</p>
 
-            <form id="registerForm" class="auth-form">
-                <!-- كود التاجر -->
-                <div class="form-group">
-                    <label>كود التاجر (تلقائي)</label>
-                    <input type="text" id="merchantCode" readonly class="form-control">
+            <div class="form-note" style="margin-bottom: 18px;">
+                <p style="margin:0;">🏷️ سيُمنح متجرك <strong>كود تاجر تعريفي فريد</strong> تلقائياً فور إتمام هذا النموذج السريع، ويمكنك استكمال باقي تفاصيل المتجر من لوحة التحكم.</p>
+            </div>
+
+            <form id="registerForm" class="auth-form" novalidate>
+                <div id="merchantRequiredFields" class="form-section" style="display:flex;flex-direction:column;gap:14px;"></div>
+
+                <div id="merchantOptionalDividerBanner" class="optional-divider-banner" style="display:none;">
+                    <span style="font-size:1.2rem;flex-shrink:0;">💡</span>
+                    <span id="merchantOptionalDividerText">البيانات التالية مهمة لتفعيل متجرك وظهوره بشكل متماسك أمام الأعضاء، لكن يمكنك تخطيها الآن واستكمالها بسهولة من لوحة التحكم بعد إتمام التسجيل المبدئي.</span>
                 </div>
 
-                <!-- المعلومات الأساسية - مهمة حالياً -->
-                <div class="form-section">
-                    <h3>المعلومات الأساسية</h3>
+                <div id="merchantOptionalFields" class="form-section" style="display:flex;flex-direction:column;gap:14px;"></div>
 
-                    <div class="form-group">
-                        <label>اسم النشاط التجاري *</label>
-                        <input type="text" id="businessName" required class="form-control"
-                            placeholder="مثال: سوبر ماركت الأمل">
+                <!-- مستودع قوالب الحقول الديناميكية (يُعاد ترتيبها وتصنيفها آلياً وفق إعدادات الإدارة الحية) -->
+                <div id="merchantFieldPool" style="display:none;">
+                    <div class="form-group" data-field-key="business_name">
+                        <label class="form-label" for="businessName">اسم النشاط التجاري <span class="required-star">*</span></label>
+                        <input type="text" id="businessName" class="form-control" placeholder="مثال: سوبر ماركت الأمل">
+                        <small class="field-help-text"></small>
                     </div>
 
-                    <div class="form-group">
-                        <label>اسم المالك</label>
-                        <input type="text" id="ownerName" class="form-control" placeholder="الاسم الكامل للمالك">
+                    <div class="form-group" data-field-key="owner_name">
+                        <label class="form-label" for="ownerName">اسم المالك الكامل <span class="required-star">*</span></label>
+                        <input type="text" id="ownerName" class="form-control" placeholder="الاسم الثلاثي أو الرباعي للمالك">
+                        <small class="field-help-text"></small>
                     </div>
 
-                    <div class="form-group">
-                        <label>البريد الإلكتروني</label>
-                        <input type="email" id="email" class="form-control" placeholder="merchant@example.com">
+                    <div class="form-group" data-field-key="email">
+                        <label class="form-label" for="email">البريد الإلكتروني <span class="required-star">*</span></label>
+                        <input type="email" id="email" dir="ltr" class="form-control" placeholder="merchant@example.com">
+                        <small id="emailValidationMsg" class="field-validation-msg"></small>
+                        <small class="field-help-text"></small>
                     </div>
 
-                    <div class="form-group">
-                        <label>رقم الهاتف النشط (بمفتاح الدولة) *</label>
-                        <input type="tel" id="phone" required class="form-control" placeholder="+201012345678">
-                    </div>
-
-                    <div class="form-row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
-                        <div class="form-group">
-                            <label>دولة النشاط التجاري (بوابة تفعيل الدول D13) *</label>
-                            <select id="countryCodeSelect" required class="form-control">
-                                <option value="EG" selected>🇪🇬 مصر (نشطة — العملة: EGP)</option>
-                                <option value="TR">🇹🇷 تركيا (نشطة — العملة: TRY)</option>
-                                <option value="SA">🇸🇦 السعودية (قريباً — بوابة D13)</option>
-                                <option value="DE">🇩🇪 ألمانيا (قريباً — بوابة D13)</option>
-                                <option value="US">🇺🇸 الولايات المتحدة (قريباً — بوابة D13)</option>
-                            </select>
+                    <div class="form-group" data-field-key="merchant_type">
+                        <label class="form-label" for="merchantType">نوع النشاط التجاري <span class="required-star">*</span></label>
+                        <div class="segmented-type-grid" id="merchantTypeCards" role="radiogroup" aria-label="نوع النشاط التجاري">
+                            <button type="button" class="segmented-type-card active" data-type="physical">🏪<span>محل على الأرض</span></button>
+                            <button type="button" class="segmented-type-card" data-type="online">🌐<span>متجر إلكتروني</span></button>
+                            <button type="button" class="segmented-type-card" data-type="both">🔄<span>محل + أونلاين</span></button>
                         </div>
-                        <div class="form-group">
-                            <label>كود العضو المرشِّح للمتجر (اختياري)</label>
-                            <input type="number" id="onboardedByCode" min="1" class="form-control" placeholder="مثال: 1">
-                        </div>
-                    </div>
-
-                    <div class="form-row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
-                        <div class="form-group">
-                            <label>كلمة مرور حساب التاجر (8+ أحرف) *</label>
-                            <input type="password" id="password" required minlength="8" class="form-control" placeholder="أدخل كلمة مرور قوية (يُحظر 123456)">
-                        </div>
-                        <div class="form-group">
-                            <label>تأكيد كلمة المرور *</label>
-                            <input type="password" id="confirmPassword" required minlength="8" class="form-control" placeholder="أعد إدخال كلمة المرور">
-                        </div>
-                    </div>
-
-                    <div class="form-row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
-                        <div class="form-group">
-                            <label>نسبة العمولة التعاقدية الإجمالية (%) *</label>
-                            <input type="number" id="commissionPercentage" required class="form-control" step="0.25" min="1" max="40" value="10">
-                            <small class="form-text">النسبة الإجمالية المعتمدة على الفاتورة (من 1% إلى 40%)</small>
-                        </div>
-                        <div class="form-group">
-                            <label>رمز PIN الكاشير الرئيسي (4 أرقام — اختياري D25)</label>
-                            <input type="password" id="initialCashierPin" maxlength="4" pattern="\d{4}" inputmode="numeric" class="form-control" placeholder="مثال: 2580">
-                            <small class="form-text">ينشئ تلقائياً موظف كاشير رئيسي (EMP-01) لتوثيق المبيعات فوراً</small>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- نوع النشاط - مهم حالياً -->
-                <div class="form-section">
-                    <h3>نوع النشاط</h3>
-
-                    <div class="form-group">
-                        <label>نوع التاجر</label>
                         <select id="merchantType" class="form-control">
-                            <option value="physical" selected>فيزيائي (محل على الأرض)</option>
-                            <option value="online">إلكتروني (متجر أونلاين)</option>
-                            <option value="both">كلاهما</option>
+                            <option value="physical">فيزيائي (محل أو مقر على الأرض)</option>
+                            <option value="online">أونلاين (متجر إلكتروني / طلبات أونلاين)</option>
+                            <option value="both">الاثنان معاً (محل على الأرض + متجر أونلاين)</option>
                         </select>
+                        <small class="field-help-text"></small>
                     </div>
 
-                    <div class="form-group">
-                        <label>فئة النشاط</label>
-                        <select id="businessCategory" class="form-control">
-                            <option value="supermarket" selected>🛒 سوبر ماركت وبقالة</option>
-                            <option value="pharmacy">💊 صيدليات ورعاية صحية</option>
-                            <option value="restaurant">🍽️ مطاعم ومأكولات</option>
-                            <option value="cafe">☕ كافيهات ومخبوزات</option>
-                            <option value="clothing">👕 ملابس وأزياء</option>
-                            <option value="shoes">👟 أحذية وحقائب</option>
-                            <option value="butcher">🥩 جزارة ولحوم</option>
-                            <option value="electronics">📱 إلكترونيات وهواتف</option>
-                            <option value="home-goods">🏠 أدوات منزلية وأثاث</option>
-                            <option value="delivery">🚚 خدمات التوصيل والشحن</option>
-                            <option value="cosmetics">💄 عطور وتجميل</option>
-                            <option value="real-estate">🏢 خدمات عقارية</option>
-                            <option value="entertainment">🎮 ترفيه وسياحة</option>
-                            <option value="tech-services">💻 خدمات تقنية وتعليم</option>
-                            <option value="other">📦 أخرى</option>
+                    <div class="form-group" data-field-key="business_category">
+                        <label class="form-label" for="category">فئة النشاط التجاري <span class="required-star">*</span></label>
+                        <select id="category" class="form-control">
+                            <option value="">اختر فئة النشاط...</option>
+                            <option value="supermarket">سوبر ماركت / بقالة</option>
+                            <option value="restaurant">مطاعم وكافيهات</option>
+                            <option value="pharmacy">صيدليات ومستلزمات طبية</option>
+                            <option value="clothing">ملابس وأزياء وأحذية</option>
+                            <option value="electronics">إلكترونيات وهواتف</option>
+                            <option value="beauty">تجميل وعطور وعناية</option>
+                            <option value="services">خدمات عامة وصيانة</option>
+                            <option value="education">تعليم وتدريب</option>
+                            <option value="home">أثاث ومنزل وديكور</option>
+                            <option value="other">أنشطة أخرى</option>
                         </select>
+                        <small class="field-help-text"></small>
                     </div>
 
-                    <div class="form-group">
-                        <label>وصف النشاط</label>
-                        <textarea id="businessDescription" class="form-control" rows="3"
-                            placeholder="وصف مختصر عن نشاطك التجاري..."></textarea>
+                    <div class="form-group" data-field-key="country_code">
+                        <label class="form-label" for="countryCode">دولة النشاط التجاري <span class="required-star">*</span></label>
+                        <select id="countryCode" class="form-control">
+                            <option value="EG">🇪🇬 مصر (EG)</option>
+                        </select>
+                        <small class="field-help-text"></small>
                     </div>
-                </div>
 
-                <!-- الموقع - للتجار الفيزيائيين (اختياري حالياً) -->
-                <div class="form-section optional-section" id="physicalLocationSection" style="display: none;">
-                    <h3>الموقع الجغرافي <span class="optional-badge">(للمحلات الفيزيائية)</span></h3>
+                    <div class="form-group" data-field-key="city">
+                        <label class="form-label" for="cityGeonameId">المحافظة / المدينة <span class="required-star">*</span></label>
+                        <input type="text" id="citySearchInput" class="form-control" placeholder="ابحث عن اسم المدينة أو المحافظة لتصفية القائمة..." style="margin-bottom:6px;">
+                        <select id="cityGeonameId" class="form-control">
+                            <option value="">— اختر المدينة / المحافظة —</option>
+                        </select>
+                        <small class="field-help-text"></small>
+                    </div>
 
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>الدولة</label>
-                            <input type="text" id="country" class="form-control" placeholder="مثال: مصر">
+                    <div class="form-group" data-field-key="district">
+                        <label class="form-label" for="districtSelect">الحي / المنطقة <span class="required-star">*</span></label>
+                        <select id="districtSelect" class="form-control">
+                            <option value="">— اختر الحي / المنطقة (بعد اختيار المدينة) —</option>
+                            <option value="__MANUAL__">✍️ إدخال اسم الحي يدوياً...</option>
+                        </select>
+                        <input type="text" id="districtManualInput" class="form-control" placeholder="اكتب اسم الحي أو المنطقة بدقة..." style="display:none;margin-top:6px;">
+                        <small class="field-help-text"></small>
+                    </div>
+
+                    <div class="form-group" data-field-key="phone">
+                        <label class="form-label" for="phone">رقم الهاتف النشط <span class="required-star">*</span></label>
+                        <div class="dial-phone-group">
+                            <div id="phoneDialBadge" class="dial-code-locked-badge" title="مفتاح الدولة يتغير تلقائياً حسب الدولة المختارة">🇪🇬 +20</div>
+                            <input type="tel" id="phone" class="form-control" dir="ltr" placeholder="1012345678" inputmode="numeric">
                         </div>
+                        <small id="phoneValidationMsg" class="field-validation-msg"></small>
+                        <small class="field-help-text"></small>
+                    </div>
 
-                        <div class="form-group">
-                            <label>المدينة</label>
-                            <input type="text" id="city" class="form-control" placeholder="مثال: القاهرة">
+                    <div class="form-group" data-field-key="onboarded_by_code">
+                        <label class="form-label" for="onboardedByCode">كود العضو المرشّح للمتجر <span class="required-star">*</span></label>
+                        <div class="inline-action-row">
+                            <input type="number" id="onboardedByCode" class="form-control" min="0" step="1" dir="ltr" placeholder="أدخل كود العضو أو 0 للتسجيل عن طريق الشركة">
+                            <button type="button" id="btnCompanyDirectOnboard" class="btn btn-outline" style="white-space:nowrap;padding:10px 14px;font-size:0.86rem;">
+                                🏢 مباشر عبر الشركة (0)
+                            </button>
                         </div>
+                        <small id="onboarderLookupMsg" class="field-validation-msg"></small>
+                        <small class="field-help-text"></small>
                     </div>
 
-                    <div class="form-group">
-                        <label>العنوان التفصيلي</label>
-                        <textarea id="address" class="form-control" rows="2"
-                            placeholder="الشارع، الحي، المنطقة..."></textarea>
+                    <div class="form-group" data-field-key="password">
+                        <label class="form-label" for="password">كلمة مرور حساب التاجر <span class="required-star">*</span></label>
+                        <input type="password" id="password" class="form-control" placeholder="أدخل كلمة مرور قوية (8 أحرف على الأقل)">
+                        <label class="form-label" for="confirmPassword" style="margin-top:10px;">تأكيد كلمة المرور <span class="required-star">*</span></label>
+                        <input type="password" id="confirmPassword" class="form-control" placeholder="أعد كتابة كلمة المرور للتأكيد">
+                        <small class="field-help-text"></small>
                     </div>
 
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>خط الطول (Longitude)</label>
-                            <input type="number" id="longitude" class="form-control" step="any"
-                                placeholder="مثال: 31.2357">
+                    <div class="form-group" data-field-key="terms_consent">
+                        <label class="checkbox-label" style="gap:10px;align-items:flex-start;">
+                            <input type="checkbox" id="termsConsent" style="margin-top:4px;">
+                            <span>أوافق على <a href="../terms.html" target="_blank" rel="noopener">الشروط والأحكام</a> و<a href="../privacy.html" target="_blank" rel="noopener">سياسة الخصوصية</a>، وأقر بصحة بيانات المتجر.</span>
+                        </label>
+                        <small class="field-help-text"></small>
+                    </div>
+
+                    <!-- الحقول الاختيارية أو المرحلة للوحة التحكم -->
+                    <div class="form-group" data-field-key="commission_percent">
+                        <label class="form-label" for="deductionPercent">كم أقصى نسبة تستطيع ردّها لسويًا كلما اشترى أعضاؤها منك؟ (%)</label>
+                        <input type="number" id="deductionPercent" class="form-control" min="0.5" max="95" step="0.5" dir="ltr" placeholder="مثال: 10">
+                        <small class="field-help-text">أقصى نسبة من المبيعات تستطيع استقطاعها لسويًا نظير حشد آلاف المشترين نحو مشروعك</small>
+                    </div>
+
+                    <div class="form-group" data-field-key="business_description">
+                        <label class="form-label" for="description">وصف مختصر عن النشاط</label>
+                        <textarea id="description" class="form-control" rows="2" placeholder="اذكر أبرز منتجاتك أو خدماتك التي تميّز متجرك..."></textarea>
+                        <small class="field-help-text"></small>
+                    </div>
+
+                    <div class="form-group" data-field-key="address">
+                        <label class="form-label" for="address">العنوان التفصيلي</label>
+                        <input type="text" id="address" class="form-control" placeholder="اسم الشارع، رقم العقار، أقرب معلم معروف...">
+                        <small class="field-help-text"></small>
+                    </div>
+
+                    <div class="form-group" data-field-key="geo_location">
+                        <label class="form-label">الموقع على خرائط جوجل (اللاقط التلقائي)</label>
+                        <div id="merchantGeoPickerHost"></div>
+                        <input type="hidden" id="latitude">
+                        <input type="hidden" id="longitude">
+                        <input type="hidden" id="googleMapsUrl">
+                        <small class="field-help-text"></small>
+                    </div>
+
+                    <div class="form-group" data-field-key="website_url">
+                        <label class="form-label" for="websiteUrl">رابط الموقع أو المتجر الإلكتروني</label>
+                        <input type="url" id="websiteUrl" dir="ltr" class="form-control" placeholder="https://yourstore.com">
+                        <small class="field-help-text"></small>
+                    </div>
+
+                    <div class="form-group" data-field-key="whatsapp">
+                        <label class="form-label" for="whatsapp">رقم واتساب للتواصل مع العملاء</label>
+                        <div class="inline-action-row">
+                            <input type="tel" id="whatsapp" dir="ltr" class="form-control" placeholder="رقم الواتساب أو اضغط نسخ رقم الهاتف">
+                            <button type="button" id="btnCopyPhoneToWhatsapp" class="btn btn-outline" style="white-space:nowrap;padding:10px 12px;font-size:0.84rem;">
+                                📱 نفس الهاتف
+                            </button>
                         </div>
-
-                        <div class="form-group">
-                            <label>خط العرض (Latitude)</label>
-                            <input type="number" id="latitude" class="form-control" step="any"
-                                placeholder="مثال: 30.0444">
-                        </div>
+                        <small class="field-help-text"></small>
                     </div>
 
-                    <div class="form-group">
-                        <label>رابط خرائط جوجل</label>
-                        <input type="url" id="googleMapsUrl" class="form-control"
-                            placeholder="https://maps.google.com/...">
-                    </div>
-                </div>
-
-                <!-- المتجر الإلكتروني - للتجار الإلكترونيين (اختياري حالياً) -->
-                <div class="form-section optional-section" id="onlineStoreSection" style="display: none;">
-                    <h3>المتجر الإلكتروني <span class="optional-badge">(للمتاجر الأونلاين)</span></h3>
-
-                    <div class="form-group">
-                        <label>رابط الموقع الإلكتروني</label>
-                        <input type="url" id="websiteUrl" class="form-control" placeholder="https://example.com">
-                    </div>
-
-                    <div class="form-group">
-                        <label>رابط Webhook (للتكامل التقني)</label>
-                        <input type="url" id="webhookUrl" class="form-control"
-                            placeholder="https://example.com/webhook">
-                        <small class="form-text">سيتم استخدامه لإرسال إشعارات العمليات تلقائياً</small>
-                    </div>
-                </div>
-
-                <!-- أوقات العمل (للتجار الفيزيائيين) -->
-                <div class="form-section optional-section" id="workingHoursSection" style="display: none;">
-                    <h3>أوقات العمل <span class="optional-badge">(اختياري)</span></h3>
-
-                    <div class="working-hours-container">
-                        <div class="working-hours-row">
-                            <label>السبت</label>
-                            <input type="time" id="sat_from" class="form-control time-input">
-                            <span>إلى</span>
-                            <input type="time" id="sat_to" class="form-control time-input">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="sat_closed"> مغلق
-                            </label>
-                        </div>
-                        <div class="working-hours-row">
-                            <label>الأحد</label>
-                            <input type="time" id="sun_from" class="form-control time-input">
-                            <span>إلى</span>
-                            <input type="time" id="sun_to" class="form-control time-input">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="sun_closed"> مغلق
-                            </label>
-                        </div>
-                        <div class="working-hours-row">
-                            <label>الإثنين</label>
-                            <input type="time" id="mon_from" class="form-control time-input">
-                            <span>إلى</span>
-                            <input type="time" id="mon_to" class="form-control time-input">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="mon_closed"> مغلق
-                            </label>
-                        </div>
-                        <div class="working-hours-row">
-                            <label>الثلاثاء</label>
-                            <input type="time" id="tue_from" class="form-control time-input">
-                            <span>إلى</span>
-                            <input type="time" id="tue_to" class="form-control time-input">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="tue_closed"> مغلق
-                            </label>
-                        </div>
-                        <div class="working-hours-row">
-                            <label>الأربعاء</label>
-                            <input type="time" id="wed_from" class="form-control time-input">
-                            <span>إلى</span>
-                            <input type="time" id="wed_to" class="form-control time-input">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="wed_closed"> مغلق
-                            </label>
-                        </div>
-                        <div class="working-hours-row">
-                            <label>الخميس</label>
-                            <input type="time" id="thu_from" class="form-control time-input">
-                            <span>إلى</span>
-                            <input type="time" id="thu_to" class="form-control time-input">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="thu_closed"> مغلق
-                            </label>
-                        </div>
-                        <div class="working-hours-row">
-                            <label>الجمعة</label>
-                            <input type="time" id="fri_from" class="form-control time-input">
-                            <span>إلى</span>
-                            <input type="time" id="fri_to" class="form-control time-input">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="fri_closed" checked> مغلق
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- روابط التواصل الاجتماعي -->
-                <div class="form-section optional-section">
-                    <h3>روابط التواصل <span class="optional-badge">(اختياري)</span></h3>
-
-                    <div class="form-group">
-                        <label>📱 واتساب</label>
-                        <input type="tel" id="whatsapp" class="form-control" placeholder="+20 123 456 7890">
-                        <small class="form-text">رقم واتساب للتواصل مع العملاء</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label>📘 فيسبوك</label>
-                        <input type="url" id="facebookUrl" class="form-control"
-                            placeholder="https://facebook.com/yourpage">
-                    </div>
-
-                    <div class="form-group">
-                        <label>📸 انستغرام</label>
-                        <input type="url" id="instagramUrl" class="form-control"
-                            placeholder="https://instagram.com/yourprofile">
-                    </div>
-
-                    <div class="form-group">
-                        <label>🐦 تويتر / X</label>
-                        <input type="url" id="twitterUrl" class="form-control" placeholder="https://x.com/yourprofile">
-                    </div>
-
-                    <div class="form-group">
-                        <label>🎥 تيك توك</label>
-                        <input type="url" id="tiktokUrl" class="form-control"
-                            placeholder="https://tiktok.com/@yourprofile">
-                    </div>
-                </div>
-
-                <!-- الصور ووثائق النشاط -->
-                <div class="form-section optional-section">
-                    <h3>الصور ووثائق التوثيق <span class="optional-badge">(رفع مباشر آمن أو رابط HTTPS)</span></h3>
-
-                    <div class="form-group">
-                        <label>شعار النشاط (Logo)</label>
-                        <div id="merchantLogoUploader"></div>
+                    <div class="form-group" data-field-key="logo_url">
+                        <label class="form-label">شعار النشاط (Logo)</label>
+                        <div id="logoUploadBox"></div>
                         <input type="hidden" id="logoUrl">
+                        <small class="field-help-text"></small>
                     </div>
 
-                    <div class="form-group">
-                        <label>صورة الغلاف / الواجهة (Storefront Cover)</label>
-                        <div id="merchantCoverUploader"></div>
+                    <div class="form-group" data-field-key="cover_image_url">
+                        <label class="form-label">صورة الواجهة / الغلاف</label>
+                        <div id="coverUploadBox"></div>
                         <input type="hidden" id="coverImageUrl">
+                        <small class="field-help-text"></small>
                     </div>
 
-                    <div class="form-group">
-                        <label>صور إضافية للنشاط (حد أقصى 4 صور)</label>
-                        <div id="merchantGalleryUploader"></div>
-                        <input type="hidden" id="images">
+                    <div class="form-group" data-field-key="gallery_images">
+                        <label class="form-label">صور إضافية للمتجر والمنتجات</label>
+                        <input type="hidden" id="galleryImagesJson">
+                        <div class="form-note" style="font-size:0.85rem;">يمكن رفع معرض حتى 6 صور بسهولة من لوحة تحكم التاجر.</div>
+                        <small class="field-help-text"></small>
                     </div>
 
-                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap:12px;">
-                        <div class="form-group">
-                            <label>رقم السجل التجاري (اختياري)</label>
-                            <input type="text" id="commercialRegNo" class="form-control" placeholder="مثال: 1010456789">
-                        </div>
-                        <div class="form-group">
-                            <label>الرقم الضريبي (اختياري)</label>
-                            <input type="text" id="taxId" class="form-control" placeholder="مثال: 300-456-789">
-                        </div>
+                    <div class="form-group" data-field-key="working_hours">
+                        <label class="form-label" for="workingHoursSummary">مواعيد العمل الأسبوعية</label>
+                        <input type="text" id="workingHoursSummary" class="form-control" placeholder="مثال: يومياً من 10 ص إلى 11 م">
+                        <small class="field-help-text"></small>
                     </div>
 
-                    <div class="form-group">
-                        <label>صورة السجل التجاري / الرخصة التجارية (KYC Docs)</label>
-                        <div id="merchantCommercialDocUploader"></div>
+                    <div class="form-group" data-field-key="social_links">
+                        <label class="form-label" for="facebookUrl">رابط صفحة فيسبوك / إنستغرام</label>
+                        <input type="url" id="facebookUrl" dir="ltr" class="form-control" placeholder="https://facebook.com/yourstore">
+                        <small class="field-help-text"></small>
+                    </div>
+
+                    <div class="form-group" data-field-key="commercial_reg_no">
+                        <label class="form-label" for="commercialRegNo">رقم السجل التجاري / الرخصة</label>
+                        <input type="text" id="commercialRegNo" dir="ltr" class="form-control" placeholder="مثال: 1010456789">
+                        <small class="field-help-text"></small>
+                    </div>
+
+                    <div class="form-group" data-field-key="tax_id">
+                        <label class="form-label" for="taxId">الرقم الضريبي للمنشأة</label>
+                        <input type="text" id="taxId" dir="ltr" class="form-control" placeholder="مثال: 300-456-789">
+                        <small class="field-help-text"></small>
+                    </div>
+
+                    <div class="form-group" data-field-key="commercial_doc_url">
+                        <label class="form-label">صورة السجل التجاري أو رخصة النشاط</label>
+                        <div id="commercialDocUploadBox"></div>
                         <input type="hidden" id="commercialDocUrl">
+                        <small class="field-help-text"></small>
                     </div>
 
-                    <div class="form-group">
-                        <label>وثيقة البطاقة الضريبية أو إثبات المقر (اختياري)</label>
-                        <div id="merchantTaxDocUploader"></div>
+                    <div class="form-group" data-field-key="tax_doc_url">
+                        <label class="form-label">صورة البطاقة الضريبية أو إثبات المقر</label>
+                        <div id="taxDocUploadBox"></div>
                         <input type="hidden" id="taxDocUrl">
+                        <small class="field-help-text"></small>
+                    </div>
+
+                    <div class="form-group" data-field-key="webhook_url">
+                        <label class="form-label" for="webhookUrl">رابط الربط التقني المباشر</label>
+                        <input type="url" id="webhookUrl" dir="ltr" class="form-control" placeholder="https://yourstore.com/webhook">
+                        <small class="field-help-text"></small>
+                    </div>
+
+                    <div class="form-group" data-field-key="initial_cashier_pin">
+                        <label class="form-label" for="initialCashierPin">رمز PIN الكاشير الرئيسي (4 أرقام)</label>
+                        <input type="text" id="initialCashierPin" maxlength="4" dir="ltr" inputmode="numeric" class="form-control" placeholder="مثال: 2580">
+                        <small class="field-help-text"></small>
                     </div>
                 </div>
 
-                <div class="form-note" style="background:#f0fdf4;border:1.5px solid #10b981;border-radius:12px;padding:14px;">
-                    <p style="margin:0 0 6px;color:#065f46;"><strong>⚡ التفعيل الذري السريع (3-Minute Onboarding):</strong></p>
-                    <p class="info-text" style="margin:0;color:#047857;">يتم تشفير كلمة مرور المنشأة ورمز <code>PIN</code> الكاشير بـ <code>Bcrypt</code> في الخادم وإنشاء الفرع الرئيسي وطقم المتجر <code>Store Kit</code> فوراً، مع تطبيق قفل الشحن المسبق (<code>D4</code>).</p>
-                </div>
+                <div id="errorMessage" class="alert alert-error" style="display: none;"></div>
+                <div id="successMessage" class="alert alert-success" style="display: none;"></div>
 
-                <button type="submit" id="merchantRegBtn" class="btn btn-primary btn-block">✅ تسجيل المتجر وتفعيل نقطة البيع</button>
+                <button type="submit" id="submitBtn" class="btn btn-primary btn-block">
+                    ✅ إتمام التسجيل وفتح لوحة التاجر
+                </button>
+                <button type="button" id="loadingBtn" class="btn btn-primary btn-block" style="display: none;" disabled>
+                    ⏳ جاري مراجعة البيانات وإنشاء حساب التاجر...
+                </button>
 
                 <div class="auth-footer">
-                    <p>لديك حساب؟ <a href="login.html">تسجيل الدخول</a></p>
+                    <p>لديك حساب تاجر بالفعل؟ <a href="login.html">تسجيل الدخول</a></p>
                     <p style="margin-top: 1rem;"><a href="../index.html">← العودة للرئيسية</a></p>
                 </div>
             </form>
@@ -373,42 +303,12 @@
 
     <script src="../shared/components/logo.js?v=20261119_logo_all"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../shared/config/supabase.js"></script>
-    <script src="../shared/api/sawyan-api.js?v=20261119_world_geo"></script>
-    <script src="../shared/data/countries.js?v=20261119_world_geo"></script>
+    <script src="../shared/config/supabase.js?v=20261118_stage7"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261120_stage9"></script>
+    <script src="../shared/data/countries.js?v=20261120_stage9"></script>
+    <script src="../shared/js/registration-engine.js?v=20261120_stage9"></script>
     <script src="../shared/components/image-upload.js"></script>
-    <script src="js/register.js?v=20261119_world_geo"></script>
-
-    <script>
-        // إظهار/إخفاء الأقسام حسب نوع التاجر
-        function syncMerchantTypeSections() {
-            const sel = document.getElementById('merchantType');
-            const physicalSection = document.getElementById('physicalLocationSection');
-            const onlineSection = document.getElementById('onlineStoreSection');
-            const workingHoursSection = document.getElementById('workingHoursSection');
-            if (!sel) return;
-
-            if (sel.value === 'physical') {
-                if (physicalSection) physicalSection.style.display = 'block';
-                if (workingHoursSection) workingHoursSection.style.display = 'block';
-                if (onlineSection) onlineSection.style.display = 'none';
-            } else if (sel.value === 'online') {
-                if (physicalSection) physicalSection.style.display = 'none';
-                if (workingHoursSection) workingHoursSection.style.display = 'none';
-                if (onlineSection) onlineSection.style.display = 'block';
-            } else if (sel.value === 'both') {
-                if (physicalSection) physicalSection.style.display = 'block';
-                if (workingHoursSection) workingHoursSection.style.display = 'block';
-                if (onlineSection) onlineSection.style.display = 'block';
-            } else {
-                if (physicalSection) physicalSection.style.display = 'none';
-                if (workingHoursSection) workingHoursSection.style.display = 'none';
-                if (onlineSection) onlineSection.style.display = 'none';
-            }
-        }
-        document.getElementById('merchantType')?.addEventListener('change', syncMerchantTypeSections);
-        document.addEventListener('DOMContentLoaded', syncMerchantTypeSections);
-    </script>
+    <script src="js/register.js?v=20261120_stage9"></script>
 </body>
 
 </html>

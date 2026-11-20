@@ -10,458 +10,43 @@
         rel="stylesheet">
     <link rel="stylesheet" href="../shared/css/variables.css">
     <link rel="stylesheet" href="../shared/css/logo.css?v=20261119_logo_all">
-    <link rel="stylesheet" href="css/auth.css">
+    <link rel="stylesheet" href="css/auth.css?v=20261120_stage9">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        /* تصميم محسّن لمحدد الدولة ومفتاح الهاتف */
-        .phone-input-wrapper {
-            display: flex;
-            gap: 10px;
-            align-items: stretch;
-        }
-
-        .country-code-selector {
-            position: relative;
-            min-width: 110px;
-            flex-shrink: 0;
-        }
-
-        .country-code-btn {
+        .sponsor-name-display {
+            margin-top: 8px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 700;
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 14px 15px;
-            background: var(--color-white, #fff);
-            border: 2px solid var(--color-gray-200, #E5E7EB);
-            border-radius: var(--border-radius-lg, 12px);
-            cursor: pointer;
-            height: 100%;
-            font-size: 16px;
-            color: var(--color-text, #111827);
-            transition: all 0.3s ease;
+            background: #f8fafc;
+            border: 1.5px solid #cbd5e1;
+            color: #475569;
         }
-
-        .country-code-btn:hover {
-            border-color: var(--color-primary, #10B981);
-        }
-
-        .country-code-btn .flag {
-            font-size: 22px;
-        }
-
-        .country-code-btn .dial-code {
-            font-weight: 600;
-            direction: ltr;
-            color: var(--color-text, #111827);
-        }
-
-        .country-code-dropdown {
-            position: absolute;
-            top: 100%;
-            right: 0;
-            min-width: 280px;
-            background: var(--color-white, #fff);
-            border: 2px solid var(--color-gray-200, #E5E7EB);
-            border-radius: var(--border-radius-lg, 12px);
-            max-height: 280px;
-            overflow-y: auto;
-            z-index: 1000;
-            display: none;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-            margin-top: 4px;
-        }
-
-        .country-code-dropdown.show {
-            display: block;
-        }
-
-        .country-code-dropdown .search-input {
-            width: 100%;
-            padding: 12px 15px;
-            border: none;
-            border-bottom: 1px solid var(--color-gray-200, #E5E7EB);
-            background: var(--color-gray-50, #F9FAFB);
-            color: var(--color-text, #111827);
-            font-size: 14px;
-            font-family: var(--font-family-arabic);
-        }
-
-        .country-code-dropdown .search-input::placeholder {
-            color: var(--color-gray-400, #9CA3AF);
-        }
-
-        .country-code-dropdown .search-input:focus {
-            outline: none;
-            background: var(--color-white, #fff);
-        }
-
-        .country-code-option {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 15px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .country-code-option:hover {
-            background: var(--color-green-50, #E8FFF8);
-        }
-
-        .country-code-option .flag {
-            font-size: 20px;
-        }
-
-        .country-code-option .dial-code {
-            font-weight: 600;
-            color: var(--color-primary, #10B981);
-            direction: ltr;
-            min-width: 55px;
-        }
-
-        .country-code-option .country-name {
-            font-size: 13px;
-            color: var(--color-gray-500, #6B7280);
-        }
-
-        .phone-input-wrapper .form-control {
-            flex: 1;
-        }
-
-        /* تصميم محسّن للقوائم المنسدلة */
-        .country-select {
-            position: relative;
-        }
-
-        .country-select select {
-            appearance: none;
-            -webkit-appearance: none;
-            padding-right: 40px !important;
-        }
-
-        .country-select::after {
-            content: '▼';
-            position: absolute;
-            left: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-secondary, #888);
-            pointer-events: none;
-            font-size: 12px;
-        }
-
-        /* تصميم الأقسام الإجبارية */
-        .required-fields-section {
-            background: linear-gradient(135deg, var(--color-green-50, #E8FFF8), var(--color-blue-50, #EFF6FF));
-            border: 2px solid var(--color-primary, #10B981);
-            border-radius: var(--border-radius-xl, 16px);
-            padding: 24px;
-            margin-bottom: 25px;
-        }
-
-        .required-fields-section h3 {
-            color: var(--color-primary-dark, #047857);
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: var(--font-size-lg, 18px);
-        }
-
-        .required-fields-section h3::before {
-            content: '✦';
-            color: var(--color-primary, #10B981);
-        }
-
-        /* عرض كود العضوية */
-        .member-code-display {
-            display: none;
-            background: linear-gradient(135deg, var(--color-green-50, #E8FFF8), var(--color-blue-50, #EFF6FF));
-            border: 2px solid var(--color-primary, #10B981);
-            border-radius: var(--border-radius-xl, 16px);
-            padding: 24px;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .member-code-display.show {
-            display: block;
-        }
-
-        .member-code-display .code-label {
-            font-size: 14px;
-            color: var(--color-text-secondary, #6B7280);
-            margin-bottom: 8px;
-        }
-
-        .member-code-display .code-value {
-            font-size: 32px;
-            font-weight: 700;
-            color: var(--color-primary, #10B981);
-            font-family: 'Poppins', sans-serif;
-        }
-
-        /* Loading state */
-        .btn-loading {
-            position: relative;
-            pointer-events: none;
-            opacity: 0.8;
-        }
-
-        .btn-loading::after {
-            content: '';
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            border: 2px solid transparent;
-            border-top-color: #fff;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            right: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-
-        @keyframes spin {
-            to {
-                transform: translateY(-50%) rotate(360deg);
-            }
-        }
-
-        /* تحسين قوائم الدول */
-        .country-select select option {
-            padding: 10px;
-        }
-
-        /* نجمة الحقول الإجبارية */
-        .required-star {
-            color: #EF4444;
-            font-weight: bold;
-            font-size: 1.1em;
-            margin-right: 3px;
-        }
-
-        /* إصلاح محاذاة حقول الجنسية ودولة الإقامة */
-        .form-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            width: 100%;
-        }
-
-        .form-row .form-group {
-            flex: 1;
-            min-width: 200px;
-        }
-
-        .form-row .form-group.country-select {
-            flex: 1;
-            min-width: 200px;
-        }
-
-        .form-row .form-group.country-select select {
-            width: 100%;
-        }
-
-        /* ========== أنماط الوضع الداكن ========== */
-        [data-theme="dark"] .auth-card {
-            background: var(--color-gray-800, #1F2937);
-            color: var(--color-gray-50, #F9FAFB);
-        }
-
-        [data-theme="dark"] h1,
-        [data-theme="dark"] .form-group label {
-            color: var(--color-gray-50, #F9FAFB);
-        }
-
-        [data-theme="dark"] .subtitle {
-            color: var(--color-gray-400, #9CA3AF);
-        }
-
-        [data-theme="dark"] .form-control {
-            background: var(--color-gray-700, #374151);
-            border-color: var(--color-gray-600, #4B5563);
-            color: var(--color-gray-50, #F9FAFB);
-        }
-
-        [data-theme="dark"] .form-control::placeholder {
-            color: var(--color-gray-400, #9CA3AF);
-        }
-
-        [data-theme="dark"] .form-control:focus {
-            border-color: var(--color-primary, #10B981);
-        }
-
-        [data-theme="dark"] .country-code-btn {
-            background: var(--color-gray-700, #374151);
-            border-color: var(--color-gray-600, #4B5563);
-            color: var(--color-gray-50, #F9FAFB);
-        }
-
-        [data-theme="dark"] .country-code-btn .dial-code {
-            color: var(--color-gray-50, #F9FAFB);
-        }
-
-        [data-theme="dark"] .country-code-dropdown {
-            background: var(--color-gray-800, #1F2937);
-            border-color: var(--color-gray-600, #4B5563);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-        }
-
-        [data-theme="dark"] .country-code-dropdown .search-input {
-            background: var(--color-gray-700, #374151);
-            border-color: var(--color-gray-600, #4B5563);
-            color: var(--color-gray-50, #F9FAFB);
-        }
-
-        [data-theme="dark"] .country-code-dropdown .search-input:focus {
-            background: var(--color-gray-700, #374151);
-        }
-
-        [data-theme="dark"] .country-code-option:hover {
-            background: rgba(16, 185, 129, 0.15);
-        }
-
-        [data-theme="dark"] .country-code-option .country-name {
-            color: var(--color-gray-400, #9CA3AF);
-        }
-
-        [data-theme="dark"] .required-fields-section {
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(59, 130, 246, 0.1));
-            border-color: var(--color-primary, #10B981);
-        }
-
-        [data-theme="dark"] .required-fields-section h3 {
-            color: var(--color-primary-light, #5DFDCB);
-        }
-
-        [data-theme="dark"] .optional-section {
-            background: var(--color-gray-700, #374151);
-            border-color: var(--color-gray-600, #4B5563);
-        }
-
-        [data-theme="dark"] .optional-badge {
-            background: var(--color-gray-600, #4B5563);
-            color: var(--color-gray-300, #D1D5DB);
-            border-color: var(--color-gray-500, #6B7280);
-        }
-
-        [data-theme="dark"] .form-note {
-            background: rgba(59, 130, 246, 0.1);
-            border-color: var(--color-blue-500, #3B82F6);
-        }
-
-        [data-theme="dark"] .form-note p {
-            color: var(--color-gray-300, #D1D5DB);
-        }
-
-        [data-theme="dark"] .form-note code {
-            background: var(--color-gray-700, #374151);
-            color: var(--color-primary-light, #5DFDCB);
-        }
-
-        [data-theme="dark"] .auth-footer {
-            border-color: var(--color-gray-600, #4B5563);
-        }
-
-        [data-theme="dark"] .auth-footer p {
-            color: var(--color-gray-400, #9CA3AF);
-        }
-
-        [data-theme="dark"] .member-code-display {
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(59, 130, 246, 0.15));
-        }
-
-        [data-theme="dark"] .member-code-display .code-label {
-            color: var(--color-gray-400, #9CA3AF);
-        }
-
-        /* ========== أنماط عرض اسم الراعي ========== */
-        .sponsor-name-display {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 14px 16px;
-            background: var(--color-gray-50, #F9FAFB);
-            border: 2px solid var(--color-gray-200, #E5E7EB);
-            border-radius: var(--border-radius-lg, 12px);
-            min-height: 52px;
-            transition: all 0.3s ease;
-        }
-
-        .sponsor-name-display.loading {
-            background: linear-gradient(90deg, var(--color-gray-100) 25%, var(--color-gray-50) 50%, var(--color-gray-100) 75%);
-            background-size: 200% 100%;
-            animation: shimmer 1.5s infinite;
-        }
-
-        @keyframes shimmer {
-            0% {
-                background-position: -200% 0;
-            }
-
-            100% {
-                background-position: 200% 0;
-            }
-        }
-
         .sponsor-name-display.valid {
-            background: var(--color-green-50, #E8FFF8);
-            border-color: var(--color-primary, #10B981);
+            background: #ecfdf5;
+            border-color: #10b981;
+            color: #065f46;
         }
-
         .sponsor-name-display.invalid {
-            background: rgba(239, 68, 68, 0.1);
-            border-color: var(--color-error, #EF4444);
+            background: #fef2f2;
+            border-color: #ef4444;
+            color: #991b1b;
         }
-
-        .sponsor-name-text {
-            font-size: 15px;
-            color: var(--color-text-secondary, #6B7280);
-            transition: color 0.3s ease;
-        }
-
-        .sponsor-name-display.valid .sponsor-name-text {
-            color: var(--color-primary-dark, #047857);
+        .residency-lock-box {
+            margin-top: 8px;
+            background: #fffbeb;
+            border: 1.5px solid #f59e0b;
+            border-radius: 10px;
+            padding: 10px 12px;
+            color: #92400e;
+            font-size: 0.84rem;
+            line-height: 1.55;
             font-weight: 600;
-        }
-
-        .sponsor-name-display.invalid .sponsor-name-text {
-            color: var(--color-error, #EF4444);
-        }
-
-        .sponsor-status-icon {
-            font-size: 20px;
-            min-width: 24px;
-            text-align: center;
-        }
-
-        /* Dark mode for sponsor name */
-        [data-theme="dark"] .sponsor-name-display {
-            background: var(--color-gray-700, #374151);
-            border-color: var(--color-gray-600, #4B5563);
-        }
-
-        [data-theme="dark"] .sponsor-name-display.valid {
-            background: rgba(16, 185, 129, 0.15);
-            border-color: var(--color-primary, #10B981);
-        }
-
-        [data-theme="dark"] .sponsor-name-display.invalid {
-            background: rgba(239, 68, 68, 0.15);
-        }
-
-        [data-theme="dark"] .sponsor-name-text {
-            color: var(--color-gray-400, #9CA3AF);
-        }
-
-        [data-theme="dark"] .sponsor-name-display.valid .sponsor-name-text {
-            color: var(--color-primary-light, #5DFDCB);
-        }
-
-        @media (max-width: 640px) {
-            .form-row {
-                grid-template-columns: 1fr;
-            }
         }
     </style>
 </head>
@@ -475,518 +60,171 @@
             <a href="../index.html" class="auth-home-pill">🏠 الرئيسية</a>
         </div>
     </header>
-    <div class="auth-container">
+
+    <div class="auth-container" style="max-width: 700px;">
         <div class="auth-card">
             <div id="logoContainer" class="logo-section" data-sawyan-logo="default"></div>
 
-            <h1>تسجيل عضو جديد</h1>
-            <p class="subtitle">انضم إلى منصة SAWYAN مجاناً</p>
+            <h1 id="regPageTitle">تسجيل عضو جديد</h1>
+            <p id="regPageSubtitle" class="subtitle">انضم إلى منصة SAWYAN مجاناً وحوّل مشترياتك اليومية إلى عائدات حقيقية</p>
 
-            <!-- عرض كود العضوية بعد التسجيل الناجح -->
-            <div id="memberCodeDisplay" class="member-code-display">
-                <div class="code-label">كود عضويتك</div>
-                <div id="generatedCode" class="code-value">---</div>
+            <div class="form-note" style="margin-bottom: 18px;">
+                <p style="margin:0;">🌳 سيتم منحك <strong>كود عضوية فريد</strong> وتسكينك تلقائياً في شجرة الأرباح المتوازنة فور التسجيل.</p>
             </div>
 
-            <form id="registerForm" class="auth-form">
-                <!-- 1. القسم الإجباري السريع (إنهاء التسجيل في 15 ثانية) -->
-                <div class="required-fields-section" style="border: 2px solid #10b981; border-radius: 14px; padding: 18px; margin-bottom: 16px; background: #ffffff;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-                        <h3 style="margin: 0; color: #065f46; font-size: 1.05rem; font-weight: 800;">🔒 البيانات الأساسية للتسجيل الفوري</h3>
-                        <span style="background: #ecfdf5; color: #047857; font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 6px; border: 1px solid #a7f3d0;">إلزامية للتسكين الفوري</span>
+            <form id="registerForm" class="auth-form" novalidate>
+                <div id="memberRequiredFields" class="form-section" style="display:flex;flex-direction:column;gap:14px;"></div>
+
+                <div id="memberOptionalDividerBanner" class="optional-divider-banner" style="display:none;">
+                    <span style="font-size:1.2rem;flex-shrink:0;">💡</span>
+                    <span id="memberOptionalDividerText">بيانات تكميلية اختيارية — يمكنك تخطيها الآن والبدء فوراً، واستكمالها لاحقاً من لوحتك أو عند أول سحب أرباح.</span>
+                </div>
+
+                <div id="memberOptionalFields" class="form-section" style="display:flex;flex-direction:column;gap:14px;"></div>
+
+                <!-- مستودع قوالب الحقول الديناميكية (يُرتّب ويُضبط من لوحة الإدارة تلقائياً) -->
+                <div id="memberFieldPool" style="display:none;">
+                    <div class="form-group" data-field-key="full_name">
+                        <label class="form-label" for="fullName">الاسم الكامل <span class="required-star">*</span></label>
+                        <input type="text" id="fullName" class="form-control" placeholder="أدخل اسمك الثلاثي أو الرباعي كما في الهوية">
+                        <small class="field-help-text"></small>
                     </div>
 
-                    <!-- الاسم الكامل -->
-                    <div class="form-group" style="margin-bottom: 12px;">
-                        <label style="font-weight: 800; font-size: 0.88rem; color: #0f172a;">الاسم الكامل <span class="required-star">*</span></label>
-                        <input type="text" id="fullName" required class="form-control" placeholder="أدخل اسمك الثلاثي أو الرباعي">
-                    </div>
-
-                    <!-- كود الراعي وفحصه اللحظي التلقائي عبر PostgreSQL -->
-                    <div class="form-group" style="margin-bottom: 10px;">
-                        <label style="font-weight: 800; font-size: 0.88rem; color: #0f172a;">كود الأب لاين (الراعي) <span class="required-star">*</span></label>
-                        <input type="number" id="sponsorCode" required min="1" class="form-control" placeholder="أدخل كود العضو الداعي لك (الجذر #0 مقيد للإدارة)">
-                    </div>
-
-                    <div class="form-group sponsor-name-group" style="margin-bottom: 14px;">
-                        <div class="sponsor-name-display" id="sponsorNameDisplay" style="padding: 10px 12px; min-height: 44px; display: flex; justify-content: space-between; align-items: center;">
-                            <span class="sponsor-name-text" id="sponsorNameText" style="font-weight: 700; font-size: 0.84rem;">أدخل كود الراعي ليظهر اسمه الكامل للتأكيد...</span>
-                            <span class="sponsor-status-icon" id="sponsorStatusIcon">⚪</span>
+                    <div class="form-group" data-field-key="sponsor_code">
+                        <label class="form-label" for="sponsorCode">كود الشخص الداعي لك (الراعي) <span class="required-star">*</span></label>
+                        <input type="text" id="sponsorCode" class="form-control" dir="ltr" inputmode="numeric" placeholder="أدخل كود العضو الذي دعاك">
+                        <input type="hidden" id="sponsorId">
+                        <div id="sponsorNameDisplay" class="sponsor-name-display">
+                            <span id="sponsorStatusIcon">⚪</span>
+                            <span id="sponsorNameText">أدخل كود الشخص الذي دعاك ليظهر اسمه للتأكيد قبل إتمام التسجيل...</span>
                         </div>
-                        <input type="hidden" id="sponsorId" value="">
-                        <label id="sponsorConfirmRow" style="display:none; align-items:center; gap:8px; margin-top:8px; font-size:0.84rem; font-weight:800; color:#065f46; background:#ecfdf5; border:1px solid #a7f3d0; padding:8px 12px; border-radius:8px; cursor:pointer;">
-                            <input type="checkbox" id="sponsorConfirmCheckbox">
-                            <span id="sponsorConfirmLabel">أؤكد الانضمام في فريق هذا الراعي</span>
-                        </label>
+                        <div id="sponsorConfirmRow" style="display:none;align-items:center;gap:8px;margin-top:8px;padding:8px 12px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;">
+                            <input type="checkbox" id="sponsorConfirmCheckbox" style="width:18px;height:18px;accent-color:#059669;">
+                            <label id="sponsorConfirmLabel" for="sponsorConfirmCheckbox" style="margin:0;font-size:0.86rem;font-weight:700;color:#065f46;cursor:pointer;"></label>
+                        </div>
+                        <small class="field-help-text"></small>
                     </div>
 
-                    <!-- دولة الإقامة المعتمدة -->
-                    <div class="form-group country-select" style="margin-bottom: 12px;">
-                        <label style="font-weight: 800; font-size: 0.88rem; color: #0f172a;">دولة الإقامة الحالية <span class="required-star">*</span></label>
-                        <select id="countryOfResidence" class="form-control" style="font-weight: 800; border: 2px solid #10b981; background: #f0fdf4;" onchange="handleCountryChange(this.value)">
-                            <option value="EG" selected>🇪🇬 جمهورية مصر العربية (نشطة — العملة: EGP)</option>
-                            <option value="TR">🇹🇷 تركيا (نشطة — العملة: TRY)</option>
-                            <option value="SA">🇸🇦 المملكة العربية السعودية (العملة: SAR)</option>
-                            <option value="DE">🇩🇪 ألمانيا (العملة: EUR)</option>
-                            <option value="US">🇺🇸 الولايات المتحدة (العملة: USD)</option>
+                    <div class="form-group" data-field-key="country_of_residence">
+                        <label class="form-label" for="countryOfResidence">دولة الإقامة الحالية <span class="required-star">*</span></label>
+                        <select id="countryOfResidence" class="form-control">
+                            <option value="EG">🇪🇬 مصر (EG)</option>
                         </select>
+                        <div class="residency-lock-box">
+                            ⚠️ <strong>تنبيه هام لحماية أرباحك:</strong> اختر دولة إقامتك الفعلية بدقة — تُثبّت دولة الإقامة خلال الشهر المفتوح وتُحدد بناءً عليها عملة محفظتك ومشترياتك اليومية.
+                        </div>
+                        <small class="field-help-text"></small>
                     </div>
 
-                    <!-- رقم الهاتف المقفول بدولة الإقامة -->
-                    <div class="form-group" style="margin-bottom: 12px;">
-                        <label style="font-weight: 800; font-size: 0.88rem; color: #0f172a;">رقم الهاتف النشط <span class="required-star">*</span></label>
-                        <div class="phone-input-wrapper" style="display: flex; gap: 8px;">
-                            <div style="background: #e2e8f0; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 10px 14px; font-weight: 800; display: flex; align-items: center; gap: 6px; min-width: 90px; justify-content: center;" id="dialCodeBadge">
-                                <span id="countryFlag">🇪🇬</span>
-                                <span id="countryDialCode" style="direction: ltr; font-family: monospace;">+20</span>
-                            </div>
-                            <input type="tel" id="phone" required class="form-control" placeholder="11 خانة (مثال: 01012345678)" maxlength="11" style="flex: 1; font-weight: 700; letter-spacing: 1px;" oninput="validatePhoneDigits(this)">
-                        </div>
-                        <div id="phoneDigitCounter" style="display: flex; justify-content: space-between; font-size: 0.74rem; color: #64748b; font-weight: 700; margin-top: 3px;">
-                            <span id="phoneValidationMsg">أدخل رقم هاتفك المحلي</span>
-                            <span id="phoneCounterText">0 / 11 خانة</span>
-                        </div>
+                    <div class="form-group" data-field-key="city">
+                        <label class="form-label" for="citySelect">المحافظة / المدينة</label>
+                        <input type="text" id="citySearchInput" class="form-control" placeholder="ابحث عن اسم المدينة أو المحافظة لتصفية القائمة..." style="margin-bottom:6px;">
+                        <select id="citySelect" class="form-control">
+                            <option value="">— اختر المدينة / المحافظة —</option>
+                        </select>
+                        <small class="field-help-text"></small>
                     </div>
 
-                    <!-- المحافظة والحي الجغرافي -->
-                    <div class="form-row" style="display: flex; gap: 10px; margin-bottom: 12px;">
-                        <div class="form-group" style="flex: 1;">
-                            <label style="font-weight: 800; font-size: 0.86rem; color: #0f172a;">المحافظة / المدينة <span class="required-star">*</span></label>
-                            <select id="citySelect" class="form-control" style="font-weight: 700;" onchange="handleCityChange(this.value)">
-                                <option value="cairo" selected>القاهرة</option>
-                                <option value="giza">الجيزة</option>
-                                <option value="alex">الإسكندرية</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group" style="flex: 1;">
-                            <label style="font-weight: 800; font-size: 0.86rem; color: #0f172a;">الحي / المنطقة <span class="required-star">*</span></label>
-                            <input type="search" id="districtSearchInput" class="form-control"
-                                style="margin-bottom:6px; font-size:0.82rem; padding:7px 10px;"
-                                placeholder="🔍 ابحث عن حيك أو منطقتك (GeoNames)...">
-                            <select id="districtSelect" class="form-control" style="font-weight: 700;" onchange="handleDistrictSelectChange(this.value)">
-                                <option value="مدينة نصر" selected>مدينة نصر</option>
-                            </select>
-                            <input type="text" id="manualDistrictInput" maxlength="60" class="form-control"
-                                style="display:none; font-weight:700; margin-top:6px;"
-                                placeholder="اكتب اسم الحي أو القرية (حقل إلزامي)">
-                            <small id="districtGeoHint" style="display:block;font-size:0.72rem;color:#059669;font-weight:700;margin-top:4px;"></small>
-                        </div>
+                    <div class="form-group" data-field-key="district">
+                        <label class="form-label" for="districtSelect">الحي / المنطقة</label>
+                        <select id="districtSelect" class="form-control">
+                            <option value="">— اختر الحي / المنطقة (بعد اختيار المدينة) —</option>
+                            <option value="__MANUAL__">✍️ إدخال اسم الحي يدوياً...</option>
+                        </select>
+                        <input type="text" id="districtManualInput" class="form-control" placeholder="اكتب اسم الحي أو المنطقة بدقة..." style="display:none;margin-top:6px;">
+                        <small class="field-help-text"></small>
                     </div>
 
-                    <!-- كلمة المرور القوية الإلزامية (يحظر 123456) -->
-                    <div class="form-row" style="display: flex; gap: 10px;">
-                        <div class="form-group" style="flex: 1;">
-                            <label style="font-weight: 800; font-size: 0.86rem; color: #0f172a;">كلمة المرور (8 أحرف على الأقل) <span class="required-star">*</span></label>
-                            <input type="password" id="password" required minlength="8" class="form-control" placeholder="أدخل كلمة مرور قوية">
+                    <div class="form-group" data-field-key="phone">
+                        <label class="form-label" for="phone">رقم الهاتف النشط <span class="required-star">*</span></label>
+                        <div class="dial-phone-group">
+                            <div id="phoneDialBadge" class="dial-code-locked-badge" title="مفتاح الدولة يتغير تلقائياً حسب دولة الإقامة">🇪🇬 +20</div>
+                            <input type="tel" id="phone" class="form-control" dir="ltr" inputmode="numeric" placeholder="1012345678">
                         </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label style="font-weight: 800; font-size: 0.86rem; color: #0f172a;">تأكيد كلمة المرور <span class="required-star">*</span></label>
-                            <input type="password" id="confirmPassword" required minlength="8" class="form-control" placeholder="أعد كتابة كلمة المرور">
-                        </div>
+                        <small id="phoneValidationMsg" class="field-validation-msg"></small>
+                        <small class="field-help-text"></small>
+                    </div>
+
+                    <div class="form-group" data-field-key="email">
+                        <label class="form-label" for="email">البريد الإلكتروني</label>
+                        <input type="email" id="email" dir="ltr" class="form-control" placeholder="example@domain.com">
+                        <small id="emailValidationMsg" class="field-validation-msg"></small>
+                        <small class="field-help-text"></small>
+                    </div>
+
+                    <div class="form-group" data-field-key="nationality">
+                        <label class="form-label" for="nationality">الجنسية</label>
+                        <select id="nationality" class="form-control"></select>
+                        <small class="field-help-text"></small>
+                    </div>
+
+                    <div class="form-group" data-field-key="gender">
+                        <label class="form-label" for="gender">النوع (الجنس)</label>
+                        <select id="gender" class="form-control">
+                            <option value="">— اختر (اختياري) —</option>
+                            <option value="male">ذكر</option>
+                            <option value="female">أنثى</option>
+                        </select>
+                        <small class="field-help-text"></small>
+                    </div>
+
+                    <div class="form-group" data-field-key="home_gps">
+                        <label class="form-label">موقع السكن على الخريطة (اللاقط التلقائي)</label>
+                        <div id="memberGeoPickerHost"></div>
+                        <input type="hidden" id="homeLat">
+                        <input type="hidden" id="homeLng">
+                        <input type="hidden" id="homeMapsUrl">
+                        <small class="field-help-text"></small>
+                    </div>
+
+                    <div class="form-group" data-field-key="national_id_kyc">
+                        <label class="form-label" for="nationalId">رقم الهوية الوطنية / جواز السفر</label>
+                        <input type="text" id="nationalId" dir="ltr" class="form-control" placeholder="مطلوب عند أول طلب سحب أرباح (يمكن تركه الآن)">
+                        <small class="field-help-text"></small>
+                    </div>
+
+                    <div class="form-group" data-field-key="password">
+                        <label class="form-label" for="password">كلمة المرور <span class="required-star">*</span></label>
+                        <input type="password" id="password" class="form-control" placeholder="أدخل كلمة مرور قوية (8 أحرف على الأقل)">
+                        <label class="form-label" for="confirmPassword" style="margin-top:10px;">تأكيد كلمة المرور <span class="required-star">*</span></label>
+                        <input type="password" id="confirmPassword" class="form-control" placeholder="أعد كتابة كلمة المرور للتأكيد">
+                        <small class="field-help-text"></small>
+                    </div>
+
+                    <div class="form-group" data-field-key="terms_consent">
+                        <label class="checkbox-label" style="gap:10px;align-items:flex-start;">
+                            <input type="checkbox" id="termsConsent" style="margin-top:4px;">
+                            <span>أوافق على <a href="../terms.html" target="_blank" rel="noopener">الشروط والأحكام</a> و<a href="../privacy.html" target="_blank" rel="noopener">سياسة الخصوصية</a> للعضوية المجانية في SAWYAN.</span>
+                        </label>
+                        <small class="field-help-text"></small>
                     </div>
                 </div>
 
-                <!-- 2. قسم البيانات الإضافية المعتمدة (اختياري الآن ويمكن إكماله لاحقاً) -->
-                <div class="form-section optional-section" style="border: 1px solid #cbd5e1; border-radius: 12px; padding: 14px; margin-bottom: 16px; background: #f8fafc;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <div style="font-weight: 800; font-size: 0.92rem; color: #334155;">✨ بيانات تكميلية (اختيارية الآن)</div>
-                        <span class="optional-badge" style="background: #e2e8f0; color: #475569; font-size: 0.7rem; font-weight: 700; padding: 2px 6px; border-radius: 4px;">يمكنك تجاوزها والبدء فوراً</span>
-                    </div>
+                <div id="errorMessage" class="alert alert-error" style="display: none;"></div>
+                <div id="successMessage" class="alert alert-success" style="display: none;"></div>
 
-                    <!-- الجنسية والجنس في صف واحد -->
-                    <div class="form-row" style="display: flex; gap: 10px; margin-bottom: 10px;">
-                        <div class="form-group country-select" style="flex: 1;">
-                            <label style="font-size: 0.82rem; font-weight: 700; color: #475569;">الجنسية</label>
-                            <select id="nationality" class="form-control" style="font-size: 0.85rem;">
-                                <option value="EG" selected>🇪🇬 مصري</option>
-                                <option value="TR">🇹🇷 تركي</option>
-                                <option value="SA">🇸🇦 سعودي</option>
-                                <option value="DE">🇩🇪 ألماني</option>
-                                <option value="US">🇺🇸 أمريكي</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group" style="flex: 1;">
-                            <label style="font-size: 0.82rem; font-weight: 700; color: #475569;">النوع (الجنس)</label>
-                            <select id="gender" class="form-control" style="font-size: 0.85rem;">
-                                <option value="">اختر...</option>
-                                <option value="male">ذكر</option>
-                                <option value="female">أنثى</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- البريد الإلكتروني -->
-                    <div class="form-group" style="margin-bottom: 10px;">
-                        <label style="font-size: 0.82rem; font-weight: 700; color: #475569;">البريد الإلكتروني (اختياري)</label>
-                        <input type="email" id="email" class="form-control" placeholder="example@email.com" style="font-size: 0.85rem;">
-                    </div>
-
-                    <!-- رقم الهوية الوطنية -->
-                    <div class="form-group" style="margin-bottom: 6px;">
-                        <label style="font-size: 0.82rem; font-weight: 700; color: #475569;">رقم الهوية الوطنية / جواز السفر <span style="font-size: 0.72rem; color: #64748b;">(اختياري الآن - مطلوب لاحقاً عند سحب الأرباح)</span></label>
-                        <input type="text" id="nationalId" class="form-control" placeholder="يمكنك تركه فارغاً وإدخاله لاحقاً من الإعدادات" style="font-size: 0.85rem;">
-                    </div>
-                </div>
-
-                <!-- 3. التنبيه المؤسسي -->
-                <div style="background: #fffbeb; border: 1.5px dashed #f59e0b; border-radius: 10px; padding: 12px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 10px;">
-                    <span style="font-size: 1.4rem;">💡</span>
-                    <div style="font-size: 0.78rem; color: #92400e; line-height: 1.5;">
-                        <strong>التسكين الذري الفوري (G01–G05):</strong><br>
-                        يتم تسكينك تلقائياً في الموضع الأقرب والأعدل في شجرة الراعي، مع حماية رقم هاتفك بحيث لا يراه إلا الأب المباشر أو القائد ضمن الـ <code>10</code> أجيال الهيكلية فقط (<code>D26</code>).
-                    </div>
-                </div>
-
-                <button type="submit" id="submitBtn" class="btn btn-primary btn-block" style="background: #10b981; border: none; padding: 14px; font-size: 1.05rem; font-weight: 800; border-radius: 10px; cursor: pointer;">
+                <button type="submit" id="submitBtn" class="btn btn-primary btn-block">
                     ✅ إنشاء حساب العضوية والتسكين بالشجرة فوراً
                 </button>
+                <button type="button" id="loadingBtn" class="btn btn-primary btn-block" style="display: none;" disabled>
+                    ⏳ جاري مراجعة البيانات وإنشاء العضوية...
+                </button>
 
-                <div class="auth-footer" style="margin-top: 16px; text-align: center;">
-                    <p style="color: #64748b;">لديك حساب بالفعل؟ <a href="login.html" style="color: #10b981; font-weight: 800;">تسجيل الدخول</a></p>
-                    <p style="margin-top: 0.75rem;"><a href="../index.html" style="color: #047857; font-weight: 700;">← العودة للصفحة الرئيسية</a></p>
+                <div class="auth-footer">
+                    <p>لديك حساب عضو بالفعل؟ <a href="login.html">تسجيل الدخول</a></p>
+                    <p style="margin-top: 1rem;"><a href="../index.html">← العودة للرئيسية</a></p>
                 </div>
             </form>
-
-            <script>
-            // قاعدة بيانات الدول المعتمدة في SAWYAN: مفاتيح الهواتف، أطوال الأرقام، ومدنها وأحيائها
-            const SAWYAN_COUNTRIES_DB = {
-                EG: {
-                    name: 'مصر',
-                    flag: '🇪🇬',
-                    dialCode: '+20',
-                    phoneLength: 11,
-                    phonePlaceholder: '11 خانة (مثال: 01012345678)',
-                    idLabel: 'الرقم القومي (14 رقم)',
-                    idMax: 14,
-                    cities: {
-                        cairo: { name: 'القاهرة', districts: ['مدينة نصر', 'التجمع الخامس', 'التجمع الأول', 'الرحاب', 'مدينتي', 'الشروق', 'بدر', 'العاصمة الإدارية الجديدة', 'المعادي', 'زهراء المعادي', 'مصر الجديدة', 'النزهة', 'شيراتون المطار', 'العباسية', 'حدائق القبة', 'الزيتون', 'المطرية', 'عين شمس', 'المرج', 'مدينة السلام', 'جسر السويس', 'شبرا', 'روض الفرج', 'الزمالك', 'جاردن سيتي', 'وسط البلد', 'عابدين', 'السيدة زينب', 'المنيل', 'المقطم', 'البساتين', 'دار السلام', 'حلوان', 'حدائق حلوان', '15 مايو'] },
-                        giza: { name: 'الجيزة', districts: ['الدقي', 'المهندسين', 'العجوزة', 'إمبابة', 'الوراق', 'بولاق الدكرور', 'فيصل', 'الهرم', 'حدائق الأهرام', 'العمرانية', 'الجيزة', '6 أكتوبر', 'الشيخ زايد', 'حدائق أكتوبر', 'الحوامدية', 'البدرشين'] },
-                        alex: { name: 'الإسكندرية', districts: ['سموحة', 'سيدي جابر', 'سيدي بشر', 'ميامي', 'المنتزه', 'المندرة', 'العصافرة', 'جليم', 'سان ستيفانو', 'لوران', 'رشدي', 'كفر عبده', 'ستانلي', 'سبورتنج', 'الإبراهيمية', 'محطة الرمل', 'المنشية', 'بحري', 'محرم بك', 'العجمي', 'برج العرب الجديدة'] },
-                        aswan: { name: 'أسوان', districts: ['مدينة أسوان', 'أسوان الجديدة', 'العقاد', 'الكرور', 'المحمودية', 'كيما', 'الصداقة الجديدة', 'السد العالي', 'كوم أمبو', 'إدفو', 'دراو', 'نصر النوبة', 'أبو سمبل'] },
-                        mansoura: { name: 'المنصورة', districts: ['حي الجامعة', 'المشاية السفلية', 'توريل', 'قناة السويس', 'طلخا', 'ميت غمر', 'السنبلاوين', 'دكرنس', 'بلقاس'] }
-                    }
-                },
-                SA: {
-                    name: 'السعودية',
-                    flag: '🇸🇦',
-                    dialCode: '+966',
-                    phoneLength: 10,
-                    phonePlaceholder: '10 خانات (مثال: 0512345678)',
-                    idLabel: 'رقم الهوية الوطنية / الإقامة (10 أرقام)',
-                    idMax: 10,
-                    cities: {
-                        riyadh: { name: 'الرياض', districts: ['العليا', 'الملز', 'النرجس', 'الياسمين', 'الصحافة'] },
-                        jeddah: { name: 'جدة', districts: ['الروضة', 'الحمراء', 'الشاطئ', 'الصفا', 'البلد'] },
-                        dammam: { name: 'الدمام', districts: ['الشاطئ الغربي', 'الفردوس', 'الفيصلية', 'الزهور'] },
-                        makkah: { name: 'مكة المكرمة', districts: ['العزيزية', 'الشوقية', 'العوالي', 'النسيم'] }
-                    }
-                },
-                AE: {
-                    name: 'الإمارات',
-                    flag: '🇦🇪',
-                    dialCode: '+971',
-                    phoneLength: 10,
-                    phonePlaceholder: '10 خانات (مثال: 0501234567)',
-                    idLabel: 'رقم الهوية الإماراتية (15 رقم)',
-                    idMax: 15,
-                    cities: {
-                        dubai: { name: 'دبي', districts: ['ديرة', 'بر دبي', 'المرسى (مارينا)', 'وسط دبي (داون تاون)', 'البرشاء'] },
-                        abudhabi: { name: 'أبوظبي', districts: ['الخالدية', 'الكورنيش', 'جزيرة ياس', 'المرور', 'المصفح'] },
-                        sharjah: { name: 'الشارقة', districts: ['المجاز', 'القاسمية', 'التعاون', 'النهدة'] }
-                    }
-                },
-                TR: {
-                    name: 'تركيا',
-                    flag: '🇹🇷',
-                    dialCode: '+90',
-                    phoneLength: 11,
-                    phonePlaceholder: '11 خانة (مثال: 05321234567)',
-                    idLabel: 'رقم الكيملك / الإقامة التركية (TC: 11 رقم)',
-                    idMax: 11,
-                    cities: {
-                        istanbul: { name: 'إسطنبول', districts: ['الفاتح', 'باشاك شهير', 'إسنيورت', 'بيليك دوزو', 'أفجيلار', 'كوتشوك شكمجة', 'باهتشيلي إيفلر', 'باغجلار', 'باكيركوي', 'زيتون بورنو', 'بيرم باشا', 'أيوب سلطان', 'غازي عثمان باشا', 'سلطان غازي', 'شيشلي', 'كاغد خانة', 'بشكتاش', 'ساريير', 'بي أوغلو', 'كاديكوي', 'أوسكودار', 'عمرانية', 'أتاشهير', 'مالتبه', 'كارتال', 'بنديك'] },
-                        ankara: { name: 'أنقرة', districts: ['تشانكايا', 'كيشي أورين', 'يني محلة'] },
-                        bursa: { name: 'بورصة', districts: ['عثمان غازي', 'نيلوفر', 'يلدريم'] }
-                    }
-                },
-                DE: {
-                    name: 'ألمانيا',
-                    flag: '🇩🇪',
-                    dialCode: '+49',
-                    phoneLength: 11,
-                    phonePlaceholder: '11 خانة (مثال: 01512345678)',
-                    idLabel: 'رقم الهوية الأوروبية / الإقامة',
-                    idMax: 12,
-                    cities: {
-                        berlin: { name: 'برلين', districts: ['ميته', 'كرويتسبرغ', 'نويكولن', 'شارلوتنبورغ'] },
-                        munich: { name: 'ميونخ', districts: ['ألتشتات', 'شفابينغ', 'بوغنهاوزن'] },
-                        frankfurt: { name: 'فرانكفورت', districts: ['إننشتات', 'زاكسنهاوزن', 'وستإند'] }
-                    }
-                },
-                US: {
-                    name: 'الولايات المتحدة',
-                    flag: '🇺🇸',
-                    dialCode: '+1',
-                    phoneLength: 10,
-                    phonePlaceholder: '10 خانات (مثال: 2125550199)',
-                    idLabel: 'رقم جواز السفر / الهوية الفيدرالية (اختياري الآن)',
-                    idMax: 12,
-                    cities: {
-                        new_york: { name: 'نيويورك', districts: ['مانهاتن', 'بروكلين', 'كوينز', 'برونكس'] },
-                        chicago: { name: 'شيكاغو', districts: ['داون تاون', 'لينكولن بارك', 'هايد بارك'] },
-                        los_angeles: { name: 'لوس أنجلوس', districts: ['وسط لوس أنجلوس', 'سانتا مونيكا', 'بيفرلي هيلز'] }
-                    }
-                },
-                GB: {
-                    name: 'بريطانيا',
-                    flag: '🇬🇧',
-                    dialCode: '+44',
-                    phoneLength: 11,
-                    phonePlaceholder: '11 خانة (مثال: 07700900123)',
-                    idLabel: 'رقم الهوية / رخصة الإقامة BRP',
-                    idMax: 12,
-                    cities: {
-                        london: { name: 'لندن', districts: ['وسط لندن', 'كنسينغتون', 'إيلينغ', 'تاور هامليتس'] },
-                        manchester: { name: 'مانشستر', districts: ['سيتي سنتر', 'روشولم', 'ترافورد'] }
-                    }
-                },
-                MA: {
-                    name: 'المغرب',
-                    flag: '🇲🇦',
-                    dialCode: '+212',
-                    phoneLength: 10,
-                    phonePlaceholder: '10 خانات (مثال: 0612345678)',
-                    idLabel: 'رقم البطاقة الوطنية للتعريف',
-                    idMax: 10,
-                    cities: {
-                        casablanca: { name: 'الدار البيضاء', districts: ['المعاريف', 'أنفا', 'عين دياب', 'سيدي معروف'] },
-                        rabat: { name: 'الرباط', districts: ['أكدال', 'حسان', 'السويسي', 'يعقوب المنصور'] },
-                        marrakech: { name: 'مراكش', districts: ['جيليز', 'المدينة العتيقة', 'النخيل'] }
-                    }
-                },
-                OTHER: {
-                    name: 'دول أخرى',
-                    flag: '🌍',
-                    dialCode: '+',
-                    phoneLength: 10,
-                    phonePlaceholder: 'أدخل رقم الهاتف مع رمز الدولة',
-                    idLabel: 'رقم جواز السفر / الهوية المحلية (اختياري الآن)',
-                    idMax: 20,
-                    cities: {
-                        main: { name: 'المدينة الرئيسية', districts: ['وسط المدينة', 'أونلاين / نطاق عالمي'] }
-                    }
-                }
-            };
-
-            function getCountryEntry(countryCode) {
-                if (SAWYAN_COUNTRIES_DB[countryCode]) return SAWYAN_COUNTRIES_DB[countryCode];
-                const world = (window.SAWYAN && Array.isArray(window.SAWYAN.Countries))
-                    ? window.SAWYAN.Countries.find(w => w.code === countryCode)
-                    : null;
-                if (world) {
-                    return {
-                        name: world.nameAr || world.nameEn || countryCode,
-                        flag: world.flag || '🌍',
-                        dialCode: world.dialCode || '+',
-                        phoneLength: 15,
-                        phoneFlexible: true,
-                        phonePlaceholder: 'أدخل رقم الهاتف المحلي (7 إلى 15 رقماً)',
-                        idLabel: 'رقم جواز السفر / الهوية المحلية (اختياري الآن)',
-                        idMax: 20,
-                        cities: {
-                            main: { name: 'المدينة الرئيسية', districts: ['وسط المدينة', 'أونلاين / نطاق عالمي'] }
-                        }
-                    };
-                }
-                return SAWYAN_COUNTRIES_DB.OTHER;
-            }
-
-            function handleCountryChange(countryCode, preferredCity) {
-                const c = getCountryEntry(countryCode);
-
-                document.getElementById('countryFlag').innerText = c.flag;
-                document.getElementById('countryDialCode').innerText = c.dialCode;
-
-                const phoneInput = document.getElementById('phone');
-                phoneInput.maxLength = c.phoneLength;
-                phoneInput.placeholder = c.phonePlaceholder;
-                if (phoneInput.value && phoneInput.value.length !== c.phoneLength) {
-                    phoneInput.value = '';
-                }
-                validatePhoneDigits(phoneInput);
-
-                const idInput = document.getElementById('nationalId');
-                if (idInput) {
-                    idInput.maxLength = c.idMax;
-                    idInput.placeholder = c.idLabel;
-                }
-
-                const citySelect = document.getElementById('citySelect');
-                citySelect.innerHTML = '';
-                const cityKeys = Object.keys(c.cities);
-                const selectedCityKey = (preferredCity && c.cities[preferredCity]) ? preferredCity : cityKeys[0];
-
-                cityKeys.forEach((key) => {
-                    const opt = document.createElement('option');
-                    opt.value = key;
-                    opt.innerText = c.cities[key].name;
-                    if (key === selectedCityKey) opt.selected = true;
-                    citySelect.appendChild(opt);
-                });
-
-                handleCityChange(selectedCityKey);
-            }
-
-            function handleCityChange(cityKey) {
-                const countryCode = (document.getElementById('countryOfResidence')?.value || 'EG').toUpperCase();
-                const c = getCountryEntry(countryCode);
-                const citySel = document.getElementById('citySelect');
-                const districtSelect = document.getElementById('districtSelect');
-                const manualDistrictInput = document.getElementById('manualDistrictInput');
-                if (!districtSelect) return;
-
-                let cityObj = (c && c.cities && c.cities[cityKey]) ? c.cities[cityKey] : null;
-                if (!cityObj && c && c.cities && citySel && citySel.selectedOptions && citySel.selectedOptions[0]) {
-                    const selectedLabel = (citySel.selectedOptions[0].textContent || '').trim();
-                    for (const k of Object.keys(c.cities)) {
-                        const cname = (c.cities[k].name || '').trim();
-                        if (cname && selectedLabel && (selectedLabel.includes(cname) || cname.includes(selectedLabel))) {
-                            cityObj = c.cities[k];
-                            break;
-                        }
-                    }
-                }
-
-                const hasRealDistricts = !!(cityObj && Array.isArray(cityObj.districts) && cityObj.districts.length > 0 && cityObj.districts[0] !== 'وسط المدينة / المنطقة الرئيسية');
-
-                const customOpt = document.createElement('option');
-                if (hasRealDistricts) {
-                    districtSelect.style.display = 'block';
-                    districtSelect.innerHTML = '';
-                    cityObj.districts.forEach((dist, idx) => {
-                        const opt = document.createElement('option');
-                        opt.value = dist;
-                        opt.innerText = dist;
-                        if (idx === 0) opt.selected = true;
-                        districtSelect.appendChild(opt);
-                    });
-                    customOpt.value = '__MANUAL__';
-                    customOpt.innerText = '✏️ حي / قرية أخرى غير مدرجة (كتابة يدوية)';
-                    districtSelect.appendChild(customOpt);
-                    if (manualDistrictInput) {
-                        manualDistrictInput.style.display = 'none';
-                        manualDistrictInput.value = '';
-                    }
-                } else {
-                    districtSelect.style.display = 'none';
-                    districtSelect.innerHTML = '<option value="__MANUAL__" selected>كتابة يدوية</option>';
-                    if (manualDistrictInput) {
-                        manualDistrictInput.style.display = 'block';
-                    }
-                }
-                if (typeof window.loadGeoDistrictsForCity === 'function' && citySel && citySel.selectedOptions && citySel.selectedOptions[0]) {
-                    window.loadGeoDistrictsForCity(countryCode, citySel.selectedOptions[0], '');
-                }
-            }
-
-            function handleDistrictSelectChange(val) {
-                const manualDistrictInput = document.getElementById('manualDistrictInput');
-                if (!manualDistrictInput) return;
-                if (val === '__MANUAL__') {
-                    manualDistrictInput.style.display = 'block';
-                    manualDistrictInput.focus();
-                } else {
-                    manualDistrictInput.style.display = 'none';
-                    manualDistrictInput.value = '';
-                }
-            }
-
-            function validatePhoneDigits(el) {
-                const countryCode = document.getElementById('countryOfResidence').value;
-                const c = getCountryEntry(countryCode);
-                const digitsOnly = (el.value || '').replace(/\D/g, '');
-                const currentLen = digitsOnly.length;
-
-                if (c && c.phoneFlexible) {
-                    document.getElementById('phoneCounterText').innerText = currentLen + ' خانة';
-                    if (currentLen >= 7 && currentLen <= 15) {
-                        document.getElementById('phoneValidationMsg').innerText = '✅ رقم هاتف دولي صالح (' + c.name + ')';
-                        document.getElementById('phoneValidationMsg').style.color = '#059669';
-                    } else {
-                        document.getElementById('phoneValidationMsg').innerText = '⚠️ أدخل من 7 إلى 15 رقماً بدون المفتاح الدولي';
-                        document.getElementById('phoneValidationMsg').style.color = '#dc2626';
-                    }
-                    return;
-                }
-
-                const requiredLen = c ? c.phoneLength : 11;
-                document.getElementById('phoneCounterText').innerText = currentLen + ' / ' + requiredLen + ' خانة';
-
-                if (currentLen === requiredLen) {
-                    document.getElementById('phoneValidationMsg').innerText = '✅ رقم هاتف مطابق لمعيار ' + c.name;
-                    document.getElementById('phoneValidationMsg').style.color = '#059669';
-                } else {
-                    document.getElementById('phoneValidationMsg').innerText = '⚠️ يلزم ' + requiredLen + ' خانات تماماً';
-                    document.getElementById('phoneValidationMsg').style.color = '#dc2626';
-                }
-            }
-
-            function validateNationalId(el) {
-                const countryCode = document.getElementById('countryOfResidence').value;
-                const c = getCountryEntry(countryCode);
-                const maxLen = c ? c.idMax : 14;
-                const hint = document.getElementById('nationalIdHint');
-                if (!hint) return;
-
-                if (el.value.length === maxLen) {
-                    hint.innerText = '✅ رقم هوية فريد صالح للمحفظة وصرف المستحقات';
-                    hint.style.color = '#059669';
-                } else {
-                    hint.innerText = '⚠️ يفضّل إدخال ' + maxLen + ' خانة';
-                    hint.style.color = '#d97706';
-                }
-            }
-
-            document.addEventListener('DOMContentLoaded', function () {
-                const params = new URLSearchParams(window.location.search);
-                let initCountry = (params.get('country') || '').toUpperCase();
-                let initCity = (params.get('city') || '').toLowerCase();
-
-                if (!initCountry && window.SAWYAN_GEO && typeof window.SAWYAN_GEO.detectInitial === 'function') {
-                    const detected = window.SAWYAN_GEO.detectInitial();
-                    initCountry = (detected.country || 'EG').toUpperCase();
-                    initCity = initCity || (detected.city || '');
-                }
-
-                if (initCountry === 'ALL' || initCountry === 'PIONEER' || !initCountry) {
-                    initCountry = 'EG';
-                }
-
-                const resSelect = document.getElementById('countryOfResidence');
-                if (resSelect) {
-                    const hasOpt = Array.from(resSelect.options).some(opt => opt.value === initCountry);
-                    resSelect.value = hasOpt ? initCountry : 'EG';
-                    handleCountryChange(resSelect.value, initCity);
-
-                    const natSelect = document.getElementById('nationality');
-                    if (natSelect && Array.from(natSelect.options).some(opt => opt.value === resSelect.value)) {
-                        natSelect.value = resSelect.value;
-                    }
-                }
-            });
-            </script>
         </div>
     </div>
 
     <script src="../shared/components/logo.js?v=20261119_logo_all"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../shared/config/supabase.js"></script>
-    <script src="../shared/api/sawyan-api.js?v=20261119_clean_ar_geo"></script>
-    <script src="../js/demo-data.js"></script>
-    <script src="../shared/data/countries.js?v=20261119_clean_ar_geo"></script>
-    <script src="js/register.js?v=20261119_clean_ar_geo"></script>
+    <script src="../shared/config/supabase.js?v=20261118_stage7"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261120_stage9"></script>
+    <script src="../shared/data/countries.js?v=20261120_stage9"></script>
+    <script src="../shared/js/registration-engine.js?v=20261120_stage9"></script>
+    <script src="js/register.js?v=20261120_stage9"></script>
 </body>
 
 </html>

@@ -126,7 +126,8 @@
         "get_tree_analytics_with_country_lens",
         "cancel_member_pending_purchase",
         "get_member_academy_catalog",
-        "member_update_academy_progress"
+        "member_update_academy_progress",
+        "get_registration_form_config"
       ]
     },
     "merchant": {
@@ -156,7 +157,10 @@
       },
       "required_rpcs": [
         "get_merchant_dashboard_bundle",
-        "submit_pos_transaction"
+        "submit_pos_transaction",
+        "get_registration_form_config",
+        "lookup_onboarder_by_code",
+        "get_anonymized_members_map_pins"
       ]
     },
     "admin": {
@@ -166,6 +170,7 @@
         "sovereignLive",
         "sovereignOpsCenter",
         "academyAdmin",
+        "registrationBuilder",
         "decisionsLab",
         "governanceOps",
         "members",
@@ -192,6 +197,9 @@
         "academyAdmin": [
           "admin-academy-lms"
         ],
+        "registrationBuilder": [
+          "admin-reg-builder"
+        ],
         "networkTree": [
           "admin-network-tree",
           "admin-tree-lens-bar",
@@ -207,7 +215,10 @@
         "get_admin_sovereign_overview",
         "admin_search_and_reply_ops",
         "admin_manage_academy_lms",
-        "get_admin_full_tree"
+        "get_admin_full_tree",
+        "admin_manage_registration_fields",
+        "get_registration_form_config",
+        "get_anonymized_members_map_pins"
       ]
     }
   }

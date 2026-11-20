@@ -86,7 +86,8 @@ h1 {
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
 }
 
-.form-control:read-only {
+input.form-control:read-only,
+textarea.form-control:read-only {
     background: var(--color-gray-100);
     cursor: not-allowed;
 }
@@ -218,15 +219,26 @@ h1 {
     margin-top: var(--spacing-1);
 }
 
-/* Select Styling */
+/* Select Styling — مثلث منسدل واضح دائمًا بدون تداخل مع النص */
 select.form-control {
     cursor: pointer;
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
-    background-position: left 0.5rem center;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-color: #ffffff;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%231E293B' d='M3.2 5.5L8 10.7l4.8-5.2H3.2z'/%3E%3C/svg%3E");
+    background-position: left 0.85rem center;
     background-repeat: no-repeat;
-    background-size: 1.5em 1.5em;
-    padding-left: 2.5rem;
+    background-size: 0.95rem 0.95rem;
+    padding-left: 2.6rem;
+    padding-right: 0.9rem;
+    color: var(--color-text, #0F172A);
+}
+
+select.form-control:disabled {
+    background-color: var(--color-gray-100, #F1F5F9);
+    cursor: not-allowed;
+    opacity: 0.75;
 }
 
 /* Textarea Styling */
@@ -477,4 +489,264 @@ textarea.form-control {
 
 .auth-footer p {
     margin: var(--spacing-2) 0;
+}
+
+/* ===== Dynamic Form Engineering, Validation, Geo-Picker & Dial Badge ===== */
+.required-star {
+    color: #DC2626;
+    font-weight: 900;
+    font-size: 1.05em;
+    margin-inline-start: 4px;
+}
+
+.optional-pill {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #F1F5F9;
+    color: #475569;
+    margin-inline-start: 6px;
+}
+
+.optional-divider-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 22px 0 14px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #EFF6FF, #F0FDF4);
+    border: 1.5px solid #93C5FD;
+    color: #1E3A8A;
+    font-size: 0.92rem;
+    line-height: 1.65;
+    font-weight: 600;
+}
+
+.segmented-type-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.segmented-type-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 10px 8px;
+    border: 2px solid #E2E8F0;
+    border-radius: 12px;
+    background: #FFFFFF;
+    color: #1E293B;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.segmented-type-card:hover {
+    border-color: #10B981;
+    background: #F0FDF4;
+}
+
+.segmented-type-card.active {
+    border-color: #059669;
+    background: #ECFDF5;
+    color: #065F46;
+    box-shadow: 0 2px 8px rgba(5, 150, 105, 0.14);
+}
+
+.dial-phone-group {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    direction: ltr;
+}
+
+.dial-code-locked-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 92px;
+    padding: 0 12px;
+    border: 2px solid #CBD5E1;
+    border-radius: var(--border-radius-lg, 10px);
+    background: #F8FAFC;
+    color: #0F172A;
+    font-weight: 800;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.dial-phone-group .form-control {
+    flex: 1;
+    min-width: 0;
+    direction: ltr;
+    text-align: left;
+}
+
+.password-field-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-field-wrap .form-control {
+    width: 100%;
+    padding-left: 3rem;
+}
+
+.pwd-toggle-btn {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 4px 6px;
+    color: #475569;
+    line-height: 1;
+}
+
+.pwd-strength-meter {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-top: 6px;
+}
+
+.pwd-strength-bar {
+    flex: 1;
+    height: 6px;
+    border-radius: 999px;
+    background: #E2E8F0;
+    overflow: hidden;
+}
+
+.pwd-strength-bar span {
+    display: block;
+    height: 100%;
+    width: 0;
+    transition: width 0.25s ease, background 0.25s ease;
+}
+
+.pwd-strength-label,
+.pwd-match-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    display: block;
+    margin-top: 4px;
+}
+
+.geo-picker-box {
+    background: #F8FAFC;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 12px;
+}
+
+.geo-picker-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.geo-picker-actions .btn {
+    flex: 1 1 180px;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    min-height: 38px;
+}
+
+.geo-url-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.geo-url-row .form-control {
+    flex: 1;
+    min-width: 0;
+    padding: 9px 12px;
+    font-size: 0.85rem;
+}
+
+.geo-url-row .btn {
+    white-space: nowrap;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    min-height: 38px;
+}
+
+.geo-status-bar {
+    margin-top: 8px;
+    font-size: 0.82rem;
+    color: #475569;
+    font-weight: 600;
+}
+
+.field-validation-msg {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-top: 4px;
+    display: block;
+}
+
+.field-validation-msg.valid {
+    color: #059669;
+}
+
+.field-validation-msg.invalid {
+    color: #DC2626;
+}
+
+.field-help-text {
+    color: #64748B;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    margin-top: 4px;
+    display: block;
+}
+
+.inline-action-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.inline-action-row .form-control {
+    flex: 1;
+    min-width: 0;
+}
+
+@media (max-width: 640px) {
+    .segmented-type-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .geo-url-row {
+        flex-direction: column;
+    }
+
+    .inline-action-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .dial-code-locked-badge {
+        min-width: 78px;
+        padding: 0 8px;
+        font-size: 0.88rem;
+    }
 }

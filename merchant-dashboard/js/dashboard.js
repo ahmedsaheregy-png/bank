@@ -214,7 +214,9 @@ function renderLiveHomeStats() {
             hint.style.color = p.is_isolated ? '#dc2626' : '#059669';
         }
     }
-    if (contractPctEl) contractPctEl.textContent = `${pct}%`;
+    if (contractPctEl) {
+        contractPctEl.textContent = p.commission_pending ? 'غير محددة بعد' : `${pct}%`;
+    }
     if (zoneEl) {
         const zoneMap = {
             GREEN: '🟢 المنطقة الخضراء (> 30%)',
@@ -225,6 +227,87 @@ function renderLiveHomeStats() {
         zoneEl.textContent = zoneMap[p.zone_status] || p.zone_status;
     }
     syncMerchantBalanceWarnings();
+    renderMerchantCompletionBanner();
+}
+
+async function renderMerchantCompletionBanner() {
+    const p = merchantBundle?.profile;
+    const homePage = document.getElementById('homePage');
+    const eng = window.SAWYAN && window.SAWYAN.RegEngine;
+    if (!p || !homePage || !eng) return;
+
+    let cfg = { settings: [], fields: [] };
+    try {
+        cfg = await eng.loadFormConfig('merchant', false);
+    } catch (_e) {
+        return;
+    }
+
+    const kDocs = p.kyc_docs || {};
+    const valuesMap = {
+        business_name: p.business_name,
+        owner_name: p.owner_name,
+        email: p.email,
+        merchant_type: p.merchant_type,
+        business_category: p.category,
+        country_code: p.country_code,
+        city: p.city_geoname_id || p.city_name,
+        district: p.district,
+        phone: p.phone,
+        commission_percent: p.commission_pending ? '' : p.deduction_percent,
+        business_description: p.description,
+        address: p.address,
+        geo_location: (p.latitude && p.longitude) ? `${p.latitude},${p.longitude}` : '',
+        website_url: p.website_url,
+        whatsapp: p.whatsapp,
+        logo_url: p.logo_url,
+        cover_image_url: p.cover_image_url,
+        gallery_images: Array.isArray(p.images) && p.images.length > 0 ? '1' : '',
+        working_hours: p.working_hours && typeof p.working_hours === 'object' ? JSON.stringify(p.working_hours) : p.working_hours,
+        social_links: p.social && (p.social.facebook || p.social.instagram || p.social.tiktok) ? '1' : '',
+        commercial_reg_no: p.commercial_reg_no,
+        tax_id: p.tax_id,
+        commercial_doc_url: kDocs.commercial_reg,
+        tax_doc_url: kDocs.tax_card,
+        webhook_url: p.webhook_url,
+        initial_cashier_pin: Array.isArray(merchantBundle?.cashiers) && merchantBundle.cashiers.length > 0 ? '1' : ''
+    };
+
+    const st = eng.computeCompletionStatus(cfg, 'merchant', valuesMap);
+    let banner = document.getElementById('merchantProfileCompletionBanner');
+    if (st.percent >= 100 && !p.commission_pending && st.missingRequired.length === 0) {
+        if (banner) banner.remove();
+        return;
+    }
+
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'merchantProfileCompletionBanner';
+        homePage.insertBefore(banner, homePage.querySelector('.stats-grid') || homePage.firstChild);
+    }
+
+    const urgentNotice = p.commission_pending
+        ? '<div style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:8px 12px;border-radius:8px;font-weight:800;font-size:0.84rem;margin-bottom:8px;">⚠️ تنبيه هام: لم تقم بتحديد نسبة المساهمة التسويقية أثناء التسجيل السريع — حددها الآن من الإعدادات لتفعيل ظهور متجرك للأعضاء وفتح نقطة البيع.</div>'
+        : '';
+    const missingBadges = st.missingRequired.slice(0, 5)
+        .map(f => `<span style="background:#fff;border:1px solid #f59e0b;color:#92400e;padding:2px 8px;border-radius:999px;font-size:0.76rem;font-weight:700;">• ${escM(f.label_ar)}</span>`)
+        .join(' ');
+
+    banner.innerHTML = `
+        <div style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1.5px solid #f59e0b;border-radius:14px;padding:14px 18px;margin-bottom:16px;">
+            ${urgentNotice}
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+                <div style="flex:1;min-width:240px;">
+                    <div style="font-weight:900;color:#92400e;font-size:0.96rem;">📋 اكتمال ملف المتجر الاحترافي: ${st.percent}%</div>
+                    <div style="font-size:0.83rem;color:#78350f;margin-top:3px;">${escM(st.bannerText || 'استكمل بيانات متجرك التالية ليظهر مشروعك بشكل متماسك أمام الأعضاء.')}</div>
+                    ${missingBadges ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">${missingBadges}</div>` : ''}
+                </div>
+                <button type="button" onclick="showPage('settings')" class="btn btn-primary" style="background:#d97706;border-color:#b45309;white-space:nowrap;">
+                    ⚙️ استكمال بيانات المتجر الآن
+                </button>
+            </div>
+        </div>
+    `;
 }
 
 const SW_PAYMENT_TYPES = [
@@ -2322,43 +2405,159 @@ promptTopupBalance = async function () {
     }
 };
 
-// شاشة الإعدادات + إدارة موظفي الكاشير المستقلين (D25) + إعدادات Wi-Fi QR
+// شاشة الإعدادات الشاملة + استكمال الحقول المرحّلة + موظفو الكاشير + Wi-Fi + Geo-Picker
+let _merchantSettingsGeoPicker = null;
+let _merchantSettingsCascade = null;
+
 async function loadSettings() {
     const page = document.getElementById('settingsPage');
     if (!page) return;
     await refreshMerchantBundle();
     const p = merchantBundle?.profile || merchantData || {};
     const cashiers = merchantBundle?.cashiers || [];
+    const branches = merchantBundle?.branches || [];
     const kDocs = p.kyc_docs || {};
+    const social = p.social || {};
+    const eng = window.SAWYAN && window.SAWYAN.RegEngine;
+
+    let merchCfg = { fields: [] };
+    let cashierCfg = { fields: [] };
+    if (eng) {
+        try {
+            merchCfg = await eng.loadFormConfig('merchant', false);
+            cashierCfg = await eng.loadFormConfig('employee_cashier', false);
+        } catch (_e) {}
+    }
+
+    const mFieldMap = {};
+    (merchCfg.fields || []).forEach(f => { mFieldMap[f.field_key] = f; });
+    const cFieldMap = {};
+    (cashierCfg.fields || []).forEach(f => { cFieldMap[f.field_key] = f; });
+
+    function mLbl(key, defText) {
+        const f = mFieldMap[key];
+        const t = (f && f.label_ar) ? f.label_ar : defText;
+        const req = f && f.required_in_dashboard ? ' <span style="color:#DC2626;font-weight:900;">*</span>' : '';
+        return escM(t) + req;
+    }
+    function mHlp(key, defHelp) {
+        const f = mFieldMap[key];
+        const t = (f && f.help_text_ar) ? f.help_text_ar : (defHelp || '');
+        return t ? `<small style="display:block;color:#64748b;font-size:0.75rem;margin-top:2px;">${escM(t)}</small>` : '';
+    }
+    function cMeta(key, defLbl, defPh, defHlp, defShow, defReq) {
+        const f = cFieldMap[key] || {};
+        return {
+            label: f.label_ar || defLbl,
+            placeholder: f.placeholder_ar || defPh || '',
+            help: f.help_text_ar || defHlp || '',
+            show: f.show_in_dashboard !== undefined ? Boolean(f.show_in_dashboard) : defShow,
+            req: f.required_in_dashboard !== undefined ? Boolean(f.required_in_dashboard) : defReq
+        };
+    }
+
+    const whObj = (p.working_hours && typeof p.working_hours === 'object') ? p.working_hours : {};
+    const daysDef = [
+        ['sat', 'السبت'], ['sun', 'الأحد'], ['mon', 'الإثنين'], ['tue', 'الثلاثاء'],
+        ['wed', 'الأربعاء'], ['thu', 'الخميس'], ['fri', 'الجمعة']
+    ];
+    const whRowsHtml = daysDef.map(([dk, dAr]) => {
+        const dVal = whObj[dk] || { enabled: true, open: '09:00', close: '23:00' };
+        return `
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;">
+                <label style="display:flex;align-items:center;gap:6px;min-width:95px;font-weight:700;font-size:0.82rem;">
+                    <input type="checkbox" class="wh-day-enabled" data-day="${dk}" ${dVal.enabled !== false ? 'checked' : ''}>
+                    ${dAr}
+                </label>
+                <input type="time" class="form-control wh-day-open" data-day="${dk}" value="${escM(dVal.open || '09:00')}" style="width:125px;padding:5px 8px;">
+                <span style="font-size:0.8rem;color:#64748b;">إلى</span>
+                <input type="time" class="form-control wh-day-close" data-day="${dk}" value="${escM(dVal.close || '23:00')}" style="width:125px;padding:5px 8px;">
+            </div>
+        `;
+    }).join('');
+
+    const cmCode = cMeta('employee_code', 'كود الموظف', 'تلقائي مثل EMP-02 إذا تُرك فارغاً', '', true, false);
+    const cmName = cMeta('full_name', 'اسم موظف الكاشير الكامل', 'الاسم الكامل للموظف', '', true, true);
+    const cmPin  = cMeta('cashier_pin', 'رمز PIN السري الخاص بالموظف (4 أرقام)', '4 أرقام مثل 2580', '', true, true);
+    const cmBr   = cMeta('branch_id', 'الفرع التابع له الموظف', '', '', true, true);
+    const cmPh   = cMeta('employee_phone', 'رقم هاتف الموظف', 'رقم الهاتف', '', true, false);
+    const cmMem  = cMeta('linked_member_code', 'كود عضويته في SAWYAN (إن وجد)', 'اختياري لمنع التواطؤ', '', true, false);
+    const cmLim  = cMeta('max_tx_amount_limit', 'سقف الفاتورة المباشرة', 'فارغ = بلا سقف', '', true, false);
+    const cmNot  = cMeta('notify_owner_realtime', 'إشعار فوري لصاحب المحل مع كل فاتورة', '', '', true, false);
 
     page.innerHTML = `
         <div style="margin-bottom:16px;">
-            <h2 style="margin:0;font-size:1.3rem;font-weight:900;color:#0f172a;">⚙️ إعدادات المتجر وحوكمة موظفي الكاشير (D25)</h2>
-            <p style="margin:4px 0 0;font-size:0.84rem;color:#64748b;">تعديل بيانات الفرع، شبكة Wi-Fi للعملاء، وإدارة رموز PIN المستقلة للكاشير (بدون كشف النسب الداخلية F01)</p>
+            <h2 style="margin:0;font-size:1.3rem;font-weight:900;color:#0f172a;">⚙️ إعدادات المتجر، استكمال البيانات وموظفي الكاشير</h2>
+            <p style="margin:4px 0 0;font-size:0.84rem;color:#64748b;">إدارة هوية المتجر، الموقع على خرائط جوجل، نسبة المساهمة، مواعيد العمل، المستندات، وحسابات الكاشير المستقلة</p>
         </div>
 
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:18px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:18px;">
             <div style="background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:20px;">
-                <h3 style="margin:0 0 12px;color:#0f172a;">🏪 بيانات المنشأة والواي فاي</h3>
+                <h3 style="margin:0 0 12px;color:#0f172a;">🏪 البيانات الأساسية والتعاقدية للمنشأة</h3>
                 <div style="display:grid;gap:10px;">
                     <div>
-                        <label style="font-size:0.82rem;font-weight:700;">اسم المتجر</label>
+                        <label style="font-size:0.82rem;font-weight:700;">${mLbl('business_name', 'اسم النشاط التجاري')}</label>
                         <input type="text" id="settingsBusinessName" class="form-control" value="${escM(p.business_name || '')}">
+                        ${mHlp('business_name')}
                     </div>
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:10px;">
                         <div>
-                            <label style="font-size:0.82rem;font-weight:700;">اسم المالك</label>
+                            <label style="font-size:0.82rem;font-weight:700;">${mLbl('owner_name', 'اسم المالك الكامل')}</label>
                             <input type="text" id="settingsOwnerName" class="form-control" value="${escM(p.owner_name || '')}">
                         </div>
                         <div>
-                            <label style="font-size:0.82rem;font-weight:700;">هاتف التواصل</label>
-                            <input type="text" id="settingsPhone" class="form-control" value="${escM(p.phone || '')}">
+                            <label style="font-size:0.82rem;font-weight:700;">${mLbl('email', 'البريد الإلكتروني')}</label>
+                            <input type="email" id="settingsEmail" dir="ltr" class="form-control" value="${escM(p.email || '')}">
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:10px;">
+                        <div>
+                            <label style="font-size:0.82rem;font-weight:700;">${mLbl('phone', 'هاتف التواصل')}</label>
+                            <input type="text" id="settingsPhone" dir="ltr" class="form-control" value="${escM(p.phone || '')}">
+                        </div>
+                        <div>
+                            <label style="font-size:0.82rem;font-weight:700;">${mLbl('whatsapp', 'رقم واتساب للعملاء')}</label>
+                            <input type="text" id="settingsWhatsapp" dir="ltr" class="form-control" value="${escM(p.whatsapp || '')}" placeholder="مثال: +201012345678">
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:10px;">
+                        <div>
+                            <label style="font-size:0.82rem;font-weight:700;">${mLbl('merchant_type', 'نوع النشاط التجاري')}</label>
+                            <select id="settingsMerchantType" class="form-control">
+                                <option value="physical" ${p.merchant_type === 'physical' ? 'selected' : ''}>فيزيائي (محل على الأرض)</option>
+                                <option value="online" ${p.merchant_type === 'online' ? 'selected' : ''}>متجر إلكتروني (أونلاين)</option>
+                                <option value="both" ${p.merchant_type === 'both' ? 'selected' : ''}>محل على الأرض + أونلاين</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:0.82rem;font-weight:700;">${mLbl('business_category', 'فئة النشاط التجاري')}</label>
+                            <select id="settingsCategory" class="form-control">
+                                <option value="${escM(p.category || 'supermarket')}">${escM(p.category || 'supermarket')}</option>
+                            </select>
                         </div>
                     </div>
                     <div>
-                        <label style="font-size:0.82rem;font-weight:700;">عنوان الفرع الرئيسي</label>
-                        <input type="text" id="settingsAddress" class="form-control" value="${escM(p.address || '')}">
+                        <label style="font-size:0.82rem;font-weight:700;">${mLbl('business_description', 'وصف مختصر عن النشاط')}</label>
+                        <textarea id="settingsDescription" rows="2" class="form-control" placeholder="اذكر أبرز منتجاتك أو خدماتك...">${escM(p.description || '')}</textarea>
+                        ${mHlp('business_description')}
                     </div>
+
+                    ${p.commission_locked ? `
+                        <div style="background:#f0fdf4;border:1.5px solid #10b981;border-radius:10px;padding:10px;display:flex;justify-content:space-between;align-items:center;">
+                            <span style="font-size:0.84rem;font-weight:800;color:#065f46;">🔒 نسبة المساهمة المعتمدة والموثّقة تعاقدياً:</span>
+                            <strong style="font-size:1.1rem;color:#047857;">${Number(p.deduction_percent || 0).toFixed(2)}%</strong>
+                        </div>
+                    ` : `
+                        <div style="background:${p.commission_pending ? '#fef2f2' : '#fffbeb'};border:1.5px solid ${p.commission_pending ? '#ef4444' : '#f59e0b'};border-radius:12px;padding:12px;">
+                            <label style="font-size:0.84rem;font-weight:800;color:${p.commission_pending ? '#991b1b' : '#92400e'};display:block;margin-bottom:6px;">
+                                ${mLbl('commission_percent', 'كم أقصى نسبة تستطيع ردّها لسويًا كلما اشترى أعضاؤها منك؟ (%)')}
+                            </label>
+                            <input type="number" id="settingsDeductionPercent" class="form-control" min="0.5" max="95" step="0.5" dir="ltr"
+                                value="${p.deduction_percent > 0 ? Number(p.deduction_percent) : ''}" placeholder="مثال: 10">
+                            ${mHlp('commission_percent', 'أقصى نسبة من المبيعات تستطيع استقطاعها لسويًا نظير حشد آلاف المشترين نحو مشروعك')}
+                        </div>
+                    `}
+
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:10px;">
                         <div>
                             <label style="font-size:0.82rem;font-weight:700;">شبكة Wi-Fi للزبائن (SSID)</label>
@@ -2369,11 +2568,63 @@ async function loadSettings() {
                             <input type="text" id="settingsWifiPassword" class="form-control" value="${escM(p.wifi_password || '')}">
                         </div>
                     </div>
-                    <div style="background:#f0fdf4;border:1.5px solid #10b981;border-radius:10px;padding:10px;display:flex;justify-content:space-between;align-items:center;">
-                        <span style="font-size:0.84rem;font-weight:800;color:#065f46;">🔒 نسبة العمولة التعاقدية الإجمالية المقفولة:</span>
-                        <strong style="font-size:1.1rem;color:#047857;">${Number(p.deduction_percent || 10).toFixed(2)}%</strong>
+
+                    <button type="button" onclick="saveFullMerchantProfileAndWifi()" class="btn btn-primary">💾 حفظ البيانات الأساسية والتعاقدية والموقع</button>
+                </div>
+            </div>
+
+            <div style="background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:20px;">
+                <h3 style="margin:0 0 12px;color:#0f172a;">📍 الموقع على خرائط جوجل، الروابط ومواعيد العمل</h3>
+                <div style="display:grid;gap:10px;">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:10px;">
+                        <div>
+                            <label style="font-size:0.82rem;font-weight:700;">${mLbl('city', 'المدينة / المحافظة')}</label>
+                            <select id="settingsCountryCode" class="form-control" style="display:none;"><option value="${escM(p.country_code || 'EG')}">${escM(p.country_code || 'EG')}</option></select>
+                            <input type="text" id="settingsCitySearch" class="form-control" placeholder="ابحث لتصفية المدن..." style="margin-bottom:5px;">
+                            <select id="settingsCitySelect" class="form-control"></select>
+                        </div>
+                        <div>
+                            <label style="font-size:0.82rem;font-weight:700;">${mLbl('district', 'الحي / المنطقة')}</label>
+                            <select id="settingsDistrictSelect" class="form-control"></select>
+                            <input type="text" id="settingsDistrictManual" class="form-control" value="${escM(p.district || '')}" placeholder="اكتب اسم الحي يدوياً..." style="display:none;margin-top:5px;">
+                        </div>
                     </div>
-                    <button type="button" onclick="saveFullMerchantProfileAndWifi()" class="btn btn-primary">💾 حفظ بيانات المتجر والواي فاي</button>
+                    <div>
+                        <label style="font-size:0.82rem;font-weight:700;">${mLbl('address', 'العنوان التفصيلي')}</label>
+                        <input type="text" id="settingsAddress" class="form-control" value="${escM(p.address || '')}">
+                    </div>
+                    <div>
+                        <label style="font-size:0.82rem;font-weight:700;">${mLbl('geo_location', 'الموقع الدقيق على خرائط جوجل (اللاقط التلقائي)')}</label>
+                        <div id="merchantSettingsGeoPickerHost"></div>
+                        <input type="hidden" id="settingsLat" value="${escM(p.latitude ?? '')}">
+                        <input type="hidden" id="settingsLng" value="${escM(p.longitude ?? '')}">
+                        <input type="hidden" id="settingsMapsUrl" value="${escM(p.google_maps_url || '')}">
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:10px;">
+                        <div>
+                            <label style="font-size:0.82rem;font-weight:700;">${mLbl('website_url', 'الموقع / المتجر الإلكتروني')}</label>
+                            <input type="url" id="settingsWebsiteUrl" dir="ltr" class="form-control" value="${escM(p.website_url || '')}" placeholder="https://yourstore.com">
+                        </div>
+                        <div>
+                            <label style="font-size:0.82rem;font-weight:700;">${mLbl('webhook_url', 'رابط الربط التقني (Webhook)')}</label>
+                            <input type="url" id="settingsWebhookUrl" dir="ltr" class="form-control" value="${escM(p.webhook_url || '')}" placeholder="https://yourstore.com/webhook">
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,130px),1fr));gap:8px;">
+                        <input type="url" id="settingsFbUrl" dir="ltr" class="form-control" value="${escM(social.facebook || '')}" placeholder="رابط فيسبوك">
+                        <input type="url" id="settingsIgUrl" dir="ltr" class="form-control" value="${escM(social.instagram || '')}" placeholder="رابط إنستغرام">
+                        <input type="url" id="settingsTtUrl" dir="ltr" class="form-control" value="${escM(social.tiktok || '')}" placeholder="رابط تيك توك">
+                    </div>
+
+                    <div style="border-top:1px solid #e2e8f0;padding-top:10px;margin-top:4px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+                            <strong style="font-size:0.86rem;">🕒 مواعيد العمل الأسبوعية</strong>
+                            <button type="button" onclick="applySaturdayHoursToAll()" class="btn btn-outline btn-sm">🔁 تعميم موعد السبت على باقي الأيام</button>
+                        </div>
+                        <div style="display:grid;gap:6px;">${whRowsHtml}</div>
+                    </div>
+
+                    <button type="button" onclick="saveFullMerchantProfileAndWifi()" class="btn btn-primary">💾 حفظ الموقع والروابط ومواعيد العمل</button>
                 </div>
             </div>
 
@@ -2382,11 +2633,11 @@ async function loadSettings() {
                 <div style="display:grid;gap:12px;">
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:10px;">
                         <div>
-                            <label style="font-size:0.82rem;font-weight:700;">رقم السجل التجاري</label>
+                            <label style="font-size:0.82rem;font-weight:700;">${mLbl('commercial_reg_no', 'رقم السجل التجاري')}</label>
                             <input type="text" id="settingsCommercialRegNo" class="form-control" value="${escM(p.commercial_reg_no || '')}" placeholder="1010456789">
                         </div>
                         <div>
-                            <label style="font-size:0.82rem;font-weight:700;">الرقم الضريبي</label>
+                            <label style="font-size:0.82rem;font-weight:700;">${mLbl('tax_id', 'الرقم الضريبي')}</label>
                             <input type="text" id="settingsTaxId" class="form-control" value="${escM(p.tax_id || '')}" placeholder="300-456-789">
                         </div>
                     </div>
@@ -2403,11 +2654,11 @@ async function loadSettings() {
                         <div id="settingsGalleryUploader"></div>
                     </div>
                     <div>
-                        <label style="font-size:0.82rem;font-weight:700;">📄 صورة السجل التجاري (KYC)</label>
+                        <label style="font-size:0.82rem;font-weight:700;">📄 صورة السجل التجاري</label>
                         <div id="settingsCommDocUploader"></div>
                     </div>
                     <div>
-                        <label style="font-size:0.82rem;font-weight:700;">🧾 صورة البطاقة الضريبية (KYC)</label>
+                        <label style="font-size:0.82rem;font-weight:700;">🧾 صورة البطاقة الضريبية</label>
                         <div id="settingsTaxDocUploader"></div>
                     </div>
                     <button type="button" onclick="saveMerchantMediaAndDocs()" class="btn btn-primary">💾 حفظ الصور والوثائق في المتجر</button>
@@ -2415,20 +2666,61 @@ async function loadSettings() {
             </div>
 
             <div style="background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:20px;">
-                <h3 style="margin:0 0 12px;color:#0f172a;">👨‍💼 موظفو الكاشير المستقلون (PIN 4 أرقام — D25)</h3>
-                <form id="addCashierEmpForm" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:8px;margin-bottom:14px;background:#f8fafc;padding:12px;border-radius:12px;">
-                    <input type="text" id="newEmpCode" required class="form-control" placeholder="كود الموظف (EMP-02)">
-                    <input type="text" id="newEmpName" required class="form-control" placeholder="اسم الموظف الكامل">
-                    <input type="password" id="newEmpPin" required maxlength="4" pattern="\\d{4}" class="form-control" placeholder="PIN من 4 أرقام">
-                    <input type="number" id="newEmpLinkedCode" min="1" class="form-control" placeholder="كود عضويته إن وجد (لكشف التواطؤ)">
+                <h3 style="margin:0 0 6px;color:#0f172a;">👨‍💼 موظفو الكاشير المستقلون (PIN 4 أرقام)</h3>
+                <p style="margin:0 0 12px;font-size:0.78rem;color:#64748b;">
+                    كل موظف كاشير يحصل على رمز PIN ثابت من 4 أرقام خاص به لاعتماد المبيعات أمام العملاء وحماية حساب المالك.
+                </p>
+                <form id="addCashierEmpForm" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:10px;margin-bottom:14px;background:#f8fafc;padding:12px;border-radius:12px;">
+                    ${cmCode.show ? `
+                    <div>
+                        <label style="font-size:0.76rem;font-weight:700;display:block;margin-bottom:3px;">${escM(cmCode.label)}${cmCode.req ? ' <span style="color:#DC2626;">*</span>' : ''}</label>
+                        <input type="text" id="newEmpCode" ${cmCode.req ? 'required' : ''} class="form-control" placeholder="${escM(cmCode.placeholder)}">
+                    </div>` : ''}
+                    <div>
+                        <label style="font-size:0.76rem;font-weight:700;display:block;margin-bottom:3px;">${escM(cmName.label)} <span style="color:#DC2626;">*</span></label>
+                        <input type="text" id="newEmpName" required class="form-control" placeholder="${escM(cmName.placeholder)}">
+                    </div>
+                    <div>
+                        <label style="font-size:0.76rem;font-weight:700;display:block;margin-bottom:3px;">${escM(cmPin.label)} <span style="color:#DC2626;">*</span></label>
+                        <input type="password" id="newEmpPin" required maxlength="4" pattern="\\d{4}" dir="ltr" class="form-control" placeholder="${escM(cmPin.placeholder)}">
+                    </div>
+                    ${cmBr.show ? `
+                    <div>
+                        <label style="font-size:0.76rem;font-weight:700;display:block;margin-bottom:3px;">${escM(cmBr.label)} <span style="color:#DC2626;">*</span></label>
+                        <select id="newEmpBranchId" class="form-control">
+                            ${branches.map(b => `<option value="${escM(b.id)}">${escM(b.branch_name || b.branch_code)}${b.is_main_branch ? ' (الرئيسي)' : ''}</option>`).join('')}
+                        </select>
+                    </div>` : ''}
+                    ${cmPh.show ? `
+                    <div>
+                        <label style="font-size:0.76rem;font-weight:700;display:block;margin-bottom:3px;">${escM(cmPh.label)}${cmPh.req ? ' <span style="color:#DC2626;">*</span>' : ''}</label>
+                        <input type="tel" id="newEmpPhone" dir="ltr" ${cmPh.req ? 'required' : ''} class="form-control" placeholder="${escM(cmPh.placeholder)}">
+                    </div>` : ''}
+                    ${cmMem.show ? `
+                    <div>
+                        <label style="font-size:0.76rem;font-weight:700;display:block;margin-bottom:3px;">${escM(cmMem.label)}${cmMem.req ? ' <span style="color:#DC2626;">*</span>' : ''}</label>
+                        <input type="number" id="newEmpLinkedCode" min="1" dir="ltr" class="form-control" placeholder="${escM(cmMem.placeholder)}">
+                    </div>` : ''}
+                    ${cmLim.show ? `
+                    <div>
+                        <label style="font-size:0.76rem;font-weight:700;display:block;margin-bottom:3px;">${escM(cmLim.label)}</label>
+                        <input type="number" id="newEmpMaxLimit" min="1" step="0.01" dir="ltr" class="form-control" placeholder="${escM(cmLim.placeholder)}">
+                    </div>` : ''}
+                    ${cmNot.show ? `
+                    <label style="grid-column:1 / -1;display:flex;align-items:center;gap:8px;font-size:0.8rem;font-weight:700;cursor:pointer;">
+                        <input type="checkbox" id="newEmpNotifyOwner" checked>
+                        <span>${escM(cmNot.label)}</span>
+                    </label>` : ''}
                     <button type="submit" class="btn btn-primary btn-sm" style="grid-column:1 / -1;">+ إضافة موظف كاشير بـ PIN مشفر</button>
                 </form>
+
                 <div style="display:grid;gap:8px;">
                     ${cashiers.length === 0 ? '<p style="color:#64748b;font-size:0.85rem;">لا يوجد موظفو كاشير مضافون بعد.</p>' : cashiers.map(c => `
                         <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
                             <div>
                                 <strong>${escM(c.employee_code)}</strong> — ${escM(c.full_name)}
-                                <div style="font-size:0.75rem;color:#64748b;">محاولات PIN الخاطئة: ${c.failed_pin_attempts}/5 ${c.pin_locked_until ? '• 🔒 مقفل مؤقتاً' : ''}</div>
+                                ${c.employee_phone ? `<div style="font-size:0.75rem;color:#475569;" dir="ltr">📞 ${escM(c.employee_phone)}</div>` : ''}
+                                <div style="font-size:0.75rem;color:#64748b;">محاولات PIN الخاطئة: ${c.failed_pin_attempts}/5 ${c.max_tx_amount_limit ? `• سقف ${Number(c.max_tx_amount_limit)}` : ''} ${c.pin_locked_until ? '• 🔒 مقفل مؤقتاً' : ''}</div>
                             </div>
                             <button type="button" class="btn btn-outline btn-sm" onclick="toggleCashierEmployee('${c.id}')">${c.is_active ? 'إيقاف' : 'تفعيل وفك قفل'}</button>
                         </div>
@@ -2437,6 +2729,51 @@ async function loadSettings() {
             </div>
         </div>
     `;
+
+    if (eng) {
+        _merchantSettingsGeoPicker = eng.mountGeoPicker(document.getElementById('merchantSettingsGeoPickerHost'), {
+            latInput: document.getElementById('settingsLat'),
+            lngInput: document.getElementById('settingsLng'),
+            mapsUrlInput: document.getElementById('settingsMapsUrl'),
+            addressInput: document.getElementById('settingsAddress'),
+            initialLat: p.latitude,
+            initialLng: p.longitude,
+            countryCode: p.country_code || 'EG',
+            compact: true
+        });
+
+        _merchantSettingsCascade = eng.mountWorldGeoCascade({
+            countrySelect: document.getElementById('settingsCountryCode'),
+            citySelect: document.getElementById('settingsCitySelect'),
+            citySearchInput: document.getElementById('settingsCitySearch'),
+            districtSelect: document.getElementById('settingsDistrictSelect'),
+            districtManualInput: document.getElementById('settingsDistrictManual'),
+            activeOnly: false,
+            includeAllCountries: true,
+            defaultCountry: p.country_code || 'EG',
+            onCityChange: function (cityInfo) {
+                if (cityInfo && cityInfo.lat && cityInfo.lng && _merchantSettingsGeoPicker) {
+                    _merchantSettingsGeoPicker.setCenterView(cityInfo.lat, cityInfo.lng, 12);
+                }
+            }
+        });
+        await _merchantSettingsCascade.init();
+        if (p.city_geoname_id || p.district) {
+            await _merchantSettingsCascade.setCityAndDistrict(p.city_geoname_id, p.district);
+        }
+        const cats = _merchantSettingsCascade.getCategories();
+        const catSel = document.getElementById('settingsCategory');
+        if (catSel && Array.isArray(cats) && cats.length > 0) {
+            catSel.innerHTML = '';
+            cats.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.slug;
+                opt.textContent = (c.name_i18n && (c.name_i18n.ar || c.name_i18n.en)) || c.slug;
+                catSel.appendChild(opt);
+            });
+            if (p.category) catSel.value = p.category;
+        }
+    }
 
     if (window.SAWYAN && window.SAWYAN.ImageUpload) {
         const up = window.SAWYAN.ImageUpload;
@@ -2480,19 +2817,58 @@ async function loadSettings() {
     document.getElementById('addCashierEmpForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         try {
+            const empPhoneRaw = (document.getElementById('newEmpPhone')?.value || '').trim();
+            if (empPhoneRaw && eng) {
+                const chk = eng.validatePhoneByCountry(empPhoneRaw, p.country_code || 'EG', false);
+                if (!chk.valid) throw new Error(chk.error);
+            }
+            const empMediaPatch = {
+                employee_phone: empPhoneRaw || null,
+                notify_owner_realtime: document.getElementById('newEmpNotifyOwner')
+                    ? Boolean(document.getElementById('newEmpNotifyOwner').checked)
+                    : true
+            };
             await window.SAWYAN.API.manageMerchantCashierAndSettings({
                 merchantId: currentMerchant.id,
                 action: 'add_cashier',
-                employeeCode: document.getElementById('newEmpCode').value.trim(),
+                employeeCode: (document.getElementById('newEmpCode')?.value || '').trim() || null,
                 employeeName: document.getElementById('newEmpName').value.trim(),
                 employeePin: document.getElementById('newEmpPin').value.trim(),
-                linkedMemberCode: document.getElementById('newEmpLinkedCode').value.trim() || null
+                branchId: document.getElementById('newEmpBranchId')?.value || null,
+                linkedMemberCode: document.getElementById('newEmpLinkedCode')?.value.trim() || null,
+                maxTxLimit: document.getElementById('newEmpMaxLimit')?.value.trim() || null,
+                mediaPatch: empMediaPatch
             });
             await loadSettings();
+            alert('✅ تم إضافة موظف الكاشير وتشفير الـ PIN الخاص به بنجاح.');
         } catch (err) {
             alert('❌ تعذر إضافة الكاشير: ' + err.message);
         }
     });
+}
+
+function applySaturdayHoursToAll() {
+    const satEnabled = document.querySelector('.wh-day-enabled[data-day="sat"]')?.checked ?? true;
+    const satOpen = document.querySelector('.wh-day-open[data-day="sat"]')?.value || '09:00';
+    const satClose = document.querySelector('.wh-day-close[data-day="sat"]')?.value || '23:00';
+    document.querySelectorAll('.wh-day-enabled').forEach(el => { el.checked = satEnabled; });
+    document.querySelectorAll('.wh-day-open').forEach(el => { el.value = satOpen; });
+    document.querySelectorAll('.wh-day-close').forEach(el => { el.value = satClose; });
+}
+
+function collectWorkingHoursMap() {
+    const out = {};
+    document.querySelectorAll('.wh-day-enabled').forEach(el => {
+        const dk = el.dataset.day;
+        const openEl = document.querySelector(`.wh-day-open[data-day="${dk}"]`);
+        const closeEl = document.querySelector(`.wh-day-close[data-day="${dk}"]`);
+        out[dk] = {
+            enabled: Boolean(el.checked),
+            open: openEl ? openEl.value : '09:00',
+            close: closeEl ? closeEl.value : '23:00'
+        };
+    });
+    return out;
 }
 
 async function saveMerchantMediaAndDocs() {
@@ -2529,6 +2905,50 @@ async function saveMerchantMediaAndDocs() {
 
 async function saveFullMerchantProfileAndWifi() {
     try {
+        const eng = window.SAWYAN && window.SAWYAN.RegEngine;
+        const p = merchantBundle?.profile || merchantData || {};
+        const rawEmail = (document.getElementById('settingsEmail')?.value || '').trim();
+        if (rawEmail && eng) {
+            const emRes = eng.validateEmailStrict(rawEmail, false);
+            if (!emRes.valid) throw new Error(emRes.error);
+        }
+
+        const dedInp = document.getElementById('settingsDeductionPercent');
+        const dedRaw = dedInp ? dedInp.value.trim() : '';
+        if (dedRaw !== '') {
+            const dn = Number(dedRaw);
+            if (!Number.isFinite(dn) || dn < 0.5 || dn > 95) {
+                throw new Error('النسبة المعتمدة يجب أن تكون بين 0.5% و 95%.');
+            }
+        }
+
+        const latVal = (document.getElementById('settingsLat')?.value || '').trim();
+        const lngVal = (document.getElementById('settingsLng')?.value || '').trim();
+        const socialObj = {
+            facebook: (document.getElementById('settingsFbUrl')?.value || '').trim() || null,
+            instagram: (document.getElementById('settingsIgUrl')?.value || '').trim() || null,
+            tiktok: (document.getElementById('settingsTtUrl')?.value || '').trim() || null
+        };
+
+        const mediaPatch = {
+            email: rawEmail || null,
+            description: (document.getElementById('settingsDescription')?.value || '').trim() || null,
+            merchant_type: document.getElementById('settingsMerchantType')?.value || null,
+            category: document.getElementById('settingsCategory')?.value || null,
+            whatsapp: (document.getElementById('settingsWhatsapp')?.value || '').trim() || null,
+            website_url: (document.getElementById('settingsWebsiteUrl')?.value || '').trim() || null,
+            webhook_url: (document.getElementById('settingsWebhookUrl')?.value || '').trim() || null,
+            google_maps_url: (document.getElementById('settingsMapsUrl')?.value || '').trim() || null,
+            city_geoname_id: _merchantSettingsCascade ? _merchantSettingsCascade.getCityId() : (p.city_geoname_id || null),
+            city_name: _merchantSettingsCascade ? (_merchantSettingsCascade.getCityName() || p.city_name || null) : (p.city_name || null),
+            district: _merchantSettingsCascade ? (_merchantSettingsCascade.getDistrict() || p.district || null) : (p.district || null),
+            social: socialObj,
+            working_hours: collectWorkingHoursMap()
+        };
+        if (dedRaw !== '') {
+            mediaPatch.deduction_percent = Number(dedRaw);
+        }
+
         await window.SAWYAN.API.manageMerchantCashierAndSettings({
             merchantId: currentMerchant.id,
             action: 'update_profile',
@@ -2536,11 +2956,14 @@ async function saveFullMerchantProfileAndWifi() {
             ownerName: document.getElementById('settingsOwnerName')?.value,
             phone: document.getElementById('settingsPhone')?.value,
             address: document.getElementById('settingsAddress')?.value,
+            latitude: latVal ? Number(latVal) : null,
+            longitude: lngVal ? Number(lngVal) : null,
             wifiSsid: document.getElementById('settingsWifiSSID')?.value,
-            wifiPassword: document.getElementById('settingsWifiPassword')?.value
+            wifiPassword: document.getElementById('settingsWifiPassword')?.value,
+            mediaPatch
         });
         await loadSettings();
-        alert('✅ تم حفظ إعدادات المتجر والواي فاي في قاعدة البيانات!');
+        alert('✅ تم حفظ وتحديث كافة بيانات المتجر والإحداثيات بنجاح!');
     } catch (err) {
         alert('❌ ' + err.message);
     }

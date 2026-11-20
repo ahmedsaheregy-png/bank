@@ -162,18 +162,25 @@ BEGIN
           FROM sawyan.tree_closure
          WHERE ancestor_id = v_sponsor.left_child_id;
 
-        -- البحث بالعرض (BFS عبر tree_closure):
-        -- 1) أقرب جيل 2) الذراع الأضعف 3) الأقل تفرعاً (0 أبناء قبل 1 ابن) 4) الأقدم (member_code ASC)
+        -- البحث بالعرض عبر كامل الشجرة السفلية للراعي (G01-G05):
+        -- 1) أقرب جيل به شاغر أولاً (tc.depth ASC) 2) الذراع الأضعف عدداً (يمين عند التعادل)
+        -- 3) العضو ذو الشجرة الفارغة تماماً (0 أبناء قبل 1 ابن) 4) الأقدم تسجيلاً
         SELECT m.* INTO v_target_parent
           FROM sawyan.tree_closure tc
           JOIN sawyan.members m ON m.id = tc.descendant_id
-         WHERE tc.ancestor_id = CASE WHEN v_right_count <= v_left_count
-                                     THEN v_sponsor.right_child_id
-                                     ELSE v_sponsor.left_child_id END
+         WHERE tc.ancestor_id = v_sponsor.id
+           AND tc.depth >= 1
+           AND tc.root_arm_side IN ('right', 'left')
            AND (m.left_child_id IS NULL OR m.right_child_id IS NULL)
            AND m.is_active_in_tree = true
          ORDER BY tc.depth ASC,
+                  (CASE
+                       WHEN v_right_count <= v_left_count
+                       THEN CASE WHEN tc.root_arm_side = 'right' THEN 0 ELSE 1 END
+                       ELSE CASE WHEN tc.root_arm_side = 'left'  THEN 0 ELSE 1 END
+                   END) ASC,
                   (CASE WHEN m.left_child_id IS NULL AND m.right_child_id IS NULL THEN 0 ELSE 1 END) ASC,
+                  m.created_at ASC,
                   m.member_code ASC
          LIMIT 1
          FOR UPDATE;
@@ -1848,6 +1855,7 @@ AS $$
       ) s ON true
      WHERE m.is_active = true
        AND m.is_isolated = false
+       AND m.deduction_percent > 0
        AND mb.is_branch_active = true
        AND (p_country_code IS NULL OR c.country_code = p_country_code)
        AND (p_category IS NULL OR m.category = p_category)
@@ -2534,6 +2542,9 @@ BEGIN
     SELECT * INTO v_merchant FROM sawyan.merchants WHERE id = p_merchant_id FOR UPDATE;
     IF NOT FOUND OR v_merchant.is_active IS NOT TRUE THEN
         RAISE EXCEPTION 'MERCHANT_INACTIVE';
+    END IF;
+    IF COALESCE(v_merchant.deduction_percent, 0) <= 0 THEN
+        RAISE EXCEPTION 'MERCHANT_COMMISSION_NOT_SET_YET';
     END IF;
 
     SELECT * INTO v_branch

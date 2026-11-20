@@ -327,39 +327,130 @@
     };
 
     // --- Sub-Tab 2: Staff & 7-Role RBAC Management ---
+    function generateStrongStaffPwd() {
+        const up = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+        const lo = 'abcdefghijkmnpqrstuvwxyz';
+        const dg = '23456789';
+        const sm = '@#$!';
+        const all = up + lo + dg + sm;
+        let p = up[Math.floor(Math.random() * up.length)]
+            + lo[Math.floor(Math.random() * lo.length)]
+            + dg[Math.floor(Math.random() * dg.length)]
+            + sm[Math.floor(Math.random() * sm.length)];
+        for (let i = 0; i < 8; i++) p += all[Math.floor(Math.random() * all.length)];
+        return p;
+    }
+
     async function renderStaffTab(sub) {
         const res = await window.SAWYAN.API.adminManageStaffAccounts({ action: 'list' });
         const staff = res.staff || [];
         const founder = isFounder();
 
+        let empCfg = { fields: [] };
+        try {
+            if (window.SAWYAN && window.SAWYAN.RegEngine) {
+                empCfg = await window.SAWYAN.RegEngine.loadFormConfig('employee_admin', true);
+            }
+        } catch (_e) {}
+
+        const fMap = {};
+        (empCfg.fields || []).forEach(function (f) { fMap[f.field_key] = f; });
+        function meta(key, defLbl, defPh, defHlp, defShow, defReq) {
+            const c = fMap[key] || {};
+            return {
+                label: c.label_ar || defLbl,
+                placeholder: c.placeholder_ar || defPh || '',
+                help: c.help_text_ar || defHlp || '',
+                show: c.show_in_initial !== undefined ? Boolean(c.show_in_initial) : defShow,
+                req: c.required_in_initial !== undefined ? Boolean(c.required_in_initial) : defReq
+            };
+        }
+
+        const mName  = meta('full_name', 'الاسم الكامل للموظف الإداري', 'الاسم الكامل كما في العقد الوظيفي', '', true, true);
+        const mEmail = meta('email', 'البريد الإلكتروني الوظيفي', 'name@sawyan.global', '', true, true);
+        const mRole  = meta('role', 'الدور الوظيفي (الصلاحية)', '', '', true, true);
+        const mScope = meta('country_scope', 'نطاق الدولة المصرح به', '', '', true, true);
+        const mPwd   = meta('initial_password', 'كلمة المرور المبدئية (8+ أحرف)', 'أدخل أو ولّد كلمة مرور قوية', '', true, true);
+        const mPhone = meta('staff_phone', 'رقم الهاتف الوظيفي', '+201012345678', '', true, false);
+
+        const star = function (isReq) {
+            return isReq
+                ? ' <span style="color:#DC2626;font-weight:900;">*</span>'
+                : ' <span style="font-size:0.74rem;color:#64748B;">(اختياري)</span>';
+        };
+        const hlpHtml = function (txt) {
+            return txt ? '<small style="display:block;color:#64748B;font-size:0.76rem;margin-top:3px;">' + esc(txt) + '</small>' : '';
+        };
+
+        const countriesOpts = ((window.SAWYAN && Array.isArray(window.SAWYAN.Countries)) ? window.SAWYAN.Countries : [])
+            .map(function (c) {
+                return '<option value="' + esc(c.code) + '">' + esc((c.flag || '') + ' ' + c.nameAr + ' (' + c.code + ')') + '</option>';
+            }).join('');
+
         sub.innerHTML =
             '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;margin-bottom:16px;">' +
-                '<h3 style="margin:0 0 8px 0;font-size:0.98rem;">➕ تعيين موظف إداري جديد (حصري للمؤسس السيادي — يُجبر على تغيير كلمة المرور فور أول دخول)</h3>' +
-                '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px;margin-bottom:10px;">' +
-                    '<input id="svStfName" type="text" placeholder="اسم الموظف الكامل" class="form-control">' +
-                    '<input id="svStfEmail" type="email" placeholder="البريد الوظيفي للموظف" class="form-control">' +
-                    '<select id="svStfRole" class="form-control">' +
-                        '<option value="finance">💼 محاسب مالي (finance)</option>' +
-                        '<option value="kyc_officer">🪪 موظف هوية (kyc_officer)</option>' +
-                        '<option value="support">🎫 دعم ونزاعات (support)</option>' +
-                        '<option value="reviewer">🔎 مراجع رقابي (reviewer)</option>' +
-                        '<option value="approver">✅ معتمد ثانٍ (approver)</option>' +
-                        '<option value="auditor">🔍 مدقق قراءة فقط (auditor)</option>' +
-                        '<option value="data_entry">⌨️ مدخل بيانات (data_entry)</option>' +
-                    '</select>' +
-                    '<input id="svStfScope" type="text" value="GLOBAL" placeholder="النطاق: GLOBAL أو EG أو SA" class="form-control">' +
-                    '<input id="svStfPwd" type="text" placeholder="كلمة مرور مبدئية (>=8)" class="form-control">' +
+                '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;">' +
+                    '<h3 style="margin:0;font-size:0.98rem;">➕ تعيين موظف إداري جديد (حصري للمؤسس السيادي — يُجبر على تغيير كلمة المرور فور أول دخول)</h3>' +
+                    '<button type="button" class="btn-sm btn-outline" onclick="if(typeof openRegistrationBuilderPage===\'function\') openRegistrationBuilderPage(\'employee_admin\')">🧩 تعديل حقول نموذج الموظف</button>' +
+                '</div>' +
+                '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:12px;">' +
+                    '<div>' +
+                        '<label style="display:block;font-weight:700;font-size:0.84rem;margin-bottom:4px;">' + esc(mName.label) + star(mName.req) + '</label>' +
+                        '<input id="svStfName" type="text" placeholder="' + esc(mName.placeholder) + '" class="form-control">' +
+                        hlpHtml(mName.help) +
+                    '</div>' +
+                    '<div>' +
+                        '<label style="display:block;font-weight:700;font-size:0.84rem;margin-bottom:4px;">' + esc(mEmail.label) + star(mEmail.req) + '</label>' +
+                        '<input id="svStfEmail" type="email" dir="ltr" placeholder="' + esc(mEmail.placeholder) + '" class="form-control">' +
+                        hlpHtml(mEmail.help) +
+                    '</div>' +
+                    (mPhone.show ? (
+                    '<div>' +
+                        '<label style="display:block;font-weight:700;font-size:0.84rem;margin-bottom:4px;">' + esc(mPhone.label) + star(mPhone.req) + '</label>' +
+                        '<input id="svStfPhone" type="tel" dir="ltr" data-req="' + (mPhone.req ? '1' : '0') + '" placeholder="' + esc(mPhone.placeholder) + '" class="form-control">' +
+                        hlpHtml(mPhone.help) +
+                    '</div>'
+                    ) : '') +
+                    '<div>' +
+                        '<label style="display:block;font-weight:700;font-size:0.84rem;margin-bottom:4px;">' + esc(mRole.label) + star(mRole.req) + '</label>' +
+                        '<select id="svStfRole" class="form-control">' +
+                            '<option value="finance">💼 محاسب مالي (finance)</option>' +
+                            '<option value="kyc_officer">🪪 موظف هوية (kyc_officer)</option>' +
+                            '<option value="support">🎫 دعم ونزاعات (support)</option>' +
+                            '<option value="reviewer">🔎 مراجع رقابي (reviewer)</option>' +
+                            '<option value="approver">✅ معتمد ثانٍ (approver)</option>' +
+                            '<option value="auditor">🔍 مدقق قراءة فقط (auditor)</option>' +
+                            '<option value="data_entry">⌨️ مدخل بيانات (data_entry)</option>' +
+                        '</select>' +
+                        hlpHtml(mRole.help) +
+                    '</div>' +
+                    '<div>' +
+                        '<label style="display:block;font-weight:700;font-size:0.84rem;margin-bottom:4px;">' + esc(mScope.label) + star(mScope.req) + '</label>' +
+                        '<select id="svStfScope" class="form-control">' +
+                            '<option value="GLOBAL">🌍 عالمي (GLOBAL — كافة الدول)</option>' +
+                            countriesOpts +
+                        '</select>' +
+                        hlpHtml(mScope.help) +
+                    '</div>' +
+                    '<div>' +
+                        '<label style="display:block;font-weight:700;font-size:0.84rem;margin-bottom:4px;">' + esc(mPwd.label) + star(mPwd.req) + '</label>' +
+                        '<div style="display:flex;gap:6px;">' +
+                            '<input id="svStfPwd" type="text" dir="ltr" placeholder="' + esc(mPwd.placeholder) + '" class="form-control">' +
+                            '<button type="button" class="btn-sm btn-outline" onclick="document.getElementById(\'svStfPwd\').value=\'' + esc(generateStrongStaffPwd()) + '\'" title="توليد كلمة مرور قوية">🎲 توليد</button>' +
+                        '</div>' +
+                        hlpHtml(mPwd.help) +
+                    '</div>' +
                 '</div>' +
                 '<button type="button" ' + (founder ? '' : 'disabled') + ' onclick="svCreateStaff()" class="btn btn-primary">👔 إنشاء حساب الموظف وتفعيل إجبار تغيير كلمة المرور</button>' +
             '</div>' +
 
             '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
-                '<h3 style="margin:0 0 10px 0;font-size:0.98rem;">📋 جدول الموظفين الإداريين والصلاحيات السبعة (`sawyan.admins`)</h3>' +
-                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>الموظف</th><th>البريد</th><th>الدور الوظيفي</th><th>نطاق الدولة</th><th>الحالة</th><th>إجراءات المؤسس الفورية</th></tr></thead><tbody>' +
+                '<h3 style="margin:0 0 10px 0;font-size:0.98rem;">📋 جدول الموظفين الإداريين والصلاحيات السبعة</h3>' +
+                '<div style="overflow-x:auto;"><table class="data-table" data-has-labels="1"><thead><tr><th>الموظف</th><th>البريد والهاتف</th><th>الدور الوظيفي</th><th>نطاق الدولة</th><th>الحالة</th><th>إجراءات المؤسس الفورية</th></tr></thead><tbody>' +
                 staff.map(function (s) {
                     return '<tr>' +
                         '<td data-label="الموظف"><b>' + esc(s.full_name) + '</b>' + (s.is_founder ? ' <span class="badge badge-success">👑 المؤسس</span>' : '') + '</td>' +
-                        '<td data-label="البريد"><code>' + esc(s.email) + '</code></td>' +
+                        '<td data-label="البريد والهاتف"><code>' + esc(s.email) + '</code>' + (s.phone ? '<div style="font-size:0.78rem;color:#475569;" dir="ltr">' + esc(s.phone) + '</div>' : '') + '</td>' +
                         '<td data-label="الدور الوظيفي"><b>' + esc(s.role) + '</b></td>' +
                         '<td data-label="نطاق الدولة"><span class="badge badge-info">' + esc(s.country_scope || 'GLOBAL') + '</span></td>' +
                         '<td data-label="الحالة">' + (s.is_active ? '<span class="badge badge-success">نشط</span>' : '<span class="badge badge-danger">موقوف / مطرود</span>') + '</td>' +
@@ -380,13 +471,39 @@
 
     window.svCreateStaff = async function () {
         try {
+            const name = document.getElementById('svStfName').value.trim();
+            const rawEmail = document.getElementById('svStfEmail').value.trim();
+            const phoneEl = document.getElementById('svStfPhone');
+            const rawPhone = phoneEl ? phoneEl.value.trim() : '';
+            const phoneReq = phoneEl ? phoneEl.dataset.req === '1' : false;
+            const scope = (document.getElementById('svStfScope').value || 'GLOBAL').trim().toUpperCase();
+            const pwd = document.getElementById('svStfPwd').value;
+
+            if (!name || name.length < 3) throw new Error('يرجى إدخال الاسم الكامل للموظف (3 أحرف فأكثر).');
+
+            let finalEmail = rawEmail;
+            if (window.SAWYAN && window.SAWYAN.RegEngine) {
+                const emRes = window.SAWYAN.RegEngine.validateEmailStrict(rawEmail, true);
+                if (!emRes.valid) throw new Error(emRes.error);
+                finalEmail = emRes.clean;
+
+                if (rawPhone || phoneReq) {
+                    const ccHint = (scope && scope !== 'GLOBAL' && scope.length === 2) ? scope : 'EG';
+                    const phRes = window.SAWYAN.RegEngine.validatePhoneByCountry(rawPhone, ccHint, phoneReq);
+                    if (!phRes.valid) throw new Error(phRes.error);
+                }
+                const pwRes = window.SAWYAN.RegEngine.validatePasswordStrong(pwd);
+                if (!pwRes.valid) throw new Error(pwRes.error);
+            }
+
             await window.SAWYAN.API.adminManageStaffAccounts({
                 action: 'create',
-                fullName: document.getElementById('svStfName').value.trim(),
-                email: document.getElementById('svStfEmail').value.trim(),
+                fullName: name,
+                email: finalEmail,
                 role: document.getElementById('svStfRole').value,
-                countryScope: document.getElementById('svStfScope').value.trim() || 'GLOBAL',
-                password: document.getElementById('svStfPwd').value
+                countryScope: scope || 'GLOBAL',
+                password: pwd,
+                phone: rawPhone || null
             });
             toast('👔 تم إنشاء حساب الموظف بنجاح!', false);
             await renderSovereignOpsCenter();

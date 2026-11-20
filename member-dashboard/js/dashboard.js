@@ -639,6 +639,7 @@ function renderHomePage() {
     `;
 
     renderPendingReturnRequestsCard(homeEnhBox);
+    renderMemberProfileCompletionBanner();
 
     // كود QR الثابت للهوية عند الكاشير (البند المجمّد #1: بدون TOTP 60s)
     const qrContainer = document.getElementById('qrCode');
@@ -3059,13 +3060,14 @@ async function loadSettings() {
         </div>
 
         <div data-spec-id="member-settings-home-gps" style="background:#ffffff;border:1px solid #cbd5e1;border-radius:16px;padding:18px;margin-top:14px;">
-            <h3 style="margin:0 0 8px;font-size:1rem;">📍 موقع المنزل الافتراضي للخريطة والرادار (Home GPS)</h3>
+            <h3 style="margin:0 0 8px;font-size:1rem;">📍 موقع المنزل الافتراضي للخريطة والرادار (اللاقط التلقائي على خرائط جوجل)</h3>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;align-items:center;">
                 <input type="number" step="0.000001" id="setHomeLat" class="form-control" value="${esc(homeGps.lat ?? '')}" placeholder="خط العرض (Latitude)">
                 <input type="number" step="0.000001" id="setHomeLng" class="form-control" value="${esc(homeGps.lng ?? '')}" placeholder="خط الطول (Longitude)">
                 <button type="button" class="btn btn-outline btn-sm" onclick="captureBrowserHomeGps()">📡 التقط إحداثياتي الآن</button>
                 <button type="button" class="btn btn-primary btn-sm" onclick="saveHomeGpsCoords()">💾 حفظ إحداثيات المنزل</button>
             </div>
+            <div id="memberSettingsGeoPickerHost" style="margin-top:10px;"></div>
         </div>
 
         <form id="memberSettingsForm" data-spec-id="member-settings-password" style="background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:20px;margin-top:14px;display:grid;gap:14px;">
@@ -3157,15 +3159,37 @@ async function loadSettings() {
         };
     }
 
+    if (window.SAWYAN && window.SAWYAN.RegEngine) {
+        const geoHostEl = document.getElementById('memberSettingsGeoPickerHost');
+        if (geoHostEl) {
+            window.SAWYAN.RegEngine.mountGeoPicker(geoHostEl, {
+                latInput: document.getElementById('setHomeLat'),
+                lngInput: document.getElementById('setHomeLng'),
+                initialLat: homeGps.lat,
+                initialLng: homeGps.lng,
+                countryCode: curCc,
+                compact: true
+            });
+        }
+    }
+
     document.getElementById('memberSettingsForm')?.addEventListener('submit', async function (e) {
         e.preventDefault();
         const u = window._memberSettingsUploaders || {};
         const avatarVal = ((u.avatar ? u.avatar.getValue() : null) || document.getElementById('setAvatarUrl')?.value || '').trim();
+        const rawEmail = (document.getElementById('setEmail')?.value || '').trim();
+        if (rawEmail && window.SAWYAN && window.SAWYAN.RegEngine) {
+            const emChk = window.SAWYAN.RegEngine.validateEmailStrict(rawEmail, false);
+            if (!emChk.valid) {
+                alert('⛔ ' + emChk.error);
+                return;
+            }
+        }
         try {
             await window.SAWYAN.API.updateMemberProfileSettings({
                 memberId: currentMember.id,
                 fullName: document.getElementById('setFullName').value,
-                email: document.getElementById('setEmail').value,
+                email: rawEmail,
                 manualDistrict: document.getElementById('setDistrict').value,
                 currentPassword: document.getElementById('setCurrPass').value || null,
                 newPassword: document.getElementById('setNewPass').value || null,
@@ -3177,6 +3201,64 @@ async function loadSettings() {
             alert('❌ تعذر الحفظ: ' + err.message);
         }
     });
+}
+
+async function renderMemberProfileCompletionBanner() {
+    const p = memberBundle?.profile || currentMember;
+    const host = document.getElementById('homePage');
+    const eng = window.SAWYAN && window.SAWYAN.RegEngine;
+    if (!p || !host || !eng) return;
+
+    let cfg = { settings: [], fields: [] };
+    try {
+        cfg = await eng.loadFormConfig('member', false);
+    } catch (_e) {
+        return;
+    }
+
+    const homeGps = p.metadata?.home_gps || {};
+    const valuesMap = {
+        full_name: p.full_name,
+        country_of_residence: p.country_code,
+        phone: p.phone,
+        city: p.city_geoname_id,
+        district: p.manual_district_fallback,
+        email: p.email,
+        nationality: p.nationality_country_id,
+        gender: p.metadata?.gender,
+        home_gps: (homeGps.lat && homeGps.lng) ? `${homeGps.lat},${homeGps.lng}` : '',
+        national_id_kyc: (p.kyc_status === 'verified' || p.kyc_status === 'pending') ? p.kyc_status : ''
+    };
+
+    const st = eng.computeCompletionStatus(cfg, 'member', valuesMap);
+    let banner = document.getElementById('memberProfileCompletionBanner');
+    if (st.percent >= 100 && st.missingRequired.length === 0) {
+        if (banner) banner.remove();
+        return;
+    }
+
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'memberProfileCompletionBanner';
+        host.insertBefore(banner, host.firstChild);
+    }
+
+    const missingBadges = st.missingRequired.slice(0, 4)
+        .map(f => `<span style="background:#fff;border:1px solid #93c5fd;color:#1e40af;padding:2px 8px;border-radius:999px;font-size:0.76rem;font-weight:700;">• ${esc(f.label_ar)}</span>`)
+        .join(' ');
+
+    banner.innerHTML = `
+        <div style="background:linear-gradient(135deg,#eff6ff,#f0fdf4);border:1.5px solid #93c5fd;border-radius:14px;padding:12px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:240px;">
+                <div style="font-weight:900;color:#1e3a8a;font-size:0.94rem;">📋 اكتمال ملف العضو: ${st.percent}%</div>
+                <div style="font-size:0.82rem;color:#334155;margin-top:2px;">${esc(st.bannerText || 'استكمل بياناتك التكميلية من الإعدادات لتسهيل اكتشاف المتاجر القريبة وتجهيز حسابك لسحب الأرباح.')}</div>
+                ${missingBadges ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">${missingBadges}</div>` : ''}
+            </div>
+            <button type="button" onclick="goToPage('settings')" class="btn btn-primary btn-sm" style="white-space:nowrap;">
+                ⚙️ استكمال بياناتي الآن
+            </button>
+        </div>
+    `;
 }
 
 function readCompressedKycImage(inputEl) {
