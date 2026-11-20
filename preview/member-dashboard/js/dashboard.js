@@ -401,6 +401,19 @@ window.computeSawyanMonthlyPurchaseStats = computeMonthlyPurchaseStats;
 // ---------------------------------------------------------------------------
 // Screen 1: Home (3-State Target Box, Dark Earnings Card, Team Radar, Static QR, Recent)
 // ---------------------------------------------------------------------------
+function fmtMemberTxStatusBadge(t) {
+    const st = String(t?.status || '');
+    if (st === 'completed') return { label: '✅ مكتملة ومعتمدة', bg: '#d1fae5', color: '#065f46' };
+    if (st === 'awaiting_merchant_topup') {
+        const seq = t?.fifo_seq ? ` #${Number(t.fifo_seq)}` : '';
+        return { label: `⏸️ بانتظار شحن التاجر (FIFO${seq})`, bg: '#fee2e2', color: '#991b1b' };
+    }
+    if (st === 'pending') return { label: '⏳ بانتظار اعتماد التاجر', bg: '#fef3c7', color: '#92400e' };
+    if (st === 'reversed') return { label: '↩️ مسترجعة', bg: '#f1f5f9', color: '#475569' };
+    if (st === 'rejected') return { label: '❌ مرفوضة', bg: '#fee2e2', color: '#991b1b' };
+    return { label: esc(st || '—'), bg: '#f1f5f9', color: '#334155' };
+}
+
 function renderHomePage() {
     if (!memberBundle) return;
     const w = memberBundle.wallet || {};
@@ -491,7 +504,23 @@ function renderHomePage() {
         })
         .slice(0, 6);
 
+    const queuedOrPendTxs = (memberBundle.transactions || []).filter(t => t.status === 'awaiting_merchant_topup' || t.status === 'pending');
+
     homeEnhBox.innerHTML = `
+        ${queuedOrPendTxs.length > 0 ? `
+            <div style="background:#fef2f2;border:1.5px solid #f87171;border-radius:14px;padding:13px 16px;margin:12px 0;color:#7f1d1d;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                    <div>
+                        <strong style="font-size:0.94rem;display:block;">⏸️ لديك ${queuedOrPendTxs.length} فاتورة محفوظة بانتظار شحن أو اعتماد التاجر</strong>
+                        <div style="font-size:0.8rem;margin-top:3px;line-height:1.55;">
+                            ${queuedOrPendTxs.slice(0, 3).map(qt => `<code>${esc(qt.sw_short_code)}</code> — <b>${esc(qt.merchant_name)}</b> (${Number(qt.total_amount || 0).toFixed(2)} ${esc(qt.currency_code || '')})`).join(' • ')}
+                            <br>تُغذّى قيمة خطة الدخل داخل هدفك الشهري تلقائياً فور شحن التاجر أو اعتماد العملية.
+                        </div>
+                    </div>
+                    <button type="button" onclick="goToPage('myPending')" style="background:#b91c1c;color:#fff;border:none;padding:7px 14px;border-radius:8px;font-weight:800;font-size:0.8rem;cursor:pointer;white-space:nowrap;">⏳ عرض طلباتي المعلقة / FIFO</button>
+                </div>
+            </div>
+        ` : ''}
         <!-- 1. الصندوق الأبيض للهدف الشهري (يدمج الشهر + المرحل في العداد تلقائياً) -->
         <div class="target-box-card ${stateCls}" data-spec-id="member-home-target-box" style="background:#ffffff;border:1.5px solid #e2e8f0;border-top:4px solid ${stateBadgeBg};border-radius:16px;padding:18px;margin:14px 0;box-shadow:0 4px 16px rgba(15,23,42,0.06);">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
@@ -632,15 +661,17 @@ function renderHomePage() {
         if (!txs.length) {
             list.innerHTML = '<p class="empty-state">لا توجد عمليات مسجلة حتى الآن.</p>';
         } else {
-            list.innerHTML = txs.slice(0, 5).map(t => `
+            list.innerHTML = txs.slice(0, 5).map(t => {
+                const stBadge = fmtMemberTxStatusBadge(t);
+                return `
                 <div class="transaction-item">
                     <div class="transaction-info">
                         <div class="transaction-merchant">${esc(t.merchant_name)} — <small>${esc(t.sw_short_code)}</small></div>
-                        <div class="transaction-date">${new Date(t.created_at).toLocaleDateString('ar-EG')} • ${esc(t.status)}</div>
+                        <div class="transaction-date">${new Date(t.created_at).toLocaleDateString('ar-EG')} • <span style="padding:1px 7px;border-radius:999px;font-size:0.74rem;font-weight:800;background:${stBadge.bg};color:${stBadge.color};">${stBadge.label}</span></div>
                     </div>
                     <div class="transaction-amount">${Number(t.total_amount).toFixed(2)} ${esc(t.currency_code)}</div>
                 </div>
-            `).join('');
+            `; }).join('');
         }
     }
 }
@@ -847,7 +878,7 @@ function loadAllTransactions() {
                                 </div>
                                 <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
                                     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                                        <span style="font-size:0.8rem;font-weight:800;padding:3px 10px;border-radius:999px;background:${t.status === 'completed' ? '#d1fae5' : '#fee2e2'};color:${t.status === 'completed' ? '#065f46' : '#991b1b'};">${esc(t.status)}</span>
+                                        ${(() => { const sb = fmtMemberTxStatusBadge(t); return `<span style="font-size:0.8rem;font-weight:800;padding:3px 10px;border-radius:999px;background:${sb.bg};color:${sb.color};">${sb.label}</span>`; })()}
                                         ${thumb}
                                     </div>
                                     <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -2305,8 +2336,9 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
 
     if (catalog.length === 0 && !preMerchantId) {
         openMemberModal('🧾 توثيق فاتورة شراء جديدة', `
-            <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:14px;color:#92400e;font-size:0.88rem;line-height:1.6;">
-                ℹ️ لا توجد متاجر نشطة متاحة في دليل الشبكة حالياً لتسجيل فاتورة جديدة.
+            <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:14px;color:#92400e;font-size:0.88rem;line-height:1.65;">
+                ℹ️ لا توجد متاجر نشطة وممولة بالرصيد متاحة في دليل الشبكة حالياً لتسجيل فاتورة جديدة.<br>
+                <strong style="display:block;margin-top:6px;">ملاحظة (D4):</strong> المتاجر الجديدة ذات الرصيد الصفري أو المعزولة مؤقتاً لنفاد رصيد الشحن تُحجب تلقائياً من دليل الشراء حتى يقوم التاجر أو الإدارة بشحن رصيده المسبق أو تفعيل سقف ائتمان D4 له.
             </div>
         `, async (_f, close) => { close(); });
         const subBtn = document.getElementById('sawyanModalSubmitBtn');

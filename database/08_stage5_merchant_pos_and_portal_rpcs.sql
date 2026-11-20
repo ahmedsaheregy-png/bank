@@ -696,6 +696,8 @@ BEGIN
         'success', COALESCE((v_pos_res->>'status') <> 'rejected_self_cashier_pin', true),
         'pos_result', v_pos_res,
         'sw_short_code', v_short_code,
+        'fifo_seq', NULLIF(v_pos_res->>'fifo_seq', '')::bigint,
+        'required_commission_local', ROUND((p_amount * (v_merch.deduction_percent / 100.0))::numeric, 2),
         'member_name', sawyan.mask_member_display_name(v_mem.full_name, v_mem.member_code),
         'member_code', v_mem.member_code,
         'commission_deducted_local', CASE WHEN v_is_completed THEN ROUND((p_amount * (v_merch.deduction_percent / 100.0))::numeric, 2) ELSE 0.00 END,

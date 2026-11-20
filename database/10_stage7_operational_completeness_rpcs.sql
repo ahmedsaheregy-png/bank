@@ -1503,6 +1503,11 @@ DECLARE
     v_mer      sawyan.merchants%ROWTYPE;
     v_act      VARCHAR(30);
     v_mc_res   JSONB;
+    v_qtx      RECORD;
+    v_released INT := 0;
+    v_rem_q    INT := 0;
+    v_free_pct NUMERIC(6,2) := 0.00;
+    v_iso_pct  NUMERIC(5,2) := 10.00;
 BEGIN
     v_adm := sawyan.verify_admin_session(p_admin_id, p_session_token, ARRAY['approver', 'finance', 'reviewer'], true);
     v_act := lower(trim(COALESCE(p_action, 'update_contract')));
@@ -1541,17 +1546,80 @@ BEGIN
         RETURN v_mc_res;
     ELSE
         UPDATE sawyan.merchants
-           SET deduction_percent = COALESCE(p_deduction_percent, deduction_percent),
-               category          = COALESCE(NULLIF(trim(p_category), ''), category),
-               credit_limit      = COALESCE(p_credit_limit, credit_limit),
-               is_active         = COALESCE(p_is_active, is_active),
-               is_isolated       = COALESCE(p_is_isolated, is_isolated),
-               metadata          = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('contract_reviewed_at', now(), 'contract_reviewed_by', p_admin_id)
+           SET deduction_percent   = COALESCE(p_deduction_percent, deduction_percent),
+               category            = COALESCE(NULLIF(trim(p_category), ''), category),
+               credit_limit        = COALESCE(p_credit_limit, credit_limit),
+               package_base_amount = GREATEST(package_base_amount, COALESCE(p_credit_limit, credit_limit)),
+               is_active           = COALESCE(p_is_active, is_active),
+               metadata            = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('contract_reviewed_at', now(), 'contract_reviewed_by', p_admin_id)
          WHERE id = v_mer.id
         RETURNING * INTO v_mer;
 
-        PERFORM sawyan.append_audit_log('admin', p_admin_id, 'merchant_contract_updated', 'merchants', v_mer.id::text, NULL, jsonb_build_object('deduction_percent', v_mer.deduction_percent, 'credit_limit', v_mer.credit_limit, 'is_active', v_mer.is_active, 'reason', p_reason));
-        RETURN jsonb_build_object('merchant_id', v_mer.id, 'merchant_code', v_mer.merchant_code, 'deduction_percent', v_mer.deduction_percent, 'credit_limit', v_mer.credit_limit, 'is_active', v_mer.is_active);
+        -- تحرير فواتير طابور الشحن FIFO تلقائياً إذا أصبح الرصيد + سقف الائتمان D4 كافياً
+        FOR v_qtx IN
+            SELECT id, commission_amount
+              FROM sawyan.transactions
+             WHERE merchant_id = v_mer.id AND status = 'awaiting_merchant_topup'
+             ORDER BY fifo_seq ASC
+        LOOP
+            SELECT * INTO v_mer FROM sawyan.merchants WHERE id = v_mer.id;
+            IF (v_mer.actual_cash_balance - v_mer.soft_hold_balance + v_mer.credit_limit) >= v_qtx.commission_amount THEN
+                PERFORM sawyan.feed_monthly_target_box(v_qtx.id, p_admin_id);
+                v_released := v_released + 1;
+            ELSE
+                EXIT;
+            END IF;
+        END LOOP;
+
+        SELECT * INTO v_mer FROM sawyan.merchants WHERE id = v_mer.id;
+        SELECT COUNT(*) INTO v_rem_q
+          FROM sawyan.transactions
+         WHERE merchant_id = v_mer.id AND status = 'awaiting_merchant_topup';
+
+        SELECT COALESCE(s.merchant_isolate_pct, 10.00) INTO v_iso_pct
+          FROM sawyan.settings s
+         WHERE (s.country_id = v_mer.country_id OR s.country_id IS NULL)
+           AND s.effective_from <= now()
+         ORDER BY s.country_id NULLS LAST, s.effective_from DESC
+         LIMIT 1;
+
+        IF GREATEST(v_mer.package_base_amount, v_mer.credit_limit) > 0 THEN
+            v_free_pct := ROUND((((v_mer.actual_cash_balance - v_mer.soft_hold_balance + v_mer.credit_limit)
+                                  / GREATEST(v_mer.package_base_amount, v_mer.credit_limit)) * 100.0)::numeric, 2);
+        END IF;
+
+        UPDATE sawyan.merchants
+           SET is_isolated = CASE
+               WHEN p_is_isolated IS TRUE THEN true
+               WHEN v_rem_q > 0 THEN true
+               WHEN v_free_pct > COALESCE(v_iso_pct, 10.00) THEN false
+               ELSE COALESCE(p_is_isolated, v_mer.is_isolated)
+           END
+         WHERE id = v_mer.id
+        RETURNING * INTO v_mer;
+
+        PERFORM sawyan.append_audit_log(
+            'admin', p_admin_id, 'merchant_contract_updated', 'merchants', v_mer.id::text, NULL,
+            jsonb_build_object(
+                'deduction_percent', v_mer.deduction_percent,
+                'credit_limit', v_mer.credit_limit,
+                'is_active', v_mer.is_active,
+                'is_isolated', v_mer.is_isolated,
+                'released_fifo_count', v_released,
+                'remaining_queue', v_rem_q,
+                'reason', p_reason
+            )
+        );
+        RETURN jsonb_build_object(
+            'merchant_id', v_mer.id,
+            'merchant_code', v_mer.merchant_code,
+            'deduction_percent', v_mer.deduction_percent,
+            'credit_limit', v_mer.credit_limit,
+            'is_active', v_mer.is_active,
+            'is_isolated', v_mer.is_isolated,
+            'released_fifo_count', v_released,
+            'remaining_queue', v_rem_q
+        );
     END IF;
 END;
 $$;
@@ -1796,6 +1864,8 @@ BEGIN
                      CASE WHEN jsonb_typeof(m.metadata->'images') = 'array' THEN m.metadata->'images' ELSE '[]'::jsonb END AS images,
                      COALESCE(m.metadata->'kyc_docs', '{}'::jsonb) AS kyc_docs,
                      (SELECT COUNT(*) FROM sawyan.transactions tx WHERE tx.merchant_id = m.id AND tx.status = 'completed') AS ops_count,
+                     (SELECT COUNT(*) FROM sawyan.transactions tx WHERE tx.merchant_id = m.id AND tx.status = 'awaiting_merchant_topup') AS fifo_queue_count,
+                     (SELECT COALESCE(SUM(tx.commission_amount), 0.00) FROM sawyan.transactions tx WHERE tx.merchant_id = m.id AND tx.status = 'awaiting_merchant_topup') AS fifo_required_comm_local,
                      (SELECT COALESCE(SUM(tx.total_amount), 0.00) FROM sawyan.transactions tx WHERE tx.merchant_id = m.id AND tx.status = 'completed') AS gmv_local
                 FROM sawyan.merchants m
                 JOIN sawyan.countries c ON c.id = m.country_id

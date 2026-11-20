@@ -764,7 +764,7 @@
                             '<td data-label="نسبة العمولة"><b>' + Number(m.deduction_percent) + '%</b></td>' +
                             '<td data-label="رصيد الشحن 2101"><b style="color:#059669;">' + fmt2(m.actual_cash_balance) + ' ' + esc(m.currency_code) + '</b></td>' +
                             '<td data-label="سقف D4">' + fmt2(m.credit_limit) + '</td>' +
-                            '<td data-label="الحالة">' + (m.is_active ? (m.is_isolated ? '<span class="badge badge-danger">معزول</span>' : '<span class="badge badge-success">🟢 مفعل</span>') : '<span class="badge badge-warning">⏳ بانتظار التفعيل</span>') + '</td>' +
+                            '<td data-label="الحالة">' + (m.is_active ? (m.is_isolated ? '<span class="badge badge-danger">معزول</span>' : '<span class="badge badge-success">🟢 مفعل</span>') : '<span class="badge badge-warning">⏳ بانتظار التفعيل</span>') + (Number(m.fifo_queue_count || 0) > 0 ? '<div style="font-size:0.72rem;color:#b91c1c;font-weight:800;margin-top:3px;">⏸️ ' + Number(m.fifo_queue_count) + ' فاتورة FIFO (عمولة ' + fmt2(m.fifo_required_comm_local || 0) + ' ' + esc(m.currency_code) + ')</div>' : '') + '</td>' +
                             '<td data-label="إجراءات التعاقد والشحن"><div style="display:flex;gap:5px;flex-wrap:wrap;">' +
                                 '<button type="button" class="btn-sm btn-primary" onclick="svOpenMerchantContractModal(\'' + esc(m.id) + '\')">⚙️ تحرير العقد والشحن والوثائق</button>' +
                                 '<button type="button" class="btn-sm btn-warning" onclick="svOpenUserPasswordResetModal(\'merchant\',\'' + esc(m.merchant_code) + '\')">🔑 كلمة مرور</button>' +
@@ -800,6 +800,9 @@
             openStage7Modal(
                 '⚙️ تحرير عقد ومدخلات التاجر: ' + esc(m.business_name) + ' (' + esc(m.merchant_code) + ')',
                 '<div style="display:grid;gap:12px;">' +
+                    (Number(m.fifo_queue_count || 0) > 0
+                        ? '<div style="background:#fef2f2;border:1.5px solid #fca5a5;color:#991b1b;padding:10px 12px;border-radius:10px;font-size:0.82rem;font-weight:700;line-height:1.6;">⏸️ لدى هذا التاجر <b>' + Number(m.fifo_queue_count) + '</b> فاتورة محجوزة في طابور الشحن FIFO (عمولة مطلوبة: <b>' + fmt2(m.fifo_required_comm_local || 0) + ' ' + esc(m.currency_code) + '</b>). بمجرد شحن الرصيد أو منح سقف ائتمان D4 كافٍ سيتم تحريرها تلقائياً وتغذية صندوق العضو ورفع العزل فوراً.</div>'
+                        : '') +
                     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));gap:10px;">' +
                         '<div><label style="font-size:0.78rem;font-weight:800;">نسبة عمولة سويًا (%)</label><input id="svMerPct" type="number" step="0.5" min="1" max="40" value="' + Number(m.deduction_percent || 10) + '" class="form-control"></div>' +
                         '<div><label style="font-size:0.78rem;font-weight:800;">التصنيف التجاري</label><input id="svMerCat" type="text" value="' + esc(m.category || 'supermarket') + '" class="form-control"></div>' +
@@ -830,17 +833,21 @@
 
         window.svSaveMerchantContract = async function (merchantId) {
             try {
-                await window.SAWYAN.API.adminManageMerchantContract({
+                const res = await window.SAWYAN.API.adminManageMerchantContract({
                     merchantId: merchantId,
                     action: 'update_contract',
                     deductionPercent: Number(document.getElementById('svMerPct').value),
                     category: document.getElementById('svMerCat').value.trim(),
                     creditLimit: Number(document.getElementById('svMerCredit').value || 0),
                     isActive: document.getElementById('svMerActive').value === 'true',
-                    isIsolated: false
+                    isIsolated: null
                 });
                 window.closeStage7Modal();
-                toast('تم تحديث عقد ومدخلات التاجر بنجاح!', false);
+                const relCnt = Number(res?.released_fifo_count || 0);
+                toast(relCnt > 0
+                    ? ('تم تحديث عقد التاجر وتحرير ' + relCnt + ' فاتورة من طابور FIFO تلقائياً!')
+                    : 'تم تحديث عقد ومدخلات التاجر بنجاح!', false);
+                if (typeof window.refreshSovereignBundle === 'function') await window.refreshSovereignBundle(false);
                 await window.loadMerchants();
             } catch (err) { toast(err.message, true); }
         };
@@ -856,6 +863,7 @@
                 });
                 window.closeStage7Modal();
                 toast('🏦 تم شحن رصيد التاجر وتوليد القيد المحاسبي وفاتورة B2B بنجاح!', false);
+                if (typeof window.refreshSovereignBundle === 'function') await window.refreshSovereignBundle(false);
                 await window.loadMerchants();
             } catch (err) { toast(err.message, true); }
         };

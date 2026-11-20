@@ -449,6 +449,55 @@ BEGIN
                                         ELSE soft_hold_balance END
          WHERE id = v_merchant.id;
 
+        -- إشعار ثلاثي (للعضو، التاجر، الإدارة) + تسجيل التدقيق عند العزل والدخول في طابور FIFO
+        INSERT INTO sawyan.notifications (recipient_type, recipient_id, event_name, channel, payload)
+        VALUES
+            ('member', v_tx.member_id, 'TransactionAwaitingMerchantTopup', 'in_app',
+             jsonb_build_object(
+                 'transaction_id', v_tx.id,
+                 'sw_short_code', v_tx.sw_short_code,
+                 'merchant_name', v_merchant.business_name,
+                 'total_amount', v_tx.total_amount,
+                 'currency_code', v_tx.currency_code,
+                 'fifo_seq', v_tx.fifo_seq
+             )),
+            ('merchant', v_merchant.id, 'MerchantIsolatedFifoQueued', 'in_app',
+             jsonb_build_object(
+                 'transaction_id', v_tx.id,
+                 'sw_short_code', v_tx.sw_short_code,
+                 'total_amount', v_tx.total_amount,
+                 'required_commission', v_tx.commission_amount,
+                 'currency_code', v_tx.currency_code,
+                 'fifo_seq', v_tx.fifo_seq
+             )),
+            ('admin', v_merchant.id, 'AdminMerchantIsolatedFifoAlert', 'in_app',
+             jsonb_build_object(
+                 'merchant_id', v_merchant.id,
+                 'merchant_code', v_merchant.merchant_code,
+                 'business_name', v_merchant.business_name,
+                 'transaction_id', v_tx.id,
+                 'sw_short_code', v_tx.sw_short_code,
+                 'total_amount', v_tx.total_amount,
+                 'required_commission', v_tx.commission_amount,
+                 'currency_code', v_tx.currency_code,
+                 'fifo_seq', v_tx.fifo_seq
+             ));
+
+        PERFORM sawyan.append_audit_log(
+            'system',
+            COALESCE(p_actor_id, v_merchant.id),
+            'tx_queued_fifo_merchant_isolated',
+            'transactions',
+            v_tx.id::text,
+            NULL,
+            jsonb_build_object(
+                'merchant_code', v_merchant.merchant_code,
+                'sw_short_code', v_tx.sw_short_code,
+                'fifo_seq', v_tx.fifo_seq,
+                'required_commission', v_tx.commission_amount
+            )
+        );
+
         RETURN jsonb_build_object('status', 'awaiting_merchant_topup', 'fifo_seq', v_tx.fifo_seq);
     END IF;
 
@@ -772,7 +821,7 @@ BEGIN
          ORDER BY fifo_seq ASC
     LOOP
         SELECT * INTO v_merchant FROM sawyan.merchants WHERE id = p_merchant_id;
-        IF (v_merchant.actual_cash_balance - v_merchant.soft_hold_balance) >= v_queued_tx.commission_amount THEN
+        IF (v_merchant.actual_cash_balance - v_merchant.soft_hold_balance + v_merchant.credit_limit) >= v_queued_tx.commission_amount THEN
             PERFORM sawyan.feed_monthly_target_box(v_queued_tx.id, p_merchant_id);
             v_released_count := v_released_count + 1;
         ELSE

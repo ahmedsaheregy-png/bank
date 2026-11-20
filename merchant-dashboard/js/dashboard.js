@@ -124,11 +124,67 @@ function fmtMerchantMoney(val, curr) {
     return `${Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${c}`;
 }
 
+function getMerchantFifoBannerHtml(p, pendingList) {
+    const fifoItems = (pendingList || []).filter(t => t.status === 'awaiting_merchant_topup');
+    if (fifoItems.length === 0 && !p?.is_isolated && Number(p?.free_balance || 0) > 0) return '';
+    const curr = p?.currency_code || 'EGP';
+    const fifoGross = fifoItems.reduce((s, t) => s + Number(t.total_amount || 0), 0);
+    const fifoComm = fifoItems.reduce((s, t) => s + Number(t.commission_amount || 0), 0);
+    const headline = fifoItems.length > 0
+        ? `🔴 تنبيه هام: متجرك معزول مؤقتاً ولديك ${fifoItems.length} فاتورة في طابور انتظار الشحن (FIFO)`
+        : (p?.is_isolated
+            ? '🔴 تنبيه هام: متجرك معزول مؤقتاً عن دليل الأعضاء حتى إعادة الشحن'
+            : '⚠️ رصيد الشحن المسبق الحالي (0.00) لا يكفي لتمرير المبيعات');
+    const detail = fifoItems.length > 0
+        ? `إجمالي قيمة الفواتير المحجوزة: <b>${fmtMerchantMoney(fifoGross, curr)}</b> • العمولة المطلوبة لتحريرها فوراً: <b>${fmtMerchantMoney(fifoComm, curr)}</b>. بمجرد شحن الرصيد أو تفعيل سقف D4 من الإدارة ستُعتمد هذه الفواتير تلقائياً وتظهر في مبيعاتك وصندوق العضو.`
+        : `رصيدك الحر المتاح حالياً هو <b>${fmtMerchantMoney(p?.free_balance || 0, curr)}</b>. أي عملية بيع تسجّلها الآن ستدخل طابور انتظار الشحن (FIFO) ولن تغذي صندوق العضو أو جدول المكتملة إلا بعد شحن رصيدك المسبق.`;
+    return `
+        <div style="background:#fef2f2;border:2px solid #f87171;border-radius:14px;padding:14px 16px;margin-bottom:14px;color:#7f1d1d;">
+            <div style="font-weight:900;font-size:0.96rem;margin-bottom:4px;">${headline}</div>
+            <div style="font-size:0.83rem;line-height:1.6;margin-bottom:10px;">${detail}</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                ${fifoItems.length > 0 ? `<button type="button" onclick="showPage('pending')" style="background:#b91c1c;color:#fff;border:none;padding:7px 14px;border-radius:8px;font-weight:800;font-size:0.8rem;cursor:pointer;">⏸️ عرض فواتير طابور FIFO (${fifoItems.length})</button>` : ''}
+                <button type="button" onclick="showPage('financial')" style="background:#065f46;color:#fff;border:none;padding:7px 14px;border-radius:8px;font-weight:800;font-size:0.8rem;cursor:pointer;">🏦 شحن الرصيد / الموقف المالي</button>
+            </div>
+        </div>
+    `;
+}
+
+function syncMerchantBalanceWarnings() {
+    const p = merchantBundle?.profile || merchantData;
+    if (!p) return;
+    const pendingList = merchantBundle?.pending_transactions || [];
+    const html = getMerchantFifoBannerHtml(p, pendingList);
+    [
+        { hostId: 'homePage', bannerId: 'merchantFifoIsolationBanner' },
+        { hostId: 'scanPage', bannerId: 'scanFifoBalanceWarning' },
+        { hostId: 'qrScannerPage', bannerId: 'qrFifoBalanceWarning' },
+        { hostId: 'kioskPage', bannerId: 'kioskFifoBalanceWarning' }
+    ].forEach(({ hostId, bannerId }) => {
+        const host = document.getElementById(hostId);
+        if (!host) return;
+        let box = document.getElementById(bannerId);
+        if (!html) {
+            if (box) box.remove();
+            return;
+        }
+        if (!box) {
+            box = document.createElement('div');
+            box.id = bannerId;
+            host.insertBefore(box, host.firstChild);
+        }
+        box.innerHTML = html;
+    });
+}
+
 function renderLiveHomeStats() {
     const p = merchantBundle?.profile;
     if (!p) return;
     const curr = p.currency_code || 'EGP';
     const pct = Number(p.deduction_percent || 10).toFixed(1);
+    const pendingList = merchantBundle?.pending_transactions || [];
+    const fifoCount = pendingList.filter(t => t.status === 'awaiting_merchant_topup').length;
+    const pendCount = pendingList.filter(t => t.status === 'pending').length;
 
     const todaySalesEl = document.getElementById('todaySales');
     const todayTransEl = document.getElementById('todayTransactions');
@@ -139,7 +195,13 @@ function renderLiveHomeStats() {
     const zoneEl = document.getElementById('radarCardZoneStatus');
 
     if (todaySalesEl) todaySalesEl.textContent = fmtMerchantMoney(p.today_sales_local, curr);
-    if (todayTransEl) todayTransEl.textContent = `${p.today_completed_count || 0} عمليات مكتملة اليوم`;
+    if (todayTransEl) {
+        const extra = [
+            fifoCount > 0 ? `⏸️ ${fifoCount} بطابور FIFO` : '',
+            pendCount > 0 ? `⏳ ${pendCount} معلقة` : ''
+        ].filter(Boolean).join(' • ');
+        todayTransEl.textContent = `${p.today_completed_count || 0} عمليات مكتملة اليوم` + (extra ? ` • ${extra}` : '');
+    }
     if (commsDueEl) commsDueEl.textContent = '-' + fmtMerchantMoney(p.today_commission_local, curr);
     if (todayNetEl) todayNetEl.textContent = fmtMerchantMoney(p.today_merchant_net_local, curr);
     if (prepaidEl) {
@@ -162,6 +224,7 @@ function renderLiveHomeStats() {
         };
         zoneEl.textContent = zoneMap[p.zone_status] || p.zone_status;
     }
+    syncMerchantBalanceWarnings();
 }
 
 const SW_PAYMENT_TYPES = [
@@ -1312,15 +1375,19 @@ async function submitLiveOrOfflinePosTransaction({
 
         const st = res?.pos_result?.status || (res?.deferred_pending ? 'pending' : 'completed');
         const curr = merchantBundle?.profile?.currency_code || 'EGP';
-        const statusMsg = st === 'pending'
-            ? '⏳ دفع مؤجل (COD / شيك) — الفاتورة معلقة ولن تغذي صندوق العضو حتى تؤكد التوصيل والتحصيل من تبويب الطلبات المعلقة.'
-            : (st === 'awaiting_merchant_topup'
-                ? '⏸️ دخلت طابور الشحن FIFO (D4)'
-                : '✅ مكتملة وصدر لها فاتورة ضريبية B2B');
-        const commDisplay = st === 'pending'
-            ? `${Number(res.commission_reserved_local || 0).toFixed(2)} ${curr} (مؤجلة لحين التحصيل)`
-            : `${Number(res.commission_deducted_local || 0).toFixed(2)} ${curr}`;
-        alert(`✅ تم توثيق الفاتورة عبر محرك PostgreSQL V3.0!\n━━━━━━━━━━━━━━━━━━━━━\n🧾 الكود المختصر: ${res.sw_short_code}\n👤 العضو: ${res.member_name} (#${res.member_code})\n💳 وسيلة الدفع: ${fmtMerchantPayTypeLabel(paymentType)}\n💰 قيمة الفاتورة: ${Number(amount).toFixed(2)} ${curr}\n🏷️ العمولة: ${commDisplay}\n💵 صافي نقدية الدرج: ${Number(res.merchant_net_local).toFixed(2)} ${curr}\n📌 الحالة المحاسبية: ${statusMsg}`);
+        if (st === 'awaiting_merchant_topup') {
+            const fifoSeq = res.fifo_seq || res?.pos_result?.fifo_seq || 1;
+            const reqComm = Number(res.required_commission_local || (Number(amount) * (Number(merchantBundle?.profile?.deduction_percent || 10) / 100))).toFixed(2);
+            alert(`⏸️ تنبيه مهم: تم حفظ الفاتورة في طابور انتظار الشحن (FIFO #${fifoSeq}) ولم تُعتمد بعد!\n━━━━━━━━━━━━━━━━━━━━━\n🧾 الكود المختصر: ${res.sw_short_code}\n👤 العضو: ${res.member_name} (#${res.member_code})\n💳 وسيلة الدفع: ${fmtMerchantPayTypeLabel(paymentType)}\n💰 قيمة الفاتورة: ${Number(amount).toFixed(2)} ${curr}\n⚠️ العمولة المطلوبة لاعتمادها: ${reqComm} ${curr}\n🔴 السبب (D4): رصيد الشحن المسبق المتاح لا يكفي لخصم العمولة وتم عزل المتجر مؤقتاً.\n📌 الإجراء: اشحن رصيدك من «الموقف المالي / الشحن البنكي» أو اطلب تفعيل سقف D4 لتتحرر الفاتورة تلقائياً وتُحسب في المبيعات وصندوق العضو.`);
+        } else {
+            const statusMsg = st === 'pending'
+                ? '⏳ دفع مؤجل (COD / شيك) — الفاتورة معلقة ولن تغذي صندوق العضو حتى تؤكد التوصيل والتحصيل من تبويب الطلبات المعلقة.'
+                : '✅ مكتملة وصدر لها فاتورة ضريبية B2B';
+            const commDisplay = st === 'pending'
+                ? `${Number(res.commission_reserved_local || 0).toFixed(2)} ${curr} (مؤجلة لحين التحصيل)`
+                : `${Number(res.commission_deducted_local || 0).toFixed(2)} ${curr}`;
+            alert(`✅ تم توثيق الفاتورة عبر محرك PostgreSQL V3.0!\n━━━━━━━━━━━━━━━━━━━━━\n🧾 الكود المختصر: ${res.sw_short_code}\n👤 العضو: ${res.member_name} (#${res.member_code})\n💳 وسيلة الدفع: ${fmtMerchantPayTypeLabel(paymentType)}\n💰 قيمة الفاتورة: ${Number(amount).toFixed(2)} ${curr}\n🏷️ العمولة: ${commDisplay}\n💵 صافي نقدية الدرج: ${Number(res.merchant_net_local).toFixed(2)} ${curr}\n📌 الحالة المحاسبية: ${statusMsg}`);
+        }
         await refreshMerchantBundle();
         return res;
     } catch (err) {
@@ -1524,6 +1591,7 @@ loadQRScannerPage = function () {
         }
     }
     calculateOfflineCommission();
+    syncMerchantBalanceWarnings();
 };
 
 // ============================================================================
@@ -1624,6 +1692,7 @@ async function loadKioskModePage() {
             onChange: (v) => { const el = document.getElementById('kioskReceiptUrl'); if (el) el.value = v || ''; }
         });
     }
+    syncMerchantBalanceWarnings();
 
     document.getElementById('kioskFastForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -1821,12 +1890,42 @@ async function loadAllTransactions(periodFilter = activeShiftPeriod) {
     await refreshMerchantBundle(activeShiftPeriod, null);
 
     const txs = merchantBundle?.completed_transactions || [];
+    const queuedTxs = merchantBundle?.pending_transactions || [];
     const shift = merchantBundle?.shift_closing || {};
     const totals = shift.summary || shift.totals || {};
     const curr = merchantBundle?.profile?.currency_code || 'EGP';
 
+    const queuedAlertHtml = queuedTxs.length === 0 ? '' : `
+        <div style="background:#fef2f2;border:1.5px solid #f87171;border-radius:14px;padding:14px 16px;margin-bottom:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+                <strong style="color:#991b1b;font-size:0.95rem;">⏸️ فواتير محجوزة في طابور الشحن FIFO أو بانتظار الاعتماد (${queuedTxs.length})</strong>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button type="button" onclick="showPage('pending')" style="background:#b91c1c;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-weight:800;font-size:0.78rem;cursor:pointer;">⏳ فتح صفحة المعلقات و FIFO</button>
+                    <button type="button" onclick="showPage('financial')" style="background:#065f46;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-weight:800;font-size:0.78rem;cursor:pointer;">🏦 شحن الرصيد الآن</button>
+                </div>
+            </div>
+            <div style="display:grid;gap:8px;">
+                ${queuedTxs.map(qt => `
+                    <div style="background:#fff;border:1px solid ${qt.status === 'awaiting_merchant_topup' ? '#fca5a5' : '#fcd34d'};border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;font-size:0.83rem;">
+                        <div>
+                            <code style="font-weight:800;color:#1d4ed8;">${escM(qt.sw_short_code)}</code> — <b>${escM(qt.member_masked_name)}</b>
+                            <span style="color:#64748b;">• ${new Date(qt.created_at).toLocaleString('ar-EG')}</span>
+                        </div>
+                        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                            <b>${fmtMerchantMoney(qt.total_amount, qt.currency_code || curr)}</b>
+                            <span style="color:#b91c1c;font-weight:700;">عمولة: ${fmtMerchantMoney(qt.commission_amount, qt.currency_code || curr)}</span>
+                            <span style="padding:2px 8px;border-radius:999px;font-size:0.74rem;font-weight:800;background:${qt.status === 'awaiting_merchant_topup' ? '#fee2e2' : '#fef3c7'};color:${qt.status === 'awaiting_merchant_topup' ? '#991b1b' : '#92400e'};">
+                                ${qt.status === 'awaiting_merchant_topup' ? `⏸️ بانتظار شحن المتجر (FIFO #${qt.fifo_seq || 1})` : '⏳ بانتظار الاعتماد'}
+                            </span>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+
     const rowsHtml = txs.length === 0
-        ? `<tr><td colspan="9" style="padding:20px;text-align:center;color:#64748b;">لا توجد عمليات مسجلة بعد في هذا المتجر.</td></tr>`
+        ? `<tr><td colspan="9" style="padding:20px;text-align:center;color:#64748b;">${queuedTxs.length > 0 ? 'لا توجد عمليات مكتملة بعد — راجع فواتير طابور الشحن / المعلقة الظاهرة أعلاه.' : 'لا توجد عمليات مسجلة بعد في هذا المتجر.'}</td></tr>`
         : txs.map(tx => {
             const thumb = (tx.receipt_media_url && window.SAWYAN && window.SAWYAN.ImageUpload)
                 ? window.SAWYAN.ImageUpload.renderThumbHtml(tx.receipt_media_url, '🧾 إيصال ' + escM(tx.sw_short_code))
@@ -1894,6 +1993,7 @@ async function loadAllTransactions(periodFilter = activeShiftPeriod) {
         </div>
 
         <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;overflow:auto;">
+            ${queuedAlertHtml}
             <table class="data-table" style="width:100%;border-collapse:collapse;text-align:right;font-size:0.86rem;">
                 <thead>
                     <tr style="background:#f8fafc;border-bottom:1.5px solid #e2e8f0;color:#475569;font-weight:800;">

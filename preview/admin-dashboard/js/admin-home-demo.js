@@ -9,10 +9,14 @@ window.SAWYAN_ADMIN_DEMO = {
     members: { total: 0, active: 0, pending_kyc: 0, suspended: 0 },
     merchants: { total: 0, active: 0, frozen: 0, pending_approval: 0, low_balance: 0 },
     ops_mtd: 0,
+    ops_fifo: 0,
+    ops_pending_review: 0,
     gmv_mtd: 0,
     gmv_usd_completed: 0,
+    fifo_gmv_usd: 0,
     comm_total: 0,
     commission_usd_completed: 0,
+    fifo_comm_usd: 0,
     gmv_by_currency: [],
     commission_rate: 0.10,
     treasury_share: 0.25,
@@ -115,11 +119,17 @@ window.SAWYAN_ADMIN_DEMO = {
         };
 
         var completedTxs = txs.filter(function (t) { return t.status === 'completed'; });
+        var fifoTxs = txs.filter(function (t) { return t.status === 'awaiting_merchant_topup'; });
+        var pendingRevTxs = txs.filter(function (t) { return t.status === 'pending'; });
         D.ops_mtd = Number(k.transactions_completed !== undefined ? k.transactions_completed : completedTxs.length);
+        D.ops_fifo = Number(k.transactions_awaiting_topup !== undefined ? k.transactions_awaiting_topup : fifoTxs.length);
+        D.ops_pending_review = Number(k.transactions_pending_review !== undefined ? k.transactions_pending_review : pendingRevTxs.length);
         D.gmv_mtd = Number(k.gmv_local_completed || 0);
         D.gmv_usd_completed = Number(k.gmv_usd_completed || 0);
+        D.fifo_gmv_usd = Number(k.awaiting_topup_gmv_usd !== undefined ? k.awaiting_topup_gmv_usd : fifoTxs.reduce(function (s, t) { return s + (Number(t.total_amount || 0) / Math.max(0.0001, Number(t.fx_rate_used || 1))); }, 0));
         D.comm_total = Number(k.commission_local_completed || (D.gmv_mtd * D.commission_rate));
         D.commission_usd_completed = Number(k.commission_usd_completed || 0);
+        D.fifo_comm_usd = Number(k.awaiting_topup_commission_usd !== undefined ? k.awaiting_topup_commission_usd : fifoTxs.reduce(function (s, t) { return s + (Number(t.commission_amount || 0) / Math.max(0.0001, Number(t.fx_rate_used || 1))); }, 0));
         D.gmv_by_currency = Array.isArray(k.gmv_and_commission_by_currency) ? k.gmv_and_commission_by_currency : [];
         D.prepaid_held = mers.reduce(function (s, m) {
             return s + Math.max(0, Number(m.actual_cash_balance || 0) - Number(m.soft_hold_balance || 0));
@@ -166,14 +176,21 @@ window.SAWYAN_ADMIN_DEMO = {
         D.activity = txs.slice(0, 8).map(function (t) {
             var dt = t.created_at ? new Date(t.created_at).toLocaleString('ar-EG') : '';
             var cur = t.currency_code || 'EGP';
+            var stTxt = t.status === 'completed'
+                ? '✅ مكتملة'
+                : (t.status === 'awaiting_merchant_topup'
+                    ? '⏸️ طابور شحن FIFO' + (t.fifo_seq ? ' #' + Number(t.fifo_seq) : '') + ' — بانتظار شحن التاجر'
+                    : (t.status === 'pending'
+                        ? '⏳ معلقة للمراجعة'
+                        : (t.status === 'reversed' ? '↩️ مسترجعة' : '❌ مرفوضة')));
             var desc = esc(t.member_name || ('عضو #' + (t.member_code || ''))) +
                 ' (#' + Number(t.member_code || 0) + ') — ' +
                 esc(t.merchant_name || '') +
                 ' بمبلغ ' + fmt(t.total_amount) + ' ' + esc(cur) +
-                ' [' + esc(t.sw_short_code || '') + ']';
+                ' [' + esc(t.sw_short_code || '') + '] • <b style="color:' + (t.status === 'awaiting_merchant_topup' ? '#b91c1c' : '#334155') + ';">' + esc(stTxt) + '</b>';
             return {
                 t: dt,
-                i: t.status === 'completed' ? '💳' : (t.status === 'reversed' ? '↩️' : '⏳'),
+                i: t.status === 'completed' ? '💳' : (t.status === 'awaiting_merchant_topup' ? '⏸️' : (t.status === 'reversed' ? '↩️' : '⏳')),
                 x: desc,
                 c: fmt(t.commission_amount) + ' ' + esc(cur)
             };
@@ -244,7 +261,11 @@ window.SAWYAN_ADMIN_DEMO = {
         '<div data-spec-id="admin-home-kpis" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap:14px; margin-bottom:18px;">' +
             kpi('👥', 'إجمالي الأعضاء', fmt0(D.members.total), fmt0(D.members.active) + ' نشط • ' + D.members.pending_kyc + ' بانتظار توثيق الهوية • ' + D.members.suspended + ' محجوب', '#3b82f6') +
             kpi('🏪', 'إجمالي التجار', fmt0(D.merchants.total), D.merchants.active + ' نشط • ' + D.merchants.frozen + ' معزول • ' + D.merchants.pending_approval + ' بانتظار الاعتماد', '#10b981') +
-            kpi('💳', 'العمليات المكتملة', fmt0(D.ops_mtd), 'متوسط الفاتورة $' + fmt(avgTicketUsd), '#6366f1') +
+            kpi('💳', 'العمليات المكتملة', fmt0(D.ops_mtd),
+                'متوسط الفاتورة $' + fmt(avgTicketUsd) +
+                ((D.ops_fifo > 0 || D.ops_pending_review > 0)
+                    ? '<br><span style="color:#b91c1c;font-weight:800;">⏸️ ' + fmt0(D.ops_fifo) + ' بطابور FIFO ($' + fmt(D.fifo_gmv_usd) + ') • ⏳ ' + fmt0(D.ops_pending_review) + ' معلقة</span>'
+                    : ''), '#6366f1') +
             kpi('🛒', 'حجم المبيعات (GMV موحد $)', '$' + fmt(D.gmv_usd_completed), curSummary, '#0ea5e9') +
             kpi('💰', 'عمولات سويا المحصّلة ($)', '$' + fmt(commUsd),
                 'خزينة الشركة (25%): <b>$' + fmt(treasuryUsd) + '</b><br>خطة الدخل والأعضاء (75%): <b>$' + fmt(planUsd) + '</b>' + commByCurSummary, '#f59e0b') +
@@ -256,6 +277,8 @@ window.SAWYAN_ADMIN_DEMO = {
             '<div style="font-weight:900; color:#0f172a; font-size:1.05rem; margin-bottom:4px;">⚡ يحتاج قرارك الآن</div>' +
             '<div style="font-size:0.78rem; color:#64748b; margin-bottom:12px;">كل بند يفتح الشاشة المختصة لاتخاذ القرار الحي</div>' +
             '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap:10px;">' +
+                actionRow('⏸️', D.ops_fifo + D.merchants.frozen, 'تجار معزولون وفواتير بطابور الشحن (FIFO)', D.merchants.frozen + ' تاجر معزول • ' + D.ops_fifo + ' فاتورة بقيمة $' + fmt(D.fifo_gmv_usd) + ' بانتظار الشحن أو سقف D4', 'فتح التجار', "goAdminPage('merchants')", 'actionRowFifoMerchants') +
+                ((D.ops_fifo > 0 || D.ops_pending_review > 0) ? actionRow('💳', D.ops_fifo + D.ops_pending_review, 'فواتير بطابور الشحن FIFO أو معلقة', D.ops_fifo + ' بطابور FIFO • ' + D.ops_pending_review + ' بانتظار المراجعة — افتح سجل العمليات للمتابعة', 'فتح العمليات', "goAdminPage('transactions')", 'actionRowPendingTx') : '') +
                 actionRow('📢', promoPendingCount(), 'طلبات إعلانات ترويجية من التجار', 'تُراجَع نصوصها قبل البث لهواتف الأعضاء', 'مراجعة الآن', 'scrollToPromoQueue()', 'actionRowPromo') +
                 actionRow('💸', D.pending.withdrawals, 'طلبات سحب أرباح الأعضاء', 'تحقق من الهوية وبيانات الحساب قبل التحويل', 'فتح طلبات السحب', "goAdminPage('withdrawals')") +
                 actionRow('🪪', D.members.pending_kyc, 'أعضاء بانتظار توثيق الهوية (KYC)', 'شرط لصرف أول سحب', 'فتح الأعضاء', "goAdminPage('members')") +

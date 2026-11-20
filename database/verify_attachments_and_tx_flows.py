@@ -877,6 +877,104 @@ def main():
         """, token)
         record("S6: Admin Operational Decisions (approve_escalated, reject_escalated, reverse_pre_payout & post-Day-15 ban)", s6[0]["status"] == "SUITE6_OK")
 
+        # Suite 7: Zero-Balance Merchant FIFO Queue Visibility, 3-Party Notifications & D4 Credit-Limit Auto-Release
+        s7 = run_sql(f"""
+            DO $$
+            DECLARE
+                v_adm      JSONB;
+                v_fid      UUID;
+                v_ftok     TEXT;
+                v_mreg     JSONB;
+                v_mid      UUID;
+                v_mtok     TEXT;
+                v_mbr      UUID;
+                v_mem_id   UUID;
+                v_mem_code BIGINT;
+                v_mem_tok  TEXT;
+                v_pos_tx   JSONB;
+                v_tx_id    UUID;
+                v_admb     JSONB;
+                v_search   JSONB;
+                v_upd      JSONB;
+                v_mb_after JSONB;
+                v_ncnt     INT;
+                v_acnt     INT;
+            BEGIN
+                v_adm  := {QA_SCHEMA}.authenticate_admin_login('founder.approver@sawyan.global', 'Sawyan@Founder#2026!');
+                v_fid  := (v_adm->'admin'->>'id')::uuid;
+                v_ftok := v_adm->>'session_token';
+
+                SELECT id, member_code INTO v_mem_id, v_mem_code FROM {QA_SCHEMA}.members WHERE member_code = 2;
+                v_mem_tok := {QA_SCHEMA}.authenticate_member_login('2', 'Test@Mem2')->>'session_token';
+
+                -- Register merchant with 0 prepaid balance (mirrors real M-TR-101 behavior)
+                v_mreg := {QA_SCHEMA}.register_new_merchant(
+                    'متجر الطابور الصفري QA', 'مالك الطابور', '+905559998877', 'Strong@Fifo7',
+                    'TR', 'supermarket', 'physical', 5.00, 'qa.fifo@sawyan.test', 'إسطنبول',
+                    NULL, NULL, NULL, 1, '1234', '{{}}'::jsonb
+                );
+                v_mid  := (v_mreg->'merchant'->>'id')::uuid;
+                v_mtok := v_mreg->>'session_token';
+                v_mbr  := (v_mreg->>'main_branch_id')::uuid;
+
+                -- Submit sale with 0 prepaid balance -> must enter awaiting_merchant_topup & isolate merchant + notify all 3 parties
+                v_pos_tx := {QA_SCHEMA}.authenticate_and_submit_pos_tx(
+                    v_mid, v_mem_code, 10000.00, 'cash', gen_random_uuid(),
+                    v_mtok, v_mbr, 'EMP-01', '1234', NULL, 'FIFO-ZERO-1', NULL
+                );
+                v_tx_id := (v_pos_tx->'pos_result'->>'transaction_id')::uuid;
+                IF (v_pos_tx->'pos_result'->>'status') <> 'awaiting_merchant_topup'
+                   OR (v_pos_tx->>'fifo_seq') IS NULL
+                   OR COALESCE((v_pos_tx->>'required_commission_local')::numeric, 0) <> 500.00 THEN
+                    RAISE EXCEPTION 'FIFO_ZERO_BALANCE_FAIL: %', v_pos_tx;
+                END IF;
+
+                IF NOT (SELECT is_isolated FROM {QA_SCHEMA}.merchants WHERE id = v_mid) THEN
+                    RAISE EXCEPTION 'MERCHANT_NOT_ISOLATED_ON_FIFO';
+                END IF;
+
+                SELECT COUNT(*) INTO v_ncnt
+                  FROM {QA_SCHEMA}.notifications
+                 WHERE payload->>'transaction_id' = v_tx_id::text
+                   AND event_name IN ('TransactionAwaitingMerchantTopup', 'MerchantIsolatedFifoQueued', 'AdminMerchantIsolatedFifoAlert');
+                SELECT COUNT(*) INTO v_acnt
+                  FROM {QA_SCHEMA}.audit_logs
+                 WHERE action = 'tx_queued_fifo_merchant_isolated' AND record_id = v_tx_id::text;
+                IF v_ncnt <> 3 OR v_acnt <> 1 THEN
+                    RAISE EXCEPTION 'FIFO_3PARTY_NOTIF_OR_AUDIT_MISSING: n=%, a=%', v_ncnt, v_acnt;
+                END IF;
+
+                v_admb := {QA_SCHEMA}.get_admin_sovereign_bundle(v_fid, v_ftok);
+                IF COALESCE((v_admb->'kpis'->>'transactions_awaiting_topup')::int, 0) < 1 THEN
+                    RAISE EXCEPTION 'ADMIN_KPI_MISSING_FIFO: %', v_admb->'kpis';
+                END IF;
+                v_search := {QA_SCHEMA}.admin_search_and_reply_ops(v_fid, v_ftok, 'search', 'merchants', 'متجر الطابور الصفري QA');
+                IF COALESCE((v_search->'results'->0->>'fifo_queue_count')::int, 0) <> 1 THEN
+                    RAISE EXCEPTION 'ADMIN_MERCH_SEARCH_MISSING_FIFO: %', v_search;
+                END IF;
+
+                -- Grant sufficient D4 credit_limit (2000 TRY > 500 TRY comm -> >10% free pct remaining) -> auto-releases FIFO & lifts isolation
+                v_upd := {QA_SCHEMA}.admin_manage_merchant_contract(
+                    v_fid, v_ftok, v_mid, 'update_contract', NULL, NULL, 2000.00, true, NULL, NULL, NULL, NULL, 'QA D4 FIFO release'
+                );
+                IF COALESCE((v_upd->>'released_fifo_count')::int, 0) <> 1
+                   OR COALESCE((v_upd->>'remaining_queue')::int, -1) <> 0
+                   OR COALESCE((v_upd->>'is_isolated')::boolean, true) IS NOT FALSE THEN
+                    RAISE EXCEPTION 'D4_CREDIT_LIMIT_AUTO_RELEASE_FAIL: %', v_upd;
+                END IF;
+                IF (SELECT status FROM {QA_SCHEMA}.transactions WHERE id = v_tx_id) <> 'completed' THEN
+                    RAISE EXCEPTION 'FIFO_TX_NOT_COMPLETED_AFTER_D4';
+                END IF;
+                v_mb_after := {QA_SCHEMA}.get_member_dashboard_bundle(v_mem_id, v_mem_tok, NULL, 'ALL');
+                IF (v_mb_after->'profile'->>'completed_tx_count')::int < 1 THEN
+                    RAISE EXCEPTION 'MEMBER_COUNT_NOT_UPDATED_AFTER_FIFO_RELEASE';
+                END IF;
+            END;
+            $$;
+            SELECT 'SUITE7_OK' AS status;
+        """, token)
+        record("S7: Zero-Balance FIFO Queue Visibility, 3-Party Notifications & D4 Credit-Limit Auto-Release", s7[0]["status"] == "SUITE7_OK")
+
     finally:
         try:
             run_sql(f"DROP SCHEMA IF EXISTS {QA_SCHEMA} CASCADE;", token)
