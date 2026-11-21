@@ -259,7 +259,17 @@ function getMerchantFifoBannerHtml(p, pendingList) {
     const cashBal = Number(p?.actual_cash_balance || 0);
     const credLim = Number(p?.credit_limit || 0);
     const freeBal = Number(p?.free_balance ?? (cashBal - Number(p?.soft_hold_balance || 0) + credLim));
-    if (fifoItems.length === 0 && !p?.is_isolated && freeBal > 0) return '';
+    const effAcc = p?.effective_access || {};
+    const posLocked = effAcc.can_accept_pos === false;
+    if (fifoItems.length === 0 && !p?.is_isolated && freeBal > 0 && !posLocked) return '';
+    if (fifoItems.length === 0 && posLocked && p?.pos_lock_reason_ar && p?.financial_status !== 'locked_queue_full') {
+        return `
+            <div style="background:#fef2f2;border:2px solid #f87171;border-radius:14px;padding:12px 16px;margin-bottom:14px;color:#7f1d1d;">
+                <div style="font-weight:900;font-size:0.94rem;margin-bottom:4px;">🔒 توثيق الفواتير مغلق حالياً</div>
+                <div style="font-size:0.83rem;line-height:1.6;">${escM(p.pos_lock_reason_ar)}</div>
+            </div>
+        `;
+    }
     const curr = p?.currency_code || 'EGP';
     const fifoGross = fifoItems.reduce((s, t) => s + Number(t.total_amount || 0), 0);
     const fifoComm = fifoItems.reduce((s, t) => s + Number(t.commission_amount || 0), 0);
@@ -311,6 +321,190 @@ function syncMerchantBalanceWarnings() {
         }
         box.innerHTML = html;
     });
+}
+
+function formatMerchantErrorMessage(err) {
+    const m = String((err && err.message) || err || '');
+    if (m.includes('DUPLICATE_PAYMENT_REF') || m.includes('transactions_unique_payment_ref')) {
+        return '⛔ رقم مرجع الدفع / RRN مكرر ومسجل مسبقاً على عملية أخرى.';
+    }
+    if (m.includes('D4_CREDIT_LOCKED')) {
+        return '⛔ إيقاف فوري لائتمان D4: تم استنفاد الحد الائتماني أو انتهت مهلة سداد دورة الائتمان. يرجى السداد والشحن أولاً.';
+    }
+    if (m.includes('MERCHANT_QUEUE_FULL_BLOCKED') || m.includes('UNSECURED_QUEUE_CAP_EXCEEDED')) {
+        return '⛔ تم بلوغ الحد الأقصى لمحفظة عمليات الدفع الآجل غير المؤمّنة أو إقفال المتجر مالياً. يرجى شحن الرصيد أولاً.';
+    }
+    if (m.includes('MERCHANT_ONBOARDING_INCOMPLETE')) {
+        return '⛔ المتجر لم يستكمل متطلبات التأهيل التعاقدي بعد — استكمل البيانات من تبويب الإعدادات.';
+    }
+    if (m.includes('MERCHANT_UNFUNDED_TOPUP_REQUIRED')) {
+        return '⛔ المتجر لم يشحن رصيد المحفظة التشغيلي ولم يُعتمد له حد ائتماني D4 بعد — اشحن الرصيد أولاً.';
+    }
+    if (m.includes('MERCHANT_TEMPORARILY_PAUSED')) {
+        return '⏸️ المتجر في وضع الإجازة / الإيقاف المؤقت ولا يمكن تمرير فواتير قبل إعادة التفعيل.';
+    }
+    if (m.includes('MERCHANT_COMPLIANCE_SUSPENDED')) {
+        return '🔴 المتجر موقوف امتثالياً (تعليق/حظر) — يرجى تسوية المديونية والتواصل مع إدارة الامتثال.';
+    }
+    if (m.includes('MERCHANT_MANUAL_REJECT_REVOKED_D2')) {
+        return '🔒 صلاحية الرفض اليدوي للفواتير المعلقة موقوفة حالياً (تقييد حوكمة درجة 2) — الاعتماد أو التحويل للإدارة متاح.';
+    }
+    if (m.includes('MERCHANT_ISOLATED_PENDING_BLOCKED')) {
+        return '🟠 المتجر في حالة عزل منخفض الرصيد — الطلبات المعلقة عن بُعد موقوفة مؤقتاً حتى إعادة الشحن.';
+    }
+    return '❌ ' + m;
+}
+
+window.toggleMerchantSelfPause = async function () {
+    const p = merchantBundle?.profile;
+    if (!p || !currentMerchant?.id) return;
+    const isPaused = p.governance_status === 'paused_by_merchant';
+    const note = isPaused
+        ? 'استئناف نشاط المتجر بطلب التاجر'
+        : (prompt('اذكر سبب وضع المتجر في إجازة مؤقتة (اختياري):', 'إجازة / صيانة مؤقتة للمتجر') ?? null);
+    if (!isPaused && note === null) return;
+    try {
+        await window.SAWYAN.API.toggleMerchantPause({ merchantId: currentMerchant.id, note: note || '' });
+        alert(isPaused ? '✅ تم استئناف تشغيل المتجر وإعادته لحالته السابقة بنجاح!' : '⏸️ تم وضع المتجر في إجازة مؤقتة وإخفاؤه من الدليل.');
+        await loadStats();
+    } catch (err) {
+        alert(formatMerchantErrorMessage(err));
+    }
+};
+
+function renderMerchantLifecycleAndD4Cards() {
+    const p = merchantBundle?.profile;
+    const homePage = document.getElementById('homePage');
+    if (!p || !homePage) return;
+
+    const acc = p.effective_access || {};
+    const curr = p.currency_code || 'EGP';
+    const onbLabels = {
+        draft_incomplete: '⚠️ مسودة غير مكتملة',
+        needs_correction: '✏️ مطلوب استيفاء وتصحيح',
+        approved: '✅ مؤهل ومعتمد بياناتياً',
+        rejected: '🚫 مرفوض إدارياً'
+    };
+    const finLabels = {
+        unfunded: '⚪ غير مموّل (شحن 0)',
+        healthy_green: '🟢 سليم (> ' + Number(p.warn1_pct || 30) + '%)',
+        warning_yellow: '🟡 تنبيه مبكر (<= ' + Number(p.warn1_pct || 30) + '%)',
+        warning_red: '🟠 إنذار حرج (<= ' + Number(p.warn2_pct || 20) + '%)',
+        isolated_low_balance: '🔴 معزول منخفض الرصيد (كاشير فقط)',
+        depleted_fifo_grace: '⏸️ نافد بمهلة طابور FIFO (' + Number(p.fifo_queue_count || 0) + '/' + Number(p.effective_queue_cap ?? 3) + ')',
+        locked_queue_full: '🔒 مقفل لامتلاء الطابور / نفاد D4'
+    };
+    const govLabels = {
+        good_standing: '🟢 سليم ممتثل',
+        probation_warning: '🟡 تحت المراقبة (د1)',
+        restricted_no_reject: '🟠 تقييد د2 (بلا رفض يدوي)',
+        paused_by_merchant: '⏸️ إجازة بطلب التاجر',
+        paused_by_admin: '⏸️ موقوف إدارياً',
+        suspended_compliance: '🔴 تعليق امتثال (' + Number(p.overdue_days || 0) + 'ي)',
+        banned_permanent: '🚫 حظر نهائي (D3)'
+    };
+
+    const canSelfPause = ['good_standing', 'probation_warning', 'paused_by_merchant'].includes(p.governance_status || 'good_standing');
+    const isSelfPaused = p.governance_status === 'paused_by_merchant';
+    const accessModeAr = {
+        full: 'صلاحيات كاملة',
+        complete_profile_only: 'استكمال البيانات فقط',
+        topup_only: 'وضع الشحن والسداد فقط',
+        appeal_and_repay_only: 'وضع السداد ومراجعة الامتثال فقط',
+        blocked: 'الحساب محظور'
+    }[acc.portal_access_mode || 'full'] || (acc.portal_access_mode || 'full');
+
+    const anchor = homePage.querySelector('.stats-grid') || homePage.firstChild;
+    let lcBox = document.getElementById('merchantLifecycleStatusCard');
+    if (!lcBox) {
+        lcBox = document.createElement('div');
+        lcBox.id = 'merchantLifecycleStatusCard';
+        homePage.insertBefore(lcBox, anchor);
+    }
+
+    const reasonText = p.hide_reason_ar || p.pos_lock_reason_ar || (p.onboarding_status === 'needs_correction' ? p.onboarding_notes : '') || '';
+    lcBox.innerHTML = `
+        <div style="background:#ffffff;border:1.5px solid ${acc.is_visible_on_radar ? '#10b981' : (acc.can_accept_pos ? '#f59e0b' : '#ef4444')};border-radius:14px;padding:14px 16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(15,23,42,0.04);">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:8px;">
+                <div style="font-weight:900;font-size:0.95rem;color:#0f172a;">🧭 الموقف التشغيلي ثلاثي المحاور (${escM(accessModeAr)})</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                    <span style="padding:3px 9px;border-radius:999px;font-size:0.75rem;font-weight:800;background:${acc.is_visible_on_radar ? '#d1fae5' : '#fee2e2'};color:${acc.is_visible_on_radar ? '#065f46' : '#991b1b'};">${acc.is_visible_on_radar ? '🟢 ظاهر بالدليل والرادار' : '🔴 مخفي عن الدليل'}</span>
+                    <span style="padding:3px 9px;border-radius:999px;font-size:0.75rem;font-weight:800;background:${acc.can_accept_pos ? '#d1fae5' : '#fee2e2'};color:${acc.can_accept_pos ? '#065f46' : '#991b1b'};">${acc.can_accept_pos ? '🟢 الكاشير مفتوح' : '🔒 الكاشير مغلق'}</span>
+                    ${canSelfPause ? `<button type="button" onclick="toggleMerchantSelfPause()" class="btn btn-sm" style="background:${isSelfPaused ? '#059669' : '#f1f5f9'};color:${isSelfPaused ? '#fff' : '#334155'};border:1px solid #cbd5e1;padding:4px 10px;font-size:0.76rem;font-weight:800;border-radius:8px;cursor:pointer;">${isSelfPaused ? '▶️ إنهاء الإجازة وتفعيل المتجر' : '⏸️ وضع إجازة / إغلاق مؤقت'}</button>` : ''}
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,185px),1fr));gap:8px;font-size:0.8rem;">
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;">
+                    <div style="color:#64748b;font-weight:700;font-size:0.72rem;">المحور 1 — التأهيل والملف</div>
+                    <div style="font-weight:800;color:#0f172a;margin-top:2px;">${escM(onbLabels[p.onboarding_status] || p.onboarding_status || 'approved')}</div>
+                </div>
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;">
+                    <div style="color:#64748b;font-weight:700;font-size:0.72rem;">المحور 2 — الملاءة والرصيد</div>
+                    <div style="font-weight:800;color:#0f172a;margin-top:2px;">${escM(finLabels[p.financial_status] || p.financial_status || 'healthy_green')}</div>
+                </div>
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;">
+                    <div style="color:#64748b;font-weight:700;font-size:0.72rem;">المحور 3 — الحوكمة والامتثال</div>
+                    <div style="font-weight:800;color:#0f172a;margin-top:2px;">${escM(govLabels[p.governance_status] || p.governance_status || 'good_standing')}</div>
+                </div>
+            </div>
+            ${reasonText ? `<div style="margin-top:8px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:7px 10px;font-size:0.79rem;font-weight:700;color:#92400e;">ℹ️ ${escM(reasonText)}</div>` : ''}
+        </div>
+    `;
+
+    let d4Box = document.getElementById('merchantD4SettlementCard');
+    const credLim = Number(p.credit_limit || 0);
+    const cashBal = Number(p.actual_cash_balance || 0);
+    const dueStmt = Number(p.d4_statement_due_local || 0);
+    if (credLim <= 0 || (cashBal >= 0 && dueStmt <= 0)) {
+        if (d4Box) d4Box.remove();
+        return;
+    }
+    if (!d4Box) {
+        d4Box = document.createElement('div');
+        d4Box.id = 'merchantD4SettlementCard';
+        homePage.insertBefore(d4Box, anchor);
+    }
+
+    const openCycleComm = Number(p.d4_open_cycle_comm_local || 0);
+    const closeMs = p.d4_cycle_close_at ? new Date(p.d4_cycle_close_at).getTime() : 0;
+    const minsToClose = closeMs ? Math.round((closeMs - Date.now()) / 60000) : 9999;
+    const isPreCutoffWarn = !p.d4_time_trigger_disabled && !p.d4_in_grace_window && !p.cutoff_breached && minsToClose > 0 && minsToClose <= 60;
+
+    let d4BannerBg = '#eff6ff';
+    let d4BannerBorder = '#60a5fa';
+    let d4BannerTitle = '💳 دورة تسوية الحد الائتماني D4';
+    if (p.cutoff_breached) {
+        d4BannerBg = '#fef2f2';
+        d4BannerBorder = '#ef4444';
+        d4BannerTitle = '🚨 انتهت مهلة السماح الساعية لائتمان D4 — تم إيقاف الكاشير وإخفاء المتجر لحين السداد';
+    } else if (p.d4_in_grace_window) {
+        d4BannerBg = '#fff7ed';
+        d4BannerBorder = '#f97316';
+        d4BannerTitle = '⏳ المتجر داخل مهلة السماح الساعية السداد D4 — سدد مستحق الدورة المغلقة قبل القفل التلقائي!';
+    } else if (isPreCutoffWarn) {
+        d4BannerBg = '#fffbeb';
+        d4BannerBorder = '#f59e0b';
+        d4BannerTitle = `🔔 تنبيه مسائي: تبقى نحو ${minsToClose} دقيقة على إغلاق دورة D4 اليوم`;
+    }
+
+    const closeTxt = p.d4_cycle_close_at ? new Date(p.d4_cycle_close_at).toLocaleString('ar-EG') : '—';
+    const graceTxt = p.d4_grace_due_at ? new Date(p.d4_grace_due_at).toLocaleString('ar-EG') : '—';
+    d4Box.innerHTML = `
+        <div style="background:${d4BannerBg};border:2px solid ${d4BannerBorder};border-radius:14px;padding:13px 16px;margin-bottom:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
+                <div style="font-weight:900;font-size:0.94rem;color:#0f172a;">${d4BannerTitle}</div>
+                <button type="button" onclick="showPage('financial')" class="btn btn-primary btn-sm">💳 السداد والشحن الآن</button>
+            </div>
+            <div style="font-size:0.8rem;color:#334155;display:flex;gap:14px;flex-wrap:wrap;line-height:1.6;">
+                <span>📌 مستحق الدورة المغلقة الواجب سداده: <strong style="color:#b91c1c;" dir="ltr">${fmtMerchantMoney(dueStmt, curr)}</strong></span>
+                <span>📊 الجاري بالدورة المفتوحة: <strong dir="ltr">${fmtMerchantMoney(openCycleComm, curr)}</strong></span>
+                ${p.d4_time_trigger_disabled
+                    ? '<span>⚖️ النمط: <strong>سقف مبلغ فقط (بدون إغلاق زمني)</strong></span>'
+                    : `<span>⏱️ الدورة: كل <strong>${Number(p.d4_effective_cycle_days || 1)}</strong> يوم • إغلاق <strong>${escM(String(p.d4_effective_cutoff_time || '23:59:00').slice(0, 5))}</strong> • سماح <strong>${Number(p.d4_effective_grace_hours ?? 2)}</strong> ساعة</span>`}
+                ${!p.d4_time_trigger_disabled && p.d4_cycle_close_at ? `<span>🔚 الإغلاق: <strong>${escM(closeTxt)}</strong> • نهاية السماح: <strong>${escM(graceTxt)}</strong></span>` : ''}
+            </div>
+        </div>
+    `;
 }
 
 function renderLiveHomeStats() {
@@ -387,6 +581,7 @@ function renderLiveHomeStats() {
         zoneEl.textContent = zoneMap[p.zone_status] || p.zone_status;
     }
     syncMerchantBalanceWarnings();
+    renderMerchantLifecycleAndD4Cards();
     renderMerchantCompletionBanner();
 }
 
@@ -1018,7 +1213,7 @@ function loadQRScannerPage() {
                     <div>
                         <div style="font-weight: 900; font-size: 1.1rem; color: #0f172a;">${storeTitle}</div>
                         <div style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">
-                            كود التاجر: <strong style="color: #059669; font-family: monospace;">#${storeCode}</strong> • <span style="background: #ecfdf5; color: #047857; padding: 1px 8px; border-radius: 6px; font-weight: 800; font-size: 0.75rem;">${p.is_isolated ? '🔴 معزول مؤقتاً' : '🟢 متجر معتمد ونشط'}</span>
+                            كود التاجر: <strong style="color: #059669; font-family: monospace;">#${storeCode}</strong> • <span style="background: ${(p.effective_access && p.effective_access.can_accept_pos === false) ? '#fee2e2' : (p.is_isolated ? '#fef3c7' : '#ecfdf5')}; color: ${(p.effective_access && p.effective_access.can_accept_pos === false) ? '#991b1b' : (p.is_isolated ? '#92400e' : '#047857')}; padding: 1px 8px; border-radius: 6px; font-weight: 800; font-size: 0.75rem;">${(p.effective_access && p.effective_access.can_accept_pos === false) ? '🔒 الكاشير مقفل' : (p.is_isolated ? '🟠 كاشير داخل المحل فقط (معزول عن الرادار)' : '🟢 متجر معتمد ونشط')}</span>
                         </div>
                     </div>
                 </div>
@@ -1116,9 +1311,10 @@ function loadQRScannerPage() {
                 </div>
 
                 <!-- زر الاعتماد الفوري وتوثيق الفاتورة -->
-                <button onclick="processOfflineCustomerPayment()" id="submitPosPaymentBtn" 
-                    style="width: 100%; background: linear-gradient(135deg, #059669, #047857); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: 900; font-size: 1.05rem; cursor: pointer; font-family: 'Tajawal'; box-shadow: 0 4px 15px rgba(5,150,105,0.3); display: flex; align-items: center; justify-content: center; gap: 8px;">
-                    <span>💳 تسجيل العملية وتوثيق الفاتورة فوراً</span>
+                ${(p.effective_access && p.effective_access.can_accept_pos === false) ? `<div style="background:#fef2f2;border:1.5px solid #ef4444;color:#991b1b;padding:10px 14px;border-radius:10px;font-size:0.84rem;font-weight:800;margin-bottom:10px;">🔒 ${escM(p.pos_lock_reason_ar || p.hide_reason_ar || 'توثيق الفواتير مغلق حالياً لحين الشحن أو استيفاء متطلبات التفعيل.')}</div>` : ''}
+                <button onclick="processOfflineCustomerPayment()" id="submitPosPaymentBtn" ${(p.effective_access && p.effective_access.can_accept_pos === false) ? 'disabled' : ''}
+                    style="width: 100%; background: ${(p.effective_access && p.effective_access.can_accept_pos === false) ? '#94a3b8' : 'linear-gradient(135deg, #059669, #047857)'}; color: white; border: none; padding: 14px; border-radius: 12px; font-weight: 900; font-size: 1.05rem; cursor: ${(p.effective_access && p.effective_access.can_accept_pos === false) ? 'not-allowed' : 'pointer'}; font-family: 'Tajawal'; box-shadow: 0 4px 15px rgba(5,150,105,0.3); display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <span>${(p.effective_access && p.effective_access.can_accept_pos === false) ? '🔒 تسجيل الفواتير مقفل حالياً' : '💳 تسجيل العملية وتوثيق الفاتورة فوراً'}</span>
                 </button>
             </div>
 
@@ -1708,14 +1904,7 @@ async function submitLiveOrOfflinePosTransaction({
             alert(`🟠 تعذر الوصول للشبكة — تم حفظ العملية مشفرة في حافظة الأوفلاين (${queued.sw_short_code}) للمزامنة التلقائية.`);
             return queued;
         }
-        const m = String(err.message || '');
-        if (m.includes('DUPLICATE_PAYMENT_REF') || m.includes('transactions_unique_payment_ref')) {
-            alert('⛔ رقم مرجع الدفع / RRN مكرر ومسجل مسبقاً على عملية أخرى.');
-        } else if (m.includes('MERCHANT_QUEUE_FULL_BLOCKED') || m.includes('UNSECURED_QUEUE_CAP_EXCEEDED')) {
-            alert('⛔ تم بلوغ الحد الأقصى لمحفظة عمليات الدفع الآجل غير المؤمّنة. يرجى التحصيل أو شحن الرصيد أولاً.');
-        } else {
-            alert('❌ تعذر تسجيل الفاتورة: ' + m);
-        }
+        alert(formatMerchantErrorMessage(err));
         return null;
     }
 }
@@ -2221,6 +2410,7 @@ async function loadPendingTransactions() {
     await refreshMerchantBundle();
     const pendingData = merchantBundle?.pending_transactions || [];
     const curr = merchantBundle?.profile?.currency_code || 'EGP';
+    const canRejectManual = (merchantBundle?.profile?.effective_access?.can_reject_pending_manually !== false);
 
     const itemsHtml = pendingData.length === 0 ? `
         <div style="background:white;border-radius:12px;padding:30px;text-align:center;border:1px solid #e2e8f0;">
@@ -2252,7 +2442,9 @@ async function loadPendingTransactions() {
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
                 ${tx.status === 'pending' ? `
                     <button type="button" onclick="approvePendingTx('${tx.id}')" style="flex:2;background:#059669;color:white;border:none;padding:10px 14px;border-radius:8px;font-weight:800;cursor:pointer;">✅ اعتماد الفاتورة وتغذية الصندوق</button>
-                    <button type="button" onclick="rejectPendingTx('${tx.id}')" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;padding:10px 14px;border-radius:8px;font-weight:700;cursor:pointer;">❌ رفض</button>
+                    ${canRejectManual
+                        ? `<button type="button" onclick="rejectPendingTx('${tx.id}')" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;padding:10px 14px;border-radius:8px;font-weight:700;cursor:pointer;">❌ رفض</button>`
+                        : `<span style="background:#fff7ed;color:#9a3412;border:1px solid #fdba74;padding:8px 12px;border-radius:8px;font-size:0.78rem;font-weight:800;">🔒 الرفض اليدوي موقوف (تقييد حوكمة د2)</span>`}
                 ` : `
                     <button type="button" onclick="showPage('financial')" class="btn btn-primary btn-sm">➕ انتقل لشحن الرصيد لتحرير الطابور تلقائياً (FIFO)</button>
                 `}
@@ -2282,7 +2474,7 @@ async function approvePendingTx(id) {
         alert(`✅ تم اعتماد الفاتورة بنجاح! الحالة: ${res?.result?.status || 'completed'}`);
         await loadPendingTransactions();
     } catch (err) {
-        alert('❌ تعذر الاعتماد: ' + err.message);
+        alert(formatMerchantErrorMessage(err));
     }
 }
 
@@ -2299,7 +2491,7 @@ async function rejectPendingTx(id) {
         alert('✅ تم رفض الفاتورة وتحرير الحجز المؤقت (Soft Hold).');
         await loadPendingTransactions();
     } catch (err) {
-        alert('❌ تعذر الرفض: ' + err.message);
+        alert(formatMerchantErrorMessage(err));
     }
 }
 
@@ -2651,15 +2843,28 @@ loadFinancialReport = async function () {
 
     const statusBadge = document.getElementById('liveStoreRadarBadge');
     if (statusBadge) {
-        if (p.is_isolated || freeBal < 0) {
+        const effAcc = p.effective_access || {};
+        if (p.cutoff_breached || p.financial_status === 'locked_queue_full' || p.governance_status === 'suspended_compliance' || p.governance_status === 'banned_permanent') {
+            statusBadge.textContent = p.cutoff_breached
+                ? '🔴 إغلاق D4 متأخر — الكاشير والدليل مقفلان لحين السداد'
+                : '🔴 مقفل / معلق — راجع المحور المالي والحوكمة';
+            statusBadge.style.background = '#fef2f2';
+            statusBadge.style.color = '#991b1b';
+            statusBadge.style.borderColor = '#fca5a5';
+        } else if (p.is_isolated || freeBal < 0) {
             statusBadge.textContent = freeBal < 0
                 ? '🔴 رصيد مديون — المتجر معزول لحين السداد'
                 : '🔴 المتجر معزول مؤقتاً لنفاد الرصيد';
             statusBadge.style.background = '#fef2f2';
             statusBadge.style.color = '#991b1b';
             statusBadge.style.borderColor = '#fca5a5';
-        } else if (!p.is_active) {
-            statusBadge.textContent = '⏳ المتجر قيد المراجعة الإدارية';
+        } else if (p.onboarding_status && p.onboarding_status !== 'approved') {
+            statusBadge.textContent = '⚠️ المتجر قيد استكمال البيانات التعاقدية';
+            statusBadge.style.background = '#fef3c7';
+            statusBadge.style.color = '#92400e';
+            statusBadge.style.borderColor = '#fcd34d';
+        } else if (p.governance_status === 'paused_by_merchant' || p.governance_status === 'paused_by_admin' || !effAcc.is_visible_on_radar) {
+            statusBadge.textContent = '⏸️ المتجر مخفي / في إجازة مؤقتة';
             statusBadge.style.background = '#fef3c7';
             statusBadge.style.color = '#92400e';
             statusBadge.style.borderColor = '#fcd34d';

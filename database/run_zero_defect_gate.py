@@ -28,6 +28,11 @@ INTERNAL_ONLY_FUNCTIONS = {
     "append_audit_log",
     "filter_academy_url_is_safe",
     "validate_attachment_data",
+    "evaluate_merchant_profile_complete",
+    "compute_merchant_d4_cycle_info",
+    "is_merchant_d4_cutoff_breached",
+    "compute_merchant_effective_state",
+    "sync_merchant_status_flags",
 }
 
 MIRROR_DIRS = ["assets", "css", "js", "public", "shared", "member-dashboard", "merchant-dashboard", "admin-dashboard"]

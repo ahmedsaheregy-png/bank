@@ -225,6 +225,10 @@
             if (typeof window.hydrateAdminOpsFromLiveBundle === 'function') {
                 window.hydrateAdminOpsFromLiveBundle(LIVE_BUNDLE);
             }
+            const merMount = document.getElementById('svLiveMerSettingsMount');
+            if (merMount && typeof window.renderLiveMerchantRiskSettingsCard === 'function') {
+                merMount.innerHTML = window.renderLiveMerchantRiskSettingsCard('scMer');
+            }
             if (showFeedback) showToast('تمت مزامنة البيانات السيادية الحية من قاعدة البيانات بنجاح', false);
         } catch (err) {
             if (/ADMIN_AUTH_REQUIRED|ADMIN_SESSION_INVALID|ADMIN_SESSION_EXPIRED|ADMIN_NOT_ACTIVE/.test(err.message || '')) {
@@ -387,22 +391,157 @@
         return renderLiveOpsTab();
     }
 
+    function getActiveGlobalSettings() {
+        const list = (LIVE_BUNDLE && Array.isArray(LIVE_BUNDLE.settings)) ? LIVE_BUNDLE.settings : [];
+        const nowMs = Date.now();
+        const active = list.find(function (s) {
+            return s && (s.country_id === null || s.country_id === undefined) && (!s.effective_from || new Date(s.effective_from).getTime() <= nowMs);
+        });
+        return active || list.find(function (s) { return s && (s.country_id === null || s.country_id === undefined); }) || list[0] || {};
+    }
+
+    window.renderLiveMerchantRiskSettingsCard = function (prefix) {
+        const pfx = esc(prefix || 'liveMc');
+        const cur = getActiveGlobalSettings();
+        const adm = (LIVE_BUNDLE && LIVE_BUNDLE.admin) || window.currentAdmin || {};
+        const founder = isSovereignFounder(adm);
+        if (!cur || (!cur.id && !LIVE_BUNDLE)) {
+            return '<div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:14px;padding:14px;margin-bottom:14px;font-weight:700;color:#92400e;">⏳ جاري مزامنة عتبات ومخاطر التجار الحية من قاعدة البيانات...</div>';
+        }
+        return '<div style="background:#ffffff;border:1.5px solid #0f766e;border-radius:14px;padding:16px;margin-bottom:14px;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">' +
+                '<div>' +
+                    '<h3 style="margin:0;font-size:1rem;color:#0f172a;">🏪 ضبط عتبات ومخاطر التجار الحية في PostgreSQL (`sawyan.settings`)</h3>' +
+                    '<div style="font-size:0.78rem;color:#64748b;">الإعدادات الحية الفعلية السارية حالياً — تعدل سلوك المبيعات، طابور النفاد (M5 — يقبل 0)، مهل التقييد والتصعيد، وعتبات W05/W07.</div>' +
+                '</div>' +
+                '<span class="badge badge-success">LIVE • ساري من: ' + esc(String(cur.effective_from || '').slice(0, 10)) + '</span>' +
+            '</div>' +
+            '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,175px),1fr));gap:10px;margin-bottom:10px;">' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">عتبة التنبيه الأول (%)</label><input id="' + pfx + '_warn1" type="number" step="0.5" min="2" max="99" value="' + Number(cur.merchant_warn1_pct ?? 30) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">عتبة الإنذار الأخير (%)</label><input id="' + pfx + '_warn2" type="number" step="0.5" min="1" max="98" value="' + Number(cur.merchant_warn2_pct ?? 20) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">عتبة العزل الوقائي (%)</label><input id="' + pfx + '_iso" type="number" step="0.5" min="0.5" max="97" value="' + Number(cur.merchant_isolate_pct ?? 10) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">فواتير ما بعد النفاد (M5 — 0=قفل فوري)</label><input id="' + pfx + '_qcap" type="number" step="1" min="0" max="50" value="' + Number(cur.unsecured_queue_cap ?? 3) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">سقف Soft Hold للمعلقات (%)</label><input id="' + pfx + '_hold" type="number" step="1" min="1" max="100" value="' + Number(cur.unconfirmed_soft_hold_cap_pct ?? 20) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">مهلة السداد قبل تعليق الامتثال (أيام)</label><input id="' + pfx + '_fdef" type="number" step="1" min="1" max="90" value="' + Number(cur.fifo_default_days ?? 14) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">مهلة رد التاجر على المعلق (ساعة)</label><input id="' + pfx + '_psla" type="number" step="1" min="1" max="720" value="' + Number(cur.pending_sla_hours ?? 48) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">إنذار/تقييد المعلق المتأخر (30ي)</label><div style="display:flex;gap:4px;"><input id="' + pfx + '_wesc" type="number" min="1" value="' + Number(cur.warn_escalated_tx_30d ?? 3) + '" class="form-control" title="إنذار"><input id="' + pfx + '_resc" type="number" min="1" value="' + Number(cur.restrict_escalated_tx_30d ?? 5) + '" class="form-control" title="تقييد د2"></div></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">إنذار/تقييد النزاع الخاسر (30ي)</label><div style="display:flex;gap:4px;"><input id="' + pfx + '_wdis" type="number" min="1" value="' + Number(cur.warn_lost_disputes_30d ?? 2) + '" class="form-control" title="إنذار"><input id="' + pfx + '_rdis" type="number" min="1" value="' + Number(cur.restrict_lost_disputes_30d ?? 3) + '" class="form-control" title="تقييد د2"></div></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">إنذار/تقييد الشكوى الموثقة (30ي)</label><div style="display:flex;gap:4px;"><input id="' + pfx + '_wcmp" type="number" min="1" value="' + Number(cur.warn_verified_complaints_30d ?? 2) + '" class="form-control" title="إنذار"><input id="' + pfx + '_rcmp" type="number" min="1" value="' + Number(cur.restrict_verified_complaints_30d ?? 3) + '" class="form-control" title="تقييد د2"></div></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">مدة دورة ائتمان D4 (أيام)</label><input id="' + pfx + '_d4days" type="number" step="1" min="1" max="90" value="' + Number(cur.d4_cycle_days ?? 1) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">وقت إغلاق دورة D4</label><input id="' + pfx + '_d4cutoff" type="time" value="' + esc(String(cur.d4_cycle_cutoff_time || '23:59').slice(0, 5)) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">مهلة سداد D4 بعد الإغلاق (ساعة)</label><input id="' + pfx + '_d4grace" type="number" step="0.5" min="0" max="168" value="' + Number(cur.d4_grace_hours ?? 2) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">عتبة سحب W05 ($)</label><input id="' + pfx + '_wht" type="number" step="10" min="1" value="' + Number(cur.wht_threshold_usd ?? 200) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">تهدئة W07 (ساعة)</label><input id="' + pfx + '_cd" type="number" step="1" min="0" value="' + Number(cur.withdrawal_cooldown_hours ?? 72) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">تاريخ السريان</label><select id="' + pfx + '_effmode" class="form-control"><option value="immediate">⚡ فوري (من اللحظة)</option><option value="next_month">📅 أول الشهر القادم</option></select></div>' +
+                '<div style="grid-column:1 / -1;"><label style="font-size:0.76rem;font-weight:700;">سبب التعديل الإلزامي لسجل التدقيق (>= 5 أحرف)</label><input id="' + pfx + '_reason" type="text" value="تحديث عتبات مخاطر التجار والحوكمة الحية" class="form-control"></div>' +
+            '</div>' +
+            '<button type="button" id="' + pfx + '_submitBtn" onclick="svSubmitMerchantRiskSettings(\'' + pfx + '\')" class="btn btn-primary">' + (founder ? '👑 حفظ وتطبيق فوري في PostgreSQL (صلاحية المؤسس)' : '📤 إرسال تعديل الإعدادات لطابور الاعتماد المزدوج (Maker)') + '</button>' +
+        '</div>';
+    };
+
+    window.svSubmitMerchantRiskSettings = async function (prefix) {
+        try {
+            const pfx = prefix || 'liveMc';
+            const g = function (s) { return document.getElementById(pfx + '_' + s); };
+            const w1 = Number(g('warn1').value);
+            const w2 = Number(g('warn2').value);
+            const iso = Number(g('iso').value);
+            const qcap = Number(g('qcap').value);
+            const hold = Number(g('hold').value);
+            const fdef = Number(g('fdef').value);
+            const psla = Number(g('psla').value);
+            const wesc = Number(g('wesc').value);
+            const resc = Number(g('resc').value);
+            const wdis = Number(g('wdis').value);
+            const rdis = Number(g('rdis').value);
+            const wcmp = Number(g('wcmp').value);
+            const rcmp = Number(g('rcmp').value);
+            const d4days = Number(g('d4days').value);
+            const d4cut = String(g('d4cutoff').value || '').trim();
+            const d4grace = Number(g('d4grace').value);
+            const wht = Number(g('wht').value);
+            const cd = Number(g('cd').value);
+            const effMode = g('effmode').value;
+            const reason = String(g('reason').value || '').trim();
+
+            if (!(w1 > w2 && w2 > iso && iso > 0)) {
+                showToast('يجب أن يكون التدرج صارماً: التنبيه الأول > الإنذار الأخير > العزل > 0', true);
+                return;
+            }
+            if (!Number.isInteger(qcap) || qcap < 0) {
+                showToast('عدد فواتير ما بعد النفاد يجب أن يكون عدداً صحيحاً >= 0', true);
+                return;
+            }
+            if (resc < wesc || rdis < wdis || rcmp < wcmp || wesc < 1 || wdis < 1 || wcmp < 1) {
+                showToast('عتبات التقييد د2 يجب أن تكون >= عتبات الإنذار د1 (>= 1)', true);
+                return;
+            }
+            if (!Number.isInteger(d4days) || d4days < 1 || d4days > 90) {
+                showToast('مدة دورة ائتمان D4 يجب أن تكون بين 1 و 90 يوماً.', true);
+                return;
+            }
+            if (!/^\d{2}:\d{2}(:\d{2})?$/.test(d4cut)) {
+                showToast('يرجى تحديد وقت إغلاق دورة D4 بصيغة صالحة (HH:MM).', true);
+                return;
+            }
+            if (!Number.isFinite(d4grace) || d4grace < 0 || d4grace > 168) {
+                showToast('مهلة سداد D4 بعد الإغلاق يجب أن تكون بين 0 و 168 ساعة.', true);
+                return;
+            }
+            if (reason.length < 5) {
+                showToast('يرجى إدخال سبب التعديل (5 أحرف على الأقل) لتوثيقه في سجل التدقيق.', true);
+                return;
+            }
+
+            const d = new Date();
+            const effIso = effMode === 'next_month'
+                ? new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1, 0, 0, 0)).toISOString()
+                : d.toISOString();
+
+            const payload = {
+                merchant_warn1_pct: w1,
+                merchant_warn2_pct: w2,
+                merchant_isolate_pct: iso,
+                unsecured_queue_cap: qcap,
+                unconfirmed_soft_hold_cap_pct: hold,
+                fifo_default_days: fdef,
+                pending_sla_hours: psla,
+                warn_escalated_tx_30d: wesc,
+                restrict_escalated_tx_30d: resc,
+                warn_lost_disputes_30d: wdis,
+                restrict_lost_disputes_30d: rdis,
+                warn_verified_complaints_30d: wcmp,
+                restrict_verified_complaints_30d: rcmp,
+                d4_cycle_days: d4days,
+                d4_cycle_cutoff_time: d4cut.length === 5 ? d4cut + ':00' : d4cut,
+                d4_grace_hours: d4grace,
+                wht_threshold_usd: wht,
+                withdrawal_cooldown_hours: cd,
+                effective_from: effIso
+            };
+
+            const res = await window.SAWYAN.API.adminSubmitGovernanceRequest({
+                actionType: 'BITEMPORAL_SETTINGS_UPDATE',
+                targetEntity: 'settings',
+                targetId: 'GLOBAL',
+                payloadAfter: payload,
+                reason: reason
+            });
+            showToast(res && res.sovereign_auto_executed
+                ? '👑 تم حفظ وتفعيل عتبات ومخاطر التجار الحية في PostgreSQL!'
+                : ('📤 تم تسجيل طلب Maker (#' + String(res.request_id || '').slice(0, 8) + '). انتقل لدور Checker لاعتماده.'), false);
+            await refreshSovereignBundle(false);
+        } catch (err) {
+            showToast(err.message, true);
+        }
+    };
+
     // --- Tab 1: Live Maker-Checker Queue ---
     function renderLiveMakerCheckerTab() {
         const list = LIVE_BUNDLE.maker_checker_queue || [];
         const adm = LIVE_BUNDLE.admin || {};
-        const curSettings = (LIVE_BUNDLE.settings && LIVE_BUNDLE.settings[0]) || {};
-
         return '<div style="display:grid;gap:14px;">' +
-            '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
-                '<h3 style="margin:0 0 8px 0;font-size:1rem;color:#0f172a;">📝 إنشاء طلب تعديل معامَل ثنائي الزمن (Bitemporal Maker Request — D20 / D28)</h3>' +
-                '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px;margin-bottom:10px;">' +
-                    '<div><label style="font-size:0.78rem;font-weight:700;">عتبة الاعتماد المزدوج للسحب W05 ($)</label><input id="svSetWhtUsd" type="number" step="10" value="' + Number(curSettings.wht_threshold_usd || 200) + '" class="form-control"></div>' +
-                    '<div><label style="font-size:0.78rem;font-weight:700;">ساعات تهدئة وسيلة الدفع W07</label><input id="svSetCooldownHrs" type="number" step="1" value="' + Number(curSettings.withdrawal_cooldown_hours || 72) + '" class="form-control"></div>' +
-                    '<div><label style="font-size:0.78rem;font-weight:700;">سبب التعديل الإلزامي للتدقيق</label><input id="svSetReason" type="text" value="تحديث رقابي معتمد وفق مراجعة المخاطر" class="form-control"></div>' +
-                '</div>' +
-                '<button type="button" id="svSubmitSettingsMcBtn" onclick="svSubmitSettingsMc()" class="btn btn-primary">' + (isSovereignFounder(adm) ? '👑 حفظ واعتماد سيادي فوري (صلاحية المؤسس المطلقة)' : '📤 إرسال الطلب لطابور الاعتماد المزدوج (Maker)') + '</button>' +
-            '</div>' +
+            window.renderLiveMerchantRiskSettingsCard('liveMc') +
 
             '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
                 '<h3 style="margin:0 0 10px 0;font-size:1rem;color:#0f172a;">📋 سجل طلبات الاعتماد المزدوج في PostgreSQL (`maker_checker_requests`)</h3>' +

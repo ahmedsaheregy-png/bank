@@ -2176,6 +2176,7 @@ async function loadNearbyMerchants() {
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <button type="button" class="btn btn-primary btn-sm" onclick="openMemberPurchaseModal()">🧾 توثيق فاتورة شراء</button>
+                <button type="button" class="btn btn-outline btn-sm" style="border-color:#dc2626;color:#dc2626;" onclick="openMerchantComplaintModal()">📣 إبلاغ عن تاجر</button>
                 <button type="button" class="btn btn-outline btn-sm" onclick="triggerGpsRadarSearch()">📍 تحديث الأقرب مني (GPS)</button>
                 ${radarCatalogOverride ? `<button type="button" class="btn btn-outline btn-sm" onclick="resetRadarFilter()">إلغاء فلتر المسافة</button>` : ''}
             </div>
@@ -2246,6 +2247,7 @@ async function loadNearbyMerchants() {
                                     <button type="button" class="btn btn-primary btn-sm" style="flex:1;" onclick="submitPendingPurchasePrompt('${m.merchant_id}', '${m.branch_id}', '${esc(m.business_name)}', '${esc(m.currency_code || '')}', ${Number(m.plan_cashback_pct || 7.5)})">
                                         📝 توثيق فاتورة
                                     </button>
+                                    <button type="button" class="btn btn-outline btn-sm" style="border-color:#fca5a5;color:#b91c1c;" onclick="openMerchantComplaintModal('${m.merchant_id}', '${esc(m.business_name)}')">📣 شكوى</button>
                                     <a href="${esc(gmapsUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">🗺️ خرائط جوجل</a>
                                 </div>
                             </div>
@@ -2500,14 +2502,22 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
                 throw new Error('بلغت الحد الأقصى (طلبان معلقان 2) عند هذا المتجر. انتظر موافقة التاجر أو ألغِ طلباً قديماً.');
             } else if (msg.includes('MERCHANT_SOFT_HOLD_CAP_20PCT_EXCEEDED') || msg.includes('SOFT_HOLD_CAP_EXCEEDED')) {
                 throw new Error('تجاوزت سقف الحجز المرن (20%) للطلبات المعلقة غير المعتمدة.');
+            } else if (msg.includes('MERCHANT_UNFUNDED_TOPUP_REQUIRED')) {
+                throw new Error('المتجر جديد ولم يقم بشحن رصيده التشغيلي بعد.');
+            } else if (msg.includes('MERCHANT_TEMPORARILY_PAUSED')) {
+                throw new Error('المتجر في وضع إجازة أو إغلاق مؤقت حالياً.');
+            } else if (msg.includes('MERCHANT_COMPLIANCE_SUSPENDED')) {
+                throw new Error('المتجر موقوف امتثالياً من الإدارة حالياً ولا يستقبل فواتير جديدة.');
+            } else if (msg.includes('MERCHANT_ONBOARDING_INCOMPLETE')) {
+                throw new Error('المتجر لم يستكمل بيانات التأهيل التعاقدية بعد.');
             } else if (msg.includes('MERCHANT_ISOLATED')) {
-                throw new Error('المتجر معزول مؤقتاً لنفاد رصيد الشحن ولا يستقبل طلبات معلقة حالياً.');
+                throw new Error('المتجر معزول مؤقتاً لنفاد رصيد الشحن ولا يستقبل طلبات معلقة عن بُعد حالياً.');
             } else if (msg.includes('RECEIPT_REQUIRED_FOR_REMOTE_PURCHASE')) {
                 throw new Error('يجب إرفاق صورة الفاتورة / الإيصال عند التسجيل عن بُعد بدون كود الكاشير.');
             } else if (msg.includes('DUPLICATE_PAYMENT_REF') || msg.includes('transactions_unique_payment_ref')) {
                 throw new Error('رقم مرجع الدفع / RRN مكرر ومسجل على عملية سابقة بالفعل.');
             } else if (msg.includes('MERCHANT_QUEUE_FULL_BLOCKED') || msg.includes('UNSECURED_QUEUE_CAP_EXCEEDED')) {
-                throw new Error('تجاوز سقف محفظة المعلقات غير المؤمّنة لدى هذا المتجر.');
+                throw new Error('نأسف، تعذر تسجيل العملية حالياً لامتلاء سقف تغطية المتجر أو إغلاق دورته الائتمانية.');
             }
             throw err;
         }
@@ -3378,6 +3388,106 @@ window.saveHomeGpsCoords = async function () {
         await refreshDashboardBundle();
     } catch (err) {
         alert('❌ ' + err.message);
+    }
+};
+
+window.openMerchantComplaintModal = async function (preMerchantId = null, preMerchantName = '') {
+    if (!currentMember || !currentMember.id) {
+        alert('❌ يرجى تسجيل الدخول كعضو أولاً.');
+        return;
+    }
+    if (!liveCatalog || liveCatalog.length === 0) {
+        await loadPublicMerchantsCatalogSafe();
+    }
+    const merchMap = new Map();
+    (Array.isArray(liveCatalog) ? liveCatalog : []).forEach(m => {
+        if (m && m.merchant_id && !merchMap.has(String(m.merchant_id))) {
+            merchMap.set(String(m.merchant_id), m.business_name || m.merchant_code || String(m.merchant_id));
+        }
+    });
+    ((memberBundle && Array.isArray(memberBundle.transactions)) ? memberBundle.transactions : []).forEach(tx => {
+        const mid = tx.merchant_id;
+        if (mid && !merchMap.has(String(mid))) {
+            merchMap.set(String(mid), tx.merchant_name || tx.business_name || 'متجر SAWYAN');
+        }
+    });
+    if (preMerchantId && !merchMap.has(String(preMerchantId))) {
+        merchMap.set(String(preMerchantId), preMerchantName || 'متجر SAWYAN');
+    }
+
+    const opts = Array.from(merchMap.entries());
+    if (opts.length === 0 && !preMerchantId) {
+        alert('ℹ️ لا توجد متاجر متاحة للاختيار حالياً. افتح شاشة المتجر أو تعامل مع متجر ثم أعد المحاولة.');
+        return;
+    }
+
+    let compEvUp = null;
+    openMemberModal(`📣 إبلاغ / شكوى ضد تاجر${preMerchantName ? ' — ' + esc(preMerchantName) : ''}`, `
+        <div style="${preMerchantId ? 'display:none;' : ''}">
+            <label style="font-weight:800;font-size:0.84rem;display:block;margin-bottom:4px;">🏪 اختر المتجر المعني بالشكوى *</label>
+            <select id="compMerchantSelect" class="form-control">
+                ${opts.map(([id, name]) => `<option value="${esc(id)}" ${String(id) === String(preMerchantId) ? 'selected' : ''}>${esc(name)}</option>`).join('')}
+            </select>
+        </div>
+        <div>
+            <label style="font-weight:800;font-size:0.84rem;display:block;margin-bottom:4px;">🏷️ تصنيف المخالفة *</label>
+            <select id="compCategorySelect" class="form-control" required>
+                <option value="evasion_excuse">🏃 تهرّب أو تسويف عن توثيق الفاتورة</option>
+                <option value="refused_verification">🚫 رفض صريح لتوثيق العملية لعضو سويًا</option>
+                <option value="hidden_fee">💸 طلب رسوم إضافية أو زيادة سعر بسبب البطاقة</option>
+                <option value="bad_conduct">⚖️ سوء تعامل أو إخلال بالتزام المتجر</option>
+                <option value="other">📝 مخالفة أخرى</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-weight:800;font-size:0.84rem;display:block;margin-bottom:4px;">📌 عنوان الشكوى (3 أحرف على الأقل) *</label>
+            <input type="text" id="compSubjectInput" class="form-control" required minlength="3" placeholder="مثال: رفض الكاشير توثيق فاتورة بقيمة 350 جنيه">
+        </div>
+        <div>
+            <label style="font-weight:800;font-size:0.84rem;display:block;margin-bottom:4px;">📄 التفاصيل الكاملة للموقف (8 أحرف على الأقل) *</label>
+            <textarea id="compDetailsInput" class="form-control" rows="3" required minlength="8" placeholder="اذكر التاريخ التقريبي، الفرع، ومبلغ الفاتورة وما حدث مع الكاشير..."></textarea>
+        </div>
+        <div>
+            <label style="font-weight:800;font-size:0.84rem;display:block;margin-bottom:4px;">📷 إرفاق صورة الفاتورة أو الدليل (اختياري)</label>
+            <div id="compEvidenceUploader"></div>
+            <input type="hidden" id="compEvidenceUrl">
+        </div>
+        <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:10px;font-size:0.78rem;color:#475569;line-height:1.5;">
+            ℹ️ تخضع البلاغات لمراجعة إدارة الامتثال قبل احتساب أي أثر تصعيدي على المتجر لحماية الطرفين من الشكاوى الكيدية.
+        </div>
+    `, async (_form, close) => {
+        const merchantId = preMerchantId || document.getElementById('compMerchantSelect')?.value || '';
+        const category = document.getElementById('compCategorySelect')?.value || 'evasion_excuse';
+        const subject = (document.getElementById('compSubjectInput')?.value || '').trim();
+        const details = (document.getElementById('compDetailsInput')?.value || '').trim();
+        const evidenceUrl = ((compEvUp && compEvUp.getValue()) || document.getElementById('compEvidenceUrl')?.value || '').trim() || null;
+
+        if (!merchantId) throw new Error('يرجى تحديد المتجر أولاً.');
+        if (subject.length < 3) throw new Error('عنوان الشكوى يجب أن يكون 3 أحرف على الأقل.');
+        if (details.length < 8) throw new Error('يرجى كتابة تفاصيل واضحة لا تقل عن 8 أحرف.');
+
+        const res = await window.SAWYAN.API.submitMemberMerchantComplaint({
+            memberId: currentMember.id,
+            merchantId,
+            category,
+            subject,
+            details,
+            evidenceUrl
+        });
+        close();
+        alert(`✅ تم تسجيل الشكوى بنجاح وإحالتها لمراجعة إدارة الامتثال (رقم المرجع: ${String(res?.complaint_id || '').slice(0, 8)}).`);
+    });
+
+    if (window.SAWYAN?.ImageUpload) {
+        const host = document.getElementById('compEvidenceUploader');
+        if (host) {
+            compEvUp = window.SAWYAN.ImageUpload.mountUploader(host, {
+                label: '📷 التقط أو ارفع صورة الفاتورة / الدليل (اختياري)',
+                maxDim: 1280,
+                maxChars: 360000,
+                onChange: (v) => { const el = document.getElementById('compEvidenceUrl'); if (el) el.value = v || ''; }
+            });
+        }
     }
 };
 

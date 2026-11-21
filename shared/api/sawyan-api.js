@@ -489,6 +489,27 @@
             });
         },
 
+        async submitMemberMerchantComplaint({
+            memberId,
+            merchantId,
+            category = 'other',
+            subject,
+            details,
+            evidenceUrl = null,
+            sessionToken = null
+        }) {
+            const tok = sessionToken || SawyanAPI.getMemberSessionToken();
+            return await callRpc('submit_member_merchant_complaint', {
+                p_member_id: memberId,
+                p_merchant_id: merchantId,
+                p_category: category || 'other',
+                p_subject: subject,
+                p_details: details,
+                p_evidence_url: evidenceUrl || null,
+                p_session_token: tok
+            });
+        },
+
         async submitMemberDispute({
             memberId,
             transactionId,
@@ -819,6 +840,19 @@
                 p_employee_id: employeeId,
                 p_branch_id: branchId,
                 p_media_patch: resolvedMediaPatch
+            });
+        },
+
+        async toggleMerchantPause({ merchantId, note = null, sessionToken = null }) {
+            const tok = sessionToken || SawyanAPI.getMerchantSessionToken();
+            const cleanNote = note ? String(note).trim() : null;
+            const pausePatch = cleanNote ? { pause_reason: cleanNote } : null;
+            return await callRpc('manage_merchant_cashier_and_settings', {
+                p_merchant_id: merchantId,
+                p_action: 'toggle_merchant_pause',
+                p_session_token: tok,
+                p_working_hours: cleanNote,
+                p_media_patch: pausePatch
             });
         },
 
@@ -1330,7 +1364,21 @@
             topupAmountLocal = null,
             topupBankRef = null,
             topupProofNotifId = null,
-            reason = 'تحديث تعاقدي معتمد من إدارة علاقات التجار'
+            reason = 'تحديث تعاقدي معتمد من إدارة علاقات التجار',
+            onboardingStatus = null,
+            governanceStatus = null,
+            unsecuredQueueCapOverride = null,
+            clearQueueCapOverride = false,
+            isolatePctOverride = null,
+            clearIsolatePctOverride = false,
+            deferredSettlementCutoffTime = null,
+            clearCutoffTime = false,
+            onboardingNotes = null,
+            d4CycleDaysOverride = null,
+            clearD4CycleDays = false,
+            d4GraceHoursOverride = null,
+            clearD4GraceHours = false,
+            d4DisableTimeTrigger = null
         }) {
             const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id);
             const tok = sessionToken || SawyanAPI.getAdminSessionToken();
@@ -1339,15 +1387,29 @@
                 p_session_token: tok,
                 p_merchant_id: merchantId,
                 p_action: action,
-                p_deduction_percent: deductionPercent !== null ? Number(deductionPercent) : null,
+                p_deduction_percent: deductionPercent !== null && deductionPercent !== '' ? Number(deductionPercent) : null,
                 p_category: category,
-                p_credit_limit: creditLimit !== null ? Number(creditLimit) : null,
+                p_credit_limit: creditLimit !== null && creditLimit !== '' ? Number(creditLimit) : null,
                 p_is_active: isActive,
                 p_is_isolated: isIsolated,
-                p_topup_amount_local: topupAmountLocal !== null ? Number(topupAmountLocal) : null,
+                p_topup_amount_local: topupAmountLocal !== null && topupAmountLocal !== '' ? Number(topupAmountLocal) : null,
                 p_topup_bank_ref: topupBankRef,
                 p_topup_proof_notif_id: topupProofNotifId,
-                p_reason: reason
+                p_reason: reason,
+                p_onboarding_status: onboardingStatus || null,
+                p_governance_status: governanceStatus || null,
+                p_unsecured_queue_cap_override: unsecuredQueueCapOverride !== null && unsecuredQueueCapOverride !== '' ? Number(unsecuredQueueCapOverride) : null,
+                p_clear_queue_cap_override: Boolean(clearQueueCapOverride),
+                p_isolate_pct_override: isolatePctOverride !== null && isolatePctOverride !== '' ? Number(isolatePctOverride) : null,
+                p_clear_isolate_pct_override: Boolean(clearIsolatePctOverride),
+                p_deferred_settlement_cutoff_time: deferredSettlementCutoffTime || null,
+                p_clear_cutoff_time: Boolean(clearCutoffTime),
+                p_onboarding_notes: onboardingNotes !== undefined ? onboardingNotes : null,
+                p_d4_cycle_days_override: d4CycleDaysOverride !== null && d4CycleDaysOverride !== '' ? Number(d4CycleDaysOverride) : null,
+                p_clear_d4_cycle_days: Boolean(clearD4CycleDays),
+                p_d4_grace_hours_override: d4GraceHoursOverride !== null && d4GraceHoursOverride !== '' ? Number(d4GraceHoursOverride) : null,
+                p_clear_d4_grace_hours: Boolean(clearD4GraceHours),
+                p_d4_disable_time_trigger: d4DisableTimeTrigger === null || d4DisableTimeTrigger === undefined ? null : Boolean(d4DisableTimeTrigger)
             });
         },
 

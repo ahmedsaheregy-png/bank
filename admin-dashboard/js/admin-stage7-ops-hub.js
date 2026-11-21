@@ -29,6 +29,54 @@
 
     const _LIVE_MEMBERS_MAP = new Map();
     const _LIVE_MERCHANTS_MAP = new Map();
+    let _activeMerchantFilter = 'all';
+    const _ONBOARD_LABELS = {
+        draft_incomplete: ['⚠️ مسودة ناقصة', '#fef3c7', '#92400e'],
+        needs_correction: ['✏️ بانتظار تصحيح التاجر', '#ffedd5', '#9a3412'],
+        approved: ['✅ مؤهل بياناتياً', '#dcfce7', '#166534'],
+        rejected: ['🚫 مرفوض', '#fee2e2', '#991b1b']
+    };
+    const _FIN_LABELS = {
+        unfunded: ['💳 بلا تمويل (0 شحن/ائتمان)', '#f1f5f9', '#334155'],
+        healthy_green: ['🟢 رصيد أخضر (>30%)', '#dcfce7', '#166534'],
+        warning_yellow: ['🟡 إنذار مبكر (≤30%)', '#fef3c7', '#92400e'],
+        warning_red: ['🟠 إنذار حرج (≤20%)', '#ffedd5', '#9a3412'],
+        isolated_low_balance: ['🔴 عزل وقائي (≤10%)', '#fee2e2', '#991b1b'],
+        depleted_fifo_grace: ['⏸️ نفاد ومهلة FIFO', '#fee2e2', '#991b1b'],
+        locked_queue_full: ['🔒 قفل تام (نفاد الطابور / D4)', '#7f1d1d', '#ffffff']
+    };
+    const _GOV_LABELS = {
+        good_standing: ['🟢 سليم ممتثل', '#dcfce7', '#166534'],
+        probation_warning: ['🟡 مراقبة وإنذار (د1)', '#fef3c7', '#92400e'],
+        restricted_no_reject: ['🟠 تقييد الدرجة 2 (بلا رفض يدوي)', '#ffedd5', '#9a3412'],
+        paused_by_merchant: ['⏸️ إجازة بطلب التاجر', '#e0f2fe', '#075985'],
+        paused_by_admin: ['⏸️ موقوف إدارياً', '#f1f5f9', '#475569'],
+        suspended_compliance: ['🔴 تعليق امتثال (متأخر ≥14ي)', '#fee2e2', '#991b1b'],
+        banned_permanent: ['🚫 حظر نهائي (D3)', '#450a0a', '#ffffff']
+    };
+    function pillHtml(pair) {
+        const p = pair || ['—', '#f1f5f9', '#334155'];
+        return '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:0.71rem;font-weight:800;background:' + p[1] + ';color:' + p[2] + ';">' + esc(p[0]) + '</span>';
+    }
+    function matchMerchantFilter(m, fk) {
+        if (!fk || fk === 'all') return true;
+        const lc = m.lifecycle || {};
+        const onb = m.onboarding_status || lc.onboarding_status || 'approved';
+        const fin = lc.financial_status || 'healthy_green';
+        const gov = m.governance_status || lc.governance_status || 'good_standing';
+        const acc = lc.effective_access || {};
+        const vc = lc.violation_counters || {};
+        if (fk === 'draft_incomplete') return onb === 'draft_incomplete' || onb === 'needs_correction';
+        if (fk === 'unfunded') return onb === 'approved' && fin === 'unfunded';
+        if (fk === 'active_store') return Boolean(acc.is_visible_on_radar);
+        if (fk === 'warnings') return fin === 'warning_yellow' || fin === 'warning_red';
+        if (fk === 'isolated_fifo') return fin === 'isolated_low_balance' || fin === 'depleted_fifo_grace';
+        if (fk === 'locked') return fin === 'locked_queue_full';
+        if (fk === 'compliance_alerts') return gov === 'probation_warning' || gov === 'restricted_no_reject' || Number(vc.verified_price_gouging_count || 0) >= 3 || Number(vc.open_complaints_count || 0) > 0;
+        if (fk === 'paused') return gov === 'paused_by_merchant' || gov === 'paused_by_admin';
+        if (fk === 'suspended_banned') return gov === 'suspended_compliance' || gov === 'banned_permanent' || onb === 'rejected';
+        return true;
+    }
     const _ADM_PAY_LABELS = {
         cash: '💵 نقدي (Cash)',
         pos_card: '💳 بطاقة POS',
@@ -833,27 +881,47 @@
             } catch (err) { toast(err.message, true); }
         };
 
-        // Override Merchants Screen with Live Contract Editor + Bank Top-Up B2B Approval
-        window.loadMerchants = async function (q) {
+        // Override Merchants Screen with Live 3-Axis Lifecycle Filter + Contract Editor + Bank Top-Up
+        window.loadMerchants = async function (q, filterKey) {
             const page = document.getElementById('merchantsPage');
             if (!page) return;
+            if (filterKey !== undefined) _activeMerchantFilter = filterKey;
             const [res, proofsRes] = await Promise.all([
                 window.SAWYAN.API.adminSearchAndReplyOps({ action: 'search', entity: 'merchants', query: q || '' }),
                 window.SAWYAN.API.adminSearchAndReplyOps({ action: 'search', entity: 'bank_topup_proofs' })
             ]);
-            const list = res.results || [];
+            const allList = res.results || [];
             const proofs = proofsRes.results || [];
             _LIVE_MERCHANTS_MAP.clear();
-            list.forEach(function (m) { if (m && m.id) _LIVE_MERCHANTS_MAP.set(String(m.id), m); });
+            allList.forEach(function (m) { if (m && m.id) _LIVE_MERCHANTS_MAP.set(String(m.id), m); });
+            const list = allList.filter(function (m) { return matchMerchantFilter(m, _activeMerchantFilter); });
+            const filterDefs = [
+                ['all', 'الكل'],
+                ['active_store', '🟢 ظاهر بالستور والرادار'],
+                ['draft_incomplete', '⚠️ بانتظار استكمال/تصحيح'],
+                ['unfunded', '💳 معتمد بلا تمويل'],
+                ['warnings', '🟡 إنذار رصيد (30%/20%)'],
+                ['isolated_fifo', '🔴 معزول/مهلة FIFO'],
+                ['locked', '🔒 قفل تام'],
+                ['compliance_alerts', '⚖️ تنبيهات/شكاوى/تلاعب'],
+                ['paused', '⏸️ إجازة/إيقاف'],
+                ['suspended_banned', '🚫 معلق/محظور/مرفوض']
+            ];
+            const filterBarHtml = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">' + filterDefs.map(function (fd) {
+                const cnt = allList.filter(function (m) { return matchMerchantFilter(m, fd[0]); }).length;
+                const active = _activeMerchantFilter === fd[0];
+                return '<button type="button" data-mer-filter="' + fd[0] + '" onclick="loadMerchants(document.getElementById(\'svLiveMerSearch\').value,\'' + fd[0] + '\')" style="padding:5px 11px;border-radius:999px;font-size:0.76rem;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;border:1.5px solid ' + (active ? '#0f766e' : '#cbd5e1') + ';background:' + (active ? '#0f766e' : '#ffffff') + ';color:' + (active ? '#ffffff' : '#334155') + ';">' + esc(fd[1]) + ' (' + cnt + ')</button>';
+            }).join('') + '</div>';
 
             page.innerHTML =
-                '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">' +
-                    '<div><h2 style="margin:0;">🏪 إدارة التجار والعقود والشحن البنكي (' + list.length + ')</h2><div style="font-size:0.8rem;color:#64748b;">تفعيل المتاجر، تثبيت نسبة العمولة التعاقدية، سقف الائتمان D4، واعتماد الحوالات البنكية B2B</div></div>' +
+                '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">' +
+                    '<div><h2 style="margin:0;">🏪 إدارة التجار والمحاور الثلاثة والشحن البنكي (' + list.length + '/' + allList.length + ')</h2><div style="font-size:0.8rem;color:#64748b;">محور التأهيل • المحور المالي (30/20/10% + D4 + FIFO) • محور الحوكمة والامتثال</div></div>' +
                     '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
                         '<input id="svLiveMerSearch" type="text" value="' + esc(q || '') + '" placeholder="ابحث بكود التاجر أو الاسم أو الهاتف..." class="form-control" style="width:min(100%,240px);">' +
                         '<button type="button" class="btn btn-primary" onclick="loadMerchants(document.getElementById(\'svLiveMerSearch\').value)">🔎 بحث سيرفري</button>' +
                     '</div>' +
                 '</div>' +
+                filterBarHtml +
                 (proofs.length > 0
                     ? '<div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:14px;padding:14px;margin-bottom:14px;">' +
                         '<h3 style="margin:0 0 8px 0;font-size:0.95rem;color:#92400e;">🏦 إشعارات تحويل بنكي لشحن رصيد التجار بانتظار المطابقة (' + proofs.length + ')</h3>' +
@@ -871,8 +939,8 @@
                       '</div>'
                     : '') +
                 '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px;overflow-x:auto;">' +
-                    '<table class="data-table"><thead><tr><th>كود التاجر</th><th>المنشأة</th><th>الدولة / الفئة</th><th>نسبة العمولة</th><th>رصيد الشحن 2101</th><th>سقف D4 / الصافي الحر</th><th>الحالة</th><th>إجراءات التعاقد والشحن</th></tr></thead><tbody>' +
-                    (list.length === 0 ? '<tr><td colspan="8" class="empty-state">لا يوجد تجار مسجلون في قاعدة البيانات الحية حالياً</td></tr>' : list.map(function (m) {
+                    '<table class="data-table"><thead><tr><th>كود التاجر</th><th>المنشأة</th><th>الدولة / الفئة</th><th>نسبة العمولة</th><th>رصيد الشحن 2101</th><th>سقف D4 / الصافي الحر</th><th>الحالة الثلاثية</th><th>إجراءات التعاقد والشحن</th></tr></thead><tbody>' +
+                    (list.length === 0 ? '<tr><td colspan="8" class="empty-state">لا يوجد تجار مطابقون لهذا التصنيف حالياً</td></tr>' : list.map(function (m) {
                         const logoThumb = renderAdmThumb(m.logo_url, '🏪 شعار ' + esc(m.business_name));
                         const cashBal = Number(m.actual_cash_balance || 0);
                         const holdBal = Number(m.soft_hold_balance || 0);
@@ -881,11 +949,18 @@
                         const curr = esc(m.currency_code || '');
                         const cashColor = cashBal < 0 ? '#dc2626' : (cashBal === 0 ? '#b45309' : '#059669');
                         const freeColor = freeBal < 0 ? '#dc2626' : (freeBal === 0 ? '#b45309' : '#059669');
-                        const statusHtml = !m.is_active
-                            ? '<span class="badge badge-warning">⏳ بانتظار التفعيل</span>'
-                            : ((m.is_isolated || freeBal < 0)
-                                ? '<span class="badge badge-danger">' + (freeBal < 0 ? '🔴 مديون / معزول' : '🔴 معزول') + '</span>'
-                                : '<span class="badge badge-success">🟢 مفعل</span>');
+                        const lc = m.lifecycle || {};
+                        const onb = m.onboarding_status || lc.onboarding_status || 'approved';
+                        const fin = lc.financial_status || 'healthy_green';
+                        const gov = m.governance_status || lc.governance_status || 'good_standing';
+                        const vc = lc.violation_counters || {};
+                        const statusHtml = '<div style="display:flex;flex-direction:column;gap:4px;">' +
+                            pillHtml(_ONBOARD_LABELS[onb]) +
+                            pillHtml(_FIN_LABELS[fin]) +
+                            pillHtml(_GOV_LABELS[gov]) +
+                            (Number(vc.open_complaints_count || 0) > 0 ? '<span style="font-size:0.7rem;color:#b91c1c;font-weight:800;">📣 ' + Number(vc.open_complaints_count) + ' شكوى مفتوحة</span>' : '') +
+                            (Number(vc.verified_price_gouging_count || 0) > 0 ? '<span style="font-size:0.7rem;color:#991b1b;font-weight:800;">🚨 تلاعب أسعار: ' + Number(vc.verified_price_gouging_count) + '/3</span>' : '') +
+                        '</div>';
                         return '<tr>' +
                             '<td data-label="كود التاجر"><b>' + esc(m.merchant_code) + '</b></td>' +
                             '<td data-label="المنشأة"><div style="display:flex;align-items:center;gap:8px;">' + logoThumb + '<div><b>' + esc(m.business_name) + '</b><br><small style="color:#64748b;">' + esc(m.phone) + '</small></div></div></td>' +
@@ -900,9 +975,9 @@
                                 '<div style="font-size:0.8rem;color:' + (credLim > 0 ? '#1d4ed8' : '#475569') + ';font-weight:800;">سقف D4: <span dir="ltr">' + fmt2(credLim) + ' ' + curr + '</span></div>' +
                                 '<div style="font-size:0.76rem;color:' + freeColor + ';font-weight:900;margin-top:2px;">الصافي الحر: <span dir="ltr">' + fmt2(freeBal) + ' ' + curr + '</span></div>' +
                             '</td>' +
-                            '<td data-label="الحالة">' + statusHtml + (Number(m.fifo_queue_count || 0) > 0 ? '<div style="font-size:0.72rem;color:#b91c1c;font-weight:800;margin-top:3px;">⏸️ ' + Number(m.fifo_queue_count) + ' فاتورة FIFO (عمولة ' + fmt2(m.fifo_required_comm_local || 0) + ' ' + curr + ')</div>' : '') + '</td>' +
+                            '<td data-label="الحالة الثلاثية">' + statusHtml + (Number(m.fifo_queue_count || 0) > 0 ? '<div style="font-size:0.72rem;color:#b91c1c;font-weight:800;margin-top:3px;">⏸️ ' + Number(m.fifo_queue_count) + ' فاتورة FIFO (عمولة ' + fmt2(m.fifo_required_comm_local || 0) + ' ' + curr + ')</div>' : '') + '</td>' +
                             '<td data-label="إجراءات التعاقد والشحن"><div style="display:flex;gap:5px;flex-wrap:wrap;">' +
-                                '<button type="button" class="btn-sm btn-primary" onclick="svOpenMerchantContractModal(\'' + esc(m.id) + '\')">⚙️ تحرير العقد والشحن والوثائق</button>' +
+                                '<button type="button" class="btn-sm btn-primary" onclick="svOpenMerchantContractModal(\'' + esc(m.id) + '\')">⚙️ تحرير العقد والحالة والشحن</button>' +
                                 '<button type="button" class="btn-sm btn-warning" onclick="svOpenUserPasswordResetModal(\'merchant\',\'' + esc(m.merchant_code) + '\')">🔑 كلمة مرور</button>' +
                             '</div></td>' +
                         '</tr>';
@@ -945,9 +1020,49 @@
             const freeBg = freeBal < 0 ? '#fef2f2' : (freeBal === 0 ? '#fffbeb' : '#f0fdf4');
             const freeClr = freeBal < 0 ? '#dc2626' : (freeBal === 0 ? '#b45309' : '#047857');
 
+            const lc = m.lifecycle || {};
+            const acc = lc.effective_access || {};
+            const vc = lc.violation_counters || {};
+            const onb = m.onboarding_status || lc.onboarding_status || 'approved';
+            const fin = lc.financial_status || 'healthy_green';
+            const gov = m.governance_status || lc.governance_status || 'good_standing';
+            const cutoffStr = m.deferred_settlement_cutoff_time ? String(m.deferred_settlement_cutoff_time).slice(0, 5) : '';
+            const qCapVal = (m.unsecured_queue_cap_override !== null && m.unsecured_queue_cap_override !== undefined) ? String(m.unsecured_queue_cap_override) : '';
+            const isoPctVal = (m.isolate_pct_override !== null && m.isolate_pct_override !== undefined) ? String(m.isolate_pct_override) : '';
+            const d4CycOv = (m.d4_cycle_days_override !== null && m.d4_cycle_days_override !== undefined) ? String(m.d4_cycle_days_override) : '';
+            const d4GrOv = (m.d4_grace_hours_override !== null && m.d4_grace_hours_override !== undefined) ? String(m.d4_grace_hours_override) : '';
+            const d4DisTime = Boolean(m.d4_time_trigger_disabled || lc.d4_time_trigger_disabled);
+            const d4DueStmt = Number(lc.d4_statement_due_local || 0);
+            const d4OpenComm = Number(lc.d4_open_cycle_comm_local || 0);
+            const d4SummaryHtml = credLim > 0 ? (
+                '<div style="background:#eff6ff;border:1.5px solid #60a5fa;border-radius:10px;padding:10px 12px;font-size:0.79rem;color:#1e3a8a;line-height:1.6;">' +
+                    '<div style="font-weight:900;margin-bottom:4px;">⏱️ حالة دورة الائتمان D4 السارية: ' +
+                        (d4DisTime ? '<span style="color:#b45309;">معطّل الإغلاق الزمني (سقف مبلغ فقط)</span>' : ('كل <b>' + Number(lc.d4_effective_cycle_days || 1) + '</b> يوم • إغلاق <b>' + esc(String(lc.d4_effective_cutoff_time || '23:59:00').slice(0, 5)) + '</b> • مهلة سداد <b>' + Number(lc.d4_effective_grace_hours ?? 2) + ' ساعة</b>')) +
+                    '</div>' +
+                    '<div style="display:flex;gap:12px;flex-wrap:wrap;">' +
+                        '<span>🧾 واجب عن دورة مغلقة: <b dir="ltr">' + fmt2(d4DueStmt) + ' ' + curr + '</b></span>' +
+                        '<span>📊 جاري بالدورة المفتوحة: <b dir="ltr">' + fmt2(d4OpenComm) + ' ' + curr + '</b></span>' +
+                        (lc.d4_cycle_close_at ? '<span>🔚 الإغلاق: <b>' + esc(new Date(lc.d4_cycle_close_at).toLocaleString('ar-EG')) + '</b></span>' : '') +
+                        (lc.d4_grace_due_at ? '<span>⏳ نهاية السماح: <b>' + esc(new Date(lc.d4_grace_due_at).toLocaleString('ar-EG')) + '</b></span>' : '') +
+                        (lc.d4_in_grace_window ? '<span class="badge badge-warning">داخل مهلة السماح الساعية</span>' : '') +
+                        (lc.cutoff_breached ? '<span class="badge badge-danger">متجاوز نهاية السماح — مقفل ومعزول</span>' : '') +
+                    '</div>' +
+                '</div>'
+            ) : '';
+
             openStage7Modal(
-                '⚙️ تحرير عقد ومدخلات التاجر: ' + esc(m.business_name) + ' (' + esc(m.merchant_code) + ')',
+                '⚙️ إدارة عقد التاجر والمحاور الثلاثة: ' + esc(m.business_name) + ' (' + esc(m.merchant_code) + ')',
                 '<div style="display:grid;gap:12px;">' +
+                    '<div style="background:#0f172a;color:#f8fafc;border-radius:12px;padding:10px 14px;display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;">' +
+                        '<div style="font-size:0.82rem;font-weight:900;">⚡ النتيجة التشغيلية الآن: ' +
+                            '<span style="margin-inline:6px;">' + (acc.is_visible_on_radar ? '🟢 ظاهر بالستور والرادار' : '🔴 مخفي عن الستور والرادار') + '</span> • ' +
+                            '<span style="margin-inline:6px;">' + (acc.can_accept_pos ? '🟢 توثيق الفواتير مفتوح' : '🔒 توثيق الفواتير مغلق') + '</span> • ' +
+                            '<span style="margin-inline:6px;">' + (acc.can_login_portal ? '🟢 دخول اللوحة: ' + esc(acc.portal_access_mode || 'full') : '🚫 الدخول محظور') + '</span>' +
+                        '</div>' +
+                        ((lc.hide_reason_ar || lc.pos_lock_reason_ar)
+                            ? '<div style="width:100%;font-size:0.75rem;color:#fde68a;">' + esc(lc.hide_reason_ar || lc.pos_lock_reason_ar) + '</div>'
+                            : '') +
+                    '</div>' +
                     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:8px;">' +
                         '<div style="background:' + cashBg + ';border:1.5px solid ' + cashBorder + ';border-radius:10px;padding:10px 12px;">' +
                             '<div style="font-size:0.74rem;color:#475569;font-weight:800;">💵 رصيد الشحن الفعلي (2101)</div>' +
@@ -962,7 +1077,7 @@
                         '<div style="background:' + freeBg + ';border:1.5px solid ' + freeBorder + ';border-radius:10px;padding:10px 12px;">' +
                             '<div style="font-size:0.74rem;color:#0f172a;font-weight:800;">🛡️ الصافي الحر المتاح للتغطية</div>' +
                             '<div style="font-size:1.08rem;font-weight:900;color:' + freeClr + ';margin-top:3px;" dir="ltr">' + fmt2(freeBal) + ' ' + curr + '</div>' +
-                            '<div style="font-size:0.68rem;color:#475569;margin-top:2px;">فعلي − محجوز + ائتمان D4</div>' +
+                            '<div style="font-size:0.68rem;color:#475569;margin-top:2px;">' + pillHtml(_FIN_LABELS[fin]) + '</div>' +
                             (holdBal > 0 ? '<div style="font-size:0.72rem;color:#b45309;font-weight:800;margin-top:3px;">⏳ محجوز للفواتير المعلقة: <span dir="ltr">' + fmt2(holdBal) + ' ' + curr + '</span></div>' : '') +
                         '</div>' +
                     '</div>' +
@@ -972,13 +1087,46 @@
                     (Number(m.fifo_queue_count || 0) > 0
                         ? '<div style="background:#fef2f2;border:1.5px solid #fca5a5;color:#991b1b;padding:10px 12px;border-radius:10px;font-size:0.82rem;font-weight:700;line-height:1.6;">⏸️ لدى هذا التاجر <b>' + Number(m.fifo_queue_count) + '</b> فاتورة محجوزة في طابور الشحن FIFO (عمولة مطلوبة: <b>' + fmt2(m.fifo_required_comm_local || 0) + ' ' + curr + '</b>). بمجرد شحن الرصيد أو منح سقف ائتمان D4 كافٍ سيتم تحريرها تلقائياً وتغذية صندوق العضو ورفع العزل فوراً.</div>'
                         : '') +
-                    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));gap:10px;">' +
+                    d4SummaryHtml +
+                    '<div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:10px 12px;display:flex;gap:12px;flex-wrap:wrap;font-size:0.78rem;font-weight:700;color:#334155;">' +
+                        '<span>⏳ متأخرة &gt;48س (30ي): <b>' + Number(vc.escalated_pending_30d || 0) + '</b>/' + Number(vc.restrict_escalated_tx_30d || 5) + '</span>' +
+                        '<span>⚖️ نزاعات خاسرة (30ي): <b>' + Number(vc.lost_disputes_30d || 0) + '</b>/' + Number(vc.restrict_lost_disputes_30d || 3) + '</span>' +
+                        '<span>🚨 بلاغات تلاعب أسعار: <b>' + Number(vc.verified_price_gouging_count || 0) + '</b>/3</span>' +
+                        '<span>📣 شكاوى موثقة (30ي): <b>' + Number(vc.verified_complaints_30d || 0) + '</b>/' + Number(vc.restrict_verified_complaints_30d || 3) + ' (مفتوحة: ' + Number(vc.open_complaints_count || 0) + ')</span>' +
+                    '</div>' +
+                    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:10px;">' +
+                        '<div><label style="font-size:0.78rem;font-weight:800;">المحور 1 — حالة التأهيل والأوراق</label><select id="svMerOnboarding" class="form-control">' +
+                            '<option value="draft_incomplete"' + (onb === 'draft_incomplete' ? ' selected' : '') + '>⚠️ مسودة غير مكتملة</option>' +
+                            '<option value="needs_correction"' + (onb === 'needs_correction' ? ' selected' : '') + '>✏️ مطلوب استيفاء/تصحيح</option>' +
+                            '<option value="approved"' + (onb === 'approved' ? ' selected' : '') + '>✅ مؤهل ومعتمد بياناتياً</option>' +
+                            '<option value="rejected"' + (onb === 'rejected' ? ' selected' : '') + '>🚫 مرفوض</option>' +
+                        '</select></div>' +
+                        '<div><label style="font-size:0.78rem;font-weight:800;">ملاحظات التأهيل للتاجر</label><input id="svMerOnboardingNote" type="text" value="' + esc(m.onboarding_notes || '') + '" placeholder="تظهر للتاجر عند طلب التصحيح..." class="form-control"></div>' +
+                        '<div><label style="font-size:0.78rem;font-weight:800;">المحور 3 — حالة الحوكمة والامتثال</label><select id="svMerGovernance" class="form-control">' +
+                            '<option value="good_standing"' + (gov === 'good_standing' ? ' selected' : '') + '>🟢 سليم ممتثل</option>' +
+                            '<option value="probation_warning"' + (gov === 'probation_warning' ? ' selected' : '') + '>🟡 تحت المراقبة والإنذار (د1)</option>' +
+                            '<option value="restricted_no_reject"' + (gov === 'restricted_no_reject' ? ' selected' : '') + '>🟠 تقييد د2 (ممنوع من الرفض ومخفي)</option>' +
+                            '<option value="paused_by_merchant"' + (gov === 'paused_by_merchant' ? ' selected' : '') + '>⏸️ إجازة بطلب التاجر</option>' +
+                            '<option value="paused_by_admin"' + (gov === 'paused_by_admin' ? ' selected' : '') + '>⏸️ موقوف إدارياً</option>' +
+                            '<option value="suspended_compliance"' + (gov === 'suspended_compliance' ? ' selected' : '') + '>🔴 تعليق امتثال (Maker-Checker)</option>' +
+                            '<option value="banned_permanent"' + (gov === 'banned_permanent' ? ' selected' : '') + '>🚫 حظر نهائي D3 (Maker-Checker)</option>' +
+                        '</select></div>' +
+                        '<div><label style="font-size:0.78rem;font-weight:800;">سبب الحوكمة / القرار (للتدقيق)</label><input id="svMerGovReason" type="text" value="' + esc(m.governance_reason || 'تحديث تعاقدي وحوكمة معتمدة') + '" class="form-control"></div>' +
                         '<div><label style="font-size:0.78rem;font-weight:800;">نسبة عمولة سويًا (%)</label><input id="svMerPct" type="number" step="0.5" min="0.5" max="95" value="' + Number(m.deduction_percent || 10) + '" class="form-control"></div>' +
                         '<div><label style="font-size:0.78rem;font-weight:800;">التصنيف التجاري</label><input id="svMerCat" type="text" value="' + esc(m.category || 'supermarket') + '" class="form-control"></div>' +
-                        '<div><label style="font-size:0.78rem;font-weight:800;">سقف الائتمان الاستثنائي D4 (' + curr + ')</label><input id="svMerCredit" type="number" step="100" min="0" value="' + Number(m.credit_limit || 0) + '" class="form-control"></div>' +
-                        '<div><label style="font-size:0.78rem;font-weight:800;">حالة التفعيل بالرادار</label><select id="svMerActive" class="form-control"><option value="true" ' + (m.is_active ? 'selected' : '') + '>🟢 مفعل ومعتمد</option><option value="false" ' + (!m.is_active ? 'selected' : '') + '>⏳ موقوف / قيد المراجعة</option></select></div>' +
+                        '<div><label style="font-size:0.78rem;font-weight:800;">سقف الائتمان D4 (' + curr + ') [Maker-Checker]</label><input id="svMerCredit" type="number" step="100" min="0" value="' + Number(m.credit_limit || 0) + '" class="form-control"></div>' +
+                        '<div><label style="font-size:0.78rem;font-weight:800;">استثناء دورة D4 أيام (فارغ=العام ' + Number(lc.d4_effective_cycle_days || 1) + ')</label><input id="svMerD4CycleDays" type="number" min="1" max="90" step="1" value="' + esc(d4CycOv) + '" placeholder="الإعداد العام" class="form-control"></div>' +
+                        '<div><label style="font-size:0.78rem;font-weight:800;">استثناء وقت إغلاق D4 (فارغ=العام ' + esc(String(lc.d4_effective_cutoff_time || '23:59:00').slice(0, 5)) + ')</label><input id="svMerCutoffTime" type="time" value="' + esc(cutoffStr) + '" class="form-control"></div>' +
+                        '<div><label style="font-size:0.78rem;font-weight:800;">استثناء مهلة سداد D4 ساعة (فارغ=العام ' + Number(lc.d4_effective_grace_hours ?? 2) + ')</label><input id="svMerD4GraceHours" type="number" min="0" max="168" step="0.5" value="' + esc(d4GrOv) + '" placeholder="الإعداد العام" class="form-control"></div>' +
+                        '<div><label style="font-size:0.78rem;font-weight:800;">استثناء طابور ما بعد النفاد (فارغ=العام ' + Number(lc.effective_queue_cap ?? 3) + ')</label><input id="svMerQueueCapOverride" type="number" min="0" step="1" value="' + esc(qCapVal) + '" placeholder="الإعداد العام" class="form-control"></div>' +
+                        '<div><label style="font-size:0.78rem;font-weight:800;">استثناء عتبة العزل % (فارغ=العام)</label><input id="svMerIsoPctOverride" type="number" min="0.5" max="99" step="0.5" value="' + esc(isoPctVal) + '" placeholder="الإعداد العام" class="form-control"></div>' +
+                        '<div style="grid-column:1 / -1;display:flex;align-items:center;gap:8px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px;">' +
+                            '<input id="svMerD4DisableTime" type="checkbox"' + (d4DisTime ? ' checked' : '') + ' style="width:16px;height:16px;">' +
+                            '<label for="svMerD4DisableTime" style="margin:0;font-size:0.78rem;font-weight:800;cursor:pointer;">تعطيل الإغلاق الزمني D4 لهذا التاجر (العمل بسقف المبلغ فقط دون مهلة يومية/ساعية)</label>' +
+                        '</div>' +
                     '</div>' +
-                    '<button type="button" class="btn btn-primary" onclick="svSaveMerchantContract(\'' + m.id + '\')">💾 حفظ تعديلات عقد التاجر فوراً</button>' +
+                    '<div style="font-size:0.74rem;color:#64748b;">ℹ️ تعديل سقف الائتمان D4 أو التعليق الامتثالي/الحظر النهائي يمر عبر طابور Maker–Checker لغير المؤسس، وينفذ فوراً للمؤسس السيادي.</div>' +
+                    '<button type="button" id="svSaveMerContractBtn" class="btn btn-primary" onclick="svSaveMerchantContract(\'' + m.id + '\')">💾 حفظ وتطبيق الحالة الثلاثية والعقد</button>' +
                     '<div style="background:#f8fafc;border:1px solid #cbd5e1;padding:12px;border-radius:10px;">' +
                         '<div style="font-weight:900;color:#0f172a;margin-bottom:6px;">🖼️ صور المنشأة ووثائق التحقق الرسمية</div>' +
                         '<div style="font-size:0.78rem;color:#475569;margin-bottom:8px;">السجل التجاري: <code>' + esc(m.commercial_reg_no || '—') + '</code> • الرقم الضريبي: <code>' + esc(m.tax_id || '—') + '</code></div>' +
@@ -996,28 +1144,51 @@
                         '</div>' +
                     '</div>' +
                 '</div>',
-                '680px'
+                '760px'
             );
         };
 
         window.svSaveMerchantContract = async function (merchantId) {
             try {
+                const qOvRaw = document.getElementById('svMerQueueCapOverride').value.trim();
+                const iOvRaw = document.getElementById('svMerIsoPctOverride').value.trim();
+                const cutRaw = document.getElementById('svMerCutoffTime').value.trim();
+                const cycOvRaw = document.getElementById('svMerD4CycleDays').value.trim();
+                const grOvRaw = document.getElementById('svMerD4GraceHours').value.trim();
+                const disTimeVal = Boolean(document.getElementById('svMerD4DisableTime')?.checked);
                 const res = await window.SAWYAN.API.adminManageMerchantContract({
                     merchantId: merchantId,
                     action: 'update_contract',
                     deductionPercent: Number(document.getElementById('svMerPct').value),
                     category: document.getElementById('svMerCat').value.trim(),
                     creditLimit: Number(document.getElementById('svMerCredit').value || 0),
-                    isActive: document.getElementById('svMerActive').value === 'true',
-                    isIsolated: null
+                    onboardingStatus: document.getElementById('svMerOnboarding').value,
+                    onboardingNotes: document.getElementById('svMerOnboardingNote').value.trim(),
+                    governanceStatus: document.getElementById('svMerGovernance').value,
+                    reason: document.getElementById('svMerGovReason').value.trim() || 'تحديث تعاقدي معتمد من إدارة علاقات التجار',
+                    unsecuredQueueCapOverride: qOvRaw === '' ? null : Number(qOvRaw),
+                    clearQueueCapOverride: qOvRaw === '',
+                    isolatePctOverride: iOvRaw === '' ? null : Number(iOvRaw),
+                    clearIsolatePctOverride: iOvRaw === '',
+                    deferredSettlementCutoffTime: cutRaw === '' ? null : (cutRaw.length === 5 ? cutRaw + ':00' : cutRaw),
+                    clearCutoffTime: cutRaw === '',
+                    d4CycleDaysOverride: cycOvRaw === '' ? null : Number(cycOvRaw),
+                    clearD4CycleDays: cycOvRaw === '',
+                    d4GraceHoursOverride: grOvRaw === '' ? null : Number(grOvRaw),
+                    clearD4GraceHours: grOvRaw === '',
+                    d4DisableTimeTrigger: disTimeVal
                 });
                 window.closeStage7Modal();
-                const relCnt = Number(res?.released_fifo_count || 0);
-                toast(relCnt > 0
-                    ? ('تم تحديث عقد التاجر وتحرير ' + relCnt + ' فاتورة من طابور FIFO تلقائياً!')
-                    : 'تم تحديث عقد ومدخلات التاجر بنجاح!', false);
+                if (res && res.pending_maker_checker) {
+                    toast('📤 تم إرسال التعديل الحساس لطابور الاعتماد المزدوج Maker–Checker (طلب #' + String(res.request_id || '').slice(0, 8) + ').', false);
+                } else {
+                    const relCnt = Number(res?.released_fifo_count || 0);
+                    toast(relCnt > 0
+                        ? ('تم تحديث عقد التاجر وتحرير ' + relCnt + ' فاتورة من طابور FIFO تلقائياً!')
+                        : 'تم تحديث الحالة الثلاثية وعقد التاجر بنجاح!', false);
+                }
                 if (typeof window.refreshSovereignBundle === 'function') await window.refreshSovereignBundle(false);
-                await window.loadMerchants();
+                await window.loadMerchants((document.getElementById('svLiveMerSearch') || {}).value || '');
             } catch (err) { toast(err.message, true); }
         };
 
@@ -1293,16 +1464,25 @@
         window.loadDisputes = async function (q) {
             const page = document.getElementById('disputesPage');
             if (!page) return;
-            const [dispRes, bundle] = await Promise.all([
+            const [dispRes, compRes, bundle] = await Promise.all([
                 window.SAWYAN.API.adminSearchAndReplyOps({ action: 'search', entity: 'disputes', query: q || '' }),
+                window.SAWYAN.API.adminSearchAndReplyOps({ action: 'search', entity: 'merchant_complaints', query: q || '' }),
                 window.SAWYAN.API.getAdminSovereignBundle()
             ]);
             const disputes = Array.isArray(dispRes.results) ? dispRes.results : [];
+            const complaints = Array.isArray(compRes.results) ? compRes.results : [];
             const gouging = Array.isArray(bundle.price_gouging_reports) ? bundle.price_gouging_reports : [];
+            const compCatLabels = {
+                refused_verification: 'رفض توثيق الفاتورة',
+                evasion_excuse: 'تهرّب أو مماطلة',
+                hidden_fee: 'رسوم إضافية على السعر',
+                bad_conduct: 'سوء معاملة',
+                other: 'مخالفة أخرى'
+            };
 
             page.innerHTML =
                 '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">' +
-                    '<div><h2 style="margin:0;">⚠️ مركز تحكيم النزاعات وبلاغات الأسعار الحية (' + disputes.length + ' نزاع • ' + gouging.length + ' بلاغ سعر)</h2><div style="font-size:0.8rem;color:#64748b;">عرض مرفقات الإثبات، تقييم أثر التأهل، وتنفيذ عكس العمولة أو تجميد المتجر مباشرة عبر الخادم</div></div>' +
+                    '<div><h2 style="margin:0;">⚠️ مركز تحكيم النزاعات والشكاوى وبلاغات الأسعار الحية (' + disputes.length + ' نزاع • ' + complaints.length + ' شكوى • ' + gouging.length + ' بلاغ سعر)</h2><div style="font-size:0.8rem;color:#64748b;">عرض مرفقات الإثبات، التحقق من شكاوى التهرّب ضد المتاجر، وتنفيذ عكس العمولة أو التصعيد التلقائي مباشرة عبر الخادم</div></div>' +
                     '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
                         '<input id="svLiveDispSearch" type="text" value="' + esc(q || '') + '" placeholder="ابحث بكود الفاتورة أو العضو أو التاجر..." class="form-control" style="width:min(100%,240px);">' +
                         '<button type="button" class="btn btn-primary" onclick="loadDisputes(document.getElementById(\'svLiveDispSearch\').value)">🔎 بحث سيرفري</button>' +
@@ -1329,6 +1509,28 @@
                             '<td data-label="الإثبات المرفق">' + (evThumb || '—') + '</td>' +
                             '<td data-label="الحالة"><span class="badge ' + (open ? 'badge-warning' : 'badge-success') + '">' + esc(d.status) + '</span></td>' +
                             '<td data-label="حكم التحكيم الحي"><div style="display:flex;gap:5px;flex-wrap:wrap;">' + btns + '</div></td>' +
+                        '</tr>';
+                    }).join('')) +
+                    '</tbody></table>' +
+                '</div>' +
+                '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px;margin-bottom:16px;overflow-x:auto;">' +
+                    '<h3 style="margin:0 0 10px 0;font-size:0.98rem;">📣 شكاوى الأعضاء المباشرة ضد التجار (التهرب من التوثيق / مخالفات)</h3>' +
+                    '<table class="data-table"><thead><tr><th>المتجر</th><th>العضو</th><th>التصنيف والموضوع</th><th>التفاصيل والإثبات</th><th>الحالة</th><th>إجراء التحكيم</th></tr></thead><tbody>' +
+                    (complaints.length === 0 ? '<tr><td colspan="6" class="empty-state">لا توجد شكاوى تجار مسجلة حالياً</td></tr>' : complaints.map(function (cp) {
+                        const isOpen = cp.status === 'open';
+                        const cpThumb = renderAdmThumb(cp.evidence_url, '📎 إثبات شكوى ضد ' + esc(cp.merchant_name || ''));
+                        return '<tr>' +
+                            '<td data-label="المتجر"><b>' + esc(cp.merchant_name || '') + '</b><div style="font-size:0.74rem;color:#64748b;">' + esc(cp.merchant_code || '') + ' • ' + esc(cp.country_code || '') + '</div></td>' +
+                            '<td data-label="العضو">#' + Number(cp.member_code || 0) + ' ' + esc(cp.member_name || '') + '</td>' +
+                            '<td data-label="التصنيف والموضوع"><span class="badge badge-warning" style="font-size:0.7rem;">' + esc(compCatLabels[cp.category] || cp.category) + '</span><div style="font-weight:700;margin-top:3px;">' + esc(cp.subject || '') + '</div></td>' +
+                            '<td data-label="التفاصيل والإثبات"><div style="font-size:0.8rem;">' + esc(cp.details || '') + '</div>' + (cpThumb ? '<div style="margin-top:4px;">' + cpThumb + '</div>' : '') + '</td>' +
+                            '<td data-label="الحالة"><span class="badge ' + (isOpen ? 'badge-warning' : (cp.status === 'verified' ? 'badge-danger' : 'badge-success')) + '">' + esc(cp.status) + '</span></td>' +
+                            '<td data-label="إجراء التحكيم">' + (isOpen
+                                ? '<div style="display:flex;gap:5px;flex-wrap:wrap;">' +
+                                      '<button type="button" class="btn-sm btn-danger" onclick="svAdminDisputeAct(\'merchant_complaint\',\'' + cp.id + '\',\'verified\')">✅ توثيق الشكوى</button>' +
+                                      '<button type="button" class="btn-sm btn-outline" onclick="svAdminDisputeAct(\'merchant_complaint\',\'' + cp.id + '\',\'dismissed\')">❌ رفض (غير مثبتة)</button>' +
+                                  '</div>'
+                                : esc(cp.admin_notes || cp.status)) + '</td>' +
                         '</tr>';
                     }).join('')) +
                     '</tbody></table>' +

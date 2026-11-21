@@ -71,8 +71,36 @@ window.SAWYAN.Notifications = {
                 message: `فاتورة ${p.sw_short_code || ''}`
             },
             CashierSelfPinBlocked: {
-                title: 'تنبيه أمان الكاشير 🛡️',
-                message: `تم إيقاف محاولة توثيق ذاتي للكاشير ${p.employee_code || ''}`
+                title: 'تنبيه أمان موظف الكاشير 🛡️',
+                message: `تم إيقاف محاولة توثيق ذاتي لموظف الكاشير ${p.employee_code || ''}`
+            },
+            MerchantBalanceWarning30: {
+                title: 'تنبيه شحن مبكر للرصيد (30%) 🟡',
+                message: `وصل الرصيد الحر لمتجرك إلى ${p.free_pct ?? 30}% — يُنصح بالشحن للحفاظ على العروض الخاطفة والظهور المستمر.`
+            },
+            MerchantBalanceCritical20: {
+                title: 'إنذار حرج لقرب نفاد الرصيد (20%) 🟠',
+                message: `انخفض الرصيد الحر لمتجرك إلى ${p.free_pct ?? 20}% — يرجى شحن المحفظة قريباً لتفادي العزل الوقائي.`
+            },
+            MerchantBalanceIsolated10: {
+                title: 'تم عزل المتجر مؤقتاً لنفاد/هبوط الرصيد 🔴',
+                message: `الرصيد الحر ${p.free_pct ?? 0}% (${p.financial_status || 'isolated'}) — اشحن محفظة المتجر لإعادة الظهور بالدليل فوراً.`
+            },
+            MerchantComplianceAutoEscalated: {
+                title: 'تحديث رقابي على حالة المتجر ⚖️',
+                message: `${p.reason || ('تم تحديث وضع الامتثال إلى: ' + (p.new_governance_status || ''))}`
+            },
+            MerchantGovernanceUpdated: {
+                title: 'قرار إداري لحوكمة المتجر ⚙️',
+                message: `${p.reason || ('الحالة الحالية: ' + (p.governance_status || ''))}`
+            },
+            MerchantComplaintFiled: {
+                title: 'شكوى جديدة ضد متجر 📣',
+                message: `${p.business_name || 'متجر'}: ${p.subject || ''}`
+            },
+            MerchantComplaintUpdated: {
+                title: 'تحديث مراجعة شكوى متجر ⚖️',
+                message: `تم البت في الشكوى (${p.decision || ''})${p.notes ? ': ' + p.notes : ''}`
             }
         };
         return map[ev] || {
@@ -162,6 +190,13 @@ window.SAWYAN.Notifications = {
             PendingPurchaseRequested: '⏳',
             DisputeTicketOpened: '⚠️',
             CashierSelfPinBlocked: '🛡️',
+            MerchantBalanceWarning30: '🟡',
+            MerchantBalanceCritical20: '🟠',
+            MerchantBalanceIsolated10: '🔴',
+            MerchantComplianceAutoEscalated: '⚖️',
+            MerchantGovernanceUpdated: '⚙️',
+            MerchantComplaintFiled: '📣',
+            MerchantComplaintUpdated: '⚖️',
             transaction_request: '📝',
             transaction_approved: '✅',
             commission: '💰',

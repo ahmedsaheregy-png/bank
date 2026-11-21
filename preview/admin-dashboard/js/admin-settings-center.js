@@ -72,7 +72,7 @@
     P('M13b', 'mer', 'أقصى محاولات خاطئة للـ PIN', { t: 'int', u: 'محاولة', v: 5, src: 'doc', min: 3, max: 10, step: 1, s: 'عام', h: '' });
     P('M13c', 'mer', 'مدة قفل الـ PIN بعد تجاوز المحاولات', { t: 'int', u: 'دقيقة', v: 15, src: 'prop', min: 1, max: 1440, step: 1, s: 'عام', h: 'حماية من التخمين على أكواد الموظفين.' });
     P('M14', 'mer', 'صلاحية QR الدفع الأوفلاين', { t: 'int', u: 'ساعة', v: 24, src: 'doc', min: 1, max: 168, step: 1, s: 'عام', h: 'معتمد (D25): كل عملية بـ QR لمرة واحدة فقط (Single-Use).' });
-    P('M15', 'mer', 'سقف يومي لفواتير الثنائي (عضو + تاجر)', { t: 'int', u: 'فاتورة', v: 3, src: 'prop', min: 1, max: 100, step: 1, s: 'عام', h: 'حد أقصى طلبين معلقين للعضو قبل رد التاجر (M2) وسقف 3 فواتير لطابور نفاد الرصيد (M5).' });
+    P('M15', 'mer', 'سقف طلبات الانتظار وفواتير ما بعد النفاد (مرجع توضيحي — الضبط الحي أعلاه)', { t: 'int', u: 'فاتورة', v: 3, src: 'prop', min: 0, max: 100, step: 1, s: 'عام', h: 'طلبان معلقان كحد أقصى للعضو عند التاجر قبل الرد (M2)، وسقف فواتير ما بعد نفاد الرصيد في الضبط الحي أعلاه (`unsecured_queue_cap`، افتراضي 3 ويقبل 0).' });
     P('M16', 'mer', 'سقف الفاتورة بلا صورة/إيصال', { t: 'num', u: '$', v: 20, src: 'prop', min: 0, max: 100000, step: 5, s: 'عام', h: 'معتمد (D5/M2): صورة المستند إلزامية للطلبات المعلقة وصورة السلعة للتاجر اليدوي.' });
     P('M17a', 'mer', 'حد الإعلانات الترويجية اليومي لكل تاجر', { t: 'int', u: 'إعلان', v: 1, src: 'prop', min: 0, max: 20, step: 1, s: 'عام', h: '' });
     P('M17b', 'mer', 'مهلة مراجعة الإعلان من الإدارة', { t: 'int', u: 'دقيقة', v: 60, src: 'prop', min: 5, max: 1440, step: 5, s: 'عام', h: 'تظهر للتاجر في نافذة الطلب.' });
@@ -476,7 +476,7 @@
         if (tab === 'fin') return groupHtml('fin', ro);
         if (tab === 'stp') return groupHtml('stp', ro);
         if (tab === 'cty') return countryHtml(ro);
-        if (tab === 'mer') return groupHtml('mer', ro);
+        if (tab === 'mer') return '<div id="svLiveMerSettingsMount">' + (typeof window.renderLiveMerchantRiskSettingsCard === 'function' ? window.renderLiveMerchantRiskSettingsCard('scMer') : '') + '</div>' + groupHtml('mer', ro);
         if (tab === 'mem') return groupHtml('mem', ro);
         if (tab === 'sys') return groupHtml('sys', ro) + killHtml(ro);
         if (tab === 'apr') return aprHtml();
