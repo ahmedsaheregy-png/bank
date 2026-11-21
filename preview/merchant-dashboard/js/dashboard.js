@@ -79,6 +79,136 @@ async function checkAuth() {
 
 let merchantBundle = null;
 let posLookupDebounce = null;
+let posLookupSeq = 0;
+let scanPageMemberData = null;
+let scanPageLookupDebounce = null;
+let scanPageLookupSeq = 0;
+let kioskMemberData = null;
+let kioskLookupDebounce = null;
+let kioskLookupSeq = 0;
+
+/**
+ * استخراج كود العضو الرقمي بأمان دون التهام أرقام الـ UUID بعد النقطتين في SAWYAN:MEMBER:<code>:<uuid>.
+ */
+function extractSawyanMemberCode(raw) {
+    const trimmed = String(raw || '').trim();
+    if (!trimmed) return 0;
+    const qrMatch = trimmed.match(/^SAWYAN:MEMBER:(\d{1,12})(?::|$)/i);
+    if (qrMatch) {
+        const n = Number(qrMatch[1]);
+        return n > 0 ? n : 0;
+    }
+    const hashMatch = trimmed.match(/^#(\d{1,12})$/);
+    if (hashMatch) {
+        const n = Number(hashMatch[1]);
+        return n > 0 ? n : 0;
+    }
+    if (/^[1-9]\d{0,7}$/.test(trimmed)) {
+        return Number(trimmed);
+    }
+    return 0;
+}
+window.extractSawyanMemberCode = extractSawyanMemberCode;
+
+/**
+ * التحقق السيرفري من هوية العضو عند نقطة البيع (D26: اسم مقنّع دون هاتف).
+ */
+async function resolvePosMemberOnline(rawInput) {
+    const clean = String(rawInput || '').trim();
+    if (!clean || !currentMerchant?.id || !window.SAWYAN?.API) return null;
+    const res = await window.SAWYAN.API.lookupMemberForPos({
+        merchantId: currentMerchant.id,
+        memberIdentifier: clean
+    });
+    if (res && res.found && Number(res.member_code) > 0) {
+        return {
+            id: res.member_id || null,
+            code: Number(res.member_code),
+            name: res.masked_name || res.full_name || (`عضو #${res.member_code}`),
+            raw: clean,
+            verified: true
+        };
+    }
+    return null;
+}
+
+/**
+ * حل هوية العضو قبل الاعتماد في شاشات الكاشير مع منع إرسال أي كود قديم أو تالف.
+ */
+async function ensurePosMemberBeforeSubmit(rawInput, cachedRecord, onResolvedPreview) {
+    const clean = String(rawInput || '').trim();
+    if (!clean) {
+        alert('❌ يرجى إدخال كود العضو أو مسح الباركود أولاً.');
+        return null;
+    }
+    const isOffline = forceDeadZoneSimulation || (typeof navigator !== 'undefined' && !navigator.onLine);
+    if (isOffline) {
+        const offlineCode = extractSawyanMemberCode(clean);
+        if (!offlineCode || offlineCode <= 0) {
+            alert('❌ في وضع الأوفلاين يرجى إدخال كود العضو الرقمي أو باركود SAWYAN:MEMBER:<كود>.');
+            return null;
+        }
+        return { id: null, code: offlineCode, name: `عضو #${offlineCode} (أوفلاين)`, raw: clean, verified: false };
+    }
+    if (cachedRecord && cachedRecord.verified && cachedRecord.raw === clean && Number(cachedRecord.code) > 0) {
+        return cachedRecord;
+    }
+    try {
+        const resolved = await resolvePosMemberOnline(clean);
+        if (resolved) {
+            if (typeof onResolvedPreview === 'function') onResolvedPreview(resolved);
+            return resolved;
+        }
+        alert('❌ لا يوجد عضو نشط مطابق للكود أو الباركود المدخل. يرجى التأكد قبل المتابعة.');
+        return null;
+    } catch (err) {
+        const msg = String(err?.message || '');
+        if (msg.toLowerCase().includes('fetch')) {
+            const offlineCode = extractSawyanMemberCode(clean);
+            if (offlineCode > 0) {
+                return { id: null, code: offlineCode, name: `عضو #${offlineCode} (أوفلاين)`, raw: clean, verified: false };
+            }
+        }
+        alert('❌ تعذر التحقق من هوية العضو: ' + (msg || 'خطأ غير متوقع'));
+        return null;
+    }
+}
+
+/**
+ * تنفيذ البحث المتزامن مع حراسة تسلسل الطلبات (يمنع Race Condition عبر إبطال القديم فوراً).
+ */
+async function runPosLookupRequest({ clean, isStale, onState }) {
+    const isOffline = forceDeadZoneSimulation || (typeof navigator !== 'undefined' && !navigator.onLine);
+    if (isOffline) {
+        const parsedCode = extractSawyanMemberCode(clean);
+        if (parsedCode > 0) {
+            onState('offline', { id: null, code: parsedCode, name: `عضو #${parsedCode} (أوفلاين — سيُتحقق منه عند المزامنة)`, raw: clean, verified: false });
+        } else {
+            onState('not_found', null);
+        }
+        return;
+    }
+    try {
+        const resolved = await resolvePosMemberOnline(clean);
+        if (isStale()) return;
+        if (resolved) {
+            onState('found', resolved);
+        } else {
+            onState('not_found', null);
+        }
+    } catch (err) {
+        if (isStale()) return;
+        const msg = String(err?.message || '');
+        if (msg.toLowerCase().includes('fetch')) {
+            const parsedCode = extractSawyanMemberCode(clean);
+            if (parsedCode > 0) {
+                onState('offline', { id: null, code: parsedCode, name: `عضو #${parsedCode} (سيُتحقق منه عند المزامنة)`, raw: clean, verified: false });
+                return;
+            }
+        }
+        onState('error', msg || 'تعذر التحقق اللحظي');
+    }
+}
 
 async function refreshMerchantBundle(shiftFilter = 'today', branchId = null) {
     if (!currentMerchant || !currentMerchant.id || !(window.SAWYAN && window.SAWYAN.API)) return null;
@@ -395,18 +525,24 @@ async function handleTransaction(e) {
     e.preventDefault();
     const rawCode = (document.getElementById('memberCodeInput')?.value || '').trim();
     const amount = parseFloat(document.getElementById('amount')?.value || '0');
-    const memberDigits = rawCode.replace(/[^0-9]/g, '');
     const paymentType = document.getElementById('scanPaymentType')?.value || 'cash';
     const uniquePaymentRef = (document.getElementById('scanUniquePaymentRef')?.value || '').trim() || null;
     const receiptMediaUrl = ((window._scanReceiptUploader && window._scanReceiptUploader.getValue()) || document.getElementById('scanReceiptUrl')?.value || '').trim() || null;
 
-    if (!memberDigits || !amount || amount <= 0) {
-        alert('الرجاء إدخال كود عضو رقمي صحيح ومبلغ أكبر من صفر.');
+    if (!rawCode || !amount || amount <= 0) {
+        alert('الرجاء إدخال كود العضو أو الباركود ومبلغ أكبر من صفر.');
         return;
     }
 
+    const resolved = await ensurePosMemberBeforeSubmit(rawCode, scanPageMemberData, (r) => {
+        scanPageMemberData = r;
+        renderScanPageMemberPreview('found', rawCode, r);
+    });
+    if (!resolved) return;
+
     const res = await submitLiveOrOfflinePosTransaction({
-        memberCode: Number(memberDigits),
+        memberCode: resolved.code,
+        memberDisplayName: resolved.name,
         amount,
         paymentType,
         uniquePaymentRef,
@@ -416,6 +552,9 @@ async function handleTransaction(e) {
     });
 
     if (res) {
+        scanPageMemberData = null;
+        ++scanPageLookupSeq;
+        if (scanPageLookupDebounce) clearTimeout(scanPageLookupDebounce);
         document.getElementById('transactionForm')?.reset();
         toggleScanPaymentRef();
         if (window._scanReceiptUploader) window._scanReceiptUploader.clear();
@@ -423,6 +562,7 @@ async function handleTransaction(e) {
         if (rUrlEl) rUrlEl.value = '';
         const mIn = document.getElementById('memberCodeInput');
         if (mIn) mIn.value = '';
+        renderScanPageMemberPreview('idle', '', null);
         const fEl = document.getElementById('transactionForm');
         if (fEl) fEl.style.display = 'none';
     }
@@ -859,6 +999,9 @@ function loadQRScannerPage() {
         console.error('QR Scanner page element not found');
         return;
     }
+    scannedMemberData = null;
+    ++posLookupSeq;
+    if (posLookupDebounce) clearTimeout(posLookupDebounce);
     const p = (typeof merchantBundle !== 'undefined' && merchantBundle?.profile) || (typeof merchantData !== 'undefined' && merchantData) || {};
     const storeTitle = escM(p.business_name || 'متجر SAWYAN');
     const storeCode = escM(p.merchant_code || '-');
@@ -1159,6 +1302,8 @@ function calculateOfflineCommission() {
 
 function resetScanner() {
     scannedMemberData = null;
+    ++posLookupSeq;
+    if (posLookupDebounce) clearTimeout(posLookupDebounce);
     const resultEl = document.getElementById('scanResult');
     if (resultEl) resultEl.style.display = 'none';
     const amountEl = document.getElementById('offlinePaymentAmount');
@@ -1443,6 +1588,7 @@ let forceDeadZoneSimulation = false;
 
 async function submitLiveOrOfflinePosTransaction({
     memberCode,
+    memberDisplayName = null,
     amount,
     paymentType = 'cash',
     branchId = null,
@@ -1451,6 +1597,24 @@ async function submitLiveOrOfflinePosTransaction({
     uniquePaymentRef = null,
     receiptMediaUrl = null
 }) {
+    const cleanCode = Number(memberCode);
+    if (!cleanCode || cleanCode <= 0 || !Number.isFinite(cleanCode)) {
+        alert('❌ كود العضو غير صالح.');
+        return null;
+    }
+    const curr = merchantBundle?.profile?.currency_code || merchantData?.currency_code || 'EGP';
+    const whoLabel = memberDisplayName ? `${memberDisplayName} (#${cleanCode})` : `عضو #${cleanCode}`;
+    const confirmMsg =
+        `🔎 تأكيد بيانات الفاتورة قبل التسجيل:\n` +
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `👤 العميل (العضو): ${whoLabel}\n` +
+        `💰 قيمة الفاتورة: ${Number(amount).toFixed(2)} ${curr}\n` +
+        `💳 وسيلة الدفع: ${fmtMerchantPayTypeLabel(paymentType)}\n` +
+        `\nهل تؤكد صحة هوية العضو والمبلغ لإتمام تسجيل الفاتورة؟`;
+    if (typeof window !== 'undefined' && typeof window.confirm === 'function' && !window.confirm(confirmMsg)) {
+        return null;
+    }
+
     const idemKey = window.SAWYAN.API.newIdempotencyKey();
     const shortCode = 'SW-' + idemKey.replace(/-/g, '').slice(0, 6).toUpperCase();
     const isOffline = forceDeadZoneSimulation || (typeof navigator !== 'undefined' && !navigator.onLine);
@@ -1458,7 +1622,7 @@ async function submitLiveOrOfflinePosTransaction({
     if (isOffline) {
         const queued = await SawyanOfflinePosVault.enqueueEncryptedDraft({
             merchantId: currentMerchant.id,
-            memberCode: Number(memberCode),
+            memberCode: cleanCode,
             amount: Number(amount),
             paymentType,
             branchId,
@@ -1476,7 +1640,7 @@ async function submitLiveOrOfflinePosTransaction({
     try {
         const res = await window.SAWYAN.API.authenticateAndSubmitPosTx({
             merchantId: currentMerchant.id,
-            memberCode: Number(memberCode),
+            memberCode: cleanCode,
             amount: Number(amount),
             paymentType,
             idempotencyKey: idemKey,
@@ -1530,7 +1694,7 @@ async function submitLiveOrOfflinePosTransaction({
         if (String(err.message || '').toLowerCase().includes('fetch')) {
             const queued = await SawyanOfflinePosVault.enqueueEncryptedDraft({
                 merchantId: currentMerchant.id,
-                memberCode: Number(memberCode),
+                memberCode: cleanCode,
                 amount: Number(amount),
                 paymentType,
                 branchId,
@@ -1556,81 +1720,204 @@ async function submitLiveOrOfflinePosTransaction({
     }
 }
 
-// الكشف الحي الآمن عن العضو في شاشة الكاشير عبر lookup_member_for_pos (بدون هواتف D26)
-function handleManualCodeInput(val) {
+function renderDetectedMemberUi(state, clean, payload) {
     const box = document.getElementById('detectedMemberBox');
     const nameText = document.getElementById('detectedMemberNameText');
     const badge = document.getElementById('detectedMemberBadge');
     const codeText = document.getElementById('detectedMemberCodeText');
-    const clean = (val || '').trim();
 
-    if (posLookupDebounce) clearTimeout(posLookupDebounce);
-    if (!clean) {
-        scannedMemberData = null;
+    if (state === 'idle') {
         if (box) { box.style.background = '#f8fafc'; box.style.borderColor = '#cbd5e1'; box.style.borderStyle = 'dashed'; }
         if (nameText) { nameText.textContent = '(اكتب كود العميل وسيظهر اسمه هنا فوراً)'; nameText.style.color = '#94a3b8'; }
         if (badge) badge.style.display = 'none';
         if (codeText) codeText.style.display = 'none';
+    } else if (state === 'loading') {
+        if (box) { box.style.background = '#f8fafc'; box.style.borderColor = '#94a3b8'; box.style.borderStyle = 'dashed'; }
+        if (nameText) { nameText.textContent = '⏳ جاري التحقق من قاعدة البيانات...'; nameText.style.color = '#64748b'; }
+        if (badge) badge.style.display = 'none';
+        if (codeText) codeText.style.display = 'none';
+    } else if (state === 'found' && payload) {
+        if (box) { box.style.background = '#ecfdf5'; box.style.borderColor = '#10b981'; box.style.borderStyle = 'solid'; }
+        if (nameText) { nameText.textContent = `👤 ${payload.name}`; nameText.style.color = '#047857'; }
+        if (badge) { badge.style.display = 'inline-block'; badge.textContent = '🟢 عضو نشط'; }
+        if (codeText) { codeText.style.display = 'block'; codeText.textContent = `كود العضوية الرسمي: #${payload.code} (الهاتف محجوب D26)`; }
+    } else if (state === 'offline' && payload) {
+        if (box) { box.style.background = '#fffbeb'; box.style.borderColor = '#f59e0b'; box.style.borderStyle = 'solid'; }
+        if (nameText) { nameText.textContent = `🟠 ${payload.name}`; nameText.style.color = '#b45309'; }
+        if (badge) { badge.style.display = 'inline-block'; badge.textContent = '📴 أوفلاين'; }
+        if (codeText) { codeText.style.display = 'block'; codeText.textContent = `كود العضوية المستخرج: #${payload.code}`; }
+    } else if (state === 'error') {
+        if (box) { box.style.background = '#fef2f2'; box.style.borderColor = '#ef4444'; box.style.borderStyle = 'solid'; }
+        if (nameText) { nameText.textContent = `⚠️ تعذر التحقق اللحظي: ${String(payload || '')}`; nameText.style.color = '#dc2626'; }
+        if (badge) badge.style.display = 'none';
+        if (codeText) codeText.style.display = 'none';
+    } else {
+        if (box) { box.style.background = '#fef2f2'; box.style.borderColor = '#ef4444'; box.style.borderStyle = 'solid'; }
+        if (nameText) { nameText.textContent = `❌ لا يوجد عضو نشط مطابق (${clean})`; nameText.style.color = '#dc2626'; }
+        if (badge) badge.style.display = 'none';
+        if (codeText) codeText.style.display = 'none';
+    }
+}
+
+function renderScanPageMemberPreview(state, clean, payload) {
+    const preview = document.getElementById('scanPageMemberPreview');
+    if (!preview) return;
+    if (state === 'idle') {
+        preview.style.display = 'none';
+        preview.innerHTML = '';
+        return;
+    }
+    preview.style.display = 'block';
+    if (state === 'loading') {
+        preview.style.background = '#f8fafc';
+        preview.style.borderColor = '#94a3b8';
+        preview.innerHTML = `<span style="color:#64748b;font-weight:700;">⏳ جاري التحقق من هوية العضو...</span>`;
+    } else if (state === 'found' && payload) {
+        preview.style.background = '#ecfdf5';
+        preview.style.borderColor = '#10b981';
+        preview.innerHTML = `<strong style="color:#047857;">✅ العضو: ${escM(payload.name)} (#${payload.code})</strong>`;
+    } else if (state === 'offline' && payload) {
+        preview.style.background = '#fffbeb';
+        preview.style.borderColor = '#f59e0b';
+        preview.innerHTML = `<strong style="color:#b45309;">🟠 ${escM(payload.name)}</strong>`;
+    } else if (state === 'error') {
+        preview.style.background = '#fef2f2';
+        preview.style.borderColor = '#ef4444';
+        preview.innerHTML = `<span style="color:#dc2626;font-weight:700;">⚠️ تعذر التحقق: ${escM(String(payload || ''))}</span>`;
+    } else {
+        preview.style.background = '#fef2f2';
+        preview.style.borderColor = '#ef4444';
+        preview.innerHTML = `<span style="color:#dc2626;font-weight:800;">❌ لا يوجد عضو نشط مطابق (${escM(clean)})</span>`;
+    }
+}
+
+function renderKioskMemberPreview(state, clean, payload) {
+    const preview = document.getElementById('kioskMemberPreview');
+    if (!preview) return;
+    if (state === 'idle') {
+        preview.style.background = '#f8fafc';
+        preview.style.borderColor = '#cbd5e1';
+        preview.style.color = '#64748b';
+        preview.innerHTML = '👤 اكتب كود العضو أو امسح الباركود ليظهر اسمه هنا للتحقق قبل الاعتماد';
+    } else if (state === 'loading') {
+        preview.style.background = '#f8fafc';
+        preview.style.borderColor = '#94a3b8';
+        preview.style.color = '#64748b';
+        preview.innerHTML = '⏳ جاري التحقق من هوية العضو في قاعدة البيانات...';
+    } else if (state === 'found' && payload) {
+        preview.style.background = '#ecfdf5';
+        preview.style.borderColor = '#10b981';
+        preview.style.color = '#047857';
+        preview.innerHTML = `✅ العضو المعتمد: <strong>${escM(payload.name)}</strong> (<span dir="ltr">#${payload.code}</span>)`;
+    } else if (state === 'offline' && payload) {
+        preview.style.background = '#fffbeb';
+        preview.style.borderColor = '#f59e0b';
+        preview.style.color = '#b45309';
+        preview.innerHTML = `🟠 ${escM(payload.name)}`;
+    } else if (state === 'error') {
+        preview.style.background = '#fef2f2';
+        preview.style.borderColor = '#ef4444';
+        preview.style.color = '#dc2626';
+        preview.innerHTML = `⚠️ تعذر التحقق: ${escM(String(payload || ''))}`;
+    } else {
+        preview.style.background = '#fef2f2';
+        preview.style.borderColor = '#ef4444';
+        preview.style.color = '#dc2626';
+        preview.innerHTML = `❌ لا يوجد عضو نشط مطابق (${escM(clean)})`;
+    }
+}
+
+// الكشف الحي الآمن عن العضو في شاشة الكاشير عبر lookup_member_for_pos (بدون هواتف D26)
+function handleManualCodeInput(val) {
+    const clean = (val || '').trim();
+    if (posLookupDebounce) clearTimeout(posLookupDebounce);
+    scannedMemberData = null; // تصفير فوري لمنع بقاء كود عميل سابق أثناء الكتابة (Race Condition Guard)
+    const reqSeq = ++posLookupSeq;
+
+    if (!clean) {
+        renderDetectedMemberUi('idle', '', null);
         return;
     }
 
-    if (nameText) { nameText.textContent = '⏳ جاري التحقق من قاعدة البيانات...'; nameText.style.color = '#64748b'; }
-    posLookupDebounce = setTimeout(async () => {
-        try {
-            const res = await window.SAWYAN.API.lookupMemberForPos({
-                merchantId: currentMerchant.id,
-                memberIdentifier: clean
-            });
-            if (res && res.found) {
-                const mName = res.masked_name || res.full_name || ('عضو #' + res.member_code);
-                scannedMemberData = { id: res.member_id, code: res.member_code, name: mName };
-                if (box) { box.style.background = '#ecfdf5'; box.style.borderColor = '#10b981'; box.style.borderStyle = 'solid'; }
-                if (nameText) { nameText.textContent = `👤 ${mName}`; nameText.style.color = '#047857'; }
-                if (badge) { badge.style.display = 'inline-block'; badge.textContent = '🟢 عضو نشط'; }
-                if (codeText) { codeText.style.display = 'block'; codeText.textContent = `كود العضوية الرسمي: #${res.member_code} (الهاتف محجوب D26)`; }
-            } else {
-                scannedMemberData = null;
-                if (box) { box.style.background = '#fef2f2'; box.style.borderColor = '#ef4444'; box.style.borderStyle = 'solid'; }
-                if (nameText) { nameText.textContent = `❌ لا يوجد عضو نشط بالكود (${clean})`; nameText.style.color = '#dc2626'; }
-                if (badge) badge.style.display = 'none';
-                if (codeText) codeText.style.display = 'none';
+    renderDetectedMemberUi('loading', clean, null);
+    posLookupDebounce = setTimeout(() => {
+        runPosLookupRequest({
+            clean,
+            isStale: () => reqSeq !== posLookupSeq,
+            onState: (state, payload) => {
+                if (state === 'found' || state === 'offline') {
+                    scannedMemberData = payload;
+                } else {
+                    scannedMemberData = null;
+                }
+                renderDetectedMemberUi(state, clean, payload);
             }
-        } catch (err) {
-            // في وضع الأوفلاين نسمح بإدخال الكود الرقمي للحافظة المشفرة
-            const digits = clean.replace(/\D/g, '');
-            if (digits && Number(digits) > 0) {
-                scannedMemberData = { id: null, code: Number(digits), name: `عضو #${digits} (سيُتحقق منه عند المزامنة)` };
-                if (nameText) { nameText.textContent = scannedMemberData.name; nameText.style.color = '#b45309'; }
-            }
-        }
+        });
     }, 260);
 }
 
 function handleScanPageMemberCode(val) {
-    const preview = document.getElementById('scanPageMemberPreview');
     const form = document.getElementById('transactionForm');
-    const clean = (val || '').trim().replace(/\D/g, '');
+    const clean = (val || '').trim();
+    if (scanPageLookupDebounce) clearTimeout(scanPageLookupDebounce);
+    scanPageMemberData = null;
+    const reqSeq = ++scanPageLookupSeq;
+
     if (!clean) {
-        if (preview) preview.style.display = 'none';
+        renderScanPageMemberPreview('idle', '', null);
         if (form) form.style.display = 'none';
         return;
     }
     if (form) form.style.display = 'block';
-    window.SAWYAN.API.lookupMemberForPos({ merchantId: currentMerchant.id, memberIdentifier: clean })
-        .then(res => {
-            if (!preview) return;
-            preview.style.display = 'block';
-            preview.innerHTML = res && res.found
-                ? `<strong>✅ العضو: ${escM(res.masked_name || res.full_name || ('#' + res.member_code))} (#${res.member_code})</strong>`
-                : `<span style="color:#dc2626;">❌ كود غير مسجل (#${escM(clean)})</span>`;
-        })
-        .catch(() => {});
+    renderScanPageMemberPreview('loading', clean, null);
+    scanPageLookupDebounce = setTimeout(() => {
+        runPosLookupRequest({
+            clean,
+            isStale: () => reqSeq !== scanPageLookupSeq,
+            onState: (state, payload) => {
+                if (state === 'found' || state === 'offline') {
+                    scanPageMemberData = payload;
+                } else {
+                    scanPageMemberData = null;
+                }
+                renderScanPageMemberPreview(state, clean, payload);
+            }
+        });
+    }, 240);
 }
 
+function handleKioskMemberCodeInput(val) {
+    const clean = (val || '').trim();
+    if (kioskLookupDebounce) clearTimeout(kioskLookupDebounce);
+    kioskMemberData = null;
+    const reqSeq = ++kioskLookupSeq;
+
+    if (!clean) {
+        renderKioskMemberPreview('idle', '', null);
+        return;
+    }
+
+    renderKioskMemberPreview('loading', clean, null);
+    kioskLookupDebounce = setTimeout(() => {
+        runPosLookupRequest({
+            clean,
+            isStale: () => reqSeq !== kioskLookupSeq,
+            onState: (state, payload) => {
+                if (state === 'found' || state === 'offline') {
+                    kioskMemberData = payload;
+                } else {
+                    kioskMemberData = null;
+                }
+                renderKioskMemberPreview(state, clean, payload);
+            }
+        });
+    }, 240);
+}
+window.handleKioskMemberCodeInput = handleKioskMemberCodeInput;
+
 async function processOfflineCustomerPayment() {
-    const manualVal = (document.getElementById('manualQRInput')?.value || '').trim().replace(/\D/g, '');
-    const mCode = scannedMemberData?.code || (manualVal ? Number(manualVal) : 0);
-    if (!mCode || mCode <= 0) {
+    const rawInput = (document.getElementById('manualQRInput')?.value || '').trim();
+    if (!rawInput) {
         alert('❌ يرجى إدخال أو مسح كود عضو صالح أولاً.');
         return;
     }
@@ -1639,6 +1926,12 @@ async function processOfflineCustomerPayment() {
         alert('الرجاء إدخال قيمة الفاتورة.');
         return;
     }
+    const resolved = await ensurePosMemberBeforeSubmit(rawInput, scannedMemberData, (r) => {
+        scannedMemberData = r;
+        renderDetectedMemberUi('found', rawInput, r);
+    });
+    if (!resolved) return;
+
     const empCode = document.getElementById('posCashierEmpCode')?.value?.trim() || null;
     const empPin = document.getElementById('posCashierPinInput')?.value?.trim() || null;
     const paymentType = document.getElementById('qrPaymentType')?.value || 'cash';
@@ -1646,7 +1939,8 @@ async function processOfflineCustomerPayment() {
     const receiptMediaUrl = ((window._qrReceiptUploader && window._qrReceiptUploader.getValue()) || document.getElementById('qrReceiptUrl')?.value || '').trim() || null;
 
     const ok = await submitLiveOrOfflinePosTransaction({
-        memberCode: mCode,
+        memberCode: resolved.code,
+        memberDisplayName: resolved.name,
         amount,
         paymentType,
         uniquePaymentRef,
@@ -1736,6 +2030,9 @@ loadQRScannerPage = function () {
 async function loadKioskModePage() {
     const page = document.getElementById('kioskPage');
     if (!page) return;
+    kioskMemberData = null;
+    ++kioskLookupSeq;
+    if (kioskLookupDebounce) clearTimeout(kioskLookupDebounce);
     if (!merchantBundle) await refreshMerchantBundle();
     const p = merchantBundle?.profile || merchantData || {};
     const cashiers = (merchantBundle?.cashiers || []).filter(c => c.is_active);
@@ -1780,7 +2077,7 @@ async function loadKioskModePage() {
             <form id="kioskFastForm" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,185px),1fr));gap:12px;align-items:end;">
                 <div>
                     <label style="font-weight:800;font-size:0.84rem;">كود العضو أو الباركود *</label>
-                    <input type="text" id="kioskMemberCode" required class="form-control" placeholder="مثال: 1 أو SAWYAN:MEMBER:2">
+                    <input type="text" id="kioskMemberCode" required class="form-control" oninput="handleKioskMemberCodeInput(this.value)" placeholder="أدخل كود العضو أو امسح الباركود">
                 </div>
                 <div>
                     <label style="font-weight:800;font-size:0.84rem;">مبلغ الفاتورة (${escM(p.currency_code || 'EGP')}) *</label>
@@ -1807,6 +2104,7 @@ async function loadKioskModePage() {
                     <label style="font-weight:800;font-size:0.84rem;">PIN الموظف (4 أرقام)</label>
                     <input type="password" id="kioskEmpPin" maxlength="4" inputmode="numeric" class="form-control" placeholder="****">
                 </div>
+                <div id="kioskMemberPreview" style="grid-column:1 / -1;background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:10px;padding:8px 12px;font-size:0.84rem;font-weight:800;color:#64748b;">👤 اكتب كود العضو أو امسح الباركود ليظهر اسمه هنا للتحقق قبل الاعتماد</div>
                 <div style="grid-column:1 / -1;">
                     <div id="kioskDeferredNotice" style="display:none;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:8px 10px;font-size:0.78rem;font-weight:700;color:#92400e;margin-bottom:8px;">
                         ⏳ تنبيه: الدفع عند الاستلام (COD) أو الشيك يبقى بحالة «معلق» حتى تأكيد التسليم/التحصيل.
@@ -1832,13 +2130,23 @@ async function loadKioskModePage() {
 
     document.getElementById('kioskFastForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const rawCode = document.getElementById('kioskMemberCode').value.replace(/\D/g, '');
-        const amt = parseFloat(document.getElementById('kioskAmount').value);
-        if (!rawCode || !amt) return;
+        const rawVal = (document.getElementById('kioskMemberCode')?.value || '').trim();
+        const amt = parseFloat(document.getElementById('kioskAmount')?.value || '0');
+        if (!rawVal || !amt || amt <= 0) {
+            alert('❌ يرجى إدخال كود العضو ومبلغ أكبر من صفر.');
+            return;
+        }
+        const resolved = await ensurePosMemberBeforeSubmit(rawVal, kioskMemberData, (r) => {
+            kioskMemberData = r;
+            renderKioskMemberPreview('found', rawVal, r);
+        });
+        if (!resolved) return;
+
         const kioskRef = (document.getElementById('kioskUniqueRef')?.value || '').trim() || null;
         const kioskReceipt = ((window._kioskReceiptUploader && window._kioskReceiptUploader.getValue()) || document.getElementById('kioskReceiptUrl')?.value || '').trim() || null;
-        await submitLiveOrOfflinePosTransaction({
-            memberCode: Number(rawCode),
+        const ok = await submitLiveOrOfflinePosTransaction({
+            memberCode: resolved.code,
+            memberDisplayName: resolved.name,
             amount: amt,
             paymentType: document.getElementById('kioskPayType').value,
             uniquePaymentRef: kioskRef,
@@ -1846,7 +2154,7 @@ async function loadKioskModePage() {
             employeeCode: document.getElementById('kioskEmpCode').value || null,
             cashierPin: document.getElementById('kioskEmpPin').value || null
         });
-        await loadKioskModePage();
+        if (ok) await loadKioskModePage();
     });
 }
 

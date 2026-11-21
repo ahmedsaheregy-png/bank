@@ -461,14 +461,26 @@ BEGIN
        )
      WHERE id = v_merch.id;
 
-    v_raw    := trim(COALESCE(p_member_identifier, ''));
-    v_digits := regexp_replace(v_raw, '[^0-9]', '', 'g');
-    IF v_digits = '' THEN
+    v_raw := trim(COALESCE(p_member_identifier, ''));
+    IF v_raw = '' THEN
         RETURN jsonb_build_object('found', false);
     END IF;
 
-    IF v_raw ~* '^SAWYAN:MEMBER:' OR left(v_raw, 1) = '#' OR (v_raw ~ '^[0-9]{1,8}$' AND left(v_digits, 1) <> '0') THEN
+    IF v_raw ~* '^SAWYAN:MEMBER:' THEN
+        v_digits := trim(split_part(v_raw, ':', 3));
+        IF v_digits !~ '^[0-9]{1,12}$' THEN
+            RETURN jsonb_build_object('found', false, 'reason', 'INVALID_QR_FORMAT');
+        END IF;
         v_code := v_digits::bigint;
+    ELSIF left(v_raw, 1) = '#' OR (v_raw ~ '^[0-9]{1,8}$' AND left(v_raw, 1) <> '0') THEN
+        v_digits := regexp_replace(v_raw, '[^0-9]', '', 'g');
+        IF v_digits !~ '^[0-9]{1,12}$' THEN
+            RETURN jsonb_build_object('found', false);
+        END IF;
+        v_code := v_digits::bigint;
+    END IF;
+
+    IF v_code IS NOT NULL THEN
         IF v_code <= 0 THEN
             RETURN jsonb_build_object('found', false, 'reason', 'ROOT_NOT_ALLOWED_AT_POS');
         END IF;
@@ -478,6 +490,11 @@ BEGIN
            AND is_tombstone_banned = false
            AND status = 'active';
     ELSE
+        v_digits := regexp_replace(v_raw, '[^0-9]', '', 'g');
+        IF v_digits = '' THEN
+            RETURN jsonb_build_object('found', false);
+        END IF;
+
         SELECT country_code INTO v_cc FROM sawyan.countries WHERE id = v_merch.country_id;
         v_dial := CASE v_cc
             WHEN 'EG' THEN '+20'
