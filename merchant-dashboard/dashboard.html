@@ -148,13 +148,14 @@
                             </div>
                         </div>
 
-                        <!-- 4. رصيد الشحن المسبق (صمام الأمان) -->
+                        <!-- 4. الرصيد الحر المتاح للتغطية (شحن مسبق 2101 − محجوز + حد ائتماني D4) -->
                         <div class="stat-card" style="background: white; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 16px; border-right: 4px solid #059669;">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <div>
-                                    <div style="font-size: 0.8rem; color: #64748b; font-weight: 700;">رصيد الشحن مسبق الدفع (Prepaid)</div>
-                                    <div style="font-size: 1.5rem; font-weight: 900; color: #047857; margin-top: 4px;" id="pendingPayment">0.00 ج.م</div>
-                                    <small style="color: #059669; font-weight: 800; font-size: 0.75rem;">🟢 جاري مزامنة الرصيد...</small>
+                                    <div style="font-size: 0.8rem; color: #64748b; font-weight: 700;">الصافي الحر المتاح للتغطية</div>
+                                    <div style="font-size: 1.5rem; font-weight: 900; color: #047857; margin-top: 4px;" id="pendingPayment" dir="ltr">0.00 ج.م</div>
+                                    <small id="homePrepaidHint" style="color: #059669; font-weight: 800; font-size: 0.75rem;">🟢 جاري مزامنة الرصيد...</small>
+                                    <div id="homeBalanceBreakdown" style="font-size: 0.72rem; color: #475569; margin-top: 4px; line-height: 1.5; font-weight: 700;">شحن فعلي: — • حد ائتماني (D4): —</div>
                                 </div>
                                 <div style="width: 44px; height: 44px; background: #ecfdf5; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">🛡️</div>
                             </div>

@@ -36,8 +36,8 @@
 
     // المعادلة المالية
     P('F01', 'fin', 'نسبة العمولة الافتراضية للتاجر', { t: 'num', u: '%', v: 10, src: 'doc', min: 0.5, max: 100, step: 0.5, s: 'عام + استثناء لكل تاجر', h: 'يمكن للإدارة تخصيصها لتاجر بعينه، وتُثبَّت على كل فاتورة وقت إنشائها.' });
-    P('F02a', 'fin', 'الحد الأدنى المسموح لنسبة عمولة أي تاجر', { t: 'num', u: '%', v: 1, src: 'prop', min: 0, max: 100, step: 0.5, s: 'عام', h: 'اقتراح اللجنة: يمنع إدخال نسبة خاطئة.' });
-    P('F02b', 'fin', 'الحد الأقصى المسموح لنسبة عمولة أي تاجر', { t: 'num', u: '%', v: 40, src: 'prop', min: 0, max: 100, step: 0.5, s: 'عام', h: 'اقتراح اللجنة: يمنع إدخال 200% بالخطأ.' });
+    P('F02a', 'fin', 'الحد الأدنى المسموح لنسبة عمولة أي تاجر', { t: 'num', u: '%', v: 0.5, src: 'doc', min: 0, max: 100, step: 0.5, s: 'عام', h: 'الحد الأدنى المعتمد في قاعدة البيانات (0.50%).' });
+    P('F02b', 'fin', 'الحد الأقصى المسموح لنسبة عمولة أي تاجر', { t: 'num', u: '%', v: 95, src: 'doc', min: 0, max: 100, step: 0.5, s: 'عام', h: 'الحد الأقصى المعتمد في قاعدة البيانات (95% كسقف أمان تقني بعد إلغاء سقف الـ 40%).' });
     P('F03', 'fin', 'نسبة الخزانة من العمولة العامة', { t: 'num', u: '%', v: 25, src: 'doc', min: 0, max: 100, step: 0.5, s: 'عام (والأفضل لكل دولة/تاجر)', h: 'نسبة خطة الدخل تُحسب تلقائياً = 100 − هذه النسبة ولا تُدخل يدوياً.' });
     P('F06', 'fin', 'عدد الخانات العشرية للمبالغ', { t: 'int', u: 'خانة', v: 2, src: 'doc', min: 0, max: 4, step: 1, s: 'عام (لكل عملة)', h: 'معتمد (D11): حسابات NUMERIC/Decimal داخلية بأصغر وحدة نقدية (قرش/سنت/هللة).' });
     P('F07', 'fin', 'وجهة بواقي التقريب', { t: 'select', v: 'treasury', src: 'doc', opts: [['treasury', 'حساب «فروق التقريب» في الخزانة'], ['plan', 'صندوق خطة الدخل'], ['first', 'أول مستفيد']], s: 'عام', h: 'معتمد (D11): تُوجّه بواقي كسور التقريب تلقائياً لحساب «فروق التقريب» بالخزانة (مع بقائها معاملاً إدارياً متغيراً).' });
@@ -45,7 +45,7 @@
 
     // الستوبر والأهداف
     P('S01', 'stp', 'الستوبر العددي (عدد الأجيال المؤهلة نزولاً)', { t: 'int', u: 'جيل', v: 11, src: 'doc', min: 2, max: 30, step: 1, s: 'عام (والأفضل لكل دولة)', h: 'يحدد حد فريق العمولات وبداية الفريق الرديف ومقعد 1/11.' });
-    P('S02', 'stp', 'عدد الـ Uplines في السقف (صعوداً)', { t: 'int', u: 'أبلاين', v: 10, src: 'doc', min: 1, max: 29, step: 1, s: 'عام', h: 'إجمالي الحصص = هذا الرقم + 1 (صانع التوزيع). مستقل عن الستوبر العددي حسب الوثيقة (قرار D2).' });
+    P('S02', 'stp', 'سقف التوزيع صعوداً (إجمالي الحصص: صانع التوزيع + الأبلاين)', { t: 'int', u: 'حصة', v: 11, src: 'doc', min: 2, max: 30, step: 1, s: 'عام', h: 'الافتراضي 11 حصة (= صانع التوزيع 1 + 10 أبلاين فوقه)، ويطابق الستوبر العددي S01 = 11. فُصل عنه كحقل مستقل (قرار D2) للسماح مستقبلاً بتعديل إجمالي الحصص دون تغيير أجيال الشجرة.' });
     P('S04', 'stp', 'قاعدة توزيع المتبقي من حصص غير المؤهلين', { t: 'select', v: 'equal', src: 'doc', opts: [['equal', 'بالتساوي على من نال حصة أصلية'], ['nearest', 'لأقرب مؤهل أعلى']], s: 'عام', h: 'القاعدة المعتمدة بالوثيقة (D27): التساوي كإعداد افتراضي قابل للتعديل الإداري.' });
     P('S05', 'stp', 'المقعد 1/11 المحجوز لصاحب الشجرة', { t: 'select', v: 'display', src: 'doc', opts: [['display', 'معاينة بصرية تحفيزية معزولة فقط (معتمد D12)'], ['hide', 'إخفاء المقعد عن غير المؤهل']], s: 'عام', h: 'تم الحسم (D12): عرض تحفيزي معزول رصيده الفعلي 0$ حتى إتمام 100/100 ولا صرف لغير المؤهل.' });
     P('S06', 'stp', 'أقصى عمق لبحث الرول أب', { t: 'int', u: 'جيل', v: 50, src: 'prop', min: 11, max: 500, step: 1, s: 'عام', h: 'يحمي الأداء عند وجود تجاوز غير محدود.' });
@@ -57,7 +57,7 @@
     P('T07', 'stp', 'مهلة إشعار الأعضاء قبل تفعيل دولة', { t: 'int', u: 'يوم', v: 30, src: 'doc', min: 0, max: 365, step: 1, s: 'عام', h: 'معتمد (D13): إشعار مسبق (مثل 15 أو 30 يوماً قابلة للتعديل)؛ ويسري التفعيل من أول الشهر الميلادي التالي حصراً.' });
 
     // التجار
-    P('M01', 'mer', 'السقف الائتماني الافتراضي للتاجر (دولار مكافئ)', { t: 'num', u: '$', v: null, src: 'none', min: 0, max: 1000000, step: 10, s: 'لكل تاجر', h: 'معتمد (D4): الأصل 0 (شحن مسبق)، ويجوز للإدارة باعتماد مزدوج استثناء أي تاجر بضابط توقيت و/أو سقف مبلغ (أيهما أسبق يحظر).' });
+    P('M01', 'mer', 'السقف الائتماني الافتراضي للتاجر (دولار مكافئ)', { t: 'num', u: '$', v: 0, src: 'doc', min: 0, max: 1000000, step: 10, s: 'عام + استثناء لكل تاجر', h: 'معتمد (D4): الأصل 0 (شحن مسبق فقط). لمنح أو تعديل حد ائتماني استثنائي لتاجر محدد: افتح تبويب «🏪 التجار» ← «⚙️ تحرير العقد والشحن والوثائق» ← «سقف الائتمان الاستثنائي D4».' });
     P('M02', 'mer', 'الحد الأدنى للإيداع الأولي (الباقة)', { t: 'num', u: '$', v: null, src: 'none', min: 0, max: 1000000, step: 10, s: 'لكل تاجر', h: 'أساس نسب التنبيه.' });
     P('M03', 'mer', 'عتبة التنبيه الأول للرصيد', { t: 'num', u: '% من الباقة', v: 30, src: 'doc', min: 1, max: 99, step: 1, s: 'عام + استثناء لكل تاجر', h: 'يجب: الأول > الأخير > العزل. (قرار المؤسس D15: النسب فقط بلا حد مقطوع — السلم المعتمد بالوثائق 30% / 20% / 10%).' });
     P('M04', 'mer', 'عتبة الإنذار الأخير', { t: 'num', u: '% من الباقة', v: 20, src: 'doc', min: 1, max: 99, step: 1, s: 'عام + استثناء لكل تاجر', h: 'قرار المؤسس (D15): الافتراضي المعتمد بالوثائق 20% — تنبيه التاجر قبل الوصول لعتبة العزل.' });
@@ -168,6 +168,16 @@
                 ACTIVE[k] = d0[k];
             }
         }
+        // ترحيل لمرة واحدة لمواءمة S02 كإجمالي حصص (11 = 11) و M01 = 0 و F02a/F02b ما لم يعتمدها المدير يدوياً
+        if (!ST.s02_total_shares_v2) {
+            ST.approved = ST.approved || {};
+            if (!ST.approved.S02 && (ACTIVE.S02 === 10 || ACTIVE.S02 === null || ACTIVE.S02 === undefined)) ACTIVE.S02 = 11;
+            if (!ST.approved.M01 && (ACTIVE.M01 === null || ACTIVE.M01 === undefined || ACTIVE.M01 === '')) ACTIVE.M01 = 0;
+            if (!ST.approved.F02a && ACTIVE.F02a === 1) ACTIVE.F02a = 0.5;
+            if (!ST.approved.F02b && ACTIVE.F02b === 40) ACTIVE.F02b = 95;
+            ST.s02_total_shares_v2 = true;
+            save();
+        }
         DRAFT = JSON.parse(JSON.stringify(ACTIVE));
     }
     function save() { ST.active = ACTIVE; localStorage.setItem(LS, JSON.stringify(ST)); }
@@ -219,13 +229,13 @@
         var tr = num(V('F03')), plan = tr === null ? null : 100 - tr;
         var com = num(V('F01')), dec = num(V('F06')); dec = dec === null ? 2 : dec;
         var tg = num(V('tgt.EG')), ups = num(V('S02')), st = num(V('S01'));
-        var shares = ups === null ? null : ups + 1;
+        var shares = ups === null ? null : ups;
         var share = calcCtyUnitShare(tg, shares);
         var idealNodes = st !== null ? (Math.pow(2, st) - 1) : null;
         out.push(['نسبة خطة الدخل', fmt(plan, 1) + '%', '100 − نسبة الخزانة']);
         var equiv = (tg !== null && com && plan !== null) ? tg / ((com / 100) * (plan / 100)) : null;
         out.push(['المشتريات المكافئة للهدف الشهري', fmt(equiv, 2) + ' $', 'الهدف ÷ (عمولة التاجر × نسبة الخطة)']);
-        out.push(['إجمالي حصص التوزيع (السقف)', shares === null ? '—' : String(shares), 'عدد الـ Uplines + 1 (صانع التوزيع)']);
+        out.push(['إجمالي حصص التوزيع (السقف)', shares === null ? '—' : String(shares), 'صانع التوزيع (1) + ' + (shares !== null ? Math.max(0, shares - 1) : 10) + ' أبلاين']);
         out.push(['حصة الفرد المؤهل (مصر مرجعياً)', fmt(share, 2) + ' $', 'حصة خطة الدخل ÷ عدد حصص السقف']);
         var cap = calcCtyDefaultStopper(tg, st, shares);
         out.push(['ديفولت الستوبر المالي (×' + (idealNodes === null ? '2047' : fmt(idealNodes, 0)) + ')', cap === null ? '—' : fmt(cap, 2) + ' $', 'حصة الفرد المؤهل × إجمالي الشجرة المثالية المكتملة']);
@@ -279,8 +289,8 @@
         var d7 = num(V('W02')), d10 = num(V('W01')); if (d7 !== null && d10 !== null && d7 >= d10) E('W02', 'آخر يوم للتصحيح يجب أن يسبق يوم الصرف.');
         var st = num(V('S01')), up = num(V('S02'));
         if (st !== null && st < 2) E('S01', 'الستوبر العددي لا يقل عن 2.');
-        if (up !== null && up < 1) E('S02', 'عدد الـ Uplines لا يقل عن 1.');
-        if (st !== null && up !== null && up !== st - 1) W('الستوبر العددي (' + st + ') والسقف (' + (up + 1) + ' حصة) غير متطابقين — تأكد أنه مقصود (قرار D2).');
+        if (up !== null && up < 2) E('S02', 'سقف الحصص صعوداً لا يقل عن 2.');
+        if (st !== null && up !== null && up !== st) W('الستوبر العددي (' + st + ' جيل) وسقف الحصص صعوداً (' + up + ' حصة) غير متطابقين — تأكد أنه مقصود (قرار D2).');
         var pl = num(V('M13a')); if (pl !== null && (pl < 4 || pl > 8)) E('M13a', 'طول PIN بين 4 و8.');
         COUNTRIES.forEach(function (ct) {
             var r = num(V('rate.' + ct.c)); if (r === null || r <= 0) E('rate.' + ct.c, 'سعر الصرف لـ ' + ct.n + ' يجب أن يكون أكبر من صفر.');
@@ -366,7 +376,7 @@
     function groupHtml(g, readonly) { return '<div class="sc-card">' + G.filter(function (p) { return p.g === g; }).map(function (p) { return rowHtml(p, readonly); }).join('') + '</div>'; }
 
     function countryHtml(readonly) {
-        var ups = num(V('S02')), st = num(V('S01')), shares = ups === null ? 11 : (ups + 1), nodes = st === null ? 2047 : (Math.pow(2, st) - 1);
+        var ups = num(V('S02')), st = num(V('S01')), shares = ups === null ? 11 : ups, nodes = st === null ? 2047 : (Math.pow(2, st) - 1);
         var h = '<div class="sc-card"><div style="font-weight:900;margin-bottom:8px">🌍 إدارة الدول والأهداف وحصة الفرد وأسعار الصرف</div><div style="overflow:auto"><table class="sc-tbl"><thead><tr><th>المعامل</th>' + COUNTRIES.map(function (c) { return '<th>' + c.n + '<br><small style="color:#64748b">' + c.cur + ' • ' + c.tz + '</small></th>'; }).join('') + '</tr></thead><tbody>';
         CP.forEach(function (p) {
             h += '<tr><td><b>' + esc(p.label) + '</b>' + (p.tip ? '<div class="sc-help">' + esc(p.tip) + '</div>' : '') + '</td>';
@@ -513,7 +523,7 @@
     /* ---------- الأفعال ---------- */
     window.scSet = function (k, val) {
         var oldUps = num(V('S02')), oldSt = num(V('S01'));
-        var oldShares = oldUps === null ? 11 : (oldUps + 1);
+        var oldShares = oldUps === null ? 11 : oldUps;
         var prevDefs = {};
         COUNTRIES.forEach(function (c) {
             prevDefs[c.c] = calcCtyDefaultStopper(num(V('tgt.' + c.c)), oldSt === null ? 11 : oldSt, oldShares);
@@ -527,7 +537,7 @@
         // تحديث ديفولت الستوبر المالي وحصة الفرد تلقائياً عند تغيير الهدف الشهري أو S01 أو S02
         if (k.indexOf('tgt.') === 0 || k.indexOf('rate.') === 0 || k === 'S01' || k === 'S02') {
             var newUps = num(V('S02')), newSt = num(V('S01'));
-            var newShares = newUps === null ? 11 : (newUps + 1);
+            var newShares = newUps === null ? 11 : newUps;
             COUNTRIES.forEach(function (c) {
                 var curFstop = num(DRAFT['fstop.' + c.c]);
                 var newDef = calcCtyDefaultStopper(num(V('tgt.' + c.c)), newSt === null ? 11 : newSt, newShares);

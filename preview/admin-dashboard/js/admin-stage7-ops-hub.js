@@ -871,17 +871,36 @@
                       '</div>'
                     : '') +
                 '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px;overflow-x:auto;">' +
-                    '<table class="data-table"><thead><tr><th>كود التاجر</th><th>المنشأة</th><th>الدولة / الفئة</th><th>نسبة العمولة</th><th>رصيد الشحن 2101</th><th>سقف D4</th><th>الحالة</th><th>إجراءات التعاقد والشحن</th></tr></thead><tbody>' +
+                    '<table class="data-table"><thead><tr><th>كود التاجر</th><th>المنشأة</th><th>الدولة / الفئة</th><th>نسبة العمولة</th><th>رصيد الشحن 2101</th><th>سقف D4 / الصافي الحر</th><th>الحالة</th><th>إجراءات التعاقد والشحن</th></tr></thead><tbody>' +
                     (list.length === 0 ? '<tr><td colspan="8" class="empty-state">لا يوجد تجار مسجلون في قاعدة البيانات الحية حالياً</td></tr>' : list.map(function (m) {
                         const logoThumb = renderAdmThumb(m.logo_url, '🏪 شعار ' + esc(m.business_name));
+                        const cashBal = Number(m.actual_cash_balance || 0);
+                        const holdBal = Number(m.soft_hold_balance || 0);
+                        const credLim = Number(m.credit_limit || 0);
+                        const freeBal = cashBal - holdBal + credLim;
+                        const curr = esc(m.currency_code || '');
+                        const cashColor = cashBal < 0 ? '#dc2626' : (cashBal === 0 ? '#b45309' : '#059669');
+                        const freeColor = freeBal < 0 ? '#dc2626' : (freeBal === 0 ? '#b45309' : '#059669');
+                        const statusHtml = !m.is_active
+                            ? '<span class="badge badge-warning">⏳ بانتظار التفعيل</span>'
+                            : ((m.is_isolated || freeBal < 0)
+                                ? '<span class="badge badge-danger">' + (freeBal < 0 ? '🔴 مديون / معزول' : '🔴 معزول') + '</span>'
+                                : '<span class="badge badge-success">🟢 مفعل</span>');
                         return '<tr>' +
                             '<td data-label="كود التاجر"><b>' + esc(m.merchant_code) + '</b></td>' +
                             '<td data-label="المنشأة"><div style="display:flex;align-items:center;gap:8px;">' + logoThumb + '<div><b>' + esc(m.business_name) + '</b><br><small style="color:#64748b;">' + esc(m.phone) + '</small></div></div></td>' +
                             '<td data-label="الدولة / الفئة">' + esc(m.country_code) + ' • ' + esc(m.category) + '</td>' +
                             '<td data-label="نسبة العمولة"><b>' + Number(m.deduction_percent) + '%</b></td>' +
-                            '<td data-label="رصيد الشحن 2101"><b style="color:#059669;">' + fmt2(m.actual_cash_balance) + ' ' + esc(m.currency_code) + '</b></td>' +
-                            '<td data-label="سقف D4">' + fmt2(m.credit_limit) + '</td>' +
-                            '<td data-label="الحالة">' + (m.is_active ? (m.is_isolated ? '<span class="badge badge-danger">معزول</span>' : '<span class="badge badge-success">🟢 مفعل</span>') : '<span class="badge badge-warning">⏳ بانتظار التفعيل</span>') + (Number(m.fifo_queue_count || 0) > 0 ? '<div style="font-size:0.72rem;color:#b91c1c;font-weight:800;margin-top:3px;">⏸️ ' + Number(m.fifo_queue_count) + ' فاتورة FIFO (عمولة ' + fmt2(m.fifo_required_comm_local || 0) + ' ' + esc(m.currency_code) + ')</div>' : '') + '</td>' +
+                            '<td data-label="رصيد الشحن 2101">' +
+                                '<b style="color:' + cashColor + ';" dir="ltr">' + fmt2(cashBal) + ' ' + curr + '</b>' +
+                                (cashBal < 0 ? ' <span class="badge badge-danger" style="font-size:0.68rem;">مديون</span>' : '') +
+                                (holdBal > 0 ? '<div style="font-size:0.72rem;color:#b45309;font-weight:700;margin-top:2px;">⏳ محجوز: <span dir="ltr">' + fmt2(holdBal) + ' ' + curr + '</span></div>' : '') +
+                            '</td>' +
+                            '<td data-label="سقف D4 / الصافي الحر">' +
+                                '<div style="font-size:0.8rem;color:' + (credLim > 0 ? '#1d4ed8' : '#475569') + ';font-weight:800;">سقف D4: <span dir="ltr">' + fmt2(credLim) + ' ' + curr + '</span></div>' +
+                                '<div style="font-size:0.76rem;color:' + freeColor + ';font-weight:900;margin-top:2px;">الصافي الحر: <span dir="ltr">' + fmt2(freeBal) + ' ' + curr + '</span></div>' +
+                            '</td>' +
+                            '<td data-label="الحالة">' + statusHtml + (Number(m.fifo_queue_count || 0) > 0 ? '<div style="font-size:0.72rem;color:#b91c1c;font-weight:800;margin-top:3px;">⏸️ ' + Number(m.fifo_queue_count) + ' فاتورة FIFO (عمولة ' + fmt2(m.fifo_required_comm_local || 0) + ' ' + curr + ')</div>' : '') + '</td>' +
                             '<td data-label="إجراءات التعاقد والشحن"><div style="display:flex;gap:5px;flex-wrap:wrap;">' +
                                 '<button type="button" class="btn-sm btn-primary" onclick="svOpenMerchantContractModal(\'' + esc(m.id) + '\')">⚙️ تحرير العقد والشحن والوثائق</button>' +
                                 '<button type="button" class="btn-sm btn-warning" onclick="svOpenUserPasswordResetModal(\'merchant\',\'' + esc(m.merchant_code) + '\')">🔑 كلمة مرور</button>' +
@@ -914,16 +933,49 @@
                 if (kDocs[kKey]) mediaItems.push('<div style="text-align:center;"><div style="font-size:0.72rem;font-weight:700;margin-bottom:3px;">' + (docLabels[kKey] || esc(kKey)) + '</div>' + renderAdmThumb(kDocs[kKey], (docLabels[kKey] || esc(kKey)) + ' — ' + esc(m.business_name)) + '</div>');
             });
 
+            const cashBal = Number(m.actual_cash_balance || 0);
+            const holdBal = Number(m.soft_hold_balance || 0);
+            const credLim = Number(m.credit_limit || 0);
+            const freeBal = cashBal - holdBal + credLim;
+            const curr = esc(m.currency_code || '');
+            const cashBorder = cashBal < 0 ? '#fca5a5' : (cashBal === 0 ? '#fcd34d' : '#6ee7b7');
+            const cashBg = cashBal < 0 ? '#fef2f2' : (cashBal === 0 ? '#fffbeb' : '#ecfdf5');
+            const cashClr = cashBal < 0 ? '#dc2626' : (cashBal === 0 ? '#b45309' : '#059669');
+            const freeBorder = freeBal < 0 ? '#fca5a5' : (freeBal === 0 ? '#fcd34d' : '#6ee7b7');
+            const freeBg = freeBal < 0 ? '#fef2f2' : (freeBal === 0 ? '#fffbeb' : '#f0fdf4');
+            const freeClr = freeBal < 0 ? '#dc2626' : (freeBal === 0 ? '#b45309' : '#047857');
+
             openStage7Modal(
                 '⚙️ تحرير عقد ومدخلات التاجر: ' + esc(m.business_name) + ' (' + esc(m.merchant_code) + ')',
                 '<div style="display:grid;gap:12px;">' +
+                    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:8px;">' +
+                        '<div style="background:' + cashBg + ';border:1.5px solid ' + cashBorder + ';border-radius:10px;padding:10px 12px;">' +
+                            '<div style="font-size:0.74rem;color:#475569;font-weight:800;">💵 رصيد الشحن الفعلي (2101)</div>' +
+                            '<div style="font-size:1.08rem;font-weight:900;color:' + cashClr + ';margin-top:3px;" dir="ltr">' + fmt2(cashBal) + ' ' + curr + '</div>' +
+                            (cashBal < 0 ? '<span class="badge badge-danger" style="font-size:0.68rem;margin-top:3px;display:inline-block;">مديون (عجز كاش)</span>' : '') +
+                        '</div>' +
+                        '<div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:10px;padding:10px 12px;">' +
+                            '<div style="font-size:0.74rem;color:#1e40af;font-weight:800;">💳 الحد الائتماني الاستثنائي (D4)</div>' +
+                            '<div style="font-size:1.08rem;font-weight:900;color:' + (credLim > 0 ? '#1d4ed8' : '#475569') + ';margin-top:3px;" dir="ltr">' + fmt2(credLim) + ' ' + curr + '</div>' +
+                            '<div style="font-size:0.68rem;color:#475569;margin-top:2px;">الأصل 0 ما لم تُقر الإدارة استثناءً</div>' +
+                        '</div>' +
+                        '<div style="background:' + freeBg + ';border:1.5px solid ' + freeBorder + ';border-radius:10px;padding:10px 12px;">' +
+                            '<div style="font-size:0.74rem;color:#0f172a;font-weight:800;">🛡️ الصافي الحر المتاح للتغطية</div>' +
+                            '<div style="font-size:1.08rem;font-weight:900;color:' + freeClr + ';margin-top:3px;" dir="ltr">' + fmt2(freeBal) + ' ' + curr + '</div>' +
+                            '<div style="font-size:0.68rem;color:#475569;margin-top:2px;">فعلي − محجوز + ائتمان D4</div>' +
+                            (holdBal > 0 ? '<div style="font-size:0.72rem;color:#b45309;font-weight:800;margin-top:3px;">⏳ محجوز للفواتير المعلقة: <span dir="ltr">' + fmt2(holdBal) + ' ' + curr + '</span></div>' : '') +
+                        '</div>' +
+                    '</div>' +
+                    (freeBal < 0
+                        ? '<div style="background:#fef2f2;border:1.5px solid #f87171;color:#991b1b;padding:10px 12px;border-radius:10px;font-size:0.82rem;font-weight:700;line-height:1.6;">🔴 <b>تنبيه مديونية مفتوحة:</b> هذا التاجر لديه عجز صافٍ قدره <b dir="ltr">' + fmt2(freeBal) + ' ' + curr + '</b> وسيظل معزولاً تلقائياً لحين سداد المديونية بالشحن البنكي أو اعتماد حد ائتماني (D4) يغطي العجز.</div>'
+                        : '') +
                     (Number(m.fifo_queue_count || 0) > 0
-                        ? '<div style="background:#fef2f2;border:1.5px solid #fca5a5;color:#991b1b;padding:10px 12px;border-radius:10px;font-size:0.82rem;font-weight:700;line-height:1.6;">⏸️ لدى هذا التاجر <b>' + Number(m.fifo_queue_count) + '</b> فاتورة محجوزة في طابور الشحن FIFO (عمولة مطلوبة: <b>' + fmt2(m.fifo_required_comm_local || 0) + ' ' + esc(m.currency_code) + '</b>). بمجرد شحن الرصيد أو منح سقف ائتمان D4 كافٍ سيتم تحريرها تلقائياً وتغذية صندوق العضو ورفع العزل فوراً.</div>'
+                        ? '<div style="background:#fef2f2;border:1.5px solid #fca5a5;color:#991b1b;padding:10px 12px;border-radius:10px;font-size:0.82rem;font-weight:700;line-height:1.6;">⏸️ لدى هذا التاجر <b>' + Number(m.fifo_queue_count) + '</b> فاتورة محجوزة في طابور الشحن FIFO (عمولة مطلوبة: <b>' + fmt2(m.fifo_required_comm_local || 0) + ' ' + curr + '</b>). بمجرد شحن الرصيد أو منح سقف ائتمان D4 كافٍ سيتم تحريرها تلقائياً وتغذية صندوق العضو ورفع العزل فوراً.</div>'
                         : '') +
                     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));gap:10px;">' +
-                        '<div><label style="font-size:0.78rem;font-weight:800;">نسبة عمولة سويًا (%)</label><input id="svMerPct" type="number" step="0.5" min="1" max="40" value="' + Number(m.deduction_percent || 10) + '" class="form-control"></div>' +
+                        '<div><label style="font-size:0.78rem;font-weight:800;">نسبة عمولة سويًا (%)</label><input id="svMerPct" type="number" step="0.5" min="0.5" max="95" value="' + Number(m.deduction_percent || 10) + '" class="form-control"></div>' +
                         '<div><label style="font-size:0.78rem;font-weight:800;">التصنيف التجاري</label><input id="svMerCat" type="text" value="' + esc(m.category || 'supermarket') + '" class="form-control"></div>' +
-                        '<div><label style="font-size:0.78rem;font-weight:800;">سقف الائتمان الاستثنائي D4</label><input id="svMerCredit" type="number" step="100" min="0" value="' + Number(m.credit_limit || 0) + '" class="form-control"></div>' +
+                        '<div><label style="font-size:0.78rem;font-weight:800;">سقف الائتمان الاستثنائي D4 (' + curr + ')</label><input id="svMerCredit" type="number" step="100" min="0" value="' + Number(m.credit_limit || 0) + '" class="form-control"></div>' +
                         '<div><label style="font-size:0.78rem;font-weight:800;">حالة التفعيل بالرادار</label><select id="svMerActive" class="form-control"><option value="true" ' + (m.is_active ? 'selected' : '') + '>🟢 مفعل ومعتمد</option><option value="false" ' + (!m.is_active ? 'selected' : '') + '>⏳ موقوف / قيد المراجعة</option></select></div>' +
                     '</div>' +
                     '<button type="button" class="btn btn-primary" onclick="svSaveMerchantContract(\'' + m.id + '\')">💾 حفظ تعديلات عقد التاجر فوراً</button>' +

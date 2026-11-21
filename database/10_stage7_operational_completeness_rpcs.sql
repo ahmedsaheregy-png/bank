@@ -1506,6 +1506,7 @@ DECLARE
     v_qtx      RECORD;
     v_released INT := 0;
     v_rem_q    INT := 0;
+    v_free_bal NUMERIC(18,2) := 0.00;
     v_free_pct NUMERIC(6,2) := 0.00;
     v_iso_pct  NUMERIC(5,2) := 10.00;
 BEGIN
@@ -1545,6 +1546,13 @@ BEGIN
 
         RETURN v_mc_res;
     ELSE
+        IF p_deduction_percent IS NOT NULL AND (p_deduction_percent < 0.50 OR p_deduction_percent > 95.00) THEN
+            RAISE EXCEPTION 'INVALID_DEDUCTION_PERCENT_RANGE';
+        END IF;
+        IF p_credit_limit IS NOT NULL AND p_credit_limit < 0 THEN
+            RAISE EXCEPTION 'INVALID_CREDIT_LIMIT_NEGATIVE';
+        END IF;
+
         UPDATE sawyan.merchants
            SET deduction_percent   = COALESCE(p_deduction_percent, deduction_percent),
                category            = COALESCE(NULLIF(trim(p_category), ''), category),
@@ -1583,8 +1591,9 @@ BEGIN
          ORDER BY s.country_id NULLS LAST, s.effective_from DESC
          LIMIT 1;
 
+        v_free_bal := v_mer.actual_cash_balance - v_mer.soft_hold_balance + v_mer.credit_limit;
         IF GREATEST(v_mer.package_base_amount, v_mer.credit_limit) > 0 THEN
-            v_free_pct := ROUND((((v_mer.actual_cash_balance - v_mer.soft_hold_balance + v_mer.credit_limit)
+            v_free_pct := ROUND(((v_free_bal
                                   / GREATEST(v_mer.package_base_amount, v_mer.credit_limit)) * 100.0)::numeric, 2);
         END IF;
 
@@ -1592,7 +1601,9 @@ BEGIN
            SET is_isolated = CASE
                WHEN p_is_isolated IS TRUE THEN true
                WHEN v_rem_q > 0 THEN true
-               WHEN v_free_pct > COALESCE(v_iso_pct, 10.00) THEN false
+               WHEN v_free_bal < 0 THEN true
+               WHEN (v_mer.package_base_amount > 0 OR v_mer.credit_limit > 0) AND v_free_pct <= COALESCE(v_iso_pct, 10.00) THEN true
+               WHEN v_free_bal > 0 AND v_free_pct > COALESCE(v_iso_pct, 10.00) THEN false
                ELSE COALESCE(p_is_isolated, v_mer.is_isolated)
            END
          WHERE id = v_mer.id
@@ -1603,6 +1614,9 @@ BEGIN
             jsonb_build_object(
                 'deduction_percent', v_mer.deduction_percent,
                 'credit_limit', v_mer.credit_limit,
+                'actual_cash_balance', v_mer.actual_cash_balance,
+                'soft_hold_balance', v_mer.soft_hold_balance,
+                'free_balance', v_free_bal,
                 'is_active', v_mer.is_active,
                 'is_isolated', v_mer.is_isolated,
                 'released_fifo_count', v_released,
@@ -1615,6 +1629,9 @@ BEGIN
             'merchant_code', v_mer.merchant_code,
             'deduction_percent', v_mer.deduction_percent,
             'credit_limit', v_mer.credit_limit,
+            'actual_cash_balance', v_mer.actual_cash_balance,
+            'soft_hold_balance', v_mer.soft_hold_balance,
+            'free_balance', v_free_bal,
             'is_active', v_mer.is_active,
             'is_isolated', v_mer.is_isolated,
             'released_fifo_count', v_released,

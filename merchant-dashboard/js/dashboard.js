@@ -126,18 +126,24 @@ function fmtMerchantMoney(val, curr) {
 
 function getMerchantFifoBannerHtml(p, pendingList) {
     const fifoItems = (pendingList || []).filter(t => t.status === 'awaiting_merchant_topup');
-    if (fifoItems.length === 0 && !p?.is_isolated && Number(p?.free_balance || 0) > 0) return '';
+    const cashBal = Number(p?.actual_cash_balance || 0);
+    const credLim = Number(p?.credit_limit || 0);
+    const freeBal = Number(p?.free_balance ?? (cashBal - Number(p?.soft_hold_balance || 0) + credLim));
+    if (fifoItems.length === 0 && !p?.is_isolated && freeBal > 0) return '';
     const curr = p?.currency_code || 'EGP';
     const fifoGross = fifoItems.reduce((s, t) => s + Number(t.total_amount || 0), 0);
     const fifoComm = fifoItems.reduce((s, t) => s + Number(t.commission_amount || 0), 0);
     const headline = fifoItems.length > 0
         ? `🔴 تنبيه هام: متجرك معزول مؤقتاً ولديك ${fifoItems.length} فاتورة في طابور انتظار الشحن (FIFO)`
-        : (p?.is_isolated
-            ? '🔴 تنبيه هام: متجرك معزول مؤقتاً عن دليل الأعضاء حتى إعادة الشحن'
-            : '⚠️ رصيد الشحن المسبق الحالي (0.00) لا يكفي لتمرير المبيعات');
+        : (freeBal < 0
+            ? `🔴 رصيدك الحالي مديون (${fmtMerchantMoney(freeBal, curr)}) — يرجى سداد المديونية وشحن الرصيد`
+            : (p?.is_isolated
+                ? '🔴 تنبيه هام: متجرك معزول مؤقتاً عن دليل الأعضاء حتى إعادة الشحن'
+                : '⚠️ رصيد الشحن المسبق الحالي (0.00) لا يكفي لتمرير المبيعات'));
+    const balSummary = `رصيد الشحن الفعلي: <b>${fmtMerchantMoney(cashBal, curr)}</b> • الحد الائتماني (D4): <b>${fmtMerchantMoney(credLim, curr)}</b> • الصافي الحر المتاح: <b>${fmtMerchantMoney(freeBal, curr)}</b>`;
     const detail = fifoItems.length > 0
-        ? `إجمالي قيمة الفواتير المحجوزة: <b>${fmtMerchantMoney(fifoGross, curr)}</b> • العمولة المطلوبة لتحريرها فوراً: <b>${fmtMerchantMoney(fifoComm, curr)}</b>. بمجرد شحن الرصيد أو تفعيل سقف D4 من الإدارة ستُعتمد هذه الفواتير تلقائياً وتظهر في مبيعاتك وصندوق العضو.`
-        : `رصيدك الحر المتاح حالياً هو <b>${fmtMerchantMoney(p?.free_balance || 0, curr)}</b>. أي عملية بيع تسجّلها الآن ستدخل طابور انتظار الشحن (FIFO) ولن تغذي صندوق العضو أو جدول المكتملة إلا بعد شحن رصيدك المسبق.`;
+        ? `إجمالي قيمة الفواتير المحجوزة: <b>${fmtMerchantMoney(fifoGross, curr)}</b> • العمولة المطلوبة لتحريرها فوراً: <b>${fmtMerchantMoney(fifoComm, curr)}</b>. بمجرد شحن الرصيد أو تفعيل سقف D4 من الإدارة ستُعتمد هذه الفواتير تلقائياً وتظهر في مبيعاتك وصندوق العضو.<div style="margin-top:4px;font-size:0.78rem;">${balSummary}</div>`
+        : `${balSummary}. أي عملية بيع تسجّلها الآن ستدخل طابور انتظار الشحن (FIFO) ولن تغذي صندوق العضو أو جدول المكتملة إلا بعد شحن رصيدك المسبق.`;
     return `
         <div style="background:#fef2f2;border:2px solid #f87171;border-radius:14px;padding:14px 16px;margin-bottom:14px;color:#7f1d1d;">
             <div style="font-weight:900;font-size:0.96rem;margin-bottom:4px;">${headline}</div>
@@ -205,13 +211,37 @@ function renderLiveHomeStats() {
     if (commsDueEl) commsDueEl.textContent = '-' + fmtMerchantMoney(p.today_commission_local, curr);
     if (todayNetEl) todayNetEl.textContent = fmtMerchantMoney(p.today_merchant_net_local, curr);
     if (prepaidEl) {
-        prepaidEl.textContent = fmtMerchantMoney(p.free_balance, curr);
-        const hint = prepaidEl.nextElementSibling;
+        const cashBal = Number(p.actual_cash_balance || 0);
+        const holdBal = Number(p.soft_hold_balance || 0);
+        const credLim = Number(p.credit_limit || 0);
+        const freeBal = Number(p.free_balance ?? (cashBal - holdBal + credLim));
+        const safeCap = Math.max(0, Number(p.safe_sales_capacity || 0));
+
+        prepaidEl.textContent = fmtMerchantMoney(freeBal, curr);
+        prepaidEl.style.color = freeBal < 0 ? '#dc2626' : (freeBal === 0 ? '#b45309' : '#047857');
+
+        const hint = document.getElementById('homePrepaidHint') || prepaidEl.nextElementSibling;
         if (hint) {
-            hint.textContent = p.is_isolated
-                ? '🔴 المتجر معزول مؤقتاً — اشحن الرصيد لتحرير طابور FIFO'
-                : `🟢 يكفي مبيعات حتى ${fmtMerchantMoney(p.safe_sales_capacity, curr)} (${p.zone_status})`;
-            hint.style.color = p.is_isolated ? '#dc2626' : '#059669';
+            if (freeBal < 0) {
+                hint.textContent = '🔴 رصيد مديون — سعة المبيعات الآمنة 0.00 (معزول لحين السداد/التغطية)';
+                hint.style.color = '#dc2626';
+            } else if (p.is_isolated) {
+                hint.textContent = '🔴 المتجر معزول مؤقتاً — اشحن الرصيد لتحرير طابور FIFO';
+                hint.style.color = '#dc2626';
+            } else {
+                hint.textContent = `🟢 يكفي مبيعات حتى ${fmtMerchantMoney(safeCap, curr)} (${p.zone_status})`;
+                hint.style.color = '#059669';
+            }
+        }
+
+        const brkEl = document.getElementById('homeBalanceBreakdown');
+        if (brkEl) {
+            const cashClr = cashBal < 0 ? '#dc2626' : (cashBal === 0 ? '#b45309' : '#059669');
+            const credClr = credLim > 0 ? '#1d4ed8' : '#64748b';
+            brkEl.innerHTML =
+                `شحن فعلي (2101): <span dir="ltr" style="color:${cashClr};font-weight:900;">${fmtMerchantMoney(cashBal, curr)}</span>${cashBal < 0 ? ' <span style="color:#dc2626;">(مديون)</span>' : ''}` +
+                ` • حد ائتماني (D4): <span dir="ltr" style="color:${credClr};font-weight:900;">${fmtMerchantMoney(credLim, curr)}</span>` +
+                (holdBal > 0 ? ` • محجوز: <span dir="ltr" style="color:#b45309;font-weight:900;">${fmtMerchantMoney(holdBal, curr)}</span>` : '');
         }
     }
     if (contractPctEl) {
@@ -466,17 +496,40 @@ function loadFinancialReport() {
         </div>
 
         <!-- 1. بطاقة الرصيد المباشر ومؤشر الأمان المالي ضد العزل -->
-        <div data-spec-id="merchant-financial-prepaid-card" style="background:linear-gradient(135deg, #064e3b, #0f172a); color:white; border-radius:14px; padding:18px 22px; margin-bottom:16px; box-shadow:0 4px 15px rgba(6,78,59,0.25); border:1px solid #10b981;">
+        <div id="finPrepaidHeroCard" data-spec-id="merchant-financial-prepaid-card" style="background:linear-gradient(135deg, #064e3b, #0f172a); color:white; border-radius:14px; padding:18px 22px; margin-bottom:16px; box-shadow:0 4px 15px rgba(6,78,59,0.25); border:1px solid #10b981;">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; flex-wrap:wrap; gap:12px;">
                 <div>
-                    <span style="font-size:0.75rem; background:rgba(16,185,129,0.2); border:1px solid #10b981; color:#a7f3d0; padding:2px 8px; border-radius:10px; font-weight:700;">رصيد الشحن مسبق الدفع المتاح حالياً (Prepaid)</span>
-                    <div id="livePrepaidBalance" style="font-size:2.2rem; font-weight:900; margin-top:6px; font-family:monospace; color:#34d399;">0.00 ج.م</div>
+                    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                        <span style="font-size:0.75rem; background:rgba(16,185,129,0.2); border:1px solid #10b981; color:#a7f3d0; padding:2px 8px; border-radius:10px; font-weight:700;">الصافي الحر المتاح للتغطية (شحن فعلي − محجوز + ائتمان D4)</span>
+                        <span id="liveDebtPill" style="display:none; font-size:0.72rem; background:#dc2626; color:#ffffff; padding:2px 8px; border-radius:10px; font-weight:900;">مديون</span>
+                    </div>
+                    <div id="livePrepaidBalance" dir="ltr" style="font-size:2.2rem; font-weight:900; margin-top:6px; font-family:monospace; color:#34d399; display:inline-block;">0.00 ج.م</div>
                 </div>
                 <div style="text-align:left;">
                     <span id="liveStoreRadarBadge" style="background:#ecfdf5; color:#047857; font-weight:800; font-size:0.8rem; padding:4px 12px; border-radius:8px; display:inline-block; border:1px solid #a7f3d0;">
                         🟢 حالة المتجر: جاري التحقق...
                     </span>
                     <div id="liveMinWarnLabel" style="font-size:0.74rem; color:#94a3b8; margin-top:5px;">تنبيه انخفاض الرصيد: وفق إعدادات الحساب</div>
+                </div>
+            </div>
+
+            <!-- تفصيل مكونات رصيد التاجر (الشحن الفعلي vs الحد الائتماني D4 vs المحجوز vs الصافي الحر) -->
+            <div id="merchantFinancialBreakdown" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 165px), 1fr)); gap:8px; margin-bottom:12px;">
+                <div style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); border-radius:10px; padding:9px 12px;">
+                    <div style="font-size:0.72rem; color:#cbd5e1; font-weight:700;">💵 رصيد الشحن الفعلي (2101)</div>
+                    <div id="finActualCashVal" dir="ltr" style="font-size:1.05rem; font-weight:900; color:#34d399; margin-top:3px; font-family:monospace;">0.00</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); border-radius:10px; padding:9px 12px;">
+                    <div style="font-size:0.72rem; color:#cbd5e1; font-weight:700;">💳 الحد الائتماني الاستثنائي (D4)</div>
+                    <div id="finCreditLimitVal" dir="ltr" style="font-size:1.05rem; font-weight:900; color:#93c5fd; margin-top:3px; font-family:monospace;">0.00</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); border-radius:10px; padding:9px 12px;">
+                    <div style="font-size:0.72rem; color:#cbd5e1; font-weight:700;">⏳ محجوز للفواتير المعلقة</div>
+                    <div id="finSoftHoldVal" dir="ltr" style="font-size:1.05rem; font-weight:900; color:#fcd34d; margin-top:3px; font-family:monospace;">0.00</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); border-radius:10px; padding:9px 12px;">
+                    <div style="font-size:0.72rem; color:#cbd5e1; font-weight:700;">🛡️ الصافي الحر المتاح للتغطية</div>
+                    <div id="finFreeBalVal" dir="ltr" style="font-size:1.05rem; font-weight:900; color:#34d399; margin-top:3px; font-family:monospace;">0.00</div>
                 </div>
             </div>
 
@@ -2245,16 +2298,55 @@ loadFinancialReport = async function () {
     if (!p) return;
     const curr = p.currency_code || 'EGP';
     const pct = Number(p.deduction_percent || 10);
-    const freeBal = Number(p.free_balance || 0);
-    const safetyCap = pct > 0 ? (freeBal * 100 / pct) : 0;
+    const cashBal = Number(p.actual_cash_balance || 0);
+    const holdBal = Number(p.soft_hold_balance || 0);
+    const credLim = Number(p.credit_limit || 0);
+    const freeBal = Number(p.free_balance ?? (cashBal - holdBal + credLim));
+    const safetyCap = pct > 0 ? (Math.max(0, freeBal) * 100 / pct) : 0;
+
+    const heroCard = document.getElementById('finPrepaidHeroCard');
+    if (heroCard && freeBal < 0) {
+        heroCard.style.background = 'linear-gradient(135deg, #7f1d1d, #0f172a)';
+        heroCard.style.borderColor = '#ef4444';
+    }
+    const debtPill = document.getElementById('liveDebtPill');
+    if (debtPill) {
+        debtPill.style.display = (freeBal < 0 || cashBal < 0) ? 'inline-block' : 'none';
+    }
 
     const liveBal = document.getElementById('livePrepaidBalance');
-    if (liveBal) liveBal.textContent = fmtMerchantMoney(freeBal, curr);
+    if (liveBal) {
+        liveBal.textContent = fmtMerchantMoney(freeBal, curr);
+        liveBal.style.color = freeBal < 0 ? '#f87171' : (freeBal === 0 ? '#fbbf24' : '#34d399');
+    }
+
+    const actualCashEl = document.getElementById('finActualCashVal');
+    const credLimEl = document.getElementById('finCreditLimitVal');
+    const softHoldEl = document.getElementById('finSoftHoldVal');
+    const freeBalEl = document.getElementById('finFreeBalVal');
+    if (actualCashEl) {
+        actualCashEl.textContent = fmtMerchantMoney(cashBal, curr) + (cashBal < 0 ? ' (مديون)' : '');
+        actualCashEl.style.color = cashBal < 0 ? '#f87171' : (cashBal === 0 ? '#fbbf24' : '#34d399');
+    }
+    if (credLimEl) {
+        credLimEl.textContent = fmtMerchantMoney(credLim, curr);
+        credLimEl.style.color = credLim > 0 ? '#93c5fd' : '#cbd5e1';
+    }
+    if (softHoldEl) {
+        softHoldEl.textContent = fmtMerchantMoney(holdBal, curr);
+        softHoldEl.style.color = holdBal > 0 ? '#fcd34d' : '#cbd5e1';
+    }
+    if (freeBalEl) {
+        freeBalEl.textContent = fmtMerchantMoney(freeBal, curr);
+        freeBalEl.style.color = freeBal < 0 ? '#f87171' : (freeBal === 0 ? '#fbbf24' : '#34d399');
+    }
 
     const statusBadge = document.getElementById('liveStoreRadarBadge');
     if (statusBadge) {
-        if (p.is_isolated) {
-            statusBadge.textContent = '🔴 المتجر معزول مؤقتاً لنفاد الرصيد';
+        if (p.is_isolated || freeBal < 0) {
+            statusBadge.textContent = freeBal < 0
+                ? '🔴 رصيد مديون — المتجر معزول لحين السداد'
+                : '🔴 المتجر معزول مؤقتاً لنفاد الرصيد';
             statusBadge.style.background = '#fef2f2';
             statusBadge.style.color = '#991b1b';
             statusBadge.style.borderColor = '#fca5a5';
@@ -2270,7 +2362,9 @@ loadFinancialReport = async function () {
 
     const safetyStrip = document.getElementById('liveSafetyCapStrip');
     if (safetyStrip) {
-        safetyStrip.innerHTML = `🛡️ <strong>حد الأمان المحاسبي:</strong> رصيدك المتاح يكفي لتمرير مبيعات لأعضاء سويًا حتى <strong>${fmtMerchantMoney(safetyCap, curr)}</strong>.`;
+        safetyStrip.innerHTML = freeBal < 0
+            ? `🔴 <strong>حد الأمان المحاسبي:</strong> لديك عجز قدره <strong dir="ltr">${fmtMerchantMoney(freeBal, curr)}</strong> وسعة التغطية المباشرة حالياً <strong>${fmtMerchantMoney(0, curr)}</strong> حتى الشحن أو تغطية الرصيد.`
+            : `🛡️ <strong>حد الأمان المحاسبي:</strong> الصافي الحر المتاح يكفي لتمرير مبيعات لأعضاء سويًا حتى <strong>${fmtMerchantMoney(safetyCap, curr)}</strong>.`;
     }
     const dedBadge = document.getElementById('liveDedRateBadge');
     if (dedBadge) dedBadge.textContent = `نسبة العمولة التعاقدية: ${pct.toFixed(1)}% معتمدة`;
