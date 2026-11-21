@@ -37,14 +37,12 @@
             }
         }
 
-        // المزود الوهمي يتاح في البيئة الموازية / التجريبية فقط أو كخيار اختبار صريح
-        if (typeof window.SAWYAN.MockPaymentProvider === 'function') {
+        // المزود الوهمي يتاح في البيئة الموازية للتجربة فقط (sawyan_demo)
+        if (isParallelDemo && typeof window.SAWYAN.MockPaymentProvider === 'function') {
             svc.registerProvider('mock', new window.SAWYAN.MockPaymentProvider({ sandbox: true }));
-            if (isParallelDemo || svc.providers.size === 1) {
-                svc.setDefaultProvider('mock');
-            } else if (svc.providers.has('stripe')) {
-                svc.setDefaultProvider('stripe');
-            }
+            svc.setDefaultProvider('mock');
+        } else if (svc.providers.has('stripe')) {
+            svc.setDefaultProvider('stripe');
         }
 
         window.dispatchEvent(new CustomEvent('sawyan:payment:ready', {

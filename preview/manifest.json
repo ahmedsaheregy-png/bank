@@ -1,0 +1,21 @@
+{
+  "name": "SAWYAN — الاستهلاك الاستثماري",
+  "short_name": "SAWYAN",
+  "description": "منصة SAWYAN للاستهلاك الاستثماري والادخار التجاري الموثق للمشتركين والتجار.",
+  "dir": "rtl",
+  "lang": "ar",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#047857",
+  "background_color": "#ffffff",
+  "icons": [
+    {
+      "src": "shared/assets/sawyan-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

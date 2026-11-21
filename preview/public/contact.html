@@ -8,8 +8,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../css/preview.css">
-    <link rel="stylesheet" href="../shared/css/logo.css?v=20261119_logo_all">
+    <link rel="manifest" href="../manifest.json">
+    <link rel="icon" type="image/svg+xml" href="../shared/assets/sawyan-icon.svg">
+    <link rel="stylesheet" href="../css/preview.css?v=20261121_launch">
+    <link rel="stylesheet" href="../shared/css/logo.css?v=20261121_launch">
+    <link rel="stylesheet" href="../shared/css/ui-feedback.css?v=20261121_launch">
     <style>
         body {
             background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
@@ -263,8 +266,8 @@
                 <div class="contact-item">
                     <div class="contact-icon">📱</div>
                     <div class="contact-details">
-                        <h3>واتساب</h3>
-                        <p><a href="https://wa.me/201000000000">+20 10 0000 0000</a></p>
+                        <h3>واتساب الدعم الرسمي</h3>
+                        <p><a href="https://wa.me/905376744337" target="_blank" rel="noopener" dir="ltr">+90 537 674 43 37</a></p>
                     </div>
                 </div>
 
@@ -284,11 +287,10 @@
                     </div>
                 </div>
 
-                <div class="social-links">
-                    <a href="#" class="social-link" title="Twitter">🐦</a>
-                    <a href="#" class="social-link" title="Instagram">📷</a>
-                    <a href="#" class="social-link" title="LinkedIn">💼</a>
-                    <a href="#" class="social-link" title="YouTube">▶️</a>
+                <div style="margin-top:1.5rem;">
+                    <a href="https://wa.me/905376744337?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D9%81%D8%B1%D9%8A%D9%82%20SAWYAN%D8%8C%20%D8%A3%D8%AD%D8%AA%D8%A7%D8%AC%20%D9%85%D8%B3%D8%A7%D8%B9%D8%AF%D8%A9%20%D9%85%D8%A8%D8%A7%D8%B4%D8%B1%D8%A9" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:#16a34a;color:#fff;padding:10px 18px;border-radius:10px;text-decoration:none;font-weight:800;">
+                        💬 محادثة فورية عبر واتساب الدعم
+                    </a>
                 </div>
             </div>
 
@@ -337,10 +339,11 @@
         </div>
     </div>
 
-    <script src="../shared/components/logo.js?v=20261119_logo_all"></script>
+    <script src="../shared/components/logo.js?v=20261121_launch"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../shared/config/supabase.js"></script>
-    <script src="../shared/api/sawyan-api.js?v=20261119_auth_audit"></script>
+    <script src="../shared/config/supabase.js?v=20261121_launch"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261121_launch"></script>
+    <script src="../shared/components/ui-feedback.js?v=20261121_launch"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const params = new URLSearchParams(window.location.search);
@@ -400,7 +403,9 @@
                 okBox.classList.add('show');
                 this.style.display = 'none';
             } catch (err) {
-                alert('تعذر إرسال التذكرة: ' + err.message);
+                if (window.SAWYAN?.UI?.toast) {
+                    window.SAWYAN.UI.toast('تعذر إرسال التذكرة: ' + err.message, 'error');
+                }
                 if (btn) { btn.disabled = false; btn.textContent = 'إرسال الرسالة'; }
             }
         });

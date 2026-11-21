@@ -16,6 +16,36 @@
 
 let currentMember = null;
 let memberBundle = null;
+
+function swMemToast(msg, type = null) {
+    if (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.toast === 'function') {
+        window.SAWYAN.UI.toast(msg, type);
+    } else {
+        console.info('[SAWYAN Member Notice]', msg);
+    }
+}
+
+async function swMemAlert(title, message, type = 'info', actions = []) {
+    if (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.alertModal === 'function') {
+        return await window.SAWYAN.UI.alertModal({ title, message, type, actions });
+    }
+    swMemToast(message, type);
+    return true;
+}
+
+async function swMemConfirm(title, message, danger = false) {
+    if (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.confirmModal === 'function') {
+        return await window.SAWYAN.UI.confirmModal({ title, message, danger });
+    }
+    return true;
+}
+
+function swMemErrText(err) {
+    if (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.humanizeError === 'function') {
+        return window.SAWYAN.UI.humanizeError(err);
+    }
+    return String(err?.message || err || 'حدث خطأ غير متوقع');
+}
 let activeLensCountry = null;
 let liveCatalog = [];
 let liveCountriesPlanMap = new Map();
@@ -276,7 +306,7 @@ function openMemberModal(titleText, bodyHtml, onSubmit) {
         try {
             await onSubmit(form, close);
         } catch (err) {
-            alert('❌ ' + err.message);
+            swMemToast(swMemErrText(err), 'error');
             btn.disabled = false;
             btn.textContent = 'تأكيد وإرسال';
         }
@@ -313,15 +343,15 @@ function goToPage(page) {
 
     const titleMap = {
         home: 'لوحة التحكم الرئيسية',
-        myPending: 'طلباتي المعلقة وطابور FIFO',
-        transactions: 'العمليات المكتملة والمراجعة (D5)',
-        tree: 'الشجرة الدولية وتقارير القيادة (S01)',
+        myPending: 'طلباتي المعلقة',
+        transactions: 'العمليات المكتملة والمراجعة',
+        tree: 'الشجرة الدولية وتقارير الفريق',
         wallet: 'المحفظة والسحوبات الموثقة',
         academy: 'أكاديمية سويا التدريبية',
         merchants: 'التجار المتاحون حولي والخريطة الجغرافية',
         favorites: 'متاجري المفضلة',
-        crm: 'دفتر المعارف الميداني (Mini CRM)',
-        referrals: 'رابط الإحالة ومؤشر الإسقاط التلقائي',
+        crm: 'دفتر المعارف والدعوات',
+        referrals: 'رابط الإحالة وبناء الفريق',
         settings: 'الملف الشخصي والهوية والدعم والأمان'
     };
     const titleEl = document.getElementById('pageTitle');
@@ -357,7 +387,85 @@ window.copyMemberStaticBarcode = function () {
     const code = memberBundle?.profile?.member_code || currentMember?.member_code || '';
     const txt = `SAWYAN:MEMBER:${code}`;
     navigator.clipboard?.writeText(txt).catch(() => {});
-    alert(`✅ تم نسخ رمز الهوية الثابت للكاشير: ${txt}`);
+    swMemToast(`تم نسخ رمز الهوية الثابت للكاشير: ${txt}`, 'success');
+};
+
+window.downloadMemberQrCardPng = function () {
+    const profile = memberBundle?.profile || currentMember || {};
+    const code = profile.member_code || '';
+    const fullName = profile.full_name || 'عضو SAWYAN';
+    const qrBox = document.getElementById('qrCode');
+    const qrCanvas = qrBox ? qrBox.querySelector('canvas') : null;
+    const qrImg = qrBox ? qrBox.querySelector('img') : null;
+    if (!qrCanvas && !qrImg) {
+        swMemToast('لم يجهز رمز الـ QR بعد، أعد تحميل الصفحة.', 'warning');
+        return;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 720;
+    canvas.height = 460;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const grad = ctx.createLinearGradient(0, 0, 720, 460);
+    grad.addColorStop(0, '#064e3b');
+    grad.addColorStop(1, '#0f172a');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 720, 460);
+
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(16, 16, 688, 428);
+
+    ctx.fillStyle = '#34d399';
+    ctx.font = 'bold 30px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('SAWYAN', 42, 66);
+
+    ctx.fillStyle = '#ecfdf5';
+    ctx.font = 'bold 24px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('بطاقة العضوية المعتمدة', 678, 66);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(42, 105, 240, 240, 18) : ctx.fillRect(42, 105, 240, 240);
+    ctx.fill();
+
+    const qrSource = qrCanvas || qrImg;
+    try {
+        ctx.drawImage(qrSource, 62, 125, 200, 200);
+    } catch (_e) {}
+
+    ctx.fillStyle = '#a7f3d0';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('الاسم', 678, 150);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 30px sans-serif';
+    ctx.fillText(String(fullName).slice(0, 28), 678, 192);
+
+    ctx.fillStyle = '#a7f3d0';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.fillText('كود العضوية الثابت للكاشير', 678, 256);
+
+    ctx.fillStyle = '#34d399';
+    ctx.font = 'bold 38px monospace';
+    ctx.fillText(`#${code}`, 678, 305);
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '18px sans-serif';
+    ctx.fillText('اعرض هذا الرمز للكاشير عند الشراء لإضافة العائد تلقائياً', 678, 405);
+
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = `SAWYAN-Member-Card-${code}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    swMemToast('تم حفظ بطاقة العضوية في جهازك للاستخدام في أي وقت!', 'success');
 };
 
 function fmtBiDi(val) {
@@ -405,8 +513,7 @@ function fmtMemberTxStatusBadge(t) {
     const st = String(t?.status || '');
     if (st === 'completed') return { label: '✅ مكتملة ومعتمدة', bg: '#d1fae5', color: '#065f46' };
     if (st === 'awaiting_merchant_topup') {
-        const seq = t?.fifo_seq ? ` #${Number(t.fifo_seq)}` : '';
-        return { label: `⏸️ بانتظار شحن التاجر (FIFO${seq})`, bg: '#fee2e2', color: '#991b1b' };
+        return { label: '⏸️ بانتظار استكمال اعتماد التاجر', bg: '#fee2e2', color: '#991b1b' };
     }
     if (st === 'pending') return { label: '⏳ بانتظار اعتماد التاجر', bg: '#fef3c7', color: '#92400e' };
     if (st === 'reversed') return { label: '↩️ مسترجعة', bg: '#f1f5f9', color: '#475569' };
@@ -517,7 +624,7 @@ function renderHomePage() {
                             <br>تُغذّى قيمة خطة الدخل داخل هدفك الشهري تلقائياً فور شحن التاجر أو اعتماد العملية.
                         </div>
                     </div>
-                    <button type="button" onclick="goToPage('myPending')" style="background:#b91c1c;color:#fff;border:none;padding:7px 14px;border-radius:8px;font-weight:800;font-size:0.8rem;cursor:pointer;white-space:nowrap;">⏳ عرض طلباتي المعلقة / FIFO</button>
+                    <button type="button" onclick="goToPage('myPending')" style="background:#b91c1c;color:#fff;border:none;padding:7px 14px;border-radius:8px;font-weight:800;font-size:0.8rem;cursor:pointer;white-space:nowrap;">⏳ عرض طلباتي المعلقة</button>
                 </div>
             </div>
         ` : ''}
@@ -683,7 +790,7 @@ function renderHomePage() {
 const SW_MEM_PAYMENT_TYPES = [
     { value: 'cash', label: '💵 نقدي في المحل (Cash)', needsRef: false, deferred: false },
     { value: 'pos_card', label: '💳 بطاقة بنكية POS (RRN)', needsRef: true, deferred: false },
-    { value: 'instant_transfer', label: '⚡ تحويل فوري (InstaPay / STC)', needsRef: true, deferred: false },
+    { value: 'instant_transfer', label: '⚡ تحويل فوري (FAST / InstaPay / STC)', needsRef: true, deferred: false },
     { value: 'iban_swift_sepa', label: '🏦 تحويل بنكي IBAN / SWIFT', needsRef: true, deferred: false },
     { value: 'digital_wallet', label: '📱 محفظة إلكترونية', needsRef: true, deferred: false },
     { value: 'payment_gateway', label: '🌐 بوابة دفع إلكتروني', needsRef: true, deferred: false },
@@ -715,12 +822,12 @@ function loadMyPendingRequests() {
 
     page.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
-            <h2>⏳ طلباتي المعلقة وطابور الشحن (FIFO)</h2>
+            <h2>⏳ طلباتي المعلقة</h2>
             <button type="button" class="btn btn-primary btn-sm" onclick="openMemberPurchaseModal()">+ توثيق فاتورة شراء جديدة</button>
         </div>
         <div data-spec-id="member-pending-limit-meter" style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:14px;padding:14px 16px;margin-bottom:16px;font-size:0.86rem;color:#1e3a8a;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
             <div>
-                ℹ️ <strong>مقياس السقف التشغيلي للطلبات المعلقة:</strong> الحد الأقصى عند نفس التاجر هو <strong>طلبان (2)</strong>؛ وعند نفاد رصيد التاجر يدخل الطلب في طابور <code>FIFO</code> تلقائياً.
+                ℹ️ <strong>سقف الطلبات قيد المراجعة:</strong> يمكنك إرسال حتى <strong>طلبين معلقين (2)</strong> عند نفس المتجر في الوقت نفسه لحين اعتماد التاجر.
                 <div style="margin-top:4px;font-size:0.8rem;">صافي خطة الدخل المتوقع عند الاعتماد: <strong>${esc(fmtLocalFromUsd(totalPendingUsd))}</strong> (${fmtUsd(totalPendingUsd)})</div>
             </div>
             <div style="background:#ffffff;border:1.5px solid #93c5fd;border-radius:10px;padding:8px 14px;text-align:center;">
@@ -752,7 +859,7 @@ function loadMyPendingRequests() {
                                 <div style="text-align:left;">
                                     <div style="font-weight:900;font-size:1.05rem;">${Number(t.total_amount).toFixed(2)} ${esc(t.currency_code)}</div>
                                     <span style="font-size:0.78rem;font-weight:800;padding:2px 8px;border-radius:999px;background:${t.status === 'awaiting_merchant_topup' ? '#fee2e2' : '#fef3c7'};color:${t.status === 'awaiting_merchant_topup' ? '#991b1b' : '#92400e'};">
-                                        ${t.status === 'awaiting_merchant_topup' ? '⏸️ بانتظار شحن التاجر (FIFO)' : '⏳ بانتظار موافقة التاجر'}
+                                        ${t.status === 'awaiting_merchant_topup' ? '⏸️ بانتظار استكمال اعتماد التاجر' : '⏳ بانتظار موافقة التاجر'}
                                     </span>
                                 </div>
                                 ${t.status === 'pending' ? `<button type="button" class="btn btn-outline btn-sm" style="border-color:#dc2626;color:#dc2626;" onclick="cancelPendingPurchaseAction('${esc(t.id)}','${esc(t.sw_short_code)}')">✖ إلغاء الطلب</button>` : ''}
@@ -766,16 +873,17 @@ function loadMyPendingRequests() {
 }
 
 window.cancelPendingPurchaseAction = async function (txId, shortCode) {
-    if (!confirm(`هل تريد إلغاء طلب التوثيق المعلق (${shortCode})؟ سيتم تحرير القيد المبدئي فوراً.`)) return;
+    const ok = await swMemConfirm('إلغاء الطلب المعلق', `هل تريد إلغاء طلب الفاتورة المعلقة (${shortCode})؟`, true);
+    if (!ok) return;
     try {
         await window.SAWYAN.API.cancelMemberPendingPurchase({
             memberId: currentMember.id,
             transactionId: txId
         });
-        alert(`✅ تم إلغاء الطلب المعلق (${shortCode}) بنجاح.`);
+        swMemToast(`تم إلغاء الطلب المعلق (${shortCode}) بنجاح.`, 'success');
         await refreshDashboardBundle();
     } catch (err) {
-        alert('❌ تعذر إلغاء الطلب: ' + err.message);
+        swMemToast(swMemErrText(err), 'error');
     }
 };
 
@@ -1019,12 +1127,12 @@ window.svPreviewReturnImpact = async function (txId, reqId) {
 window.svRespondReturnRequest = async function (reqId, decision) {
     try {
         const res = await window.SAWYAN.API.memberRespondPosReturn({ memberId: currentMember.id, returnRequestId: reqId, decision });
-        alert(decision === 'approve'
-            ? '✅ تم تأكيد المرتجع وإلغاء الفاتورة وتحديث صندوق هدفك.'
-            : 'ℹ️ تم تسجيل رفضك لطلب المرتجع.');
+        swMemToast(decision === 'approve'
+            ? 'تم تأكيد المرتجع وإلغاء الفاتورة وتحديث صندوق هدفك.'
+            : 'تم تسجيل رفضك لطلب المرتجع.', 'info');
         if (res) await refreshDashboardBundle();
     } catch (err) {
-        alert('❌ ' + err.message);
+        swMemToast(swMemErrText(err), 'error');
     }
 };
 
@@ -1411,7 +1519,7 @@ function loadTree() {
         <!-- عداد الفريق الرديف المجمع D26 -->
         <div data-spec-id="member-tree-reserve-counter" style="background:#f1f5f9;border:1.5px solid #94a3b8;border-radius:14px;padding:12px 16px;margin:14px 0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
             <div>
-                <strong>🔘 الفريق الرديف المجمع (D26):</strong> يظهر هنا الأعضاء بعد إغلاق الستوبر (${lensPlan.s01}/${lensPlan.s01}) كدوائر رمادية وعداد مجمّع لحماية الخصوصية.
+                <strong>🔘 الفريق الرديف المجمّع:</strong> يظهر هنا الأعضاء بعد الجيل ${lensPlan.s01} كدوائر رمادية وعداد مجمّع لحماية الخصوصية.
             </div>
             <span style="background:#334155;color:#ffffff;font-weight:900;padding:4px 14px;border-radius:999px;font-size:0.86rem;">
                 الإجمالي الرديف: +${tree.reserve_team_aggregated_count || 0} عضو
@@ -1485,7 +1593,7 @@ function loadTree() {
                             <th>الدولة</th>
                             <th>الإنجاز</th>
                             <th>طبيعة التسكين</th>
-                            <th>التواصل (D26)</th>
+                            <th>التواصل</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1503,7 +1611,7 @@ function loadTree() {
                                         <td data-label="الدولة">${esc(n.residency_country_code || '')}</td>
                                         <td data-label="الإنجاز"><strong>${Number(n.target_pct || 0)}%</strong></td>
                                         <td data-label="طبيعة التسكين" style="font-size:0.78rem;">${esc(n.placement_type_label || '')}</td>
-                                        <td data-label="التواصل (D26)" onclick="event.stopPropagation();">${wa ? `<a href="https://wa.me/${wa}" target="_blank" style="color:#047857;font-weight:800;">💬 ${esc(n.phone)}</a>` : '🔒 محجوب D26'}</td>
+                                        <td data-label="التواصل" onclick="event.stopPropagation();">${wa ? `<a href="https://wa.me/${wa}" target="_blank" style="color:#047857;font-weight:800;">💬 ${esc(n.phone)}</a>` : '🔒 محمي للخصوصية'}</td>
                                     </tr>
                                 `;
                             }).join('')}
@@ -1650,7 +1758,7 @@ window.openTreeNodeDetailModal = function (memberCode) {
     const wa = node.phone_visible && node.phone ? String(node.phone).replace(/\D/g, '') : '';
     const sponsorDisplay = node.real_sponsor_name
         ? `${esc(node.real_sponsor_name)} (#${node.real_sponsor_code})`
-        : '🔒 مقنّع خارج نطاق 2Me–11Me (D26)';
+        : '🔒 محمي للخصوصية (خارج الأجيال العشرة الأولى)';
 
     const isSelfModal = (parseInt(String(node.structural_me || '1').replace(/\D/g, ''), 10) || 1) === 1;
     const modalVColor = node.visual_color || node.node_color || 'WHITE';
@@ -1905,9 +2013,10 @@ function openAddPayoutMethodModal() {
 async function deletePayoutMethod(methodId) {
     try {
         await window.SAWYAN.API.manageMemberPayoutMethod({ memberId: currentMember.id, action: 'delete', methodId });
+        swMemToast('تم حذف وسيلة السحب بنجاح.', 'success');
         await refreshDashboardBundle();
     } catch (err) {
-        alert('❌ ' + err.message);
+        swMemToast(swMemErrText(err), 'error');
     }
 }
 
@@ -1918,11 +2027,11 @@ function openRequestWithdrawalModal() {
     const avail = Number(memberBundle?.wallet?.balance_usd || 0);
 
     if (profile.kyc_status !== 'verified') {
-        alert('⛔ يشترط النظام توثيق الهوية الوطنية (KYC = verified) قبل سحب الأرباح (القرار D7). ارفع وثيقتك من شاشة الإعدادات.');
+        swMemAlert('توثيق الهوية مطلوب أولاً', 'يشترط النظام توثيق الهوية الوطنية قبل أول سحب أرباح. يمكنك رفع وثيقتك من تبويب «الإعدادات».', 'warning');
         return;
     }
     if (readyMethods.length === 0) {
-        alert('⏳ يجب وجود وسيلة استلام أرباح واحدة على الأقل أتمت فترة التهدئة الأمنية (72 ساعة — W07).');
+        swMemAlert('وسيلة السحب قيد التفعيل الأمني', 'يجب وجود وسيلة استلام أرباح واحدة على الأقل أتمت فترة الانتظار الأمنية (72 ساعة) قبل السحب.', 'warning');
         return;
     }
 
@@ -2067,7 +2176,7 @@ function openMemberAcademyPlayer(lessonId) {
     if (idx === -1) return;
     const l = lessons[idx];
     if (l.is_locked) {
-        alert('🔒 يرجى إتمام المادة السابقة أولاً لفتح هذه المادة المتسلسلة.');
+        swMemToast('يرجى إتمام المادة السابقة أولاً لفتح هذه المادة.', 'warning');
         return;
     }
 
@@ -2124,7 +2233,7 @@ async function toggleMemberAcademyLessonComplete(lessonId, action) {
         renderMemberAcademyScreen();
         openMemberAcademyPlayer(lessonId);
     } catch (err) {
-        alert('❌ ' + err.message);
+        swMemToast(swMemErrText(err), 'error');
         if (btn) { btn.disabled = false; }
     }
 }
@@ -2310,7 +2419,7 @@ async function triggerGpsRadarSearch() {
             radarCatalogOverride = Array.isArray(rows) ? rows : [];
             await loadNearbyMerchants();
         } catch (err) {
-            alert('❌ تعذر تشغيل الرادار الجغرافي: ' + err.message);
+            swMemToast('تعذر تشغيل الرادار الجغرافي: ' + swMemErrText(err), 'error');
         }
     };
 
@@ -2340,8 +2449,8 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
     if (catalog.length === 0 && !preMerchantId) {
         openMemberModal('🧾 توثيق فاتورة شراء جديدة', `
             <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:14px;color:#92400e;font-size:0.88rem;line-height:1.65;">
-                ℹ️ لا توجد متاجر نشطة وممولة بالرصيد متاحة في دليل الشبكة حالياً لتسجيل فاتورة جديدة.<br>
-                <strong style="display:block;margin-top:6px;">ملاحظة (D4):</strong> المتاجر الجديدة ذات الرصيد الصفري أو المعزولة مؤقتاً لنفاد رصيد الشحن تُحجب تلقائياً من دليل الشراء حتى يقوم التاجر أو الإدارة بشحن رصيده المسبق أو تفعيل سقف ائتمان D4 له.
+                ℹ️ لا توجد متاجر متاحة لتسجيل فاتورة جديدة في هذا النطاق حالياً.<br>
+                <span style="display:block;margin-top:6px;">يمكنك تصفح كل الدول أو دعوة متجرك المفضل للانضمام لـ SAWYAN.</span>
             </div>
         `, async (_f, close) => { close(); });
         const subBtn = document.getElementById('sawyanModalSubmitBtn');
@@ -2362,7 +2471,11 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
 
     let mpReceiptUp = null;
 
-    openMemberModal(`🧾 توثيق فاتورة مشتريات — ${preMerchantId ? esc(initialRow.business_name) : 'اختر المتجر والوضع'}`, `
+    openMemberModal(`🧾 توثيق فاتورة مشتريات — ${preMerchantId ? esc(initialRow.business_name) : 'أرسل الفاتورة بسهولة'}`, `
+        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:9px 12px;font-size:0.8rem;color:#065f46;font-weight:700;line-height:1.55;">
+            ✨ 3 خطوات فقط: ١. اختر المتجر ← ٢. اكتب قيمة الفاتورة وارفع صورة الإيصال ← ٣. تُرسل للتاجر ويُضاف عائدك فور الاعتماد.
+        </div>
+
         <div id="mpMerchantSelectorWrap" style="${preMerchantId ? 'display:none;' : ''}">
             <label style="font-weight:800;font-size:0.84rem;display:block;margin-bottom:4px;">🏪 المتجر والفرع المعتمد *</label>
             <input type="search" id="mpMerchantSearchInput" class="form-control" placeholder="ابحث باسم المتجر أو الكود أو المدينة..." style="margin-bottom:6px;">
@@ -2371,18 +2484,18 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
             </select>
         </div>
 
-        <input type="hidden" id="mpModeInput" value="instant_pin">
+        <input type="hidden" id="mpModeInput" value="remote_pending">
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:8px;">
-            <button type="button" id="mpModeBtnInstant" class="btn btn-primary btn-sm" style="padding:10px;border-radius:10px;font-weight:800;">
-                🏪 داخل المحل — اعتماد فوري بـ PIN الكاشير
+            <button type="button" id="mpModeBtnRemote" class="btn btn-primary btn-sm" style="padding:10px;border-radius:10px;font-weight:800;">
+                🧾 إرسال الفاتورة بالصورة (داخل المحل أو أونلاين)
             </button>
-            <button type="button" id="mpModeBtnRemote" class="btn btn-outline btn-sm" style="padding:10px;border-radius:10px;font-weight:800;">
-                🚚 أونلاين / دليفري — معلق بإيصال
+            <button type="button" id="mpModeBtnInstant" class="btn btn-outline btn-sm" style="padding:10px;border-radius:10px;font-weight:800;">
+                ⚡ اعتماد فوري مع الكاشير (برمز الموظف PIN)
             </button>
         </div>
 
-        <div id="mpModeExplainer" style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:10px;padding:10px;font-size:0.8rem;color:#065f46;line-height:1.5;">
-            ⚡ <strong>الوضع الفوري (PIN):</strong> أدخل كود موظف الكاشير ورمز PIN المكوّن من 4 أرقام ليُعتمد طلبك ويُغذّى صندوق هدفك الشهري فوراً في نفس اللحظة.
+        <div id="mpModeExplainer" style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:10px;font-size:0.8rem;color:#92400e;line-height:1.5;">
+            📸 <strong>الوضع القياسي بالصورة:</strong> أدخل قيمة الفاتورة والتقط أو ارفع صورة الفاتورة أو إيصال الدفع، وسيصل طلبك مباشرة للتاجر لاعتماده وإضافة العائد لصندوقك.
         </div>
 
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:10px;">
@@ -2403,11 +2516,11 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
         </div>
 
         <div id="mpUniqueRefGroup" style="display:none;">
-            <label style="font-weight:800;font-size:0.84rem;">🔢 رقم مرجع العملية / RRN / التحويل / الشيك</label>
+            <label style="font-weight:800;font-size:0.84rem;">🔢 رقم مرجع العملية / التحويل (اختياري)</label>
             <input type="text" name="uniquePaymentRef" id="mpUniquePaymentRef" class="form-control" placeholder="مرجع الدفع الفريد (لمنع التكرار)">
         </div>
 
-        <div id="mpCashierPinGroup" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:10px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:12px;">
+        <div id="mpCashierPinGroup" style="display:none;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:10px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:12px;">
             <div>
                 <label style="font-weight:800;font-size:0.82rem;">👨‍💼 كود موظف الكاشير *</label>
                 <input type="text" name="employeeCode" id="mpEmployeeCode" class="form-control" placeholder="مثال: EMP-01">
@@ -2419,7 +2532,7 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
         </div>
 
         <div>
-            <label id="mpReceiptLabel" style="font-weight:800;font-size:0.84rem;">🧾 صورة إيصال الشراء / الدفع (اختياري بالوضع الفوري)</label>
+            <label id="mpReceiptLabel" style="font-weight:800;font-size:0.84rem;">🧾 صورة الفاتورة أو إيصال الدفع *</label>
             <div id="mpReceiptUploader"></div>
             <input type="hidden" name="receiptUrl" id="mpReceiptUrl">
         </div>
@@ -2438,7 +2551,7 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
         if (!Number.isFinite(amount) || amount <= 0) throw new Error('أدخل قيمة فاتورة صالحة أكبر من صفر.');
 
         const pt = document.getElementById('mpPaymentType')?.value || 'cash';
-        const mode = document.getElementById('mpModeInput')?.value || 'instant_pin';
+        const mode = document.getElementById('mpModeInput')?.value || 'remote_pending';
         const meta = getMemberPayTypeMeta(pt);
         const refVal = (document.getElementById('mpUniquePaymentRef')?.value || '').trim() || null;
         const receiptVal = ((mpReceiptUp && mpReceiptUp.getValue()) || document.getElementById('mpReceiptUrl')?.value || '').trim() || null;
@@ -2446,10 +2559,10 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
         const empPin = mode === 'instant_pin' && !meta.deferred ? ((document.getElementById('mpCashierPin')?.value || '').trim() || null) : null;
 
         if (mode === 'instant_pin' && !meta.deferred) {
-            if (!empCode) throw new Error('يرجى إدخال كود موظف الكاشير أو التبديل لوضع الطلب الأونلاين / المعلق.');
-            if (!empPin || !/^\d{4}$/.test(empPin)) throw new Error('يرجى إدخال رمز PIN الكاشير من 4 أرقام.');
+            if (!empCode) throw new Error('أدخل كود موظف الكاشير أو بدّل لوضع «إرسال الفاتورة بالصورة».');
+            if (!empPin || !/^\d{4}$/.test(empPin)) throw new Error('أدخل رمز PIN الكاشير من 4 أرقام.');
         } else {
-            if (!receiptVal) throw new Error('رفع صورة الفاتورة أو إيصال الدفع إلزامي في الطلبات الأونلاين / الدليفري / المعلقة.');
+            if (!receiptVal) throw new Error('يرجى التقاط أو رفع صورة الفاتورة / الإيصال لإرسال الطلب للتاجر.');
         }
 
         try {
@@ -2466,60 +2579,36 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
             });
             if (res && res.success === false) {
                 if (res.error_code === 'CASHIER_PIN_LOCKED_15M' || res.error_code === 'CASHIER_LOCKED') {
-                    throw new Error('تم قفل التحقق بـ PIN الكاشير لمدة 15 دقيقة بعد 5 محاولات خاطئة.');
+                    throw new Error('تم قفل التحقق برمز الكاشير لمدة 15 دقيقة بعد 5 محاولات خاطئة.');
                 }
                 if (res.error_code === 'INVALID_CASHIER_CREDENTIALS') {
                     const rem = res.remaining_attempts !== undefined ? ` (المحاولات المتبقية: ${res.remaining_attempts})` : '';
-                    throw new Error(`بيانات كود الموظف أو رمز PIN غير صحيحة${rem}.`);
+                    throw new Error(`بيانات كود الموظف أو رمز PIN غير صحيحة${rem}. يمكنك التبديل لوضع إرسال الصورة.`);
                 }
                 if (res.error_code === 'CASHIER_TX_LIMIT_EXCEEDED') {
-                    throw new Error(`قيمة هذه الفاتورة تتجاوز الحد الأقصى المسموح لاعتماد موظف الكاشير (${res.max_limit || ''}).`);
+                    throw new Error(`قيمة الفاتورة تتجاوز حد اعتماد موظف الكاشير — استخدم وضع إرسال الفاتورة بالصورة للتاجر.`);
                 }
                 if (res.status === 'rejected_self_cashier_pin') {
-                    throw new Error('محظور أمنياً: لا يمكن لموظف الكاشير توثيق فاتورة حسابه الشخصي بـ PIN.');
+                    throw new Error('لا يمكن لموظف الكاشير توثيق فاتورة لحسابه الشخصي برمز الكاشير.');
                 }
-                throw new Error(res.error_code || res.status || 'تعذر اعتماد العملية بـ PIN الكاشير.');
+                throw new Error(swMemErrText(res.error_code || res.status || 'تعذر تسجيل الفاتورة.'));
             }
             close();
-            const statusText = res.status === 'completed'
-                ? '✅ مكتملة وفُوّضت فوراً في صندوق الهدف الشهري!'
+            const isCompleted = res.status === 'completed';
+            const statusText = isCompleted
+                ? 'تم اعتماد الفاتورة وإضافتها لصندوق هدفك الشهري فوراً!'
                 : (res.status === 'awaiting_merchant_topup'
-                    ? '⏸️ دخلت طابور الشحن المؤجل لدى التاجر (FIFO)'
-                    : '⏳ معلقة بانتظار مراجعة واعتماد التاجر');
-            alert(`✅ تم تسجيل العملية بنجاح!\n🧾 كود الفاتورة: ${res.sw_short_code}\n📌 الحالة: ${statusText}`);
+                    ? 'تم حفظ الفاتورة وستُعتمد تلقائياً فور استكمال التاجر.'
+                    : 'تم إرسال الفاتورة بنجاح وهي الآن بانتظار اعتماد التاجر.');
+            await swMemAlert(
+                isCompleted ? 'تم اعتماد الفاتورة بنجاح' : 'تم إرسال الفاتورة للتاجر',
+                `🧾 رقم الفاتورة: ${res.sw_short_code}\n📌 الحالة: ${statusText}`,
+                isCompleted ? 'success' : 'info',
+                isCompleted ? [] : [{ label: '⏳ عرض طلباتي المعلقة', onClick: () => goToPage('myPending') }]
+            );
             await refreshDashboardBundle();
         } catch (err) {
-            const msg = String(err?.message || '');
-            if (msg.includes('INVALID_CASHIER_CREDENTIALS')) {
-                throw new Error('بيانات كود الموظف أو رمز PIN غير صحيحة (أو أن الحساب مقفل مؤقتاً).');
-            } else if (msg.includes('CASHIER_LOCKED') || msg.includes('CASHIER_PIN_LOCKED')) {
-                throw new Error('تم قفل المحاولات مؤقتاً (15 دقيقة) بعد 5 محاولات خاطئة لـ PIN الكاشير.');
-            } else if (msg.includes('CASHIER_TX_LIMIT_EXCEEDED')) {
-                throw new Error('قيمة هذه الفاتورة تتجاوز الحد الأقصى المسموح لاعتماد موظف الكاشير مباشرة.');
-            } else if (msg.includes('SELF_PURCHASE_PIN_FORBIDDEN') || msg.includes('CASHIER_COLLUSION')) {
-                throw new Error('محظور أمنياً: لا يمكن لموظف الكاشير توثيق فاتورة حسابه الشخصي أو حساب قريب بـ PIN.');
-            } else if (msg.includes('PENDING_LIMIT_REACHED') || msg.includes('MAX_PENDING_LIMIT')) {
-                throw new Error('بلغت الحد الأقصى (طلبان معلقان 2) عند هذا المتجر. انتظر موافقة التاجر أو ألغِ طلباً قديماً.');
-            } else if (msg.includes('MERCHANT_SOFT_HOLD_CAP_20PCT_EXCEEDED') || msg.includes('SOFT_HOLD_CAP_EXCEEDED')) {
-                throw new Error('تجاوزت سقف الحجز المرن (20%) للطلبات المعلقة غير المعتمدة.');
-            } else if (msg.includes('MERCHANT_UNFUNDED_TOPUP_REQUIRED')) {
-                throw new Error('المتجر جديد ولم يقم بشحن رصيده التشغيلي بعد.');
-            } else if (msg.includes('MERCHANT_TEMPORARILY_PAUSED')) {
-                throw new Error('المتجر في وضع إجازة أو إغلاق مؤقت حالياً.');
-            } else if (msg.includes('MERCHANT_COMPLIANCE_SUSPENDED')) {
-                throw new Error('المتجر موقوف امتثالياً من الإدارة حالياً ولا يستقبل فواتير جديدة.');
-            } else if (msg.includes('MERCHANT_ONBOARDING_INCOMPLETE')) {
-                throw new Error('المتجر لم يستكمل بيانات التأهيل التعاقدية بعد.');
-            } else if (msg.includes('MERCHANT_ISOLATED')) {
-                throw new Error('المتجر معزول مؤقتاً لنفاد رصيد الشحن ولا يستقبل طلبات معلقة عن بُعد حالياً.');
-            } else if (msg.includes('RECEIPT_REQUIRED_FOR_REMOTE_PURCHASE')) {
-                throw new Error('يجب إرفاق صورة الفاتورة / الإيصال عند التسجيل عن بُعد بدون كود الكاشير.');
-            } else if (msg.includes('DUPLICATE_PAYMENT_REF') || msg.includes('transactions_unique_payment_ref')) {
-                throw new Error('رقم مرجع الدفع / RRN مكرر ومسجل على عملية سابقة بالفعل.');
-            } else if (msg.includes('MERCHANT_QUEUE_FULL_BLOCKED') || msg.includes('UNSECURED_QUEUE_CAP_EXCEEDED')) {
-                throw new Error('نأسف، تعذر تسجيل العملية حالياً لامتلاء سقف تغطية المتجر أو إغلاق دورته الائتمانية.');
-            }
-            throw err;
+            throw new Error(swMemErrText(err));
         }
     });
 
@@ -2583,39 +2672,39 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
             if (btnInst) { btnInst.className = 'btn btn-primary btn-sm'; }
             if (btnRem) { btnRem.className = 'btn btn-outline btn-sm'; }
             if (pinGrp) pinGrp.style.display = 'grid';
-            if (recLbl) recLbl.textContent = '🧾 صورة إيصال الشراء / الدفع (اختياري في الوضع الفوري)';
+            if (recLbl) recLbl.textContent = '🧾 صورة إيصال الشراء / الدفع (اختياري مع رمز الكاشير)';
             if (expEl) {
                 expEl.style.background = '#ecfdf5';
                 expEl.style.borderColor = '#6ee7b7';
                 expEl.style.color = '#065f46';
-                expEl.innerHTML = '⚡ <strong>الوضع الفوري (PIN):</strong> أدخل كود موظف الكاشير ورمز PIN المكوّن من 4 أرقام ليُعتمد طلبك ويُغذّى صندوق هدفك الشهري فوراً.';
+                expEl.innerHTML = '⚡ <strong>الوضع الفوري مع الكاشير:</strong> إذا كان موظف الكاشير أمامك ولديه كود ورمز اعتماد من 4 أرقام، أدخلهما ليُعتمد رصيدك في نفس الثانية.';
             }
         } else {
             if (btnInst) { btnInst.className = 'btn btn-outline btn-sm'; }
             if (btnRem) { btnRem.className = 'btn btn-primary btn-sm'; }
             if (pinGrp) pinGrp.style.display = 'none';
-            if (recLbl) recLbl.textContent = '🧾 صورة الفاتورة أو إيصال الدفع / الشحن * (إلزامي)';
+            if (recLbl) recLbl.textContent = '🧾 صورة الفاتورة أو إيصال الدفع * (إلزامي)';
             if (expEl) {
                 expEl.style.background = '#fffbeb';
                 expEl.style.borderColor = '#fcd34d';
                 expEl.style.color = '#92400e';
                 expEl.innerHTML = ptMeta.deferred
-                    ? '🚚 <strong>دفع عند الاستلام / شيك مؤجل:</strong> يظل الطلب «معلقاً» لحين تأكيد التاجر الاستلام والتحصيل الفعلي، ثم يُغذى صندوق هدفك تلقائياً. ارفع صورة الطلب/الإيصال أدناه.'
-                    : '⏳ <strong>وضع الطلب الأونلاين / المعلق:</strong> ارفع صورة الفاتورة أو إيصال التحويل لإرسالها للتاجر (سقف الطلبات المعلقة: 2 لكل تاجر و20% كحد أقصى).';
+                    ? '🚚 <strong>دفع عند الاستلام / شيك مؤجل:</strong> يظل الطلب «معلقاً» لحين تأكيد التاجر الاستلام والتحصيل الفعلي، ثم يُغذى صندوق هدفك تلقائياً. ارفع صورة الفاتورة أدناه.'
+                    : '📸 <strong>إرسال الفاتورة بالصورة (داخل المحل أو أونلاين):</strong> التقط أو ارفع صورة الفاتورة لتصل فوراً للتاجر ويعتمدها لحسابك.';
             }
         }
     }
 
     btnInst?.addEventListener('click', () => {
         if (getMemberPayTypeMeta(ptSel?.value).deferred) {
-            alert('⚠️ الدفع عند الاستلام (COD) أو الشيك مؤجل التحصيل ولا يدعم الاعتماد الفوري — يستمر في الوضع المعلق حتى تأكيد التاجر للتحصيل.');
+            swMemToast('الدفع عند الاستلام أو الشيك مؤجل التحصيل ويُرسل في وضع المراجعة حتى تأكيد التاجر.', 'warning');
             syncModeUi('remote_pending');
             return;
         }
         syncModeUi('instant_pin');
     });
     btnRem?.addEventListener('click', () => syncModeUi('remote_pending'));
-    ptSel?.addEventListener('change', () => syncModeUi(modeIn?.value || 'instant_pin'));
+    ptSel?.addEventListener('change', () => syncModeUi(modeIn?.value || 'remote_pending'));
     amtIn?.addEventListener('input', updatePreview);
     merchSel?.addEventListener('change', updatePreview);
 
@@ -2630,7 +2719,7 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
         });
     }
 
-    syncModeUi('instant_pin');
+    syncModeUi('remote_pending');
     updatePreview();
 }
 window.openMemberPurchaseModal = openMemberPurchaseModal;
@@ -2648,7 +2737,7 @@ async function toggleMerchantFavorite(merchantId) {
         });
         await refreshDashboardBundle();
     } catch (e) {
-        alert('❌ تعذر تحديث المفضلة: ' + e.message);
+        swMemToast('تعذر تحديث المفضلة: ' + swMemErrText(e), 'error');
     }
 }
 
@@ -2705,7 +2794,7 @@ function loadCRM() {
 
     page.innerHTML = `
         <div data-spec-id="member-crm-board">
-            <h2>📇 دفتر المعارف الميداني (Mini CRM — Point 10)</h2>
+            <h2>📇 دفتر المعارف والدعوات</h2>
             <form id="crmAddForm" style="background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:16px;margin:14px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;">
                 <input type="text" id="crmName" required class="form-control" placeholder="اسم الشخص المرشح *">
                 <input type="tel" id="crmPhone" class="form-control" placeholder="رقم الواتساب (+20...)">
@@ -2758,7 +2847,7 @@ function loadCRM() {
             });
             await refreshDashboardBundle();
         } catch (err) {
-            alert('❌ خطأ: ' + err.message);
+            swMemToast(swMemErrText(err), 'error');
         }
     });
 }
@@ -2769,7 +2858,7 @@ async function crmAction(action, contactId) {
         await window.SAWYAN.API.manageMemberCrmContact({ memberId: currentMember.id, action, contactId });
         await refreshDashboardBundle();
     } catch (err) {
-        alert('❌ خطأ: ' + err.message);
+        swMemToast(swMemErrText(err), 'error');
     }
 }
 
@@ -2913,7 +3002,7 @@ function loadReferrals() {
             <div class="table-responsive-wrap">
                 <table class="data-table">
                     <thead>
-                        <tr><th>الكود</th><th>الاسم</th><th>الجيل</th><th>التموضع</th><th>الدولة</th><th>حالة الهدف هذا الشهر</th><th>التواصل (D26)</th></tr>
+                        <tr><th>الكود</th><th>الاسم</th><th>الجيل</th><th>التموضع</th><th>الدولة</th><th>حالة الهدف هذا الشهر</th><th>التواصل</th></tr>
                     </thead>
                     <tbody>
                         ${regRefs.length === 0
@@ -2928,7 +3017,7 @@ function loadReferrals() {
                                         <td data-label="التموضع">تحت #${esc(r.parent_member_code || '-')} (${esc(r.placement_side || '')})</td>
                                         <td data-label="الدولة">${esc(r.residency_country_code || '')}</td>
                                         <td data-label="حالة الهدف هذا الشهر">${r.is_qualified_this_month ? '🟢 مؤهل' : '⏳ قيد التجميع'}</td>
-                                        <td data-label="التواصل (D26)">${wa ? `<a href="${esc(wa)}" target="_blank" style="color:#047857;font-weight:800;">💬 ${esc(r.phone)}</a>` : '🔒 مقنّع D26'}</td>
+                                        <td data-label="التواصل">${wa ? `<a href="${esc(wa)}" target="_blank" style="color:#047857;font-weight:800;">💬 ${esc(r.phone)}</a>` : '🔒 محمي للخصوصية'}</td>
                                     </tr>
                                 `;
                             }).join('')}
@@ -2953,11 +3042,11 @@ function loadReferrals() {
                 residencyCountryCode: document.getElementById('qRefCountry').value
             });
             if (res && res.member) {
-                alert(`✅ تم تسجيل المباشر الجديد (#${res.member.member_code} — ${res.member.full_name}) وتسكينه تلقائياً في أضعف ذراع!`);
+                swMemToast(`تم تسجيل المباشر الجديد (#${res.member.member_code} — ${res.member.full_name}) وتسكينه تلقائياً!`, 'success');
                 await refreshDashboardBundle();
             }
         } catch (err) {
-            alert('❌ تعذر التسجيل: ' + err.message);
+            swMemToast('تعذر التسجيل: ' + swMemErrText(err), 'error');
             if (btn) { btn.disabled = false; btn.textContent = '+ تسجيل وإدراج تلقائي بالشبكة'; }
         }
     });
@@ -2968,7 +3057,7 @@ function copyReferralLink() {
     if (!input) return;
     input.select();
     navigator.clipboard?.writeText(input.value).catch(() => document.execCommand('copy'));
-    alert('✅ تم نسخ رابط الإحالة!');
+    swMemToast('تم نسخ رابط الإحالة!', 'success');
 }
 
 // ---------------------------------------------------------------------------
@@ -3191,7 +3280,7 @@ async function loadSettings() {
         if (rawEmail && window.SAWYAN && window.SAWYAN.RegEngine) {
             const emChk = window.SAWYAN.RegEngine.validateEmailStrict(rawEmail, false);
             if (!emChk.valid) {
-                alert('⛔ ' + emChk.error);
+                swMemToast(emChk.error, 'warning');
                 return;
             }
         }
@@ -3205,10 +3294,10 @@ async function loadSettings() {
                 newPassword: document.getElementById('setNewPass').value || null,
                 avatarUrl: avatarVal || ''
             });
-            alert('✅ تم حفظ التحديثات بنجاح!');
+            swMemToast('تم حفظ التحديثات بنجاح!', 'success');
             await refreshDashboardBundle();
         } catch (err) {
-            alert('❌ تعذر الحفظ: ' + err.message);
+            swMemToast('تعذر الحفظ: ' + swMemErrText(err), 'error');
         }
     });
 }
@@ -3304,10 +3393,10 @@ window.submitSettingsKycUpload = async function () {
             documentNumber: document.getElementById('setKycDocNumber').value.trim(),
             documentImageData: imgData || null
         });
-        alert('✅ تم رفع مستند الهوية (KYC) للمراجعة!');
+        swMemToast('تم رفع مستند الهوية (KYC) للمراجعة بنجاح!', 'success');
         await refreshDashboardBundle();
     } catch (err) {
-        alert('❌ ' + err.message);
+        swMemToast(swMemErrText(err), 'error');
     }
 };
 
@@ -3323,11 +3412,11 @@ window.submitSettingsResidencyMove = async function () {
         const docNum = (document.getElementById('setMoveDocNum')?.value || '').trim();
         const tgt = (document.getElementById('setMoveTargetCountry')?.value || '').trim().toUpperCase();
         if (!tgt) {
-            alert('⚠️ يرجى اختيار دولة الإقامة الجديدة أولاً.');
+            swMemToast('يرجى اختيار دولة الإقامة الجديدة أولاً.', 'warning');
             return;
         }
         if (docNum.length < 4) {
-            alert('⚠️ يرجى إدخال رقم مستند إثبات الإقامة بالبلد الجديد (4 أحرف/أرقام على الأقل).');
+            swMemToast('يرجى إدخال رقم مستند إثبات الإقامة بالبلد الجديد (4 أحرف/أرقام على الأقل).', 'warning');
             return;
         }
         const u = window._memberSettingsUploaders || {};
@@ -3341,23 +3430,23 @@ window.submitSettingsResidencyMove = async function () {
             documentImageData: imgData || null,
             targetCountryCode: tgt
         });
-        alert(`✅ تم تسجيل طلب نقل دولة الإقامة إلى ${tgt} ليسري مطلع الشهر المحاسبي القادم!`);
+        swMemToast(`تم تسجيل طلب نقل دولة الإقامة إلى ${tgt} ليسري مطلع الشهر القادم!`, 'success');
         await refreshDashboardBundle();
     } catch (err) {
         const msg = String(err?.message || '');
         if (msg.includes('ALREADY_IN_TARGET_COUNTRY')) {
-            alert('⚠️ أنت مسجل حالياً على هذه الدولة بالفعل — اختر دولة جديدة مختلفة.');
+            swMemToast('أنت مسجل حالياً على هذه الدولة بالفعل — اختر دولة جديدة مختلفة.', 'warning');
         } else if (msg.includes('KYC_FULL_NAME_AND_DOC_NUMBER_REQUIRED')) {
-            alert('⚠️ يرجى إدخال رقم مستند الإقامة الجديد (4 خانات على الأقل).');
+            swMemToast('يرجى إدخال رقم مستند الإقامة الجديد (4 خانات على الأقل).', 'warning');
         } else {
-            alert('❌ ' + msg);
+            swMemToast(swMemErrText(msg), 'error');
         }
     }
 };
 
 window.captureBrowserHomeGps = function () {
     if (!navigator.geolocation) {
-        alert('المتصفح لا يدعم التقاط GPS التلقائي، يمكنك إدخال الإحداثيات يدوياً.');
+        swMemToast('المتصفح لا يدعم التقاط GPS التلقائي، يمكنك إدخال الإحداثيات يدوياً.', 'warning');
         return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -3367,7 +3456,7 @@ window.captureBrowserHomeGps = function () {
             if (latEl) latEl.value = pos.coords.latitude.toFixed(6);
             if (lngEl) lngEl.value = pos.coords.longitude.toFixed(6);
         },
-        () => alert('تعذر الوصول لمستشعر GPS — أدخل الإحداثيات يدوياً.')
+        () => swMemToast('تعذر الوصول لمستشعر الموقع — أدخل الإحداثيات يدوياً.', 'warning')
     );
 };
 
@@ -3375,7 +3464,7 @@ window.saveHomeGpsCoords = async function () {
     const lat = Number(document.getElementById('setHomeLat')?.value);
     const lng = Number(document.getElementById('setHomeLng')?.value);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-        alert('❌ أدخل إحداثيات Latitude و Longitude صحيحة.');
+        swMemToast('أدخل إحداثيات موقع صحيحة.', 'warning');
         return;
     }
     try {
@@ -3384,16 +3473,16 @@ window.saveHomeGpsCoords = async function () {
             homeLat: lat,
             homeLng: lng
         });
-        alert('✅ تم حفظ موقع المنزل الافتراضي لرادار المتاجر بنجاح!');
+        swMemToast('تم حفظ موقع المنزل الافتراضي لرادار المتاجر بنجاح!', 'success');
         await refreshDashboardBundle();
     } catch (err) {
-        alert('❌ ' + err.message);
+        swMemToast(swMemErrText(err), 'error');
     }
 };
 
 window.openMerchantComplaintModal = async function (preMerchantId = null, preMerchantName = '') {
     if (!currentMember || !currentMember.id) {
-        alert('❌ يرجى تسجيل الدخول كعضو أولاً.');
+        swMemToast('يرجى تسجيل الدخول كعضو أولاً.', 'warning');
         return;
     }
     if (!liveCatalog || liveCatalog.length === 0) {
@@ -3417,7 +3506,7 @@ window.openMerchantComplaintModal = async function (preMerchantId = null, preMer
 
     const opts = Array.from(merchMap.entries());
     if (opts.length === 0 && !preMerchantId) {
-        alert('ℹ️ لا توجد متاجر متاحة للاختيار حالياً. افتح شاشة المتجر أو تعامل مع متجر ثم أعد المحاولة.');
+        swMemToast('لا توجد متاجر متاحة للاختيار حالياً — افتح دليل التجار أو تعامل مع متجر ثم أعد المحاولة.', 'info');
         return;
     }
 
@@ -3475,7 +3564,7 @@ window.openMerchantComplaintModal = async function (preMerchantId = null, preMer
             evidenceUrl
         });
         close();
-        alert(`✅ تم تسجيل الشكوى بنجاح وإحالتها لمراجعة إدارة الامتثال (رقم المرجع: ${String(res?.complaint_id || '').slice(0, 8)}).`);
+        swMemToast(`تم تسجيل الشكوى بنجاح وإحالتها لمراجعة فريق الامتثال (مرجع: ${String(res?.complaint_id || '').slice(0, 8)}).`, 'success');
     });
 
     if (window.SAWYAN?.ImageUpload) {
@@ -3495,7 +3584,7 @@ window.submitMemberSupportTicket = async function () {
     const subj = document.getElementById('setSupSubject')?.value.trim();
     const body = document.getElementById('setSupBody')?.value.trim();
     if (!subj || !body) {
-        alert('❌ يرجى إدخال موضوع التذكرة والتفاصيل.');
+        swMemToast('يرجى إدخال موضوع التذكرة والتفاصيل.', 'warning');
         return;
     }
     try {
@@ -3509,10 +3598,10 @@ window.submitMemberSupportTicket = async function () {
             contactPhone: currentMember.phone,
             sessionToken: window.SAWYAN.API.getMemberSessionToken ? window.SAWYAN.API.getMemberSessionToken() : null
         });
-        alert(`✅ تم إرسال تذكرة الدعم برقم: ${res.ticket_ref}`);
+        swMemToast(`تم إرسال تذكرة الدعم بنجاح برقم: ${res.ticket_ref}`, 'success');
         await loadSettings();
     } catch (err) {
-        alert('❌ ' + err.message);
+        swMemToast(swMemErrText(err), 'error');
     }
 };
 

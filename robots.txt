@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin-dashboard/
+Disallow: /preview/admin-dashboard/
+Disallow: /database/
+Disallow: /specs/

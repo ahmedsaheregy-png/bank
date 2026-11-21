@@ -98,6 +98,12 @@
             '</tbody></table>';
     }
 
+    function merToast(msg, type) {
+        if (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.toast === 'function') {
+            window.SAWYAN.UI.toast(msg, type);
+        }
+    }
+
     window.svAddMerchantBranch = async function () {
         const m = curMerchant();
         try {
@@ -111,9 +117,9 @@
                     branch_manager_name: document.getElementById('svBrMgr').value.trim()
                 }
             });
-            alert('✅ تمت إضافة الفرع بنجاح!');
+            merToast('تمت إضافة الفرع بنجاح!', 'success');
             window.openMerchantStage7Modal('branches');
-        } catch (err) { alert('❌ ' + err.message); }
+        } catch (err) { merToast(err.message, 'error'); }
     };
 
     window.svToggleMerchantBranch = async function (bid) {
@@ -122,15 +128,25 @@
         window.openMerchantStage7Modal('branches');
     };
 
-    function renderMerchantBankTopup(body) {
+    function renderMerchantBankTopup(body, m) {
+        if (typeof window.openMerchantTopupModal === 'function') {
+            const ov = document.getElementById('svMerchantStage7Overlay');
+            if (ov) ov.style.display = 'none';
+            window.openMerchantTopupModal();
+            return;
+        }
         window._svMerBankProofUrl = null;
+        const curr = m?.currency_code || '';
+        const cc = m?.country_code || '';
+        const waText = encodeURIComponent('مرحباً فريق مالية SAWYAN، أحتاج بيانات الحساب البنكي لشحن رصيد متجر: ' + (m?.business_name || '') + ' (' + (m?.merchant_code || '') + ') ' + curr);
         body.innerHTML =
             '<div style="background:#ecfdf5;border:1.5px solid #6ee7b7;border-radius:12px;padding:16px;">' +
-                '<h4 style="margin:0 0 8px 0;color:#065f46;">🏦 إرسال إشعار تحويل بنكي لشحن رصيد الشحن المسبق (2101)</h4>' +
-                '<p style="font-size:0.82rem;color:#334155;margin:0 0 10px 0;">بعد تحويل مبلغ الشحن لحساب الشركة البنكي الرسمي، أدخل المبلغ ورقم مرجع الإيصال وأرفق صورة إيصال التحويل ليقوم المحاسب بمطابقته وشحن رصيدك مع إصدار فاتورة ضريبية B2B تلقائياً.</p>' +
+                '<h4 style="margin:0 0 8px 0;color:#065f46;">🏦 إرسال إشعار تحويل بنكي لشحن رصيد المتجر</h4>' +
+                '<p style="font-size:0.82rem;color:#334155;margin:0 0 10px 0;">بعد تحويل مبلغ الشحن لحساب الشركة البنكي الرسمي (' + esc(cc) + ' ' + esc(curr) + ')، أدخل المبلغ ورقم مرجع الإيصال وأرفق صورة الإيصال ليقوم المحاسب بمطابقته وشحن رصيدك.</p>' +
+                '<div style="margin-bottom:10px;"><a href="https://wa.me/905376744337?text=' + waText + '" target="_blank" rel="noopener" style="display:inline-block;background:#16a34a;color:#fff;padding:7px 13px;border-radius:8px;text-decoration:none;font-weight:800;font-size:0.82rem;">💬 اطلب بيانات الحساب البنكي عبر واتساب (905376744337+)</a></div>' +
                 '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:8px;margin-bottom:10px;">' +
                     '<input id="svMerProofAmt" type="number" step="50" placeholder="المبلغ المحوّل بالعملة المحلية" class="form-control">' +
-                    '<input id="svMerProofRef" type="text" placeholder="رقم مرجع الحوالة البنكية / InstaPay" class="form-control">' +
+                    '<input id="svMerProofRef" type="text" value="REF-' + Date.now() + '" placeholder="رقم مرجع الحوالة البنكية" class="form-control">' +
                 '</div>' +
                 '<input id="svMerProofNote" type="text" placeholder="اسم البنك المحوّل منه / ملاحظات إضافية" class="form-control" style="margin-bottom:10px;">' +
                 '<div id="svMerBankProofUploader" style="margin-bottom:10px;"></div>' +
@@ -138,7 +154,7 @@
             '</div>';
         if (window.SAWYAN && window.SAWYAN.ImageUpload) {
             window.SAWYAN.ImageUpload.mountUploader(document.getElementById('svMerBankProofUploader'), {
-                label: '🧾 رفع صورة إيصال التحويل البنكي / InstaPay (اختياري وموصى به)',
+                label: '🧾 رفع صورة إيصال التحويل البنكي (اختياري وموصى به)',
                 maxDim: 1280,
                 maxChars: 360000,
                 onChange: function (v) { window._svMerBankProofUrl = v || null; }
@@ -149,20 +165,18 @@
     window.svSubmitMerchantBankProof = async function () {
         const m = curMerchant();
         try {
-            await window.SAWYAN.API.merchantManageBranchesAndRefunds({
+            await window.SAWYAN.API.merchantInitiateTopup({
                 merchantId: m.id,
-                action: 'submit_bank_topup_proof',
-                payload: {
-                    amount_local: Number(document.getElementById('svMerProofAmt').value),
-                    bank_ref: document.getElementById('svMerProofRef').value.trim(),
-                    receipt_note: document.getElementById('svMerProofNote').value.trim(),
-                    receipt_image_data: window._svMerBankProofUrl || null
-                }
+                amount: Number(document.getElementById('svMerProofAmt').value),
+                provider: 'bank_transfer',
+                paymentRef: document.getElementById('svMerProofRef').value.trim() || null,
+                receiptImageData: window._svMerBankProofUrl || null,
+                receiptNote: document.getElementById('svMerProofNote').value.trim() || null
             });
             window._svMerBankProofUrl = null;
-            alert('✅ تم إرسال إشعار التحويل البنكي للإدارة المالية للمطابقة الفورية!');
-            window.openMerchantStage7Modal('bank_topup');
-        } catch (err) { alert('❌ ' + err.message); }
+            merToast('تم إرسال طلب الشحن وإشعار التحويل للإدارة المالية بنجاح!', 'success');
+            window.openMerchantStage7Modal('topup');
+        } catch (err) { merToast(err.message, 'error'); }
     };
 
     function renderMerchantVoluntaryRefund(body) {
@@ -198,15 +212,15 @@
             });
             const flow = res && res.return_flow ? res.return_flow : res;
             if (flow && flow.ok === false) {
-                alert(flow.status === 'locked'
-                    ? '🔒 تم قفل رمز OTP بعد استنفاد 5 محاولات خاطئة.'
-                    : `⚠️ رمز OTP غير صحيح — المحاولات المتبقية: ${flow.attempts_remaining ?? 0}`);
+                merToast(flow.status === 'locked'
+                    ? 'تم قفل رمز التحقق OTP بعد استنفاد 5 محاولات خاطئة.'
+                    : `رمز التحقق غير صحيح — المحاولات المتبقية: ${flow.attempts_remaining ?? 0}`, 'error');
                 return;
             }
-            alert(mMode === 'request_otp'
-                ? '✅ تم إرسال رمز OTP وطلب الموافقة لتطبيق العميل (لا يظهر للتاجر). أدخل الرمز عند تسلمك إياه من العميل.'
-                : '✅ تم تأكيد OTP وعكس الفاتورة واسترداد العمولة لرصيد المتجر بنجاح!');
-        } catch (err) { alert('❌ ' + err.message); }
+            merToast(mMode === 'request_otp'
+                ? 'تم إرسال رمز التحقق للعميل بنجاح؛ أدخل الرمز عند استلامه.'
+                : 'تم تأكيد المرتجع وعكس الفاتورة واسترداد العمولة لرصيد المتجر بنجاح!', 'success');
+        } catch (err) { merToast(err.message, 'error'); }
     };
 
     async function renderMerchantSupportAndPwd(body, m) {
@@ -255,9 +269,9 @@
                 contactPhone: m.phone,
                 sessionToken: window.SAWYAN.API.getMerchantSessionToken ? window.SAWYAN.API.getMerchantSessionToken() : null
             });
-            alert('✅ تم فتح التذكرة برقم: ' + res.ticket_ref);
+            merToast('تم فتح التذكرة بنجاح برقم: ' + res.ticket_ref, 'success');
             window.openMerchantStage7Modal('support');
-        } catch (err) { alert('❌ ' + err.message); }
+        } catch (err) { merToast(err.message, 'error'); }
     };
 
     window.svChangeMerchantOwnPwd = async function () {
@@ -270,8 +284,8 @@
                 oldPassword: document.getElementById('svMerOldPwd').value,
                 newPassword: document.getElementById('svMerNewPwd').value
             });
-            alert('✅ تم تحديث كلمة مرور المنشأة بنجاح!');
-        } catch (err) { alert('❌ ' + err.message); }
+            merToast('تم تحديث كلمة مرور المنشأة بنجاح!', 'success');
+        } catch (err) { merToast(err.message, 'error'); }
     };
 
     if (document.readyState === 'loading') {

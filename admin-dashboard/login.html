@@ -8,9 +8,12 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800;900&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="../shared/css/variables.css">
-    <link rel="stylesheet" href="../shared/css/logo.css?v=20261119_logo_all">
-    <link rel="stylesheet" href="../member-dashboard/css/auth.css">
+    <link rel="manifest" href="../manifest.json">
+    <link rel="icon" type="image/svg+xml" href="../shared/assets/sawyan-icon.svg">
+    <link rel="stylesheet" href="../shared/css/variables.css?v=20261121_launch">
+    <link rel="stylesheet" href="../shared/css/logo.css?v=20261121_launch">
+    <link rel="stylesheet" href="../shared/css/ui-feedback.css?v=20261121_launch">
+    <link rel="stylesheet" href="../member-dashboard/css/auth.css?v=20261121_launch">
     <style>
         .loading-overlay {
             position: fixed;
@@ -154,17 +157,24 @@
         </div>
     </div>
 
-    <script src="../shared/components/logo.js?v=20261119_logo_all"></script>
+    <script src="../shared/components/logo.js?v=20261121_launch"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../shared/config/supabase.js"></script>
-    <script src="../shared/api/sawyan-api.js?v=20261119_auth_audit"></script>
+    <script src="../shared/config/supabase.js?v=20261121_launch"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261121_launch"></script>
+    <script src="../shared/components/ui-feedback.js?v=20261121_launch"></script>
     <script>
-        function showLoginError(raw) {
+        function showLoginError(raw, extraPayload) {
             const box = document.getElementById('loginAlert');
             if (!box) return;
-            const m = String(raw || '');
+            const m = String(raw || (extraPayload && extraPayload.error_code) || '');
             let msg = m || 'تعذر التحقق من بيانات الدخول الإدارية';
-            if (m.includes('ADMIN_INVALID_CREDENTIALS')) msg = 'البريد المؤسسي أو كلمة المرور غير صحيحة.';
+            if (m.includes('AUTH_RATE_LIMITED_15M')) msg = 'تم تعليق محاولات الدخول مؤقتاً لمدة 15 دقيقة بعد استنفاد 5 محاولات خاطئة.';
+            else if (m.includes('ADMIN_INVALID_CREDENTIALS')) {
+                const rem = (extraPayload && extraPayload.attempts_remaining !== undefined)
+                    ? ` (المحاولات المتبقية: ${extraPayload.attempts_remaining})`
+                    : '';
+                msg = 'البريد المؤسسي أو كلمة المرور غير صحيحة' + rem + '.';
+            }
             else if (m.includes('ADMIN_ACCOUNT_DEACTIVATED')) msg = 'تم إيقاف هذا الحساب الإداري — راجع المؤسس السيادي.';
             else if (m.includes('ADMIN_LOGIN_MISSING_CREDENTIALS')) msg = 'يرجى إدخال البريد المؤسسي وكلمة المرور.';
             else if (m.includes('CONSTITUTIONAL_SECURITY_VIOLATION')) msg = 'كلمة المرور الافتراضية 123456 محظورة أمنياً.';
@@ -190,7 +200,7 @@
                 window.location.href = 'dashboard.html';
             } catch (err) {
                 overlay.classList.remove('active');
-                showLoginError(err.message || 'تعذر التحقق من بيانات الدخول الإدارية');
+                showLoginError(err.message || 'تعذر التحقق من بيانات الدخول الإدارية', err.payload);
             }
         }
 

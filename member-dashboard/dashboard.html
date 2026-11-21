@@ -8,12 +8,15 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="../shared/css/variables.css">
-    <link rel="stylesheet" href="../shared/css/logo.css?v=20261119_logo_all">
-    <link rel="stylesheet" href="../shared/css/notifications.css">
-    <link rel="stylesheet" href="../shared/css/image-upload.css">
-    <link rel="stylesheet" href="css/dashboard.css?v=20261119_world_geo">
-    <link rel="stylesheet" href="../shared/css/app-shell.css?v=20261119_logo_all">
+    <link rel="manifest" href="../manifest.json">
+    <link rel="icon" type="image/svg+xml" href="../shared/assets/sawyan-icon.svg">
+    <link rel="stylesheet" href="../shared/css/variables.css?v=20261121_launch">
+    <link rel="stylesheet" href="../shared/css/logo.css?v=20261121_launch">
+    <link rel="stylesheet" href="../shared/css/notifications.css?v=20261121_launch">
+    <link rel="stylesheet" href="../shared/css/ui-feedback.css?v=20261121_launch">
+    <link rel="stylesheet" href="../shared/css/image-upload.css?v=20261121_launch">
+    <link rel="stylesheet" href="css/dashboard.css?v=20261121_launch">
+    <link rel="stylesheet" href="../shared/css/app-shell.css?v=20261121_launch">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
@@ -83,8 +86,9 @@
         </aside>
 
         <main class="main-content">
-            <header class="dashboard-header">
-                <h1 id="pageTitle">لوحة التحكم</h1>
+            <header class="dashboard-header" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+                <h1 id="pageTitle" style="margin:0;">لوحة التحكم</h1>
+                <span id="headerNotifAnchor"></span>
             </header>
 
             <div class="content-area">
@@ -122,8 +126,9 @@
                         <div id="qrCode" class="qr-code"></div>
                         <p>اعرض هذا الكود الثابت للتاجر لتوثيق الفاتورة وتفعيل عائدات الاستهلاك الاستثماري</p>
                         <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:8px;">
-                            <button type="button" class="btn btn-primary btn-sm" id="homeDocPurchaseBtn" onclick="openMemberPurchaseModal()">🧾 توثيق فاتورة شراء (فوري بالمحل / أونلاين ودليفري)</button>
+                            <button type="button" class="btn btn-primary btn-sm" id="homeDocPurchaseBtn" onclick="openMemberPurchaseModal()">🧾 توثيق فاتورة شراء (بالصورة أو مع الكاشير)</button>
                             <button type="button" class="btn btn-outline btn-sm" id="copyMemberBarcodeBtn" onclick="copyMemberStaticBarcode()">📋 نسخ كود العضوية</button>
+                            <button type="button" class="btn btn-outline btn-sm" id="homeSaveQrCardBtn" onclick="downloadMemberQrCardPng()">💾 حفظ بطاقة العضوية كصورة</button>
                         </div>
                     </div>
 
@@ -217,28 +222,28 @@
         </div>
     </div>
 
-    <script src="../shared/components/logo.js?v=20261119_logo_all"></script>
+    <script src="../shared/components/logo.js?v=20261121_launch"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-    <script src="../shared/config/supabase.js"></script>
-    <script src="../shared/api/sawyan-api.js?v=20261119_logo_all"></script>
-    <script src="../shared/components/notifications.js"></script>
-    <script src="../shared/components/image-upload.js"></script>
-    <script src="../shared/payments/payment-provider.js"></script>
-    <script src="../shared/payments/providers/stripe-provider.js"></script>
-    <script src="../shared/payments/providers/adyen-provider.js"></script>
-    <script src="../shared/payments/providers/paypal-wise-provider.js"></script>
-    <script src="../shared/payments/payment-service.js"></script>
-    <script src="../shared/payments/mock-provider.js"></script>
-    <script src="../shared/payments/payment-init.js"></script>
-    <script src="../shared/data/countries.js?v=20261120_stage9"></script>
-    <script src="../shared/js/registration-engine.js?v=20261120_stage9"></script>
-    <script src="js/dashboard.js?v=20261120_stage9"></script>
+    <script src="../shared/config/supabase.js?v=20261121_launch"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261121_launch"></script>
+    <script src="../shared/components/ui-feedback.js?v=20261121_launch"></script>
+    <script src="../shared/components/notifications.js?v=20261121_launch"></script>
+    <script src="../shared/components/image-upload.js?v=20261121_launch"></script>
+    <script src="../shared/payments/payment-provider.js?v=20261121_launch"></script>
+    <script src="../shared/payments/providers/stripe-provider.js?v=20261121_launch"></script>
+    <script src="../shared/payments/providers/adyen-provider.js?v=20261121_launch"></script>
+    <script src="../shared/payments/providers/paypal-wise-provider.js?v=20261121_launch"></script>
+    <script src="../shared/payments/payment-service.js?v=20261121_launch"></script>
+    <script src="../shared/payments/payment-init.js?v=20261121_launch"></script>
+    <script src="../shared/data/countries.js?v=20261121_launch"></script>
+    <script src="../shared/js/registration-engine.js?v=20261121_launch"></script>
+    <script src="js/dashboard.js?v=20261121_launch"></script>
     <script>
         // تهيئة الإشعارات بعد تحميل البيانات
         document.addEventListener('DOMContentLoaded', function () {
             setTimeout(() => {
-                const member = JSON.parse(localStorage.getItem('sawyan_member') || '{}');
+                const member = (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.getSavedMember()) || {};
                 if (member.id && window.SAWYAN && window.SAWYAN.Notifications) {
                     window.SAWYAN.Notifications.init('member', member.id);
                     if (window.__memberBundleCache && Array.isArray(window.__memberBundleCache.notifications)) {
@@ -248,8 +253,8 @@
             }, 900);
         });
     </script>
-    <script src="js/member-stage7-tools.js?v=20261118_stage7"></script>
-    <script src="../shared/js/app-shell.js?v=20261119_logo_all"></script>
+    <script src="js/member-stage7-tools.js?v=20261121_launch"></script>
+    <script src="../shared/js/app-shell.js?v=20261121_launch"></script>
 </body>
 
 </html>

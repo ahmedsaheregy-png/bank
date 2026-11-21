@@ -2,6 +2,36 @@
 let currentMerchant = null;
 let merchantData = null;
 
+function swNotify(msg, type = null) {
+    if (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.toast === 'function') {
+        window.SAWYAN.UI.toast(msg, type);
+    } else {
+        console.info('[SAWYAN Merchant Notice]', msg);
+    }
+}
+
+async function swAlertBox(title, message, type = 'info') {
+    if (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.alertModal === 'function') {
+        return await window.SAWYAN.UI.alertModal({ title, message, type });
+    }
+    swNotify(message, type);
+    return true;
+}
+
+async function swConfirmBox(title, message, danger = false) {
+    if (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.confirmModal === 'function') {
+        return await window.SAWYAN.UI.confirmModal({ title, message, danger });
+    }
+    return true;
+}
+
+async function swPromptBox(title, message, defaultValue = '', placeholder = '') {
+    if (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.promptModal === 'function') {
+        return await window.SAWYAN.UI.promptModal({ title, message, defaultValue, placeholder });
+    }
+    return defaultValue;
+}
+
 document.addEventListener('DOMContentLoaded', async function () {
     if (window.SAWYAN && window.SAWYAN.Logo) {
         document.getElementById('logoContainer').innerHTML = `<a href="../index.html" class="logo-link" style="text-decoration:none;">${window.SAWYAN.Logo.svg('light-on-dark')}</a>`;
@@ -138,17 +168,17 @@ async function resolvePosMemberOnline(rawInput) {
 async function ensurePosMemberBeforeSubmit(rawInput, cachedRecord, onResolvedPreview) {
     const clean = String(rawInput || '').trim();
     if (!clean) {
-        alert('❌ يرجى إدخال كود العضو أو مسح الباركود أولاً.');
+        swNotify('يرجى إدخال كود العضو أو مسح الباركود أولاً.', 'warning');
         return null;
     }
     const isOffline = forceDeadZoneSimulation || (typeof navigator !== 'undefined' && !navigator.onLine);
     if (isOffline) {
         const offlineCode = extractSawyanMemberCode(clean);
         if (!offlineCode || offlineCode <= 0) {
-            alert('❌ في وضع الأوفلاين يرجى إدخال كود العضو الرقمي أو باركود SAWYAN:MEMBER:<كود>.');
+            swNotify('في وضع عدم الاتصال يرجى إدخال كود العضو الرقمي أو باركود SAWYAN:MEMBER:<كود>.', 'warning');
             return null;
         }
-        return { id: null, code: offlineCode, name: `عضو #${offlineCode} (أوفلاين)`, raw: clean, verified: false };
+        return { id: null, code: offlineCode, name: `عضو #${offlineCode} (مؤقت)`, raw: clean, verified: false };
     }
     if (cachedRecord && cachedRecord.verified && cachedRecord.raw === clean && Number(cachedRecord.code) > 0) {
         return cachedRecord;
@@ -159,17 +189,17 @@ async function ensurePosMemberBeforeSubmit(rawInput, cachedRecord, onResolvedPre
             if (typeof onResolvedPreview === 'function') onResolvedPreview(resolved);
             return resolved;
         }
-        alert('❌ لا يوجد عضو نشط مطابق للكود أو الباركود المدخل. يرجى التأكد قبل المتابعة.');
+        swNotify('لا يوجد عضو نشط مطابق للكود أو الباركود المدخل — يرجى التأكد قبل المتابعة.', 'error');
         return null;
     } catch (err) {
         const msg = String(err?.message || '');
         if (msg.toLowerCase().includes('fetch')) {
             const offlineCode = extractSawyanMemberCode(clean);
             if (offlineCode > 0) {
-                return { id: null, code: offlineCode, name: `عضو #${offlineCode} (أوفلاين)`, raw: clean, verified: false };
+                return { id: null, code: offlineCode, name: `عضو #${offlineCode} (مؤقت)`, raw: clean, verified: false };
             }
         }
-        alert('❌ تعذر التحقق من هوية العضو: ' + (msg || 'خطأ غير متوقع'));
+        swNotify('تعذر التحقق من هوية العضو: ' + (window.SAWYAN?.UI?.humanizeError(msg) || msg || 'خطأ غير متوقع'), 'error');
         return null;
     }
 }
@@ -274,22 +304,22 @@ function getMerchantFifoBannerHtml(p, pendingList) {
     const fifoGross = fifoItems.reduce((s, t) => s + Number(t.total_amount || 0), 0);
     const fifoComm = fifoItems.reduce((s, t) => s + Number(t.commission_amount || 0), 0);
     const headline = fifoItems.length > 0
-        ? `🔴 تنبيه هام: متجرك معزول مؤقتاً ولديك ${fifoItems.length} فاتورة في طابور انتظار الشحن (FIFO)`
+        ? `🔴 تنبيه هام: متجرك موقوف مؤقتاً بالظهور ولديك ${fifoItems.length} فاتورة بانتظار شحن الرصيد`
         : (freeBal < 0
-            ? `🔴 رصيدك الحالي مديون (${fmtMerchantMoney(freeBal, curr)}) — يرجى سداد المديونية وشحن الرصيد`
+            ? `🔴 رصيدك الحالي مديون (${fmtMerchantMoney(freeBal, curr)}) — يرجى السداد وشحن الرصيد`
             : (p?.is_isolated
-                ? '🔴 تنبيه هام: متجرك معزول مؤقتاً عن دليل الأعضاء حتى إعادة الشحن'
+                ? '🔴 تنبيه هام: متجرك مخفي مؤقتاً من دليل الأعضاء حتى إعادة الشحن'
                 : '⚠️ رصيد الشحن المسبق الحالي (0.00) لا يكفي لتمرير المبيعات'));
-    const balSummary = `رصيد الشحن الفعلي: <b>${fmtMerchantMoney(cashBal, curr)}</b> • الحد الائتماني (D4): <b>${fmtMerchantMoney(credLim, curr)}</b> • الصافي الحر المتاح: <b>${fmtMerchantMoney(freeBal, curr)}</b>`;
+    const balSummary = `رصيد الشحن المسبق: <b>${fmtMerchantMoney(cashBal, curr)}</b> • الحد الائتماني المعتمد: <b>${fmtMerchantMoney(credLim, curr)}</b> • الصافي المتاح: <b>${fmtMerchantMoney(freeBal, curr)}</b>`;
     const detail = fifoItems.length > 0
-        ? `إجمالي قيمة الفواتير المحجوزة: <b>${fmtMerchantMoney(fifoGross, curr)}</b> • العمولة المطلوبة لتحريرها فوراً: <b>${fmtMerchantMoney(fifoComm, curr)}</b>. بمجرد شحن الرصيد أو تفعيل سقف D4 من الإدارة ستُعتمد هذه الفواتير تلقائياً وتظهر في مبيعاتك وصندوق العضو.<div style="margin-top:4px;font-size:0.78rem;">${balSummary}</div>`
-        : `${balSummary}. أي عملية بيع تسجّلها الآن ستدخل طابور انتظار الشحن (FIFO) ولن تغذي صندوق العضو أو جدول المكتملة إلا بعد شحن رصيدك المسبق.`;
+        ? `إجمالي قيمة الفواتير المحجوزة: <b>${fmtMerchantMoney(fifoGross, curr)}</b> • العمولة المطلوبة لتحريرها فوراً: <b>${fmtMerchantMoney(fifoComm, curr)}</b>. بمجرد شحن الرصيد تُعتمد هذه الفواتير تلقائياً بالترتيب وتظهر في مبيعاتك.<div style="margin-top:4px;font-size:0.78rem;">${balSummary}</div>`
+        : `${balSummary}. أي عملية بيع تسجّلها الآن ستبقى بانتظار الشحن ولن تُعتمد إلا بعد شحن رصيدك المسبق.`;
     return `
         <div style="background:#fef2f2;border:2px solid #f87171;border-radius:14px;padding:14px 16px;margin-bottom:14px;color:#7f1d1d;">
             <div style="font-weight:900;font-size:0.96rem;margin-bottom:4px;">${headline}</div>
             <div style="font-size:0.83rem;line-height:1.6;margin-bottom:10px;">${detail}</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                ${fifoItems.length > 0 ? `<button type="button" onclick="showPage('pending')" style="background:#b91c1c;color:#fff;border:none;padding:7px 14px;border-radius:8px;font-weight:800;font-size:0.8rem;cursor:pointer;">⏸️ عرض فواتير طابور FIFO (${fifoItems.length})</button>` : ''}
+                ${fifoItems.length > 0 ? `<button type="button" onclick="showPage('pending')" style="background:#b91c1c;color:#fff;border:none;padding:7px 14px;border-radius:8px;font-weight:800;font-size:0.8rem;cursor:pointer;">⏸️ عرض فواتير انتظار الشحن (${fifoItems.length})</button>` : ''}
                 <button type="button" onclick="showPage('financial')" style="background:#065f46;color:#fff;border:none;padding:7px 14px;border-radius:8px;font-weight:800;font-size:0.8rem;cursor:pointer;">🏦 شحن الرصيد / الموقف المالي</button>
             </div>
         </div>
@@ -324,35 +354,10 @@ function syncMerchantBalanceWarnings() {
 }
 
 function formatMerchantErrorMessage(err) {
-    const m = String((err && err.message) || err || '');
-    if (m.includes('DUPLICATE_PAYMENT_REF') || m.includes('transactions_unique_payment_ref')) {
-        return '⛔ رقم مرجع الدفع / RRN مكرر ومسجل مسبقاً على عملية أخرى.';
+    if (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.humanizeError === 'function') {
+        return window.SAWYAN.UI.humanizeError(err);
     }
-    if (m.includes('D4_CREDIT_LOCKED')) {
-        return '⛔ إيقاف فوري لائتمان D4: تم استنفاد الحد الائتماني أو انتهت مهلة سداد دورة الائتمان. يرجى السداد والشحن أولاً.';
-    }
-    if (m.includes('MERCHANT_QUEUE_FULL_BLOCKED') || m.includes('UNSECURED_QUEUE_CAP_EXCEEDED')) {
-        return '⛔ تم بلوغ الحد الأقصى لمحفظة عمليات الدفع الآجل غير المؤمّنة أو إقفال المتجر مالياً. يرجى شحن الرصيد أولاً.';
-    }
-    if (m.includes('MERCHANT_ONBOARDING_INCOMPLETE')) {
-        return '⛔ المتجر لم يستكمل متطلبات التأهيل التعاقدي بعد — استكمل البيانات من تبويب الإعدادات.';
-    }
-    if (m.includes('MERCHANT_UNFUNDED_TOPUP_REQUIRED')) {
-        return '⛔ المتجر لم يشحن رصيد المحفظة التشغيلي ولم يُعتمد له حد ائتماني D4 بعد — اشحن الرصيد أولاً.';
-    }
-    if (m.includes('MERCHANT_TEMPORARILY_PAUSED')) {
-        return '⏸️ المتجر في وضع الإجازة / الإيقاف المؤقت ولا يمكن تمرير فواتير قبل إعادة التفعيل.';
-    }
-    if (m.includes('MERCHANT_COMPLIANCE_SUSPENDED')) {
-        return '🔴 المتجر موقوف امتثالياً (تعليق/حظر) — يرجى تسوية المديونية والتواصل مع إدارة الامتثال.';
-    }
-    if (m.includes('MERCHANT_MANUAL_REJECT_REVOKED_D2')) {
-        return '🔒 صلاحية الرفض اليدوي للفواتير المعلقة موقوفة حالياً (تقييد حوكمة درجة 2) — الاعتماد أو التحويل للإدارة متاح.';
-    }
-    if (m.includes('MERCHANT_ISOLATED_PENDING_BLOCKED')) {
-        return '🟠 المتجر في حالة عزل منخفض الرصيد — الطلبات المعلقة عن بُعد موقوفة مؤقتاً حتى إعادة الشحن.';
-    }
-    return '❌ ' + m;
+    return String((err && err.message) || err || 'حدث خطأ غير متوقع');
 }
 
 window.toggleMerchantSelfPause = async function () {
@@ -361,14 +366,14 @@ window.toggleMerchantSelfPause = async function () {
     const isPaused = p.governance_status === 'paused_by_merchant';
     const note = isPaused
         ? 'استئناف نشاط المتجر بطلب التاجر'
-        : (prompt('اذكر سبب وضع المتجر في إجازة مؤقتة (اختياري):', 'إجازة / صيانة مؤقتة للمتجر') ?? null);
+        : await swPromptBox('وضع المتجر في إجازة مؤقتة', 'اذكر سبب الإجازة أو الإغلاق المؤقت (اختياري):', 'إجازة / صيانة مؤقتة للمتجر', 'مثال: صيانة / جرد / إجازة أسبوعية');
     if (!isPaused && note === null) return;
     try {
         await window.SAWYAN.API.toggleMerchantPause({ merchantId: currentMerchant.id, note: note || '' });
-        alert(isPaused ? '✅ تم استئناف تشغيل المتجر وإعادته لحالته السابقة بنجاح!' : '⏸️ تم وضع المتجر في إجازة مؤقتة وإخفاؤه من الدليل.');
+        swNotify(isPaused ? 'تم استئناف تشغيل المتجر وإعادته لحالته السابقة بنجاح!' : 'تم وضع المتجر في إجازة مؤقتة وإخفاؤه من الدليل.', 'success');
         await loadStats();
     } catch (err) {
-        alert(formatMerchantErrorMessage(err));
+        swNotify(formatMerchantErrorMessage(err), 'error');
     }
 };
 
@@ -472,19 +477,19 @@ function renderMerchantLifecycleAndD4Cards() {
 
     let d4BannerBg = '#eff6ff';
     let d4BannerBorder = '#60a5fa';
-    let d4BannerTitle = '💳 دورة تسوية الحد الائتماني D4';
+    let d4BannerTitle = '💳 جدول تسوية الحد الائتماني المعتمد';
     if (p.cutoff_breached) {
         d4BannerBg = '#fef2f2';
         d4BannerBorder = '#ef4444';
-        d4BannerTitle = '🚨 انتهت مهلة السماح الساعية لائتمان D4 — تم إيقاف الكاشير وإخفاء المتجر لحين السداد';
+        d4BannerTitle = '🚨 انتهت مهلة السداد للحد الائتماني — تم إيقاف استقبال الفواتير لحين السداد';
     } else if (p.d4_in_grace_window) {
         d4BannerBg = '#fff7ed';
         d4BannerBorder = '#f97316';
-        d4BannerTitle = '⏳ المتجر داخل مهلة السماح الساعية السداد D4 — سدد مستحق الدورة المغلقة قبل القفل التلقائي!';
+        d4BannerTitle = '⏳ المتجر داخل مهلة السداد الإضافية — سدد المستحق قبل الإيقاف التلقائي';
     } else if (isPreCutoffWarn) {
         d4BannerBg = '#fffbeb';
         d4BannerBorder = '#f59e0b';
-        d4BannerTitle = `🔔 تنبيه مسائي: تبقى نحو ${minsToClose} دقيقة على إغلاق دورة D4 اليوم`;
+        d4BannerTitle = `🔔 تنبيه مسائي: تبقى نحو ${minsToClose} دقيقة على إغلاق دورة السداد اليوم`;
     }
 
     const closeTxt = p.d4_cycle_close_at ? new Date(p.d4_cycle_close_at).toLocaleString('ar-EG') : '—';
@@ -493,7 +498,7 @@ function renderMerchantLifecycleAndD4Cards() {
         <div style="background:${d4BannerBg};border:2px solid ${d4BannerBorder};border-radius:14px;padding:13px 16px;margin-bottom:14px;">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
                 <div style="font-weight:900;font-size:0.94rem;color:#0f172a;">${d4BannerTitle}</div>
-                <button type="button" onclick="showPage('financial')" class="btn btn-primary btn-sm">💳 السداد والشحن الآن</button>
+                <button type="button" onclick="openMerchantTopupModal()" class="btn btn-primary btn-sm">💳 السداد والشحن الآن</button>
             </div>
             <div style="font-size:0.8rem;color:#334155;display:flex;gap:14px;flex-wrap:wrap;line-height:1.6;">
                 <span>📌 مستحق الدورة المغلقة الواجب سداده: <strong style="color:#b91c1c;" dir="ltr">${fmtMerchantMoney(dueStmt, curr)}</strong></span>
@@ -527,7 +532,7 @@ function renderLiveHomeStats() {
     if (todaySalesEl) todaySalesEl.textContent = fmtMerchantMoney(p.today_sales_local, curr);
     if (todayTransEl) {
         const extra = [
-            fifoCount > 0 ? `⏸️ ${fifoCount} بطابور FIFO` : '',
+            fifoCount > 0 ? `⏸️ ${fifoCount} بانتظار الشحن` : '',
             pendCount > 0 ? `⏳ ${pendCount} معلقة` : ''
         ].filter(Boolean).join(' • ');
         todayTransEl.textContent = `${p.today_completed_count || 0} عمليات مكتملة اليوم` + (extra ? ` • ${extra}` : '');
@@ -550,7 +555,7 @@ function renderLiveHomeStats() {
                 hint.textContent = '🔴 رصيد مديون — سعة المبيعات الآمنة 0.00 (معزول لحين السداد/التغطية)';
                 hint.style.color = '#dc2626';
             } else if (p.is_isolated) {
-                hint.textContent = '🔴 المتجر معزول مؤقتاً — اشحن الرصيد لتحرير طابور FIFO';
+                hint.textContent = '🔴 المتجر مخفي مؤقتاً — اشحن الرصيد لإعادة الظهور واعتماد الفواتير';
                 hint.style.color = '#dc2626';
             } else {
                 hint.textContent = `🟢 يكفي مبيعات حتى ${fmtMerchantMoney(safeCap, curr)} (${p.zone_status})`;
@@ -563,8 +568,8 @@ function renderLiveHomeStats() {
             const cashClr = cashBal < 0 ? '#dc2626' : (cashBal === 0 ? '#b45309' : '#059669');
             const credClr = credLim > 0 ? '#1d4ed8' : '#64748b';
             brkEl.innerHTML =
-                `شحن فعلي (2101): <span dir="ltr" style="color:${cashClr};font-weight:900;">${fmtMerchantMoney(cashBal, curr)}</span>${cashBal < 0 ? ' <span style="color:#dc2626;">(مديون)</span>' : ''}` +
-                ` • حد ائتماني (D4): <span dir="ltr" style="color:${credClr};font-weight:900;">${fmtMerchantMoney(credLim, curr)}</span>` +
+                `شحن مسبق: <span dir="ltr" style="color:${cashClr};font-weight:900;">${fmtMerchantMoney(cashBal, curr)}</span>${cashBal < 0 ? ' <span style="color:#dc2626;">(مديون)</span>' : ''}` +
+                ` • حد ائتماني: <span dir="ltr" style="color:${credClr};font-weight:900;">${fmtMerchantMoney(credLim, curr)}</span>` +
                 (holdBal > 0 ? ` • محجوز: <span dir="ltr" style="color:#b45309;font-weight:900;">${fmtMerchantMoney(holdBal, curr)}</span>` : '');
         }
     }
@@ -725,7 +730,7 @@ async function handleTransaction(e) {
     const receiptMediaUrl = ((window._scanReceiptUploader && window._scanReceiptUploader.getValue()) || document.getElementById('scanReceiptUrl')?.value || '').trim() || null;
 
     if (!rawCode || !amount || amount <= 0) {
-        alert('الرجاء إدخال كود العضو أو الباركود ومبلغ أكبر من صفر.');
+        swNotify('الرجاء إدخال كود العضو أو الباركود ومبلغ أكبر من صفر.', 'warning');
         return;
     }
 
@@ -835,7 +840,7 @@ function loadFinancialReport() {
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; flex-wrap:wrap; gap:12px;">
                 <div>
                     <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                        <span style="font-size:0.75rem; background:rgba(16,185,129,0.2); border:1px solid #10b981; color:#a7f3d0; padding:2px 8px; border-radius:10px; font-weight:700;">الصافي الحر المتاح للتغطية (شحن فعلي − محجوز + ائتمان D4)</span>
+                        <span style="font-size:0.75rem; background:rgba(16,185,129,0.2); border:1px solid #10b981; color:#a7f3d0; padding:2px 8px; border-radius:10px; font-weight:700;">الرصيد المتاح لتغطية المبيعات</span>
                         <span id="liveDebtPill" style="display:none; font-size:0.72rem; background:#dc2626; color:#ffffff; padding:2px 8px; border-radius:10px; font-weight:900;">مديون</span>
                     </div>
                     <div id="livePrepaidBalance" dir="ltr" style="font-size:2.2rem; font-weight:900; margin-top:6px; font-family:monospace; color:#34d399; display:inline-block;">0.00 ج.م</div>
@@ -848,14 +853,14 @@ function loadFinancialReport() {
                 </div>
             </div>
 
-            <!-- تفصيل مكونات رصيد التاجر (الشحن الفعلي vs الحد الائتماني D4 vs المحجوز vs الصافي الحر) -->
+            <!-- تفصيل مكونات رصيد التاجر -->
             <div id="merchantFinancialBreakdown" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 165px), 1fr)); gap:8px; margin-bottom:12px;">
                 <div style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); border-radius:10px; padding:9px 12px;">
-                    <div style="font-size:0.72rem; color:#cbd5e1; font-weight:700;">💵 رصيد الشحن الفعلي (2101)</div>
+                    <div style="font-size:0.72rem; color:#cbd5e1; font-weight:700;">💵 رصيد الشحن المسبق</div>
                     <div id="finActualCashVal" dir="ltr" style="font-size:1.05rem; font-weight:900; color:#34d399; margin-top:3px; font-family:monospace;">0.00</div>
                 </div>
                 <div style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); border-radius:10px; padding:9px 12px;">
-                    <div style="font-size:0.72rem; color:#cbd5e1; font-weight:700;">💳 الحد الائتماني الاستثنائي (D4)</div>
+                    <div style="font-size:0.72rem; color:#cbd5e1; font-weight:700;">💳 الحد الائتماني المعتمد</div>
                     <div id="finCreditLimitVal" dir="ltr" style="font-size:1.05rem; font-weight:900; color:#93c5fd; margin-top:3px; font-family:monospace;">0.00</div>
                 </div>
                 <div style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); border-radius:10px; padding:9px 12px;">
@@ -863,36 +868,39 @@ function loadFinancialReport() {
                     <div id="finSoftHoldVal" dir="ltr" style="font-size:1.05rem; font-weight:900; color:#fcd34d; margin-top:3px; font-family:monospace;">0.00</div>
                 </div>
                 <div style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); border-radius:10px; padding:9px 12px;">
-                    <div style="font-size:0.72rem; color:#cbd5e1; font-weight:700;">🛡️ الصافي الحر المتاح للتغطية</div>
+                    <div style="font-size:0.72rem; color:#cbd5e1; font-weight:700;">🛡️ الصافي المتاح للتغطية</div>
                     <div id="finFreeBalVal" dir="ltr" style="font-size:1.05rem; font-weight:900; color:#34d399; margin-top:3px; font-family:monospace;">0.00</div>
                 </div>
             </div>
 
             <!-- شريط الأمان المالي الاستراتيجي -->
             <div style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:10px; padding:10px 14px; font-size:0.8rem; color:#e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                <span id="liveSafetyCapStrip">🛡️ <strong>حد الأمان المحاسبي:</strong> جاري حساب سعة التغطية المباشرة من رصيد الشحن المسبق...</span>
+                <span id="liveSafetyCapStrip">🛡️ <strong>سعة التغطية المتاحة:</strong> جاري حساب سعة التغطية المباشرة من رصيد الشحن المسبق...</span>
                 <span id="liveDedRateBadge" style="color:#a7f3d0; font-weight:800; font-family:monospace;">نسبة العمولة التعاقدية: —%</span>
             </div>
         </div>
 
-        <!-- 1b. سلم الحماية والإنذار المبكر للشحن المسبق (D15) -->
+        <!-- 1a-pending: طلبات الشحن قيد المراجعة لدى الإدارة المالية -->
+        <div id="finPendingTopupsHost" style="margin-bottom:16px;"></div>
+
+        <!-- 1b. مؤشر أمان الرصيد والتنبيهات المبكرة -->
         <div id="finD15LadderCard" data-spec-id="merchant-financial-d15-ladder" style="background:white; border:1.5px solid #cbd5e1; border-radius:14px; padding:14px 18px; margin-bottom:16px;">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
-                <div style="font-weight:900; font-size:0.96rem; color:#0f172a;">🪜 سلم الأمان المالي والإنذار المبكر لرصيد التاجر (قرار D15)</div>
+                <div style="font-weight:900; font-size:0.96rem; color:#0f172a;">🪜 مؤشر أمان الرصيد والتنبيهات المبكرة</div>
                 <span id="finD15LadderZoneTag" style="background:#ecfdf5; color:#047857; padding:3px 10px; border-radius:999px; font-size:0.78rem; font-weight:800;">جاري فحص النطاق...</span>
             </div>
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 175px), 1fr)); gap:8px; font-size:0.78rem;">
                 <div id="d15TierGREEN" style="border:1.5px solid #10b981; background:#f0fdf4; border-radius:10px; padding:9px 11px;">
-                    <b style="color:#047857;">🟢 فوق 30% (منطقة خضراء)</b><div style="color:#334155;margin-top:2px;">ظهور كامل بالرادار + صلاحية بث العروض الخاطفة</div>
+                    <b style="color:#047857;">🟢 فوق 30% (منطقة خضراء)</b><div style="color:#334155;margin-top:2px;">ظهور كامل بالدليل + صلاحية بث العروض الترويجية</div>
                 </div>
                 <div id="d15TierYELLOW" style="border:1.5px solid #f59e0b; background:#fffbeb; border-radius:10px; padding:9px 11px;">
                     <b style="color:#b45309;">🟡 &le; 30% (إنذار أول)</b><div style="color:#334155;margin-top:2px;">تنبيه مبكر لإعادة شحن الرصيد وتوقيف البث الترويجي</div>
                 </div>
                 <div id="d15TierRED" style="border:1.5px solid #ea580c; background:#fff7ed; border-radius:10px; padding:9px 11px;">
-                    <b style="color:#c2410c;">🟠 &le; 20% (إنذار حرج)</b><div style="color:#334155;margin-top:2px;">تحذير عاجل قبل العزل التلقائي</div>
+                    <b style="color:#c2410c;">🟠 &le; 20% (إنذار حرج)</b><div style="color:#334155;margin-top:2px;">تحذير عاجل قبل الإخفاء المؤقت</div>
                 </div>
                 <div id="d15TierISOLATED" style="border:1.5px solid #dc2626; background:#fef2f2; border-radius:10px; padding:9px 11px;">
-                    <b style="color:#991b1b;">🔴 &le; 10% (عزل + FIFO)</b><div style="color:#334155;margin-top:2px;">إخفاء وقائي من الرادار وتحويل الفواتير لطابور FIFO</div>
+                    <b style="color:#991b1b;">🔴 &le; 10% (إخفاء مؤقت)</b><div style="color:#334155;margin-top:2px;">إخفاء وقائي من الدليل وتعليق الفواتير لحين إعادة الشحن</div>
                 </div>
             </div>
         </div>
@@ -1041,9 +1049,9 @@ async function saveSettings() {
             newPassword
         });
         await refreshMerchantBundle();
-        alert('✅ تم حفظ إعدادات المتجر في الخادم بنجاح!');
+        swNotify('تم حفظ إعدادات المتجر في الخادم بنجاح!', 'success');
     } catch (error) {
-        alert('❌ تعذر حفظ الإعدادات: ' + error.message);
+        swNotify('تعذر حفظ الإعدادات: ' + formatMerchantErrorMessage(error), 'error');
     }
 }
 
@@ -1119,7 +1127,7 @@ function generateMerchantWifiQR() {
     const password = document.getElementById('settingsWifiPassword')?.value;
 
     if (!ssid) {
-        alert('الرجاء إدخال اسم الشبكة (SSID)');
+        swNotify('الرجاء إدخال اسم الشبكة (SSID)', 'warning');
         return;
     }
 
@@ -1456,7 +1464,7 @@ function processManualQRInput() {
     const input = document.getElementById('manualQRInput');
     const qrData = input ? input.value.trim() : '';
     if (!qrData) {
-        alert('الرجاء إدخال كود العضو أولاً');
+        swNotify('الرجاء إدخال كود العضو أولاً', 'warning');
         return;
     }
     handleManualCodeInput(qrData);
@@ -1523,7 +1531,7 @@ function showWifiSharingModal() {
     const password = p.wifi_password || merchantData?.wifi_password || '';
 
     if (!ssid) {
-        alert('⚠️ لم تقم بإعداد الواي فاي بعد.\nاذهب إلى تبويب الإعدادات لإدخال اسم شبكة Wi-Fi المتجر.');
+        swNotify('لم تقم بإعداد الواي فاي بعد — اذهب إلى تبويب الإعدادات لإدخال اسم شبكة Wi-Fi المتجر.', 'warning');
         return;
     }
 
@@ -1757,7 +1765,9 @@ const SawyanOfflinePosVault = (function () {
         const mId = currentMerchant?.id || null;
         const list = await listEncryptedRecords(mId);
         const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
-        badge.textContent = `${online ? '🟢 متصل' : '🟠 أوفلاين'} • حافظة الأوفلاين المشفرة (AES-GCM): ${list.length}`;
+        badge.textContent = list.length > 0
+            ? `${online ? '🟡 متصل' : '🟠 أوفلاين'} • ${list.length} عملية بانتظار المزامنة`
+            : (online ? '🟢 متصل بالنظام' : '🟠 وضع الأوفلاين الآمن');
         badge.style.background = online ? (list.length > 0 ? '#fffbeb' : '#ecfdf5') : '#fef2f2';
         badge.style.color = online ? (list.length > 0 ? '#92400e' : '#047857') : '#991b1b';
     }
@@ -1795,19 +1805,18 @@ async function submitLiveOrOfflinePosTransaction({
 }) {
     const cleanCode = Number(memberCode);
     if (!cleanCode || cleanCode <= 0 || !Number.isFinite(cleanCode)) {
-        alert('❌ كود العضو غير صالح.');
+        swNotify('كود العضو غير صالح.', 'error');
         return null;
     }
     const curr = merchantBundle?.profile?.currency_code || merchantData?.currency_code || 'EGP';
     const whoLabel = memberDisplayName ? `${memberDisplayName} (#${cleanCode})` : `عضو #${cleanCode}`;
     const confirmMsg =
-        `🔎 تأكيد بيانات الفاتورة قبل التسجيل:\n` +
-        `━━━━━━━━━━━━━━━━━━━━━\n` +
         `👤 العميل (العضو): ${whoLabel}\n` +
         `💰 قيمة الفاتورة: ${Number(amount).toFixed(2)} ${curr}\n` +
-        `💳 وسيلة الدفع: ${fmtMerchantPayTypeLabel(paymentType)}\n` +
-        `\nهل تؤكد صحة هوية العضو والمبلغ لإتمام تسجيل الفاتورة؟`;
-    if (typeof window !== 'undefined' && typeof window.confirm === 'function' && !window.confirm(confirmMsg)) {
+        `💳 وسيلة الدفع: ${fmtMerchantPayTypeLabel(paymentType)}\n\n` +
+        `هل تؤكد صحة هوية العضو والمبلغ لإتمام تسجيل الفاتورة؟`;
+    const confirmed = await swConfirmBox('تأكيد بيانات الفاتورة قبل التسجيل', confirmMsg, false);
+    if (!confirmed) {
         return null;
     }
 
@@ -1829,7 +1838,7 @@ async function submitLiveOrOfflinePosTransaction({
             idempotencyKey: idemKey,
             swShortCode: shortCode
         });
-        alert(`📴 وضع انقطاع الشبكة (Dead Zone):\nتم تشفير المسودة بـ AES-256-GCM وحفظها في IndexedDB برقم فاتورة ${queued.sw_short_code} ومفتاح عدم تكرار UUIDv7.\nستُرسل تلقائياً فور عودة الإنترنت.`);
+        await swAlertBox('حفظ مؤقت دون إنترنت', `تم حفظ الفاتورة بأمان في الجهاز برقم ${queued.sw_short_code} وستُرسل تلقائياً فور عودة الاتصال بالإنترنت.`, 'info');
         return queued;
     }
 
@@ -1850,39 +1859,46 @@ async function submitLiveOrOfflinePosTransaction({
 
         if (res && res.success === false) {
             if (res.error_code === 'CASHIER_PIN_LOCKED_15M') {
-                alert('⛔ تم قفل رمز PIN لهذا الموظف لمدة 15 دقيقة بعد 5 محاولات خاطئة (القرار D25).');
+                swNotify('تم قفل رمز PIN لهذا الموظف لمدة 15 دقيقة بعد 5 محاولات خاطئة.', 'error');
                 return null;
             }
             if (res.error_code === 'INVALID_CASHIER_PIN') {
-                alert(`❌ رمز PIN الكاشير غير صحيح! المحاولات المتبقية قبل القفل: ${res.remaining_attempts}`);
+                swNotify(`رمز PIN الكاشير غير صحيح — المحاولات المتبقية قبل القفل: ${res.remaining_attempts}`, 'error');
                 return null;
             }
             if (res.error_code === 'CASHIER_TX_LIMIT_EXCEEDED') {
-                alert('⛔ قيمة الفاتورة تتجاوز الحد الأقصى المسموح به لهذا الكاشير.');
+                swNotify('قيمة الفاتورة تتجاوز الحد الأقصى المسموح به لهذا الكاشير.', 'warning');
                 return null;
             }
             if (res.pos_result?.status === 'rejected_self_cashier_pin') {
-                alert('⛔ محظور أمنياً (D25): لا يجوز لموظف الكاشير توثيق فاتورة لحسابه الشخصي كعضو! تم إشعار مالك المتجر.');
+                swNotify('لا يجوز لموظف الكاشير توثيق فاتورة لحسابه الشخصي كعضو.', 'error');
                 return null;
             }
-            alert('❌ تعذر إتمام العملية: ' + (res.error_code || 'خطأ غير متوقع'));
+            swNotify('تعذر إتمام العملية: ' + (window.SAWYAN?.UI?.humanizeError(res.error_code) || res.error_code || 'خطأ غير متوقع'), 'error');
             return null;
         }
 
         const st = res?.pos_result?.status || (res?.deferred_pending ? 'pending' : 'completed');
-        const curr = merchantBundle?.profile?.currency_code || 'EGP';
         if (st === 'awaiting_merchant_topup') {
             const fifoSeq = res.fifo_seq || res?.pos_result?.fifo_seq || 1;
             const reqComm = Number(res.required_commission_local || (Number(amount) * (Number(merchantBundle?.profile?.deduction_percent || 10) / 100))).toFixed(2);
-            alert(`⏸️ تنبيه مهم: تم حفظ الفاتورة في طابور انتظار الشحن (FIFO #${fifoSeq}) ولم تُعتمد بعد!\n━━━━━━━━━━━━━━━━━━━━━\n🧾 الكود المختصر: ${res.sw_short_code}\n👤 العضو: ${res.member_name} (#${res.member_code})\n💳 وسيلة الدفع: ${fmtMerchantPayTypeLabel(paymentType)}\n💰 قيمة الفاتورة: ${Number(amount).toFixed(2)} ${curr}\n⚠️ العمولة المطلوبة لاعتمادها: ${reqComm} ${curr}\n🔴 السبب (D4): رصيد الشحن المسبق المتاح لا يكفي لخصم العمولة وتم عزل المتجر مؤقتاً.\n📌 الإجراء: اشحن رصيدك من «الموقف المالي / الشحن البنكي» أو اطلب تفعيل سقف D4 لتتحرر الفاتورة تلقائياً وتُحسب في المبيعات وصندوق العضو.`);
+            await swAlertBox(
+                'تم حفظ الفاتورة بانتظار شحن الرصيد',
+                `رقم الفاتورة: ${res.sw_short_code} (ترتيب #${fifoSeq})\nالعضو: ${res.member_name} (#${res.member_code})\nالقيمة: ${Number(amount).toFixed(2)} ${curr}\nالعمولة المطلوبة لاعتمادها: ${reqComm} ${curr}\n\nرصيد الشحن المتاح لا يكفي حالياً لخصم العمولة؛ بمجرد شحن رصيد المتجر ستُعتمد الفاتورة تلقائياً.`,
+                'warning'
+            );
         } else {
             const statusMsg = st === 'pending'
-                ? '⏳ دفع مؤجل (COD / شيك) — الفاتورة معلقة ولن تغذي صندوق العضو حتى تؤكد التوصيل والتحصيل من تبويب الطلبات المعلقة.'
-                : '✅ مكتملة وصدر لها فاتورة ضريبية B2B';
+                ? 'دفع مؤجل — بانتظار تأكيد التوصيل والتحصيل من قائمة المعلقات.'
+                : 'مكتملة ومُعتمدة بنجاح.';
             const commDisplay = st === 'pending'
                 ? `${Number(res.commission_reserved_local || 0).toFixed(2)} ${curr} (مؤجلة لحين التحصيل)`
                 : `${Number(res.commission_deducted_local || 0).toFixed(2)} ${curr}`;
-            alert(`✅ تم توثيق الفاتورة عبر محرك PostgreSQL V3.0!\n━━━━━━━━━━━━━━━━━━━━━\n🧾 الكود المختصر: ${res.sw_short_code}\n👤 العضو: ${res.member_name} (#${res.member_code})\n💳 وسيلة الدفع: ${fmtMerchantPayTypeLabel(paymentType)}\n💰 قيمة الفاتورة: ${Number(amount).toFixed(2)} ${curr}\n🏷️ العمولة: ${commDisplay}\n💵 صافي نقدية الدرج: ${Number(res.merchant_net_local).toFixed(2)} ${curr}\n📌 الحالة المحاسبية: ${statusMsg}`);
+            await swAlertBox(
+                'تم تسجيل الفاتورة بنجاح',
+                `🧾 الكود المختصر: ${res.sw_short_code}\n👤 العضو: ${res.member_name} (#${res.member_code})\n💳 وسيلة الدفع: ${fmtMerchantPayTypeLabel(paymentType)}\n💰 قيمة الفاتورة: ${Number(amount).toFixed(2)} ${curr}\n🏷️ العمولة: ${commDisplay}\n💵 صافي نقدية الدرج: ${Number(res.merchant_net_local).toFixed(2)} ${curr}\n📌 الحالة: ${statusMsg}`,
+                'success'
+            );
         }
         await refreshMerchantBundle();
         return res;
@@ -1901,10 +1917,10 @@ async function submitLiveOrOfflinePosTransaction({
                 idempotencyKey: idemKey,
                 swShortCode: shortCode
             });
-            alert(`🟠 تعذر الوصول للشبكة — تم حفظ العملية مشفرة في حافظة الأوفلاين (${queued.sw_short_code}) للمزامنة التلقائية.`);
+            swNotify(`انقطع الاتصال — تم حفظ الفاتورة مشفرة على الجهاز (${queued.sw_short_code}) وستُرسل عند عودة الشبكة.`, 'warning');
             return queued;
         }
-        alert(formatMerchantErrorMessage(err));
+        swNotify(formatMerchantErrorMessage(err), 'error');
         return null;
     }
 }
@@ -2107,12 +2123,12 @@ window.handleKioskMemberCodeInput = handleKioskMemberCodeInput;
 async function processOfflineCustomerPayment() {
     const rawInput = (document.getElementById('manualQRInput')?.value || '').trim();
     if (!rawInput) {
-        alert('❌ يرجى إدخال أو مسح كود عضو صالح أولاً.');
+        swNotify('يرجى إدخال أو مسح كود عضو صالح أولاً.', 'warning');
         return;
     }
     const amount = parseFloat(document.getElementById('offlinePaymentAmount')?.value || '0');
     if (!amount || amount <= 0) {
-        alert('الرجاء إدخال قيمة الفاتورة.');
+        swNotify('الرجاء إدخال قيمة الفاتورة.', 'warning');
         return;
     }
     const resolved = await ensurePosMemberBeforeSubmit(rawInput, scannedMemberData, (r) => {
@@ -2250,14 +2266,14 @@ async function loadKioskModePage() {
 
             <button type="button" onclick="syncKioskOfflineVault()" style="background:#1d4ed8;color:#fff;border:none;border-radius:18px;padding:28px 20px;cursor:pointer;text-align:center;box-shadow:0 10px 25px rgba(29,78,216,0.25);">
                 <div style="font-size:2.6rem;margin-bottom:8px;">🔐</div>
-                <div style="font-size:1.2rem;font-weight:900;font-family:Tajawal,sans-serif;">2️⃣ مزامنة الأوفلاين المشفرة (${queuedList.length})</div>
-                <div style="font-size:0.82rem;opacity:0.9;margin-top:4px;">IndexedDB + AES-GCM + مفتاح عدم تكرار UUIDv7</div>
+                <div style="font-size:1.2rem;font-weight:900;font-family:Tajawal,sans-serif;">2️⃣ مزامنة الفواتير المؤقتة (${queuedList.length})</div>
+                <div style="font-size:0.82rem;opacity:0.9;margin-top:4px;">حفظ محلي آمن للعمليات عند انقطاع الإنترنت ومزامنتها تلقائياً</div>
             </button>
 
             <button type="button" onclick="downloadSafeShiftCsv('today')" style="background:#0f172a;color:#fff;border:none;border-radius:18px;padding:28px 20px;cursor:pointer;text-align:center;box-shadow:0 10px 25px rgba(15,23,42,0.25);">
                 <div style="font-size:2.6rem;margin-bottom:8px;">🧾</div>
                 <div style="font-size:1.2rem;font-weight:900;font-family:Tajawal,sans-serif;">3️⃣ تقفيل الوردية وتنزيل CSV</div>
-                <div style="font-size:0.82rem;opacity:0.9;margin-top:4px;">مطهّر ضد CSV Formula Injection مع قيد Audit Log</div>
+                <div style="font-size:0.82rem;opacity:0.9;margin-top:4px;">تصدير كشف الوردية المحاسبي جاهز للطباعة</div>
             </button>
         </div>
 
@@ -2322,7 +2338,7 @@ async function loadKioskModePage() {
         const rawVal = (document.getElementById('kioskMemberCode')?.value || '').trim();
         const amt = parseFloat(document.getElementById('kioskAmount')?.value || '0');
         if (!rawVal || !amt || amt <= 0) {
-            alert('❌ يرجى إدخال كود العضو ومبلغ أكبر من صفر.');
+            swNotify('يرجى إدخال كود العضو ومبلغ أكبر من صفر.', 'warning');
             return;
         }
         const resolved = await ensurePosMemberBeforeSubmit(rawVal, kioskMemberData, (r) => {
@@ -2358,7 +2374,7 @@ function toggleDeadZoneSim(checked) {
 
 async function syncKioskOfflineVault() {
     const res = await SawyanOfflinePosVault.syncAllQueued(currentMerchant.id);
-    alert(`🔄 اكتملت مزامنة حافظة الأوفلاين المشفرة:\n• فواتير تم ترحيلها للخادم: ${res.synced}\n• فواتير ما زالت بالانتظار: ${res.failed}`);
+    await swAlertBox('نتائج المزامنة', `• فواتير تم ترحيلها بنجاح: ${res.synced}\n• فواتير ما زالت بالانتظار: ${res.failed}`, res.failed > 0 ? 'warning' : 'success');
     await loadKioskModePage();
 }
 
@@ -2423,7 +2439,7 @@ async function loadPendingTransactions() {
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;border-bottom:1px solid #f1f5f9;padding-bottom:8px;flex-wrap:wrap;gap:8px;">
                 <div>
                     <div style="font-weight:900;font-size:1rem;color:#0f172a;">👤 العضو: ${escM(tx.member_masked_name)}</div>
-                    <div style="font-size:0.78rem;color:#64748b;margin-top:2px;">⏱️ ${new Date(tx.created_at).toLocaleString('ar-EG')} • كود الفاتورة: <code>${escM(tx.sw_short_code)}</code> • تسلسل FIFO: #${tx.fifo_seq || 0}</div>
+                    <div style="font-size:0.78rem;color:#64748b;margin-top:2px;">⏱️ ${new Date(tx.created_at).toLocaleString('ar-EG')} • كود الفاتورة: <code>${escM(tx.sw_short_code)}</code></div>
                     <div style="font-size:0.76rem;color:#334155;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                         <span style="background:#f1f5f9;padding:2px 8px;border-radius:6px;font-weight:700;">${escM(fmtMerchantPayTypeLabel(tx.payment_type))}</span>
                         ${tx.unique_payment_ref ? `<span>مرجع: <code dir="ltr">${escM(tx.unique_payment_ref)}</code></span>` : ''}
@@ -2431,7 +2447,7 @@ async function loadPendingTransactions() {
                     </div>
                 </div>
                 <span style="background:${tx.status === 'awaiting_merchant_topup' ? '#fee2e2' : '#fef3c7'};color:${tx.status === 'awaiting_merchant_topup' ? '#991b1b' : '#92400e'};font-size:0.75rem;font-weight:800;padding:3px 10px;border-radius:999px;">
-                    ${tx.status === 'awaiting_merchant_topup' ? '⏸️ بانتظار شحن رصيد المتجر (FIFO D4)' : '⏳ بانتظار مطابقة واعتماد التاجر'}
+                    ${tx.status === 'awaiting_merchant_topup' ? '⏸️ بانتظار شحن رصيد المتجر' : '⏳ بانتظار مطابقة واعتماد التاجر'}
                 </span>
             </div>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:8px;background:#f8fafc;padding:10px 12px;border-radius:10px;margin-bottom:12px;font-size:0.84rem;">
@@ -2444,9 +2460,9 @@ async function loadPendingTransactions() {
                     <button type="button" onclick="approvePendingTx('${tx.id}')" style="flex:2;background:#059669;color:white;border:none;padding:10px 14px;border-radius:8px;font-weight:800;cursor:pointer;">✅ اعتماد الفاتورة وتغذية الصندوق</button>
                     ${canRejectManual
                         ? `<button type="button" onclick="rejectPendingTx('${tx.id}')" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;padding:10px 14px;border-radius:8px;font-weight:700;cursor:pointer;">❌ رفض</button>`
-                        : `<span style="background:#fff7ed;color:#9a3412;border:1px solid #fdba74;padding:8px 12px;border-radius:8px;font-size:0.78rem;font-weight:800;">🔒 الرفض اليدوي موقوف (تقييد حوكمة د2)</span>`}
+                        : `<span style="background:#fff7ed;color:#9a3412;border:1px solid #fdba74;padding:8px 12px;border-radius:8px;font-size:0.78rem;font-weight:800;">🔒 الرفض اليدوي موقوف مؤقتاً</span>`}
                 ` : `
-                    <button type="button" onclick="showPage('financial')" class="btn btn-primary btn-sm">➕ انتقل لشحن الرصيد لتحرير الطابور تلقائياً (FIFO)</button>
+                    <button type="button" onclick="openMerchantTopupModal()" class="btn btn-primary btn-sm">➕ اشحن الرصيد لتحرير الفاتورة تلقائياً</button>
                 `}
                 ${(tx.receipt_media_url && window.SAWYAN && window.SAWYAN.ImageUpload) ? window.SAWYAN.ImageUpload.renderThumbHtml(tx.receipt_media_url, '🧾 إيصال الفاتورة ' + escM(tx.sw_short_code)) : ''}
             </div>
@@ -2456,8 +2472,8 @@ async function loadPendingTransactions() {
     page.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
             <div>
-                <h2 style="margin:0;font-size:1.3rem;font-weight:900;color:#0f172a;">⏳ طلبات الفواتير المعلقة وطابور FIFO (${pendingData.length})</h2>
-                <p style="margin:4px 0 0;font-size:0.84rem;color:#64748b;">تُعالج الفواتير ذرياً عبر الخادم دون أي تعديل مباشر على المحافظ من المتصفح (D21)</p>
+                <h2 style="margin:0;font-size:1.3rem;font-weight:900;color:#0f172a;">⏳ طلبات الفواتير المعلقة (${pendingData.length})</h2>
+                <p style="margin:4px 0 0;font-size:0.84rem;color:#64748b;">راجع إيصال الشراء ثم اضغط «اعتماد» لتوثيق الفاتورة وإضافتها للمبيعات بأمان.</p>
             </div>
         </div>
         <div id="pendingList">${itemsHtml}</div>
@@ -2471,15 +2487,18 @@ async function approvePendingTx(id) {
             transactionId: id,
             decision: 'approve'
         });
-        alert(`✅ تم اعتماد الفاتورة بنجاح! الحالة: ${res?.result?.status || 'completed'}`);
+        const st = res?.result?.status || 'completed';
+        swNotify(st === 'awaiting_merchant_topup'
+            ? 'تم قبول الفاتورة لكنها بانتظار شحن رصيد المتجر لتفعيلها.'
+            : 'تم اعتماد الفاتورة وتوثيقها في المبيعات بنجاح!', st === 'awaiting_merchant_topup' ? 'warning' : 'success');
         await loadPendingTransactions();
     } catch (err) {
-        alert(formatMerchantErrorMessage(err));
+        swNotify(formatMerchantErrorMessage(err), 'error');
     }
 }
 
 async function rejectPendingTx(id) {
-    const reason = prompt('اذكر سبب رفض الفاتورة لإشعار العضو:', 'بيانات الإيصال غير مطابقة');
+    const reason = await swPromptBox('سبب رفض الفاتورة', 'اذكر سبب رفض الفاتورة لإبلاغ العميل بوضوح:', 'بيانات الإيصال غير مطابقة', 'مثال: صورة الإيصال غير واضحة أو المبلغ مختلف');
     if (reason === null) return;
     try {
         await window.SAWYAN.API.confirmOrRejectPendingTx({
@@ -2488,10 +2507,10 @@ async function rejectPendingTx(id) {
             decision: 'reject',
             rejectionReason: reason.trim() || 'غير مطابق'
         });
-        alert('✅ تم رفض الفاتورة وتحرير الحجز المؤقت (Soft Hold).');
+        swNotify('تم رفض الفاتورة وتحرير المبلغ المحجوز فوراً.', 'success');
         await loadPendingTransactions();
     } catch (err) {
-        alert(formatMerchantErrorMessage(err));
+        swNotify(formatMerchantErrorMessage(err), 'error');
     }
 }
 
@@ -2513,7 +2532,7 @@ async function downloadSafeShiftCsv(periodFilter = 'today') {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     } catch (err) {
-        alert('❌ تعذر تصدير تقرير الوردية: ' + err.message);
+        swNotify('تعذر تصدير تقرير الوردية: ' + formatMerchantErrorMessage(err), 'error');
     }
 }
 
@@ -2698,10 +2717,10 @@ function openMerchantPosReturnModal(transactionId, shortCode) {
                 btn.disabled = false;
                 btn.textContent = '١. إرسال رمز OTP لتطبيق العميل';
                 if (String(err.message || '').includes('POST_PAYOUT_RETURN_FORBIDDEN')) {
-                    alert('🛑 مرفوض برمجياً وتعاقدياً (POST_PAYOUT_RETURN_FORBIDDEN):\nتم إغلاق هذا الشهر وصرف عمولاته في اليوم 15! لا يقبل نظام سوياً أي مرتجع بعد يوم الصرف، وفي حال موافقتك على قبول المرتجع بعد يوم 15 يتحمله المتجر وحده بالكامل (100%) خارج النظام.');
+                    await swAlertBox('مرتجع غير متاح بعد الصرف', 'تم إغلاق هذا الشهر وصرف عمولاته في اليوم 15؛ وفي حال موافقة التاجر على قبول المرتجع بعد يوم الصرف يتحمله التاجر بالكامل خارج المنصة.', 'warning');
                     close();
                 } else {
-                    alert('❌ تعذر بدء المرتجع: ' + err.message);
+                    swNotify('تعذر بدء المرتجع: ' + formatMerchantErrorMessage(err), 'error');
                 }
             }
         };
@@ -2760,13 +2779,13 @@ function openMerchantPosReturnModal(transactionId, shortCode) {
                 renderStep2(reason, `<div style="background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;padding:8px 10px;border-radius:8px;font-size:0.82rem;margin-bottom:10px;">${msg}</div>`);
                 return;
             }
-            alert(`✅ تم تأكيد المرتجع وإلغاء الفاتورة (${shortCode}) واسترداد العمولة لرصيد المتجر!`);
+            swNotify(`تم تأكيد المرتجع وإلغاء الفاتورة (${shortCode}) واسترداد العمولة لرصيد المتجر!`, 'success');
             close();
             await loadAllTransactions(activeShiftPeriod);
         };
         document.getElementById('mrEscalateBtn').onclick = async () => {
             const proofUrl = ((window._mrEscProofUploader && window._mrEscProofUploader.getValue()) || document.getElementById('mrEscProofUrl')?.value || '').trim();
-            if (!proofUrl) { alert('يرجى رفع صورة إثبات رد المبلغ للعميل أولاً.'); return; }
+            if (!proofUrl) { swNotify('يرجى رفع صورة إثبات رد المبلغ للعميل أولاً.', 'warning'); return; }
             try {
                 await window.SAWYAN.API.merchantProcessPosReturn({
                     merchantId: currentMerchant.id,
@@ -2775,10 +2794,10 @@ function openMerchantPosReturnModal(transactionId, shortCode) {
                     mode: 'escalate_with_proof',
                     proofUrl
                 });
-                alert('📨 تم رفع إثبات المرتجع وتصعيد تذكرة P0 للإدارة بنجاح.');
+                swNotify('تم رفع إثبات المرتجع وإرسال الطلب لمراجعة الإدارة بنجاح.', 'success');
                 close();
                 await loadAllTransactions(activeShiftPeriod);
-            } catch (err) { alert('❌ ' + err.message); }
+            } catch (err) { swNotify(formatMerchantErrorMessage(err), 'error'); }
         };
     };
 
@@ -2846,15 +2865,15 @@ loadFinancialReport = async function () {
         const effAcc = p.effective_access || {};
         if (p.cutoff_breached || p.financial_status === 'locked_queue_full' || p.governance_status === 'suspended_compliance' || p.governance_status === 'banned_permanent') {
             statusBadge.textContent = p.cutoff_breached
-                ? '🔴 إغلاق D4 متأخر — الكاشير والدليل مقفلان لحين السداد'
-                : '🔴 مقفل / معلق — راجع المحور المالي والحوكمة';
+                ? '🔴 انتهت مهلة السداد — استقبال الفواتير متوقف لحين السداد'
+                : '🔴 مقفل / معلق — يرجى مراجعة الرصيد والحالة';
             statusBadge.style.background = '#fef2f2';
             statusBadge.style.color = '#991b1b';
             statusBadge.style.borderColor = '#fca5a5';
         } else if (p.is_isolated || freeBal < 0) {
             statusBadge.textContent = freeBal < 0
-                ? '🔴 رصيد مديون — المتجر معزول لحين السداد'
-                : '🔴 المتجر معزول مؤقتاً لنفاد الرصيد';
+                ? '🔴 رصيد مديون — المتجر مخفي مؤقتاً لحين السداد'
+                : '🔴 المتجر مخفي مؤقتاً لنفاد الرصيد';
             statusBadge.style.background = '#fef2f2';
             statusBadge.style.color = '#991b1b';
             statusBadge.style.borderColor = '#fca5a5';
@@ -2869,15 +2888,15 @@ loadFinancialReport = async function () {
             statusBadge.style.color = '#92400e';
             statusBadge.style.borderColor = '#fcd34d';
         } else {
-            statusBadge.textContent = '🟢 حالة المتجر: آمن ونشط بالرادار';
+            statusBadge.textContent = '🟢 حالة المتجر: آمن ونشط بالدليل';
         }
     }
 
     const safetyStrip = document.getElementById('liveSafetyCapStrip');
     if (safetyStrip) {
         safetyStrip.innerHTML = freeBal < 0
-            ? `🔴 <strong>حد الأمان المحاسبي:</strong> لديك عجز قدره <strong dir="ltr">${fmtMerchantMoney(freeBal, curr)}</strong> وسعة التغطية المباشرة حالياً <strong>${fmtMerchantMoney(0, curr)}</strong> حتى الشحن أو تغطية الرصيد.`
-            : `🛡️ <strong>حد الأمان المحاسبي:</strong> الصافي الحر المتاح يكفي لتمرير مبيعات لأعضاء سويًا حتى <strong>${fmtMerchantMoney(safetyCap, curr)}</strong>.`;
+            ? `🔴 <strong>سعة التغطية المتاحة:</strong> لديك عجز قدره <strong dir="ltr">${fmtMerchantMoney(freeBal, curr)}</strong> وسعة المبيعات الآمنة حالياً <strong>${fmtMerchantMoney(0, curr)}</strong> حتى الشحن أو تغطية الرصيد.`
+            : `🛡️ <strong>سعة التغطية المتاحة:</strong> الرصيد المتاح يكفي لتمرير مبيعات لأعضاء سويًا حتى <strong>${fmtMerchantMoney(safetyCap, curr)}</strong>.`;
     }
     const dedBadge = document.getElementById('liveDedRateBadge');
     if (dedBadge) dedBadge.textContent = `نسبة العمولة التعاقدية: ${pct.toFixed(1)}% معتمدة`;
@@ -2890,9 +2909,42 @@ loadFinancialReport = async function () {
             GREEN: `🟢 المنطقة الخضراء (${freePct.toFixed(1)}%)`,
             YELLOW: `🟡 إنذار شحن مبكر (${freePct.toFixed(1)}%)`,
             RED: `🟠 إنذار حرج (${freePct.toFixed(1)}%)`,
-            ISOLATED: `🔴 معزول وقائياً + FIFO (${freePct.toFixed(1)}%)`
+            ISOLATED: `🔴 متوقف مؤقتاً لحين الشحن (${freePct.toFixed(1)}%)`
         };
         ladderTag.textContent = zLbl[activeZone] || `${activeZone} (${freePct.toFixed(1)}%)`;
+    }
+
+    const pendTopupsHost = document.getElementById('finPendingTopupsHost');
+    const pendTopups = Array.isArray(merchantBundle?.pending_topup_requests) ? merchantBundle.pending_topup_requests : [];
+    if (pendTopupsHost) {
+        if (pendTopups.length === 0) {
+            pendTopupsHost.innerHTML = '';
+        } else {
+            pendTopupsHost.innerHTML = `
+                <div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:14px;padding:14px 16px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+                        <strong style="color:#92400e;font-size:0.96rem;">⏳ طلبات شحن رصيد قيد المراجعة لدى الإدارة المالية (${pendTopups.length})</strong>
+                        <a href="https://wa.me/905376744337?text=${encodeURIComponent('مرحباً، أتابع طلب شحن رصيد متجر ' + (p.business_name || '') + ' (' + (p.merchant_code || '') + ')')}" target="_blank" rel="noopener" style="background:#16a34a;color:#fff;padding:5px 12px;border-radius:8px;font-size:0.78rem;font-weight:800;text-decoration:none;">💬 متابعة عبر واتساب الدعم</a>
+                    </div>
+                    <div style="display:grid;gap:8px;">
+                        ${pendTopups.map(pr => `
+                            <div style="background:#ffffff;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;font-size:0.84rem;">
+                                <div>
+                                    <strong style="color:#0f172a;">+${fmtMerchantMoney(pr.amount, curr)}</strong>
+                                    <span style="color:#64748b;margin:0 6px;">•</span>
+                                    <span>مرجع التحويل: <code dir="ltr">${escM(pr.payment_ref || '—')}</code></span>
+                                    ${pr.receipt_note ? `<div style="font-size:0.76rem;color:#475569;margin-top:2px;">${escM(pr.receipt_note)}</div>` : ''}
+                                </div>
+                                <div style="display:flex;align-items:center;gap:8px;">
+                                    <span style="font-size:0.75rem;color:#64748b;">${pr.created_at ? new Date(pr.created_at).toLocaleString('ar-EG') : ''}</span>
+                                    <span style="background:#fef3c7;color:#92400e;padding:3px 9px;border-radius:999px;font-size:0.75rem;font-weight:800;">⏳ بانتظار الاعتماد</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
     }
     ['GREEN', 'YELLOW', 'RED', 'ISOLATED'].forEach(z => {
         const card = document.getElementById('d15Tier' + z);
@@ -2949,7 +3001,7 @@ loadFinancialReport = async function () {
                     <td data-label="المبلغ المشحون" style="padding:10px 12px;color:#059669;font-weight:900;">+${fmtMerchantMoney(tp.amount_local, tp.currency_code || curr)}</td>
                     <td data-label="البيان والمرجع" style="padding:10px 12px;">${escM(tp.description)}</td>
                     <td data-label="ملاحظات" style="padding:10px 12px;">—</td>
-                    <td data-label="التوجيه المحاسبي" style="padding:10px 12px;font-weight:800;color:#047857;">مقيد بحساب 2101</td>
+                    <td data-label="التوجيه المحاسبي" style="padding:10px 12px;font-weight:800;color:#047857;">مقيد برصيد الشحن</td>
                     <td data-label="الحالة" style="padding:10px 12px;">✅ موثق</td>
                 </tr>
             `).join('');
@@ -2959,7 +3011,7 @@ loadFinancialReport = async function () {
     if (tab3Div) {
         tab3Div.innerHTML = `
             <div style="background:#fff;border:1px solid #cbd5e1;border-radius:12px;padding:16px;overflow-x:auto;">
-                <h3 style="margin:0 0 10px;color:#0f172a;">🧾 الفواتير الضريبية المزدوجة B2B الصادرة تلقائياً (Tax-Exclusive D19 — ${taxInvs.length})</h3>
+                <h3 style="margin:0 0 10px;color:#0f172a;">🧾 الفواتير الضريبية والتسويات الصادرة تلقائياً (${taxInvs.length})</h3>
                 ${taxInvs.length === 0 ? '<p style="color:#64748b;">تُصدر الفواتير الضريبية تلقائياً مع كل عملية مكتملة.</p>' : `
                     <table class="data-table" style="width:100%;border-collapse:collapse;text-align:right;font-size:0.84rem;">
                         <thead><tr style="background:#f8fafc;border-bottom:1.5px solid #cbd5e1;">
@@ -2987,29 +3039,148 @@ loadFinancialReport = async function () {
     }
 };
 
-promptTopupBalance = async function () {
-    const curr = merchantBundle?.profile?.currency_code || 'EGP';
-    const amtStr = prompt(`أدخل مبلغ شحن الرصيد مسبق الدفع (${curr}):`, '2000');
-    if (!amtStr) return;
-    const amt = parseFloat(amtStr);
-    if (!amt || amt <= 0) return;
-    const ref = prompt('أدخل الرقم المرجعي للتحويل البنكي / InstaPay:', 'REF-' + Date.now());
-    try {
-        const res = await window.SAWYAN.API.merchantInitiateTopup({
-            merchantId: currentMerchant.id,
-            amount: amt,
-            provider: 'instapay',
-            paymentRef: ref || null
-        });
-        if (res.mode === 'demo_instant_fifo') {
-            alert(`✅ (الموقع الموازي): تم شحن الرصيد فوراً وتحرير ${res.topup_result?.released_fifo_count || 0} فاتورة من طابور FIFO!`);
-        } else {
-            alert(`✅ تم إرسال إشعار التحويل البنكي (${res.payment_ref}) لمراجعة واعتماد الإدارة المالية / البنك وفق قفل D4.`);
-        }
-        await loadFinancialReport();
-    } catch (err) {
-        alert('❌ تعذر تسجيل طلب الشحن: ' + err.message);
+function getCountryTopupOptions(countryCode) {
+    const cc = String(countryCode || 'EG').toUpperCase();
+    if (cc === 'TR') {
+        return [
+            { value: 'iban_fast_tr', label: '🏦 تحويل بنكي محلي / دولي (IBAN / EFT / FAST)' },
+            { value: 'bank_transfer', label: '🏢 إيداع / حوالة بنكية مباشرة' }
+        ];
     }
+    if (cc === 'SA') {
+        return [
+            { value: 'iban_sar', label: '🏦 تحويل بنكي (IBAN / مدى السريع)' },
+            { value: 'stc_pay', label: '⚡ تحويل فوري (STC Pay)' }
+        ];
+    }
+    if (cc === 'EG') {
+        return [
+            { value: 'instapay', label: '⚡ تحويل فوري (InstaPay / تحويل بنكي)' },
+            { value: 'bank_transfer', label: '🏦 إيداع أو حوالة بنكية' }
+        ];
+    }
+    return [
+        { value: 'bank_transfer', label: '🏦 تحويل بنكي (IBAN / SWIFT)' }
+    ];
+}
+
+function openMerchantTopupModal() {
+    const p = merchantBundle?.profile || merchantData || {};
+    const curr = p.currency_code || 'EGP';
+    const cc = p.country_code || 'EG';
+    const opts = getCountryTopupOptions(cc);
+    const waText = encodeURIComponent(`مرحباً فريق مالية SAWYAN، أحتاج بيانات الحساب البنكي الرسمي لشحن رصيد متجر: ${p.business_name || ''} (${p.merchant_code || ''}) بعملة ${curr}.`);
+
+    let ov = document.getElementById('svMerchantTopupOverlay');
+    if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'svMerchantTopupOverlay';
+        ov.style.cssText = 'position:fixed;inset:0;z-index:10060;background:rgba(15,23,42,0.68);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:14px;overflow-y:auto;';
+        document.body.appendChild(ov);
+    }
+    ov.style.display = 'flex';
+    window._svTopupModalReceiptData = null;
+
+    ov.innerHTML = `
+        <div style="background:#ffffff;border-radius:18px;max-width:520px;width:100%;max-height:92vh;overflow-y:auto;padding:22px;font-family:'Tajawal',sans-serif;direction:rtl;box-shadow:0 24px 55px rgba(15,23,42,0.34);">
+            <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1.5px solid #e2e8f0;padding-bottom:10px;margin-bottom:14px;">
+                <h3 style="margin:0;font-size:1.1rem;font-weight:900;color:#0f172a;">💳 شحن رصيد المتجر (${escM(p.business_name || '')})</h3>
+                <button type="button" onclick="document.getElementById('svMerchantTopupOverlay').style.display='none'" style="background:#f1f5f9;border:none;width:34px;height:34px;border-radius:8px;font-size:1.1rem;cursor:pointer;font-weight:900;">✕</button>
+            </div>
+
+            <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:0.84rem;color:#064e3b;line-height:1.65;">
+                <strong>📋 خطوات شحن الرصيد بسهولة:</strong>
+                <ol style="margin:6px 18px 8px 0;padding:0;">
+                    <li>حوّل مبلغ الشحن لحساب SAWYAN البنكي المعتمد لدولتك (${escM(cc)} — ${escM(curr)}).</li>
+                    <li>أدخل المبلغ ورقم مرجع الحوالة وارفع صورة الإيصال أدناه لتسريع الاعتماد.</li>
+                </ol>
+                <a href="https://wa.me/905376744337?text=${waText}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#16a34a;color:#fff;padding:7px 14px;border-radius:8px;text-decoration:none;font-weight:800;font-size:0.82rem;">💬 اطلب بيانات الحساب البنكي عبر واتساب (905376744337+)</a>
+            </div>
+
+            <form id="svMerchantTopupForm" style="display:grid;gap:12px;">
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:10px;">
+                    <div>
+                        <label style="font-weight:800;font-size:0.84rem;display:block;margin-bottom:4px;">💰 مبلغ الشحن (${escM(curr)}) *</label>
+                        <input id="svTopupAmtInput" type="number" step="50" min="1" required value="2000" class="form-control" dir="ltr">
+                    </div>
+                    <div>
+                        <label style="font-weight:800;font-size:0.84rem;display:block;margin-bottom:4px;">🏦 وسيلة التحويل *</label>
+                        <select id="svTopupProviderSelect" class="form-control">
+                            ${opts.map(o => `<option value="${escM(o.value)}">${escM(o.label)}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label style="font-weight:800;font-size:0.84rem;display:block;margin-bottom:4px;">🔢 رقم مرجع الحوالة البنكية (اتركه أو عدّله)</label>
+                    <input id="svTopupRefInput" type="text" value="REF-${Date.now()}" placeholder="مثال: REF-123456" class="form-control" dir="ltr">
+                </div>
+                <div>
+                    <label style="font-weight:800;font-size:0.84rem;display:block;margin-bottom:4px;">📝 اسم البنك المحوّل منه / ملاحظات (اختياري)</label>
+                    <input id="svTopupNoteInput" type="text" placeholder="مثال: تحويل من بنك زراعات / البنك الأهلي" class="form-control">
+                </div>
+                <div id="svTopupModalUploader"></div>
+                <button type="submit" id="svTopupSubmitBtn" class="btn btn-primary btn-block" style="padding:12px;font-size:0.96rem;">📤 إرسال طلب الشحن والإيصال للمالية</button>
+            </form>
+        </div>
+    `;
+
+    if (window.SAWYAN && window.SAWYAN.ImageUpload) {
+        window.SAWYAN.ImageUpload.mountUploader(document.getElementById('svTopupModalUploader'), {
+            label: '🧾 صورة إيصال التحويل البنكي (اختياري — يُسرّع المطابقة)',
+            maxDim: 1280,
+            maxChars: 360000,
+            onChange: (v) => { window._svTopupModalReceiptData = v || null; }
+        });
+    }
+
+    document.getElementById('svMerchantTopupForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('svTopupSubmitBtn');
+        const amt = parseFloat(document.getElementById('svTopupAmtInput')?.value || '0');
+        const provider = document.getElementById('svTopupProviderSelect')?.value || 'bank_transfer';
+        const ref = (document.getElementById('svTopupRefInput')?.value || '').trim();
+        const note = (document.getElementById('svTopupNoteInput')?.value || '').trim();
+        if (!amt || amt <= 0) {
+            swNotify('يرجى إدخال مبلغ شحن صحيح أكبر من صفر.', 'warning');
+            return;
+        }
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ جاري تسجيل طلب الشحن...'; }
+        try {
+            const res = await window.SAWYAN.API.merchantInitiateTopup({
+                merchantId: currentMerchant.id,
+                amount: amt,
+                provider,
+                paymentRef: ref || null,
+                receiptImageData: window._svTopupModalReceiptData || null,
+                receiptNote: note || null
+            });
+            window._svTopupModalReceiptData = null;
+            ov.style.display = 'none';
+            if (res.mode === 'demo_instant_fifo') {
+                await swAlertBox(
+                    'تم شحن الرصيد بنجاح (البيئة التجريبية)',
+                    `تمت إضافة ${fmtMerchantMoney(amt, curr)} لرصيد متجرك وتفعيل ${res.topup_result?.released_fifo_count || 0} فاتورة كانت بانتظار الشحن.`,
+                    'success'
+                );
+            } else {
+                await swAlertBox(
+                    'تم استلام طلب الشحن بنجاح',
+                    `رقم المرجع: ${res.payment_ref}\nالمبلغ: ${fmtMerchantMoney(amt, curr)}\n\nسيقوم فريق المالية بمراجعة التحويل وإضافة الرصيد لحساب متجرك فور المطابقة، ويمكنك متابعة حالة الطلب أسفل هذه الصفحة.`,
+                    'success'
+                );
+            }
+            await loadFinancialReport();
+        } catch (err) {
+            swNotify('تعذر تسجيل طلب الشحن: ' + formatMerchantErrorMessage(err), 'error');
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = '📤 إرسال طلب الشحن والإيصال للمالية'; }
+        }
+    };
+}
+window.openMerchantTopupModal = openMerchantTopupModal;
+
+promptTopupBalance = async function () {
+    openMerchantTopupModal();
 };
 
 // شاشة الإعدادات الشاملة + استكمال الحقول المرحّلة + موظفو الكاشير + Wi-Fi + Geo-Picker
@@ -3447,9 +3618,9 @@ async function loadSettings() {
                 mediaPatch: empMediaPatch
             });
             await loadSettings();
-            alert('✅ تم إضافة موظف الكاشير وتشفير الـ PIN الخاص به بنجاح.');
+            swNotify('تم إضافة موظف الكاشير وتشفير رمز الـ PIN الخاص به بنجاح.', 'success');
         } catch (err) {
-            alert('❌ تعذر إضافة الكاشير: ' + err.message);
+            swNotify('تعذر إضافة الكاشير: ' + formatMerchantErrorMessage(err), 'error');
         }
     });
 }
@@ -3504,9 +3675,9 @@ async function saveMerchantMediaAndDocs() {
             mediaPatch
         });
         await loadSettings();
-        alert('✅ تم حفظ شعار المتجر والصور والوثائق الرسمية بنجاح!');
+        swNotify('تم حفظ شعار المتجر والصور والوثائق الرسمية بنجاح!', 'success');
     } catch (err) {
-        alert('❌ تعذر حفظ الصور والوثائق: ' + err.message);
+        swNotify('تعذر حفظ الصور والوثائق: ' + formatMerchantErrorMessage(err), 'error');
     }
 }
 
@@ -3570,9 +3741,9 @@ async function saveFullMerchantProfileAndWifi() {
             mediaPatch
         });
         await loadSettings();
-        alert('✅ تم حفظ وتحديث كافة بيانات المتجر والإحداثيات بنجاح!');
+        swNotify('تم حفظ وتحديث كافة بيانات المتجر والإحداثيات بنجاح!', 'success');
     } catch (err) {
-        alert('❌ ' + err.message);
+        swNotify(formatMerchantErrorMessage(err), 'error');
     }
 }
 
@@ -3585,6 +3756,6 @@ async function toggleCashierEmployee(empId) {
         });
         await loadSettings();
     } catch (err) {
-        alert('❌ ' + err.message);
+        swNotify(formatMerchantErrorMessage(err), 'error');
     }
 }

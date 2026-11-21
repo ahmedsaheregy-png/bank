@@ -4,7 +4,9 @@
 
 .notification-container {
     position: relative;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
 }
 
 /* جرس الإشعارات */
@@ -195,10 +197,15 @@
 }
 
 /* للشاشات الصغيرة */
-@media (max-width: 480px) {
+@media (max-width: 640px) {
     .notification-dropdown {
-        width: 300px;
-        left: -100px;
+        position: fixed;
+        top: calc(var(--sawyan-ribbon-h, 0px) + 70px);
+        left: 12px;
+        right: 12px;
+        width: auto;
+        max-height: 70vh;
+        z-index: 10045;
     }
 }
 

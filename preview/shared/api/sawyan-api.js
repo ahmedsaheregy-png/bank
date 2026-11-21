@@ -329,7 +329,12 @@
         getSavedAdmin() {
             try {
                 const k = SawyanAPI._storageKey('sawyan_admin');
-                const raw = sessionStorage.getItem(k) || localStorage.getItem(k);
+                // Hardening (Stage 11): Admin session lives ONLY in sessionStorage; purge any stale localStorage tokens
+                try {
+                    localStorage.removeItem(k);
+                    localStorage.removeItem('sawyan_admin');
+                } catch (_e) {}
+                const raw = sessionStorage.getItem(k);
                 return raw ? JSON.parse(raw) : null;
             } catch (e) {
                 return null;
@@ -339,7 +344,10 @@
         getAdminSessionToken() {
             try {
                 const k = SawyanAPI._storageKey('sawyan_admin_session_token');
-                return sessionStorage.getItem(k) || localStorage.getItem(k) || null;
+                try {
+                    localStorage.removeItem(k);
+                } catch (_e) {}
+                return sessionStorage.getItem(k) || null;
             } catch (e) {
                 return null;
             }
@@ -349,15 +357,17 @@
             try {
                 const kAdm = SawyanAPI._storageKey('sawyan_admin');
                 const kTok = SawyanAPI._storageKey('sawyan_admin_session_token');
+                try {
+                    localStorage.removeItem(kAdm);
+                    localStorage.removeItem(kTok);
+                    localStorage.removeItem('sawyan_admin');
+                } catch (_e) {}
                 if (adminObj) {
                     const serialized = JSON.stringify(adminObj);
                     sessionStorage.setItem(kAdm, serialized);
-                    localStorage.setItem(kAdm, serialized);
-                    localStorage.setItem('sawyan_admin', serialized);
                 }
                 if (sessionToken) {
                     sessionStorage.setItem(kTok, sessionToken);
-                    localStorage.setItem(kTok, sessionToken);
                 }
             } catch (e) {}
         },
@@ -859,10 +869,12 @@
         async merchantInitiateTopup({
             merchantId,
             amount,
-            provider = 'instapay',
+            provider = 'bank_transfer',
             paymentRef = null,
             idempotencyKey = null,
-            sessionToken = null
+            sessionToken = null,
+            receiptImageData = null,
+            receiptNote = null
         }) {
             const tok = sessionToken || SawyanAPI.getMerchantSessionToken();
             return await callRpc('merchant_initiate_topup', {
@@ -871,7 +883,9 @@
                 p_provider: provider,
                 p_payment_ref: paymentRef,
                 p_idempotency_key: idempotencyKey || generateIdempotencyKey(),
-                p_session_token: tok
+                p_session_token: tok,
+                p_receipt_image_data: receiptImageData || null,
+                p_receipt_note: receiptNote || null
             });
         },
 
@@ -972,9 +986,12 @@
                 p_password: String(password || ''),
                 p_totp_code: totpCode
             });
-            if (res && res.admin && res.session_token) {
-                SawyanAPI.saveAdminSession(res.admin, res.session_token);
+            if (!res || res.success === false || !res.session_token || !res.admin) {
+                const err = new Error(res?.error_code || 'ADMIN_INVALID_CREDENTIALS');
+                err.payload = res || null;
+                throw err;
             }
+            SawyanAPI.saveAdminSession(res.admin, res.session_token);
             return res;
         },
 
@@ -1684,8 +1701,32 @@
             return '/preview/' + p.replace(/^\/+/, '') + (loc.search || '');
         },
 
+        rewriteProductionDemoLinks() {
+            if (typeof document === 'undefined' || SawyanAPI.isDemoMode()) return;
+            try {
+                const links = document.querySelectorAll('a[href*="quick=member"], a[href*="quick=merchant"], a.demo-link');
+                links.forEach((a) => {
+                    const raw = a.getAttribute('href') || '';
+                    if (!raw || raw.startsWith('#') || raw.includes('/preview/')) return;
+                    const u = new URL(raw, window.location.href);
+                    const parts = u.pathname.split('/');
+                    const idxBank = parts.indexOf('bank');
+                    let nextPath;
+                    if (idxBank !== -1) {
+                        const head = parts.slice(0, idxBank + 1).join('/');
+                        const tail = parts.slice(idxBank + 1).join('/');
+                        nextPath = `${head}/preview/${tail}`;
+                    } else {
+                        nextPath = '/preview/' + u.pathname.replace(/^\/+/, '');
+                    }
+                    a.setAttribute('href', nextPath + (u.search || '') + (u.hash || ''));
+                });
+            } catch (_e) {}
+        },
+
         mountEnvironmentSwitchBar() {
             if (typeof document === 'undefined' || document.getElementById('sawyanEnvRibbon')) return;
+            SawyanAPI.rewriteProductionDemoLinks();
             const isDemo = SawyanAPI.isDemoMode();
             const pathNow = String(window.location.pathname || '').toLowerCase();
             const isMemberPortal = pathNow.includes('/member-dashboard/');

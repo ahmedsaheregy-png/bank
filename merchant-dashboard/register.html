@@ -5,13 +5,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تسجيل تاجر جديد - SAWYAN</title>
+    <meta name="description" content="سجّل متجرك في منصة SAWYAN واستقبل آلاف المتسوقين الدائمين بدون عمولات خفية أو تكلفة اشتراك.">
+    <meta name="theme-color" content="#047857">
+    <meta property="og:title" content="سجّل متجرك في شبكة تجار SAWYAN">
+    <meta property="og:description" content="اضمن تدفق عملاء دائمين لمتجرك عبر منظومة SAWYAN العالمية للاستهلاك الاستثماري.">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="ar_AR">
+    <link rel="manifest" href="../manifest.json">
+    <link rel="icon" type="image/svg+xml" href="../shared/assets/sawyan-icon.svg">
     <link
         href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="../shared/css/variables.css">
-    <link rel="stylesheet" href="../shared/css/logo.css?v=20261119_logo_all">
-    <link rel="stylesheet" href="../shared/css/image-upload.css">
-    <link rel="stylesheet" href="../member-dashboard/css/auth.css?v=20261120_stage9">
+    <link rel="stylesheet" href="../shared/css/variables.css?v=20261121_launch">
+    <link rel="stylesheet" href="../shared/css/logo.css?v=20261121_launch">
+    <link rel="stylesheet" href="../shared/css/ui-feedback.css?v=20261121_launch">
+    <link rel="stylesheet" href="../shared/css/image-upload.css?v=20261121_launch">
+    <link rel="stylesheet" href="../member-dashboard/css/auth.css?v=20261121_launch">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
@@ -161,7 +170,7 @@
                     <div class="form-group" data-field-key="terms_consent">
                         <label class="checkbox-label" style="gap:10px;align-items:flex-start;">
                             <input type="checkbox" id="termsConsent" style="margin-top:4px;">
-                            <span>أوافق على <a href="../terms.html" target="_blank" rel="noopener">الشروط والأحكام</a> و<a href="../privacy.html" target="_blank" rel="noopener">سياسة الخصوصية</a>، وأقر بصحة بيانات المتجر.</span>
+                            <span>أوافق على <a href="../public/terms.html" target="_blank" rel="noopener">الشروط والأحكام</a> و<a href="../public/privacy.html" target="_blank" rel="noopener">سياسة الخصوصية</a>، وأقر بصحة بيانات المتجر.</span>
                         </label>
                         <small class="field-help-text"></small>
                     </div>
@@ -301,14 +310,15 @@
         </div>
     </div>
 
-    <script src="../shared/components/logo.js?v=20261119_logo_all"></script>
+    <script src="../shared/components/logo.js?v=20261121_launch"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../shared/config/supabase.js?v=20261118_stage7"></script>
-    <script src="../shared/api/sawyan-api.js?v=20261120_stage9"></script>
-    <script src="../shared/data/countries.js?v=20261120_stage9"></script>
-    <script src="../shared/js/registration-engine.js?v=20261120_stage9"></script>
-    <script src="../shared/components/image-upload.js"></script>
-    <script src="js/register.js?v=20261120_stage9"></script>
+    <script src="../shared/config/supabase.js?v=20261121_launch"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261121_launch"></script>
+    <script src="../shared/components/ui-feedback.js?v=20261121_launch"></script>
+    <script src="../shared/data/countries.js?v=20261121_launch"></script>
+    <script src="../shared/js/registration-engine.js?v=20261121_launch"></script>
+    <script src="../shared/components/image-upload.js?v=20261121_launch"></script>
+    <script src="js/register.js?v=20261121_launch"></script>
 </body>
 
 </html>

@@ -7,7 +7,9 @@
 (function () {
     function isFounderSession() {
         try {
-            var a = JSON.parse(localStorage.getItem('sawyan_admin') || 'null');
+            var a = (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.getSavedAdmin)
+                ? window.SAWYAN.API.getSavedAdmin()
+                : JSON.parse(sessionStorage.getItem('sawyan_admin') || sessionStorage.getItem('sawyan_demo:sawyan_admin') || 'null');
             return Boolean(a && (a.is_sovereign_founder || String(a.email || '').toLowerCase() === 'ahmed.saher.egy@gmail.com'));
         } catch (e) { return false; }
     }

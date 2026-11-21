@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="SAWYAN">
+  <defs>
+    <linearGradient id="swGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#065f46" />
+      <stop offset="55%" stop-color="#047857" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+    <linearGradient id="swGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde68a" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#swGrad)" />
+  <circle cx="256" cy="256" r="176" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="10" />
+  <path d="M256 96 L380 160 V272 C380 348 326 402 256 424 C186 402 132 348 132 272 V160 Z" fill="rgba(255,255,255,0.12)" stroke="url(#swGold)" stroke-width="10" stroke-linejoin="round" />
+  <path d="M312 196 C312 172 288 158 256 158 C222 158 198 176 198 202 C198 228 220 242 258 250 C298 258 318 274 318 304 C318 334 290 354 252 354 C216 354 190 338 186 312" fill="none" stroke="#ffffff" stroke-width="28" stroke-linecap="round" />
+</svg>

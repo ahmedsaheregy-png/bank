@@ -119,6 +119,10 @@ window.SAWYAN.Notifications = {
     },
 
     showToast: function (title, message) {
+        if (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.toast === 'function') {
+            window.SAWYAN.UI.toast(`${title}: ${message}`, 'info');
+            return;
+        }
         const toast = document.createElement('div');
         toast.className = 'notification-toast';
         const safeT = String(title || '').replace(/</g, '&lt;');
@@ -132,7 +136,7 @@ window.SAWYAN.Notifications = {
         if (document.getElementById('notificationBell')) return;
         const bellHTML = '<div class="notification-bell" id="notificationBell" onclick="SAWYAN.Notifications.toggleDropdown()"><span class="bell-icon">🔔</span><span class="notification-badge" id="notificationBadge" style="display: none;">0</span></div><div class="notification-dropdown" id="notificationDropdown" style="display: none;"><div class="notification-header"><h4>الإشعارات</h4><button onclick="SAWYAN.Notifications.markAllRead()">تحديد الكل كمقروء</button></div><div class="notification-list" id="notificationList"><p class="empty-notifications">لا توجد إشعارات</p></div></div>';
 
-        const header = document.querySelector('.dashboard-header') || document.querySelector('.sidebar-header');
+        const header = document.getElementById('headerNotifAnchor') || document.querySelector('.dashboard-header') || document.querySelector('.sidebar-header');
         if (header) {
             const bellContainer = document.createElement('div');
             bellContainer.className = 'notification-container';
@@ -173,7 +177,8 @@ window.SAWYAN.Notifications = {
             const fmt = this._formatTitleAndBody(n);
             const safeT = String(fmt.title || '').replace(/</g, '&lt;');
             const safeM = String(fmt.message || '').replace(/</g, '&lt;');
-            return `<div class="notification-item ${readClass}" onclick="SAWYAN.Notifications.markAsRead('${n.id}')">
+            const evName = String(n.event_name || n.notification_type || '').replace(/'/g, '');
+            return `<div class="notification-item ${readClass}" onclick="SAWYAN.Notifications.handleNotificationClick('${n.id}', '${evName}')">
                 <div class="notification-icon">${this.getIcon(n.event_name || n.notification_type)}</div>
                 <div class="notification-content">
                     <div class="notification-title">${safeT}</div>
@@ -182,6 +187,28 @@ window.SAWYAN.Notifications = {
                 </div>
             </div>`;
         }).join('');
+    },
+
+    handleNotificationClick: function (notificationId, eventName) {
+        this.markAsRead(notificationId);
+        const dropdown = document.getElementById('notificationDropdown');
+        if (dropdown) dropdown.style.display = 'none';
+        const ev = String(eventName || '');
+        if (this.userType === 'merchant') {
+            if (ev === 'PendingPurchaseRequested') {
+                if (typeof window.showPage === 'function') window.showPage('pending');
+            } else if (ev.startsWith('MerchantBalance') || ev.includes('Topup')) {
+                if (typeof window.showPage === 'function') window.showPage('financial');
+            } else if (ev === 'DisputeTicketOpened' || ev.startsWith('MerchantComplaint')) {
+                if (typeof window.openMerchantStage7Modal === 'function') window.openMerchantStage7Modal('support');
+            }
+        } else if (this.userType === 'member') {
+            if (ev === 'PendingPurchaseRequested' || ev.includes('Transaction')) {
+                if (typeof window.goToPage === 'function') window.goToPage('myPending');
+            } else if (ev === 'OnMemberRegistered') {
+                if (typeof window.goToPage === 'function') window.goToPage('tree');
+            }
+        }
     },
 
     getIcon: function (type) {

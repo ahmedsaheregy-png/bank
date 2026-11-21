@@ -18,7 +18,7 @@
 ## 2. Database Deployment & Security Invariants (CRITICAL)
 - **NEVER run `database/deploy_v3_dual_schema.py` directly** — it executes `DROP SCHEMA IF EXISTS sawyan CASCADE; DROP SCHEMA IF EXISTS sawyan_demo CASCADE;`.
 - Always deploy SQL idempotently in strict order so `07` re-applies `REVOKE ALL` least-privilege locks:
-  `02 -> 06 -> 07 -> 08 -> 09 -> 10 -> 12 -> 14 -> 15`.
+  `02 -> 06 -> 07 -> 08 -> 09 -> 10 -> 12 -> 14 -> 15 -> 16 -> 17 -> 18`.
 - Keep all tokens (`SUPABASE_ACCESS_TOKEN`, GitHub PAT) strictly in memory; never write them to files, stdout, or `.git/config`.
 - Preserve approved Stage 8 Academy LMS tables, RPCs, and UI (`database/12_stage8_academy_lms_foundation.sql`, `admin-academy-lms.js`) and the Admin Full Circular Tree Explorer (`database/15_admin_full_tree_rpc.sql`, `admin-tree-explorer.js`).
 

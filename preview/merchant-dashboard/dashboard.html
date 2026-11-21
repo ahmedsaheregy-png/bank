@@ -8,12 +8,15 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="../shared/css/variables.css">
-    <link rel="stylesheet" href="../shared/css/logo.css?v=20261119_logo_all">
-    <link rel="stylesheet" href="../shared/css/notifications.css">
-    <link rel="stylesheet" href="../shared/css/image-upload.css">
-    <link rel="stylesheet" href="../member-dashboard/css/dashboard.css">
-    <link rel="stylesheet" href="../shared/css/app-shell.css?v=20261119_logo_all">
+    <link rel="manifest" href="../manifest.json">
+    <link rel="icon" type="image/svg+xml" href="../shared/assets/sawyan-icon.svg">
+    <link rel="stylesheet" href="../shared/css/variables.css?v=20261121_launch">
+    <link rel="stylesheet" href="../shared/css/logo.css?v=20261121_launch">
+    <link rel="stylesheet" href="../shared/css/notifications.css?v=20261121_launch">
+    <link rel="stylesheet" href="../shared/css/ui-feedback.css?v=20261121_launch">
+    <link rel="stylesheet" href="../shared/css/image-upload.css?v=20261121_launch">
+    <link rel="stylesheet" href="../member-dashboard/css/dashboard.css?v=20261121_launch">
+    <link rel="stylesheet" href="../shared/css/app-shell.css?v=20261121_launch">
     <!-- Leaflet for Merchant Radar Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -100,9 +103,12 @@
 
         <main class="main-content">
             <header class="dashboard-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-                <h1 id="pageTitle">لوحة التحكم</h1>
+                <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;flex:1 1 auto;min-width:190px;">
+                    <h1 id="pageTitle" style="margin:0;">لوحة التحكم</h1>
+                    <span id="headerNotifAnchor"></span>
+                </div>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                    <span id="posVaultStatusBadge" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;padding:4px 10px;border-radius:999px;font-size:0.78rem;font-weight:800;">🟢 متصل • حافظة الأوفلاين المشفرة: 0</span>
+                    <span id="posVaultStatusBadge" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;padding:4px 10px;border-radius:999px;font-size:0.78rem;font-weight:800;">🟢 متصل بالنظام</span>
                     <button type="button" onclick="showPage('kiosk')" style="background:#0f172a;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-weight:800;font-size:0.8rem;cursor:pointer;font-family:'Tajawal';">⚡ وضع الكاشير (3 أزرار)</button>
                     <button type="button" onclick="openStoreKitModal()" style="background:#059669;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-weight:800;font-size:0.8rem;cursor:pointer;font-family:'Tajawal';">🖨️ ملصق المتجر (Store Kit)</button>
                 </div>
@@ -148,14 +154,14 @@
                             </div>
                         </div>
 
-                        <!-- 4. الرصيد الحر المتاح للتغطية (شحن مسبق 2101 − محجوز + حد ائتماني D4) -->
+                        <!-- 4. الرصيد المتاح لتشغيل المبيعات -->
                         <div class="stat-card" style="background: white; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 16px; border-right: 4px solid #059669;">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <div>
-                                    <div style="font-size: 0.8rem; color: #64748b; font-weight: 700;">الصافي الحر المتاح للتغطية</div>
+                                    <div style="font-size: 0.8rem; color: #64748b; font-weight: 700;">الرصيد المتاح لتشغيل المبيعات</div>
                                     <div style="font-size: 1.5rem; font-weight: 900; color: #047857; margin-top: 4px;" id="pendingPayment" dir="ltr">0.00 ج.م</div>
                                     <small id="homePrepaidHint" style="color: #059669; font-weight: 800; font-size: 0.75rem;">🟢 جاري مزامنة الرصيد...</small>
-                                    <div id="homeBalanceBreakdown" style="font-size: 0.72rem; color: #475569; margin-top: 4px; line-height: 1.5; font-weight: 700;">شحن فعلي: — • حد ائتماني (D4): —</div>
+                                    <div id="homeBalanceBreakdown" style="font-size: 0.72rem; color: #475569; margin-top: 4px; line-height: 1.5; font-weight: 700;">شحن مسبق: — • حد ائتماني: —</div>
                                 </div>
                                 <div style="width: 44px; height: 44px; background: #ecfdf5; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">🛡️</div>
                             </div>
@@ -313,20 +319,20 @@
         </div>
     </div>
 
-    <script src="../shared/components/logo.js?v=20261119_logo_all"></script>
+    <script src="../shared/components/logo.js?v=20261121_launch"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-    <script src="../shared/config/supabase.js?v=20261118_stage7"></script>
-    <script src="../shared/api/sawyan-api.js?v=20261120_stage9"></script>
-    <script src="../shared/data/countries.js?v=20261120_stage9"></script>
-    <script src="../shared/js/registration-engine.js?v=20261120_stage9"></script>
-    <script src="../shared/components/notifications.js"></script>
-    <script src="../shared/components/image-upload.js"></script>
-    <script src="../shared/payments/payment-provider.js"></script>
-    <script src="../shared/payments/payment-service.js"></script>
-    <script src="../shared/payments/mock-provider.js"></script>
-    <script src="../shared/payments/payment-init.js"></script>
-    <script src="js/dashboard.js?v=20261120_posguard"></script>
+    <script src="../shared/config/supabase.js?v=20261121_launch"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261121_launch"></script>
+    <script src="../shared/data/countries.js?v=20261121_launch"></script>
+    <script src="../shared/js/registration-engine.js?v=20261121_launch"></script>
+    <script src="../shared/components/ui-feedback.js?v=20261121_launch"></script>
+    <script src="../shared/components/notifications.js?v=20261121_launch"></script>
+    <script src="../shared/components/image-upload.js?v=20261121_launch"></script>
+    <script src="../shared/payments/payment-provider.js?v=20261121_launch"></script>
+    <script src="../shared/payments/payment-service.js?v=20261121_launch"></script>
+    <script src="../shared/payments/payment-init.js?v=20261121_launch"></script>
+    <script src="js/dashboard.js?v=20261121_launch"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             setTimeout(() => {
@@ -631,7 +637,7 @@ async function submitPromoRequestForReview() {
     const duration = durationEl ? durationEl.value : '24h';
 
     if (!title || !body) {
-        alert('يرجى ملء عنوان وتفاصيل العرض الترويجي.');
+        if (window.SAWYAN?.UI) window.SAWYAN.UI.toast('يرجى ملء عنوان وتفاصيل العرض الترويجي.', 'warning');
         return;
     }
 
@@ -667,17 +673,17 @@ async function submitPromoRequestForReview() {
     } catch (err) {
         const msg = String(err.message || '');
         if (msg.includes('MERCHANT_NOT_IN_GREEN_ZONE')) {
-            alert('⛔ يشترط النظام أن يكون رصيد الشحن المسبق للمتجر في المنطقة الخضراء (> 30%) لبث العروض الخاطفة (M17).');
+            window.SAWYAN?.UI?.toast('يشترط النظام أن يكون رصيد الشحن المسبق للمتجر في المنطقة الخضراء (> 30%) لبث العروض الترويجية.', 'warning');
         } else if (msg.includes('EXTERNAL_LINKS_OR_PHONES_FORBIDDEN')) {
-            alert('⛔ يُحظر تضمين روابط خارجية أو أرقام هواتف دفع مباشر داخل نص الإشعار الترويجي (Y08).');
+            window.SAWYAN?.UI?.toast('يُحظر تضمين روابط خارجية أو أرقام هواتف دفع مباشر داخل نص الإشعار الترويجي.', 'warning');
         } else {
-            alert('❌ تعذر إرسال العرض: ' + msg);
+            window.SAWYAN?.UI?.toast('تعذر إرسال العرض: ' + (window.SAWYAN?.UI?.humanizeError(msg) || msg), 'error');
         }
     }
 }
 </script>
-<script src="js/merchant-stage7-tools.js?v=20261118_stage7"></script>
-<script src="../shared/js/app-shell.js?v=20261119_logo_all"></script>
+<script src="js/merchant-stage7-tools.js?v=20261121_launch"></script>
+<script src="../shared/js/app-shell.js?v=20261121_launch"></script>
 
 </body>
 

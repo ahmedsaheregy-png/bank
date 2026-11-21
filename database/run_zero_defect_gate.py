@@ -33,10 +33,11 @@ INTERNAL_ONLY_FUNCTIONS = {
     "is_merchant_d4_cutoff_breached",
     "compute_merchant_effective_state",
     "sync_merchant_status_flags",
+    "auth_rate_limit_guard",
 }
 
 MIRROR_DIRS = ["assets", "css", "js", "public", "shared", "member-dashboard", "merchant-dashboard", "admin-dashboard"]
-MIRROR_FILES = ["index.html", "auth-gateway.html"]
+MIRROR_FILES = ["index.html", "auth-gateway.html", "manifest.json"]
 SKIP_NAMES = {".git", "__pycache__", ".DS_Store", "Thumbs.db", "test_modal.html", "test_submit_runner.html"}
 
 

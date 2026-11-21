@@ -411,7 +411,11 @@
         }
         const confirmBox = document.getElementById('sponsorConfirmCheckbox');
         if (!activeRootInviteToken && confirmBox && confirmBox.offsetParent !== null && !confirmBox.checked) {
-            const proceed = confirm(`أنت تسجل الآن في فريق: ${verifiedSponsorRecord.full_name} (#${verifiedSponsorRecord.member_code}) — هل تؤكد؟`);
+            const sponsorNameLabel = verifiedSponsorRecord.masked_name || verifiedSponsorRecord.full_name;
+            const confirmMsg = `أنت تسجل الآن في فريق: ${sponsorNameLabel} (#${verifiedSponsorRecord.member_code}) — هل تؤكد؟`;
+            const proceed = (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.confirmModal === 'function')
+                ? await window.SAWYAN.UI.confirmModal({ title: 'تأكيد الراعي المباشر', message: confirmMsg })
+                : false;
             if (!proceed) return;
             confirmBox.checked = true;
         }

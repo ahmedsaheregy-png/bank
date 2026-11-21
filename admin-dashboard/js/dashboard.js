@@ -36,26 +36,16 @@ document.addEventListener('DOMContentLoaded', async function () {
 });
 
 async function checkAuth() {
-    let savedAdmin = localStorage.getItem('sawyan_admin');
-    if (!savedAdmin) {
-        // إنشاء جلسة أدمن تجريبية تلقائياً للمحاكاة المباشرة
-        const demoAdmin = {
-            id: 'ADM-001',
-            full_name: 'مدير العمليات والرقابة (أدمن سويا)',
-            email: 'admin@sawyan.bank',
-            role: 'super_admin'
-        };
-        localStorage.setItem('sawyan_admin', JSON.stringify(demoAdmin));
-        savedAdmin = JSON.stringify(demoAdmin);
+    if (window.SAWYAN && window.SAWYAN.API) {
+        const adm = window.SAWYAN.API.getSavedAdmin();
+        if (adm) {
+            currentAdmin = adm;
+            const nameEl = document.getElementById('adminName');
+            if (nameEl) nameEl.textContent = currentAdmin.full_name || 'مدير النظام';
+            return;
+        }
     }
-
-    try {
-        currentAdmin = JSON.parse(savedAdmin);
-        const nameEl = document.getElementById('adminName');
-        if (nameEl) nameEl.textContent = currentAdmin.full_name || 'مدير النظام';
-    } catch (error) {
-        console.error('Auth error:', error);
-    }
+    window.location.href = 'login.html';
 }
 
 async function loadStats() {
@@ -269,9 +259,12 @@ function exportTransactions() {
 }
 
 async function logout() {
-    localStorage.removeItem('sawyan_admin');
-    localStorage.removeItem('sawyan_user_type');
-    window.location.href = '../landing-page/index.html';
+    if (window.SAWYAN && window.SAWYAN.API) {
+        window.SAWYAN.API.clearAdminSession();
+    } else {
+        sessionStorage.clear();
+    }
+    window.location.href = '../index.html';
 }
 
 

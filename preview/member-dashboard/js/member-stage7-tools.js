@@ -75,10 +75,15 @@
         else await renderMemberSupportAndPwdTab(body, m);
     };
 
+    function memToast(msg, type) {
+        if (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.toast === 'function') {
+            window.SAWYAN.UI.toast(msg, type);
+        }
+    }
+
     function renderMemberReferralCard(body, m) {
         const cc = m.country_code || 'EG';
         const refUrl = baseRootUrl() + '/member-dashboard/register.html?ref=' + encodeURIComponent(m.member_code) + '&country=' + encodeURIComponent(cc);
-        const qrImg = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(refUrl);
         const waUrl = 'https://wa.me/?text=' + encodeURIComponent('انضم إلى فريقي في منظومة الاستهلاك الاستثماري SAWYAN مجاناً (كود الداعي #' + m.member_code + ' معبأ تلقائياً):\n' + refUrl);
 
         body.innerHTML =
@@ -88,15 +93,28 @@
                     '<p style="font-size:0.82rem;color:#334155;line-height:1.6;margin:0 0 10px 0;">عند فتح هذا الرابط أو مسح رمز الـ QR، يتعبأ كود عضويتك (<b>#' + Number(m.member_code) + '</b>) ودولتك تلقائياً بلا أي احتمال لخطأ الإدخال اليدوي.</p>' +
                     '<input type="text" readonly value="' + esc(refUrl) + '" class="form-control" style="margin-bottom:10px;font-size:0.8rem;direction:ltr;">' +
                     '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-                        '<button type="button" class="btn btn-primary" onclick="navigator.clipboard.writeText(\'' + esc(refUrl) + '\');alert(\'✅ تم نسخ رابط الدعوة الذكي!\')">📋 نسخ الرابط</button>' +
+                        '<button type="button" id="svCopyRefLinkBtn" class="btn btn-primary">📋 نسخ الرابط</button>' +
                         '<a href="' + esc(waUrl) + '" target="_blank" style="background:#16a34a;color:#fff;padding:9px 15px;border-radius:8px;text-decoration:none;font-weight:800;font-size:0.86rem;">💬 مشاركة عبر واتساب</a>' +
                     '</div>' +
                 '</div>' +
-                '<div style="text-align:center;background:#fff;padding:14px;border-radius:12px;border:1px solid #cbd5e1;">' +
-                    '<img src="' + esc(qrImg) + '" alt="QR Referral" style="width:165px;height:165px;border-radius:8px;">' +
+                '<div style="text-align:center;background:#fff;padding:14px;border-radius:12px;border:1px solid #cbd5e1;display:flex;flex-direction:column;align-items:center;">' +
+                    '<div id="svMemLocalRefQrBox" style="width:165px;height:165px;display:flex;align-items:center;justify-content:center;"></div>' +
                     '<div style="font-size:0.78rem;font-weight:800;color:#0f172a;margin-top:6px;">امسح للانضمام تحت #' + Number(m.member_code) + '</div>' +
                 '</div>' +
             '</div>';
+
+        const copyBtn = document.getElementById('svCopyRefLinkBtn');
+        if (copyBtn) {
+            copyBtn.onclick = function () {
+                navigator.clipboard?.writeText(refUrl).catch(() => {});
+                memToast('تم نسخ رابط الدعوة الذكي!', 'success');
+            };
+        }
+        const qrBox = document.getElementById('svMemLocalRefQrBox');
+        if (qrBox && window.QRCode) {
+            qrBox.innerHTML = '';
+            new window.QRCode(qrBox, { text: refUrl, width: 160, height: 160, colorDark: '#047857', colorLight: '#ffffff' });
+        }
     }
 
     async function renderLeaderRadarTab(body, m) {
@@ -111,7 +129,7 @@
             ];
 
             body.innerHTML =
-                '<div style="margin-bottom:10px;font-size:0.8rem;color:#475569;">يعرض الأجيال العشرة المكانية تحتك (W09b) مع نسبة التقدم نحو الهدف الشهري فقط <b>دون كشف أسماء المتاجر أو تفاصيل الفواتير الخاصة</b> صوناً لخصوصية الأعضاء.</div>' +
+                '<div style="margin-bottom:10px;font-size:0.8rem;color:#475569;">يعرض الأجيال العشرة في شبكتك مع نسبة التقدم نحو الهدف الشهري فقط <b>دون كشف أسماء المتاجر أو تفاصيل الفواتير الخاصة</b> صوناً لخصوصية الأعضاء.</div>' +
                 '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">' +
                     filters.map(function (f) {
                         const on = RADAR_FILTER === f[0];
@@ -224,9 +242,9 @@
                 documentImageData: imgData,
                 targetCountryCode: kind === 'residency_move' ? document.getElementById('svMemMoveCountry').value : null
             });
-            alert('✅ تم رفع الطلب بنجاح إلى قسم التوثيق والامتثال!');
+            memToast('تم رفع الطلب بنجاح إلى قسم التوثيق والمراجعة!', 'success');
             window.openMemberStage7Modal('kyc');
-        } catch (err) { alert('❌ ' + err.message); }
+        } catch (err) { memToast(err.message, 'error'); }
     };
 
     async function renderMemberSupportAndPwdTab(body, m) {
@@ -275,9 +293,9 @@
                 contactPhone: m.phone,
                 sessionToken: window.SAWYAN.API.getMemberSessionToken ? window.SAWYAN.API.getMemberSessionToken() : null
             });
-            alert('✅ تم فتح التذكرة برقم: ' + res.ticket_ref);
+            memToast('تم فتح التذكرة بنجاح برقم: ' + res.ticket_ref, 'success');
             window.openMemberStage7Modal('support');
-        } catch (err) { alert('❌ ' + err.message); }
+        } catch (err) { memToast(err.message, 'error'); }
     };
 
     window.svChangeMemberOwnPwd = async function () {
@@ -290,8 +308,8 @@
                 oldPassword: document.getElementById('svMemOldPwd').value,
                 newPassword: document.getElementById('svMemNewPwd').value
             });
-            alert('✅ تم تحديث كلمة المرور بنجاح!');
-        } catch (err) { alert('❌ ' + err.message); }
+            memToast('تم تحديث كلمة المرور بنجاح!', 'success');
+        } catch (err) { memToast(err.message, 'error'); }
     };
 
     if (document.readyState === 'loading') {

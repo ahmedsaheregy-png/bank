@@ -927,13 +927,16 @@
                         '<h3 style="margin:0 0 8px 0;font-size:0.95rem;color:#92400e;">🏦 إشعارات تحويل بنكي لشحن رصيد التجار بانتظار المطابقة (' + proofs.length + ')</h3>' +
                         proofs.map(function (pr) {
                             const p = pr.payload || {};
+                            const isDone = pr.event_name === 'MerchantBankTopupProofProcessed';
                             const prThumb = renderAdmThumb(p.receipt_image_data, '🧾 إيصال شحن بنكي ' + esc(p.bank_ref || ''));
-                            return '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;background:#fff;padding:10px;border-radius:10px;border:1px solid #fcd34d;margin-bottom:6px;">' +
+                            return '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;background:#fff;padding:10px;border-radius:10px;border:1px solid ' + (isDone ? '#86efac' : '#fcd34d') + ';margin-bottom:6px;">' +
                                 '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
                                     prThumb +
                                     '<div><b>' + esc(p.business_name) + ' (' + esc(p.merchant_code) + ')</b> • المبلغ: <b>' + fmt2(p.amount_local) + '</b> • مرجع البنك: <code>' + esc(p.bank_ref) + '</code>' + (p.receipt_note ? '<div style="font-size:0.75rem;color:#64748b;">' + esc(p.receipt_note) + '</div>' : '') + '</div>' +
                                 '</div>' +
-                                '<button type="button" class="btn-sm btn-success" onclick="svApproveBankTopup(\'' + esc(p.merchant_id) + '\',' + Number(p.amount_local) + ',\'' + esc(p.bank_ref) + '\',\'' + pr.id + '\')">✅ مطابقة وشحن الرصيد + فاتورة B2B</button>' +
+                                (isDone
+                                    ? '<span class="badge badge-success">✅ تمت المطابقة والشحن</span>'
+                                    : '<button type="button" class="btn-sm btn-success" onclick="svApproveBankTopup(\'' + esc(p.merchant_id || pr.merchant_id) + '\',' + Number(p.amount_local) + ',\'' + esc(p.bank_ref) + '\',\'' + pr.id + '\')">✅ مطابقة وشحن الرصيد + فاتورة B2B</button>') +
                             '</div>';
                         }).join('') +
                       '</div>'
@@ -1129,7 +1132,7 @@
                     '<button type="button" id="svSaveMerContractBtn" class="btn btn-primary" onclick="svSaveMerchantContract(\'' + m.id + '\')">💾 حفظ وتطبيق الحالة الثلاثية والعقد</button>' +
                     '<div style="background:#f8fafc;border:1px solid #cbd5e1;padding:12px;border-radius:10px;">' +
                         '<div style="font-weight:900;color:#0f172a;margin-bottom:6px;">🖼️ صور المنشأة ووثائق التحقق الرسمية</div>' +
-                        '<div style="font-size:0.78rem;color:#475569;margin-bottom:8px;">السجل التجاري: <code>' + esc(m.commercial_reg_no || '—') + '</code> • الرقم الضريبي: <code>' + esc(m.tax_id || '—') + '</code></div>' +
+                        '<div style="font-size:0.78rem;color:#475569;margin-bottom:8px;">السجل التجاري: <code>' + esc(m.commercial_reg_no || m.kyc_docs?.commercial_reg_no || '—') + '</code> • الرقم الضريبي: <code>' + esc(m.tax_id || m.tax_registration_no || '—') + '</code></div>' +
                         (mediaItems.length > 0
                             ? '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;">' + mediaItems.join('') + '</div>'
                             : '<div style="font-size:0.8rem;color:#64748b;">لا توجد صور أو وثائق مرفوعة لهذا المتجر بعد.</div>') +
