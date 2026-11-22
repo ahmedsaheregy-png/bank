@@ -19,18 +19,14 @@
         const iconSize = isCompact ? 28 : 34;
         const wordFontSize = isCompact ? '1.12rem' : '1.38rem';
         const wordPadTop = isCompact ? '4px' : '6px';
-        const diacriticTop = isCompact ? '-10px' : '-13px';
-        const diacriticSize = isCompact ? '1.05rem' : '1.28rem';
+        const diacriticTop = isCompact ? '-9px' : '-11px';
+        const diacriticSize = isCompact ? '0.98rem' : '1.15rem';
         const bankBadge = BRAND_CONFIG.showBank
             ? '<span style="font-size:0.78rem;font-weight:800;background:#1d4ed8;color:#fff;padding:2px 7px;border-radius:6px;margin-right:6px;">BANK</span>'
             : '';
         const subtitleHtml = isCompact
             ? ''
             : `<span style="font-family:'Tajawal',sans-serif;font-size:0.68rem;font-weight:700;color:${subColor};letter-spacing:0;text-align:right;" dir="rtl">منصة الاستهلاك الاستثماري العالمية</span>`;
-
-        const yGlyphWidth = isCompact ? '0.92em' : '0.98em';
-        const yGlyphHeight = isCompact ? '1.08em' : '1.14em';
-        const yVector = `<span style="display:inline-block;width:${yGlyphWidth};height:${yGlyphHeight};vertical-align:-0.12em;margin:0 0.03em;"><svg viewBox="0 0 100 120" width="100%" height="100%" style="overflow:visible;" aria-hidden="true"><path d="M22 6 L78 1" stroke="${accentFill}" stroke-width="6.5" stroke-linecap="round"/><path d="M14 21 C21 11, 33 11, 38 21 C43 11, 57 11, 62 21 C67 11, 79 11, 86 21" stroke="${accentFill}" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 26 L50 68 V114" stroke="${accentFill}" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M86 26 L50 68" stroke="${accentFill}" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>`;
 
         return `
         <span class="sawyan-brand-mark" dir="ltr" style="display:inline-flex;align-items:center;gap:${isCompact ? '6px' : '8px'};vertical-align:middle;">
@@ -47,7 +43,7 @@
             </svg>
             <span style="display:inline-flex;flex-direction:column;line-height:1.05;">
                 <span style="position:relative;font-family:'Poppins',sans-serif;font-weight:800;font-size:${wordFontSize};letter-spacing:0.6px;color:${primaryFill};display:inline-block;padding-top:${wordPadTop};">
-                    SAW${yVector}AN${bankBadge}
+                    SAW<span style="position:relative;display:inline-block;color:${accentFill};">Y<span aria-hidden="true" style="position:absolute;top:${diacriticTop};left:50%;transform:translateX(-50%);font-family:'Tajawal',sans-serif;font-size:${diacriticSize};line-height:1;color:${accentFill};font-weight:800;">&#x0651;&#x064E;</span></span>AN${bankBadge}
                 </span>
                 ${subtitleHtml}
             </span>
