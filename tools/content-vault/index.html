@@ -3,23 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>خزنة المحتوى والتسويق الاستراتيجي — SAWYAN Content Vault</title>
+    <title>بنك محتوى SAWYAN — المنصة الشاملة للمحتوى والتسويق والإخراج</title>
     <link rel="icon" type="image/svg+xml" href="../../shared/assets/sawyan-icon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Poppins:wght@700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #0a0f1d;
-            --card-bg: #111827;
-            --card-border: #1f2937;
+            --bg-dark: #0b1120;
+            --card-bg: #111c30;
+            --card-border: #1e293b;
             --emerald: #10b981;
             --emerald-dark: #047857;
             --gold: #f59e0b;
-            --gold-light: #fde68a;
-            --text-main: #f3f4f6;
-            --text-muted: #9ca3af;
-            --danger: #ef4444;
+            --gold-light: #fef3c7;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --table-row-hover: #162238;
+            --accent-blue: #1d5c8f;
         }
 
         * {
@@ -33,12 +34,12 @@
             background-color: var(--bg-dark);
             color: var(--text-main);
             min-height: 100vh;
-            padding: 24px;
+            padding: 20px;
             line-height: 1.6;
         }
 
         .container {
-            max-width: 1300px;
+            max-width: 1400px;
             margin: 0 auto;
         }
 
@@ -48,43 +49,45 @@
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 16px;
-            padding-bottom: 24px;
-            border-bottom: 1px solid var(--card-border);
+            gap: 20px;
+            padding: 20px 24px;
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 16px;
             margin-bottom: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         }
 
-        .brand-title {
+        .brand-header {
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 18px;
         }
 
-        .brand-logo-icon {
-            width: 48px;
-            height: 48px;
-            background: linear-gradient(135deg, var(--emerald-dark), var(--emerald));
-            border-radius: 12px;
-            display: flex;
+        .brand-logo-wrap {
+            display: inline-flex;
             align-items: center;
-            justify-content: center;
-            font-weight: 900;
-            font-size: 24px;
-            color: #fff;
-            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+            background: #ffffff;
+            padding: 6px 14px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
 
         .brand-title h1 {
-            font-size: 1.6rem;
-            font-weight: 800;
-            background: linear-gradient(to left, #fff, var(--gold-light));
+            font-size: 1.85rem;
+            font-weight: 900;
+            background: linear-gradient(to left, #ffffff, #6ee7b7);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .brand-title p {
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             color: var(--text-muted);
+            margin-top: 4px;
         }
 
         .header-actions {
@@ -94,109 +97,109 @@
         }
 
         .btn {
-            background: #1f2937;
-            color: #fff;
-            border: 1px solid #374151;
-            padding: 8px 16px;
+            background: #1e293b;
+            color: #f8fafc;
+            border: 1px solid #334155;
+            padding: 9px 18px;
             border-radius: 8px;
-            font-size: 0.9rem;
-            font-weight: 600;
+            font-size: 0.92rem;
+            font-weight: 700;
             cursor: pointer;
             transition: all 0.2s ease;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
+            text-decoration: none;
         }
 
         .btn:hover {
-            background: #374151;
-            border-color: #4b5563;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--emerald-dark), var(--emerald));
-            border: none;
-            color: #fff;
-        }
-
-        .btn-primary:hover {
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+            background: #334155;
+            border-color: #475569;
             transform: translateY(-1px);
         }
 
-        .btn-gold {
-            background: linear-gradient(135deg, #b45309, var(--gold));
+        .btn-emerald {
+            background: linear-gradient(135deg, #047857, #10b981);
             border: none;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-gold {
+            background: linear-gradient(135deg, #b45309, #f59e0b);
+            border: none;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+
+        /* Navigation Tabs Bar */
+        .tabs-nav {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 24px;
+            overflow-x: auto;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .tab-btn {
+            background: #111c30;
+            border: 1px solid var(--card-border);
+            color: var(--text-muted);
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            background: #1e293b;
             color: #fff;
         }
 
-        /* Guardrail Notice */
-        .guardrails-box {
-            background: rgba(180, 83, 9, 0.12);
-            border: 1px solid rgba(245, 158, 11, 0.3);
-            border-radius: 10px;
-            padding: 12px 18px;
+        .tab-btn.active {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.05));
+            border-color: var(--emerald);
+            color: var(--emerald);
+            box-shadow: 0 0 16px rgba(16, 185, 129, 0.2);
+        }
+
+        .tab-badge {
+            background: rgba(255, 255, 255, 0.1);
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 999px;
+            color: inherit;
+        }
+
+        /* Search Bar */
+        .search-bar-wrap {
+            display: flex;
+            gap: 14px;
             margin-bottom: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 12px;
-            font-size: 0.88rem;
-        }
-
-        .guardrails-box strong {
-            color: var(--gold);
-        }
-
-        .forbidden-pills {
-            display: flex;
-            gap: 6px;
             flex-wrap: wrap;
         }
 
-        .pill-forbidden {
-            background: rgba(239, 68, 68, 0.15);
-            color: #f87171;
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            padding: 2px 8px;
-            border-radius: 999px;
-            font-size: 0.75rem;
-            text-decoration: line-through;
-        }
-
-        .pill-canonical {
-            background: rgba(16, 185, 129, 0.15);
-            color: #34d399;
-            border: 1px solid rgba(16, 185, 129, 0.3);
-            padding: 2px 8px;
-            border-radius: 999px;
-            font-size: 0.75rem;
-            font-weight: 700;
-        }
-
-        /* Controls & Filter Bar */
-        .controls-bar {
-            display: grid;
-            grid-template-columns: 1fr auto;
-            gap: 16px;
-            margin-bottom: 24px;
-        }
-
-        @media (max-width: 768px) {
-            .controls-bar {
-                grid-template-columns: 1fr;
-            }
+        .search-box {
+            flex: 1;
+            min-width: 280px;
+            position: relative;
         }
 
         .search-input {
             width: 100%;
-            background: var(--card-bg);
+            background: #111c30;
             border: 1px solid var(--card-border);
             color: #fff;
-            padding: 12px 16px;
+            padding: 13px 44px 13px 16px;
             border-radius: 10px;
-            font-size: 0.95rem;
+            font-size: 0.98rem;
             outline: none;
             transition: border 0.2s;
         }
@@ -205,818 +208,929 @@
             border-color: var(--emerald);
         }
 
-        .filters-group {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .filter-btn {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
+        .search-icon {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
             color: var(--text-muted);
-            padding: 8px 14px;
+            font-size: 1.1rem;
+        }
+
+        /* Sections */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Table of Scenes & Direction */
+        .storyboard-card {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+        }
+
+        .storyboard-header {
+            background: #162033;
+            padding: 18px 24px;
+            border-bottom: 1px solid #1e293b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .storyboard-header h2 {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: #6ee7b7;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .storyboard-table-wrap {
+            overflow-x: auto;
+        }
+
+        .storyboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: right;
+            font-size: 0.94rem;
+        }
+
+        .storyboard-table th {
+            background: #111c30;
+            color: #94a3b8;
+            font-weight: 800;
+            padding: 14px 18px;
+            border-bottom: 2px solid #1e293b;
+            white-space: nowrap;
+        }
+
+        .storyboard-table td {
+            padding: 18px 18px;
+            border-bottom: 1px solid #1e293b;
+            vertical-align: top;
+            line-height: 1.7;
+        }
+
+        .storyboard-table tr:hover {
+            background: var(--table-row-hover);
+        }
+
+        .time-badge {
+            background: #1e293b;
+            color: #f59e0b;
+            border: 1px solid #d97706;
+            padding: 6px 12px;
             border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            font-weight: 600;
-            transition: all 0.2s;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 800;
+            font-size: 0.88rem;
+            display: inline-block;
+            white-space: nowrap;
+            direction: ltr;
         }
 
-        .filter-btn.active, .filter-btn:hover {
-            background: rgba(16, 185, 129, 0.15);
-            color: var(--emerald);
-            border-color: var(--emerald);
+        .voiceover-text {
+            color: #f8fafc;
+            font-size: 1.05rem;
+            font-weight: 700;
+            line-height: 1.8;
+            background: rgba(16, 185, 129, 0.08);
+            padding: 10px 14px;
+            border-radius: 8px;
+            border-right: 3px solid var(--emerald);
         }
 
-        /* Items Grid */
-        .vault-grid {
+        .visual-cell {
+            color: #cbd5e1;
+        }
+
+        .sfx-cell {
+            color: #fde68a;
+            font-size: 0.9rem;
+        }
+
+        .typography-cell {
+            color: #38bdf8;
+            font-weight: 700;
+            font-size: 0.92rem;
+        }
+
+        /* Cards Grid */
+        .cards-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+            gap: 22px;
+            margin-bottom: 30px;
         }
 
-        @media (max-width: 480px) {
-            .vault-grid {
+        @media (max-width: 600px) {
+            .cards-grid {
                 grid-template-columns: 1fr;
             }
         }
 
-        .vault-card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
+        .content-card {
+            background: #111c30;
+            border: 1px solid #1e293b;
             border-radius: 14px;
-            padding: 20px;
+            padding: 22px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            transition: transform 0.2s, border-color 0.2s;
+            transition: all 0.2s ease;
             position: relative;
         }
 
-        .vault-card:hover {
+        .content-card:hover {
+            border-color: #334155;
             transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+
+        .content-card.official-badge-card {
             border-color: rgba(16, 185, 129, 0.4);
+            background: linear-gradient(180deg, #132238, #111c30);
+        }
+
+        .content-card.official-badge-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--emerald);
+            border-radius: 0 14px 14px 0;
         }
 
         .card-top {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
+            margin-bottom: 14px;
+            gap: 10px;
         }
 
-        .badge-id {
-            background: #1f2937;
-            color: var(--gold);
+        .pill-badge {
+            font-size: 0.78rem;
+            font-weight: 800;
+            padding: 3px 10px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .pill-official {
+            background: rgba(16, 185, 129, 0.18);
+            color: #34d399;
+            border: 1px solid #10b981;
+        }
+
+        .pill-candidate {
+            background: rgba(245, 158, 11, 0.18);
+            color: #fbbf24;
+            border: 1px solid #f59e0b;
+        }
+
+        .pill-script {
+            background: rgba(56, 189, 248, 0.18);
+            color: #38bdf8;
+            border: 1px solid #0284c7;
+        }
+
+        .card-code {
+            font-family: 'Poppins', sans-serif;
             font-size: 0.75rem;
+            color: #64748b;
             font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 6px;
-            letter-spacing: 0.5px;
-        }
-
-        .badge-audience {
-            font-size: 0.75rem;
-            padding: 2px 8px;
-            border-radius: 6px;
-            background: rgba(59, 130, 246, 0.15);
-            color: #60a5fa;
-            border: 1px solid rgba(59, 130, 246, 0.3);
-        }
-
-        .badge-ver {
-            font-size: 0.72rem;
-            color: var(--text-muted);
-            margin-right: 6px;
         }
 
         .card-title {
-            font-size: 1.05rem;
-            font-weight: 700;
-            color: #fff;
-            margin-bottom: 8px;
+            font-size: 1.12rem;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 12px;
         }
 
-        .card-body-text {
-            background: rgba(0, 0, 0, 0.25);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+        .card-text {
+            font-size: 1rem;
+            line-height: 1.8;
+            color: #e2e8f0;
+            background: #0b1222;
+            padding: 14px 16px;
             border-radius: 10px;
-            padding: 14px;
-            color: #e5e7eb;
-            font-size: 0.92rem;
-            line-height: 1.65;
+            border: 1px solid #1e293b;
             margin-bottom: 14px;
             white-space: pre-wrap;
-            position: relative;
+            flex-grow: 1;
         }
 
         .card-notes {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            margin-bottom: 16px;
-            border-top: 1px dashed var(--card-border);
-            padding-top: 8px;
-        }
-
-        .card-footer {
+            font-size: 0.82rem;
+            color: #94a3b8;
+            margin-bottom: 14px;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
 
         .card-actions {
             display: flex;
-            gap: 6px;
+            gap: 8px;
+            justify-content: flex-end;
+            border-top: 1px solid #1e293b;
+            padding-top: 12px;
         }
 
         .btn-copy {
-            background: rgba(16, 185, 129, 0.15);
-            color: var(--emerald);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-            padding: 6px 12px;
+            background: #1e293b;
+            color: #38bdf8;
+            border: 1px solid #334155;
+            padding: 6px 14px;
             border-radius: 6px;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
+            font-weight: 700;
             cursor: pointer;
             transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .btn-copy:hover {
-            background: var(--emerald);
+            background: #0284c7;
             color: #fff;
+            border-color: #0284c7;
         }
 
-        .btn-copy.copied {
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
             background: #10b981;
             color: #fff;
-        }
-
-        .btn-history {
-            background: #1f2937;
-            color: var(--text-muted);
-            border: 1px solid #374151;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            cursor: pointer;
-        }
-
-        .btn-edit {
-            background: rgba(245, 158, 11, 0.15);
-            color: var(--gold);
-            border: 1px solid rgba(245, 158, 11, 0.3);
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            cursor: pointer;
-        }
-
-        /* Modal */
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.75);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+            padding: 12px 28px;
+            border-radius: 999px;
+            font-weight: 800;
+            font-size: 0.95rem;
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
+            transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
             z-index: 9999;
-            opacity: 0;
             pointer-events: none;
-            transition: opacity 0.2s;
         }
 
-        .modal-overlay.open {
-            opacity: 1;
-            pointer-events: auto;
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
         }
 
-        .modal-card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 14px;
-            width: 100%;
-            max-width: 650px;
-            max-height: 90vh;
-            overflow-y: auto;
-            padding: 24px;
+        /* Script View Card */
+        .script-hero-box {
+            background: linear-gradient(180deg, #1e293b, #0f172a);
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 26px;
+            margin-bottom: 24px;
         }
 
-        .modal-header {
+        .script-hero-box h3 {
+            font-size: 1.3rem;
+            color: #fde68a;
+            margin-bottom: 12px;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 18px;
-            border-bottom: 1px solid var(--card-border);
-            padding-bottom: 12px;
+            gap: 10px;
         }
 
-        .modal-close {
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            font-size: 1.5rem;
-            cursor: pointer;
-        }
-
-        .form-group {
-            margin-bottom: 16px;
-        }
-
-        .form-label {
-            display: block;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-bottom: 6px;
-            color: #d1d5db;
-        }
-
-        .form-control {
-            width: 100%;
-            background: #1f2937;
-            border: 1px solid #374151;
-            border-radius: 8px;
-            color: #fff;
-            padding: 10px;
-            font-size: 0.9rem;
-            outline: none;
-        }
-
-        .form-control:focus {
-            border-color: var(--emerald);
-        }
-
-        .history-entry {
-            background: #1f2937;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 10px;
-            border-right: 4px solid var(--gold);
-        }
-
-        .history-meta {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-bottom: 6px;
-        }
-
-        .history-text {
-            font-size: 0.88rem;
-            color: #e5e7eb;
+        .vocalized-script-text {
+            font-size: 1.25rem;
+            line-height: 2.2;
+            color: #ffffff;
+            background: #090e1a;
+            padding: 24px;
+            border-radius: 12px;
+            border-right: 5px solid #10b981;
             white-space: pre-wrap;
-        }
-
-        .empty-history {
-            text-align: center;
-            color: var(--text-muted);
-            padding: 20px;
-            font-size: 0.9rem;
+            letter-spacing: 0.5px;
         }
     </style>
 </head>
 <body>
 
 <div class="container">
+    <!-- Top Header -->
     <header>
-        <div class="brand-title">
-            <div class="brand-logo-icon">S</div>
-            <div>
-                <h1>خزنة المحتوى والتسويق الاستراتيجي</h1>
-                <p>SAWYAN Living Marketing Vault — نظام حفظ وتطوير المحتوى المعتمد مدى الحياة (sawyan.net)</p>
+        <div class="brand-header">
+            <div class="brand-logo-wrap">
+                <!-- Calibrated SAWYAN Logo matching user approved dimensions -->
+                <svg viewBox="0 0 460 140" style="height: 44px; display: block; overflow: visible;">
+                    <!-- S A W -->
+                    <text x="10" y="105" font-family="'Poppins', sans-serif" font-weight="900" font-size="94" fill="#1d5c8f" letter-spacing="1">SAW</text>
+                    <!-- Y -->
+                    <text x="246" y="105" font-family="'Poppins', sans-serif" font-weight="900" font-size="94" fill="#1d5c8f">Y</text>
+                    <!-- Shaddah & Fathah placed over the right arm of Y -->
+                    <!-- Fathah slanted bar -->
+                    <path d="M298 22 L332 12" stroke="#000000" stroke-width="7" stroke-linecap="round"/>
+                    <!-- Shaddah 3 prongs -->
+                    <path d="M296 46 C300 36, 308 36, 312 46 C316 36, 324 36, 328 46 C332 36, 340 36, 344 46" stroke="#000000" stroke-width="6.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <!-- A N -->
+                    <text x="312" y="105" font-family="'Poppins', sans-serif" font-weight="900" font-size="94" fill="#1d5c8f" letter-spacing="1">AN</text>
+                </svg>
+            </div>
+            <div class="brand-title">
+                <h1>بنك محتوى SAWYAN</h1>
+                <p>المرجع الدستوري الشامل للمحتوى التسويقي، النصوص المعتمدة، وسيناريوهات الفيديو والإخراج الفني (sawyan.net)</p>
             </div>
         </div>
         <div class="header-actions">
-            <button type="button" class="btn btn-primary" onclick="openAddNewModal()">+ إضافة عبارة / فكرة جديدة</button>
-            <button type="button" class="btn btn-gold" onclick="exportJSON()">📥 تصدير ملف JSON للمستودع</button>
-            <button type="button" class="btn" onclick="exportMarkdown()">📄 تصدير Markdown</button>
+            <button type="button" class="btn btn-emerald" onclick="copyAllContent()">📋 نسخ كافة النصوص</button>
+            <button type="button" class="btn btn-gold" onclick="downloadJSON()">📥 تصدير JSON</button>
+            <a href="../../docs/بنك_المحتوى_والتسويق_الاستراتيجي.md" class="btn" target="_blank">📄 الملف التوثيقي الكامل</a>
         </div>
     </header>
 
-    <!-- Guardrails Banner -->
-    <div class="guardrails-box">
-        <div>
-            <strong>🔒 ضوابط الهوية الرسمية الإلزامية:</strong>
-            يُحظر استخدام أي مصطلحات تسويق قديمة لحماية مصداقية المشروع وتأكيد نموذج الاستهلاك الاستثماري.
-        </div>
-        <div class="forbidden-pills">
-            <span class="pill-forbidden">كاشباك</span>
-            <span class="pill-forbidden">SAWYAN BANK</span>
-            <span class="pill-forbidden">التسويق الشبكي</span>
-            <span class="pill-canonical">✓ عائدات الاستهلاك الاستثماري</span>
-            <span class="pill-canonical">✓ صندوق الهدف الشهري</span>
-            <span class="pill-canonical">✓ كلنا SAWYAN</span>
+    <!-- Navigation Tabs -->
+    <div class="tabs-nav">
+        <button class="tab-btn active" onclick="switchTab('storyboard')">
+            🎬 جدول المشاهد والإخراج (ثانية بثانية)
+            <span class="tab-badge">6 مشاهد</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('official')">
+            🏛️ العبارات المعتمدة من الإدارة
+            <span class="tab-badge">11 عبارة رسمية</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('candidate')">
+            💡 العبارات والرسائل المرشحة
+            <span class="tab-badge">8 أفكار تسويقية</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('scripts')">
+            📜 السكربتات الإعلانية الثلاثة
+            <span class="tab-badge">3 سيناريوهات مشكولة</span>
+        </button>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="search-bar-wrap">
+        <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="liveSearchInput" class="search-input" placeholder="ابحث في العبارات المعتمدة، المشاهد، التوقيت، أو الكلمات المفتاحية (مثلاً: سوبر ماركت، تاجر، 00:12)..." oninput="filterContent()">
         </div>
     </div>
 
-    <!-- Controls -->
-    <div class="controls-bar">
-        <input type="text" id="searchInput" class="search-input" placeholder="🔍 ابحث في العبارات، السيناريوهات، الخطافات، أو الأكواد (مثلاً: SLG, فيديو, تاجر, سوبر ماركت)..." oninput="renderItems()">
-        <div class="filters-group" id="audienceFilters">
-            <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">الكل</button>
-            <button class="filter-btn" data-filter="prospect" onclick="setFilter('prospect')">الزوار الجدد</button>
-            <button class="filter-btn" data-filter="member" onclick="setFilter('member')">الأعضاء والولاء</button>
-            <button class="filter-btn" data-filter="merchant" onclick="setFilter('merchant')">التجار والشركاء</button>
-            <button class="filter-btn" data-filter="video_scripts" onclick="setCategoryFilter('video_scripts')">🎬 الفيديوهات</button>
-            <button class="filter-btn" data-filter="direct_messages" onclick="setCategoryFilter('direct_messages')">💬 رسائل واتساب</button>
+    <!-- TAB 1: STORYBOARD (جدول المشاهد والإخراج ثانية بثانية) -->
+    <div id="tab-storyboard" class="tab-content active">
+        <div class="storyboard-card">
+            <div class="storyboard-header">
+                <h2>🎬 جدول المشاهد والإخراج الفني الكامل — فيديو الواجهة الرئيسي (45 ثانية)</h2>
+                <button type="button" class="btn-copy" onclick="copyTableContent()">📋 نسخ جدول المشاهد</button>
+            </div>
+            <div class="storyboard-table-wrap">
+                <table class="storyboard-table" id="storyboardTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 130px;">التوقيت</th>
+                            <th style="width: 25%;">المشهد البصري (Camera & Visuals)</th>
+                            <th style="width: 32%;">التعليق الصوتي (Voiceover - نبرة واثقة هادئة)</th>
+                            <th style="width: 20%;">المؤثرات الصوتية والموسيقى (SFX & Music)</th>
+                            <th style="width: 15%;">النصوص على الشاشة</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="time-badge">00:00 - 00:05</span></td>
+                            <td class="visual-cell">لقطة سينمائية قريبة جداً (Extreme Macro) لعربة تسوق تُدفع بسرعة، ثم ماكينة كاشير تطبع فاتورة طويلة جداً.</td>
+                            <td><div class="voiceover-text">«أَكْثَرُ مَا نَفْعَلُهُ كُلَّ يَوْمٍ.. هُوَ أَكْثَرُ مَا نَكْرَهُهُ.. الدَّفْعُ!»</div></td>
+                            <td class="sfx-cell">صوت حركة عجلات العربة + صوت رنين ماكينة الكاشير الحاد Beep يتكرر بتسارع.</td>
+                            <td class="typography-cell">كم أنفقت طوال حياتك؟ (خط عربي عريض باللون الرمادي والزمردي)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="time-badge">00:05 - 00:12</span></td>
+                            <td class="visual-cell">انتقال سريع (Whip Pan): يد تحمي سحب الفاتورة، تظهر بطاقة عليها لوجو SAWYAN، يوجه الكاميرا لكود الفاتورة، صوت نغمة نجاح ومسح الكود.</td>
+                            <td><div class="voiceover-text">«مِنَ اليَوْمِ.. تَغَيَّرَ الوَضْعُ تَمَاماً! أَهْلاً بِكَ فِي SAWYAN: مَنَصَّةِ الِاسْتِهْلَاكِ الِاسْتِثْمَارِيِّ العَالَمِيَّةِ.»</div></td>
+                            <td class="sfx-cell">يتلاشى الإيقاع السريع إلى دقة صوتية واثقة عميقة ترج المكان (Cinematic Bass Drop).</td>
+                            <td class="typography-cell">منصة الاستهلاك الاستثماري العالمية (شعار SAWYAN الرسمي)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="time-badge">00:12 - 00:22</span></td>
+                            <td class="visual-cell">مشهد واسع متتابع (Montage): عائلة تتسوق في سوبر ماركت راقٍ، شخص يشتري دواء من صيدلية، أصدقاء في مطعم معتمد، وكلهم يدفعون بسعرهم الطبيعي ويبتسمون.</td>
+                            <td><div class="voiceover-text">«تَسَوَّقْ بِنَفْسِ أَسْعَارِكَ الطَّبِيعِيَّةِ مِنَ السُّوبَر مَارْكِت، وَالصَّيْدَلِيَّةِ، وَالمَطْعَمِ.. وَلَكِنْ هَذِهِ المَرَّةَ: مَدْفُوعَاتُكَ لَنْ تَضِيعَ، بَلْ سَتَتَحَوَّلُ إِلَى عَائِدَاتٍ حَقِيقِيَّةٍ تَنْمُو كُلَّ شَهْرٍ.»</div></td>
+                            <td class="sfx-cell">إيقاع موسيقي تصاعدي حيوي مفعم بالتفاؤل (Upbeat Corporate Strings).</td>
+                            <td class="typography-cell">نفس مشترياتك • نفس أسعارك • أرباح حقيقية</td>
+                        </tr>
+                        <tr>
+                            <td><span class="time-badge">00:22 - 00:32</span></td>
+                            <td class="visual-cell">شاشة منقسمة (Split Screen): في اليمين رسم بياني مضيء يرتفع بسلاسة (عائدات شهرية)، وفي اليسار خريطة تفاعلية تضيء فيها شبكة معارف وأسر مترابطة.</td>
+                            <td><div class="voiceover-text">«فَقَطْ غَيِّرْ مَتْجَرَكَ، وَتَسَوَّقْ مَعَ المَتَاجِرِ الَّتِي تَعَاقَدْنَا مَعَهَا لِنَتَشَارَكَكَ الأَرْبَاحَ.. فَقَطْ أَخْبِرِ المَتْجَرَ الشَّرِيكَ أَنَّكَ عُضْوٌ بِـ SAWYAN، وَشَارِكِ الفِكْرَةَ مَعَ مَعَارِفِكَ لِيَتَضَاعَفَ دَخْلُكَ وَدَخْلُهُمْ.»</div></td>
+                            <td class="sfx-cell">صوت رنين عملات رقمية هادئة (Soft Chime) مع تصاعد تدريجي للوتيرة الحماسية.</td>
+                            <td class="typography-cell">غيّر وجهتك • وثّق فاتورتك • ضاعف دخلك</td>
+                        </tr>
+                        <tr>
+                            <td><span class="time-badge">00:32 - 00:40</span></td>
+                            <td class="visual-cell">مشهد تاجر مبتسم في متجره، طابور زبائن يحملون هواتفهم موثقين فواتيرهم، شارة معتمدة «شريك رسمي SAWYAN» مضيئة على واجهة المحل.</td>
+                            <td><div class="voiceover-text">«وَلِلتُّجَّارِ: لَا مُجَازَفَةَ بِإِعْلَانَاتٍ مَجْهُولَةِ العَائِدِ بَعْدَ الآنَ.. آلَافُ العُمَلَاءِ فِي انْتِظَارِكَ، وَادْفَعْ فَقَطْ مُقَابِلَ النَّتَائِجِ لَا الوُعُودِ! صِفْرُ مُخَاطَرَةٍ.. صِفْرُ رَأْسِ مَالٍ.. صِفْرُ مُؤَهِّلَاتٍ!»</div></td>
+                            <td class="sfx-cell">وتيرة حماسية قوية تشير للنمو والنجاح التجاري المستمر.</td>
+                            <td class="typography-cell">للتجار: ادفع مقابل النتائج فقط • آلاف العملاء بانتظارك</td>
+                        </tr>
+                        <tr>
+                            <td><span class="time-badge">00:40 - 00:45</span></td>
+                            <td class="visual-cell">لقطة سينمائية ختامية: شعار SAWYAN ثلاثي الأبعاد باللون الزمردي والكحلي مع الشدة والفتحة المعتمدة، يليه الرابط www.sawyan.net وزر انضم الآن مجاناً.</td>
+                            <td><div class="voiceover-text">«الحُرِّيَّةُ المَالِيَّةُ لَيْسَتْ وَهْماً.. بَلْ حَقِيقَةٌ يَفْصِلُكَ عَنْهَا خَطْوَةٌ وَاحِدَةٌ.. SAWYAN.»</div></td>
+                            <td class="sfx-cell">نغمة ختامية هادئة وفاخرة مع صوت ضغطة تأكيد التسجيل (Success Chime).</td>
+                            <td class="typography-cell">SAWYAN • خطوتك نحو الحرية المالية • sawyan.net</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
-    <!-- Vault Grid -->
-    <div class="vault-grid" id="vaultGrid">
-        <!-- Rendered dynamically -->
-    </div>
-</div>
-
-<!-- Modal: History -->
-<div class="modal-overlay" id="historyModal">
-    <div class="modal-card">
-        <div class="modal-header">
-            <h3 id="historyModalTitle">سجل التعديلات التاريخي</h3>
-            <button class="modal-close" onclick="closeModal('historyModal')">×</button>
+    <!-- TAB 2: OFFICIAL APPROVED PHRASES (العبارات المعتمدة رسمياً من الإدارة) -->
+    <div id="tab-official" class="tab-content">
+        <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 14px 20px; margin-bottom: 24px; color: #34d399; font-weight: 700;">
+            🏛️ <strong>المصدر الدستوري المعتمد:</strong> هذه العبارات هي النصوص الرسمية المعتمدة حرفياً من الإدارة العليا لتغذية كافة منصات الميديا، المطبوعات، وموقع sawyan.net.
         </div>
-        <div id="historyContent"></div>
-    </div>
-</div>
-
-<!-- Modal: Edit / Evolve -->
-<div class="modal-overlay" id="editModal">
-    <div class="modal-card">
-        <div class="modal-header">
-            <h3 id="editModalTitle">تطوير العبارة / إصدار جديد</h3>
-            <button class="modal-close" onclick="closeModal('editModal')">×</button>
-        </div>
-        <form id="editForm" onsubmit="saveEdit(event)">
-            <input type="hidden" id="editItemId">
-            <div class="form-group">
-                <label class="form-label">العنوان / المسمى التوضيحي:</label>
-                <input type="text" id="editTitle" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label class="form-label">النص المطور الجديد (لن يُحذف النص القديم بل سينتقل للأرشيف):</label>
-                <textarea id="editText" class="form-control" rows="5" required></textarea>
-            </div>
-            <div class="form-group">
-                <label class="form-label">سبب التعديل / ملاحظات الإصدار (Changelog Note):</label>
-                <input type="text" id="editReason" class="form-control" placeholder="مثلاً: تحسين معدل التحويل لاختبار A/B، تكييف للريلز السريع..." required>
-            </div>
-            <div class="form-group">
-                <label class="form-label">ملاحظات ومواضع الاستخدام:</label>
-                <input type="text" id="editNotes" class="form-control">
-            </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-                <button type="button" class="btn" onclick="closeModal('editModal')">إلغاء</button>
-                <button type="submit" class="btn btn-primary">حفظ واعتماد الإصدار الجديد</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Embedded Master Seed Data -->
-<script>
-let VAULT_DATA = [];
-let currentAudienceFilter = 'all';
-let currentCategoryFilter = 'all';
-
-// Load initial data
-async function loadVault() {
-    try {
-        const res = await fetch('../../specs/marketing_content_vault.json');
-        if (res.ok) {
-            const data = await res.json();
-            VAULT_DATA = data.items;
-        } else {
-            throw new Error("Local fetch skipped, using embedded seed");
-        }
-    } catch (e) {
-        // Fallback default dataset
-        VAULT_DATA = [
-            {
-                "id": "SLG-001",
-                "category": "slogans",
-                "audience": "all",
-                "type": "شعار رئيسي",
-                "title": "الشعار المعتمد الأساسي للمنصة",
-                "current_text": "SAWYAN — منصة الاستهلاك الاستثماري العالمية (Buy and Make Money)",
-                "status": "canonical",
-                "version": "1.0",
-                "history": [],
-                "usage_notes": "يوضع في الهيدر الرئيسي للموقع، في بطاقات التعريف الرسمية، وفي نهاية كافة الفيديوهات والمطبوعات."
-            },
-            {
-                "id": "SLG-002",
-                "category": "slogans",
-                "audience": "consumer",
-                "type": "مانترا كسر الجمود",
-                "title": "معادلة تحويل الدفع إلى استثمار",
-                "current_text": "أكثر ما تكرهه هو الدفع.. من اليوم حوّل مشترياتك اليومية إلى أكبر استثمار في حياتك.",
-                "status": "canonical",
-                "version": "1.0",
-                "history": [],
-                "usage_notes": "ممتاز للبانرات الإعلانية الافتتاحية والمقدمات الصوتية للريلز."
-            },
-            {
-                "id": "SLG-003",
-                "category": "slogans",
-                "audience": "consumer",
-                "type": "شعار استهلاكي",
-                "title": "قاعدة الاستهلاك الذكي",
-                "current_text": "لا تدفع دون مقابل بعد الآن! تسوّق، وثّق، واربح.",
-                "status": "canonical",
-                "version": "1.0",
-                "history": [],
-                "usage_notes": "يوضع على بطاقة المتسوق وقسم آلية العمل."
-            },
-            {
-                "id": "SLG-004",
-                "category": "slogans",
-                "audience": "community",
-                "type": "شعار الهوية والانتماء",
-                "title": "شعار المجتمع الموحد",
-                "current_text": "كلنا SAWYAN — سواء كنت متسوقاً أو تاجراً أو تبحث عن دخل إضافي، لدينا ما يناسبك.",
-                "status": "canonical",
-                "version": "1.0",
-                "history": [],
-                "usage_notes": "شعار جامع لكل الفئات، ممتاز للفواصل الإعلانية وقمصان الفعاليات."
-            },
-            {
-                "id": "HOOK-001",
-                "category": "hooks",
-                "audience": "prospect",
-                "type": "خطاف ريلز وتيك توك",
-                "title": "سؤال العشرين سنة ومحل الملابس",
-                "current_text": "لو بتشتري أنت وعيلتك من نفس المحل بقالكم 20 سنة.. هل تقدر تقله اديني شهر واحد مجاناً لأنني عميل وفي؟ مستحيل! في SAWYAN وفاءك لمشترياتك هو أساس دخلك.",
-                "status": "canonical",
-                "version": "1.0",
-                "history": [],
-                "usage_notes": "أول 3 ثوانٍ في الفيديوهات القصيرة، نسبة استبقاء المشاهدين تتجاوز 80%."
-            },
-            {
-                "id": "HOOK-002",
-                "category": "hooks",
-                "audience": "prospect",
-                "type": "خطاف فضول مالي",
-                "title": "أين ذهبت ملايين فواتير السوبر ماركت؟",
-                "current_text": "كم أنفقت طوال حياتك على السوبر ماركت والصيدلية والمطاعم؟ ماذا لو عاد كل هذا الاستهلاك كأرباح شهرية تتنامى كل يوم؟",
-                "status": "canonical",
-                "version": "1.0",
-                "history": [],
-                "usage_notes": "يصلح كمنشور تفاعلي على فيسبوك وتويتر وبداية محتوى مرئي."
-            },
-            {
-                "id": "HOOK-003",
-                "category": "hooks",
-                "audience": "merchant",
-                "type": "خطاف استقطاب التجار",
-                "title": "ألم الإعلانات الممولة مجهولة العائد",
-                "current_text": "كم تاجر تعرفه خسر آلاف الدولارات في حملات تسويقية مجهولة المردود؟ في SAWYAN: ادفع مقابل النتائج والمبيعات الحقيقية فقط!",
-                "status": "canonical",
-                "version": "1.0",
-                "history": [],
-                "usage_notes": "موجه لأصحاب المتاجر والمطاعم على لينكد إن وإنستغرام."
-            },
-            {
-                "id": "SCRIPT-001",
-                "category": "video_scripts",
-                "audience": "prospect",
-                "type": "سيناريو فيديو سينمائي",
-                "title": "فيديو الواجهة الرئيسية: الصدمة الإيجابية (45 ثانية)",
-                "current_text": "«أكثر ما نفعله كل يوم هو الدفع.. وأكثر ما نكرهه هو أن ندفع دون مقابل! من اليوم المعادلة تغيرت كلياً.. أهلاً بك في SAWYAN: منصة الاستهلاك الاستثماري العالمية. تسوّق بنفس أسعارك الطبيعية من السوبر ماركت والصيدلية والمطعم.. ولكن هذه المرة: فاتورتك لا تضيع، بل تتحول إلى عائدات حقيقية تنمو كل شهر. صفر مخاطرة، صفر رأس مال! فقط غيّر وجهتك، وثّق فاتورتك، وشارك الفكرة مع معارفك لتضاعف دخلك ودخلهم. وللتجار: لا مجازفة بإعلانات مجهولة بعد الآن.. آلاف العملاء في انتظارك، وادفع مقابل النتائج فقط! الحرية المالية ليست وهماً.. بل خطوة يفصلك عنها قرارك اليوم. كلنا SAWYAN.»",
-                "status": "canonical",
-                "version": "1.0",
-                "history": [],
-                "usage_notes": "الخيار الأول في الواجهة الرئيسية للموقع، فيديو سريع الحركة بجودة 4K."
-            },
-            {
-                "id": "SCRIPT-002",
-                "category": "video_scripts",
-                "audience": "all",
-                "type": "سيناريو موشن جرافيك 3D",
-                "title": "رحلة الـ 3 خطوات والمكعب البلوري (45 ثانية)",
-                "current_text": "«طوال عقود.. كان المستهلك هو الحلقة الأضعف: تدفع المال، تستهلك السلعة، وتعود لنقطة الصفر. نظام SAWYAN جاء ليعيد كتابة القواعد: الاستهلاك الاستثماري (Buy and Make Money). مشترياتك المعتادة أصبحت أصلك الاستثماري الأول. في 3 خطوات مجانية فقط: 1. غيّر وجهتك للمتاجر المعتمدة. 2. وثّق فاتورتك بكود هويتك في ثوانٍ. 3. ابنِ مجتمعك واشهد نمو عائداتك شهراً بعد شهر. نظام عادل، حلال 100%، بدون بضائع مخزنة، ولا وعود سرابية. ربح حقيقي قائم على فواتير حقيقية. انضم إلينا اليوم على sawyan.net.»",
-                "status": "canonical",
-                "version": "1.0",
-                "history": [],
-                "usage_notes": "موشن ثلاثي الأبعاد فاخر يركز على الشفافية والسهولة."
-            },
-            {
-                "id": "SCRIPT-003",
-                "category": "video_scripts",
-                "audience": "community",
-                "type": "سيناريو دراما وثائقية",
-                "title": "حكاية أسرة وتاجر: كلنا SAWYAN (60 ثانية)",
-                "current_text": "«كل صباح.. نخرج لنعمل، لنلبي احتياجات من نحب. نشتري، نستهلك، ونبذل ما نملك لتأمين مستقبل عائلاتنا. لكن ماذا لو كانت كل فاتورة تدفعها لم تعد استنزافاً لراتبك.. بل خطوة جديدة نحو حريتك المالية واستقرارك؟ هنا ولدت فكرة SAWYAN.. أن نكون معاً. أنت لست زبوناً عادياً، بل شريك في الأرباح. تسوّق بالسعر الطبيعي، ودلّ من تحب على نفس الطريق. ولأن التجارة شراكة وأمان: تجارنا لا يدفعون ميزانيات تسويق ضائعة، بل يستقبلون مجتمعاً من آلاف الأسر الموجهة لمتجرهم بولاء دائم. سواء كنت متسوقاً، أو تاجراً، أو تبحث عن دخل يحمي غدك.. مكانك بيننا. كلنا SAWYAN — منصة الاستهلاك الاستثماري العالمية.»",
-                "status": "canonical",
-                "version": "1.0",
-                "history": [],
-                "usage_notes": "وثائقي ملهم للاحتفاليات والمؤتمرات وحملات بناء الوعي طويل المدى."
-            },
-            {
-                "id": "MSG-001",
-                "category": "direct_messages",
-                "audience": "prospect",
-                "type": "رسالة واتساب لدعوة المعارف",
-                "title": "دعوة صديق للانضمام إلى منصة سويا",
-                "current_text": "السلام عليكم يا أخي الغالي.. كلنا شهرياً بنصرف مبالغ على السوبر ماركت والمطاعم والصيدلية ومستلزمات البيت، وبدون ما يرجع لنا منها شيء. اكتشفت منصة عالمية راقية اسمها SAWYAN للاستهلاك الاستثماري (Buy and Make Money). فكرتها ببساطة وبدون أي رسوم اشتراك: إنك بتشتري نفس احتياجاتك العادية من المتاجر الشريكة وبنفس سعرها الطبيعي، ولكن الفاتورة بتتحول لأرباح حقيقية ودخل شهري متنامٍ لك ولكل عيلتك. حبيت أشاركك الفكرة لأنها بتنفع كل بيت، وتقدر تبدأ وتسجل مجاناً من هنا: sawyan.net بكود عضويتي: [ضع_كودك_هنا].",
-                "status": "canonical",
-                "version": "1.0",
-                "history": [],
-                "usage_notes": "رسالة موجهة للأعضاء الحاليين لإرسالها لأقربائهم وأصدقائهم بثقة عالية وبدون حرج."
-            },
-            {
-                "id": "COMM-001",
-                "category": "community_loyalty",
-                "audience": "member",
-                "type": "شحن همم وتأكيد الرؤية",
-                "title": "أنت تقدم خدمة عظيمة لمجتمعك",
-                "current_text": "عندما تدعو صديقك إلى SAWYAN، أنت لا تطلب منه فضلاً ولا تبيعه منتجاً لا يحتاجه.. أنت تقدم له أعظم خدمة: حماية ميزانية بيته وصناعة دخل شهري له ولأسرته يبدأ من نفس فواتيره اليومية.",
-                "status": "canonical",
-                "version": "1.0",
-                "history": [],
-                "usage_notes": "رسالة لجروبات تدريب وتأهيل الأعضاء وقنوات التلغرام الداخلية."
-            }
-        ];
-    }
-    renderItems();
-}
-
-function setFilter(aud) {
-    currentAudienceFilter = aud;
-    currentCategoryFilter = 'all';
-    updateFilterUI();
-    renderItems();
-}
-
-function setCategoryFilter(cat) {
-    currentCategoryFilter = cat;
-    currentAudienceFilter = 'all';
-    updateFilterUI();
-    renderItems();
-}
-
-function updateFilterUI() {
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        const bAud = btn.getAttribute('data-filter');
-        if (bAud === currentAudienceFilter || bAud === currentCategoryFilter) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
-        }
-    });
-}
-
-function renderItems() {
-    const query = document.getElementById('searchInput').value.trim().toLowerCase();
-    const grid = document.getElementById('vaultGrid');
-    grid.innerHTML = '';
-
-    const filtered = VAULT_DATA.filter(item => {
-        // audience
-        if (currentAudienceFilter !== 'all' && item.audience !== currentAudienceFilter && item.audience !== 'all') {
-            return false;
-        }
-        // category
-        if (currentCategoryFilter !== 'all' && item.category !== currentCategoryFilter) {
-            return false;
-        }
-        // query
-        if (query) {
-            const combined = `${item.id} ${item.title} ${item.current_text} ${item.type} ${item.usage_notes}`.toLowerCase();
-            if (!combined.includes(query)) return false;
-        }
-        return true;
-    });
-
-    if (filtered.length === 0) {
-        grid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 40px; color: var(--text-muted);">
-            لا توجد عناصر مطابقة لخيارات البحث.
-        </div>`;
-        return;
-    }
-
-    filtered.forEach(item => {
-        const card = document.createElement('div');
-        card.className = 'vault-card';
-
-        const audLabel = {
-            'all': 'الجميع',
-            'prospect': 'متسوق محتمل',
-            'consumer': 'متسوق',
-            'member': 'عضو حالي',
-            'merchant': 'تاجر شريك',
-            'community': 'مجتمع SAWYAN'
-        }[item.audience] || item.audience;
-
-        card.innerHTML = `
-            <div>
-                <div class="card-top">
-                    <div>
-                        <span class="badge-id">${item.id}</span>
-                        <span class="badge-ver">الإصدار ${item.version}</span>
+        <div class="cards-grid" id="officialGrid">
+            <div class="content-card official-badge-card" data-search="التعريف الأساسي لمنصة SAWYAN SAWYAN — منصة الاستهلاك الاستثماري العالمية (Buy and Make Money)">
+                <div>
+                    <div class="card-top">
+                        <span class="pill-badge pill-official">🏛️ معتمد رسمياً من الإدارة</span>
+                        <span class="card-code">OFFICIAL-001</span>
                     </div>
-                    <span class="badge-audience">${audLabel} • ${item.type}</span>
+                    <div class="card-title">التعريف الأساسي لمنصة SAWYAN</div>
+                    <div class="card-text">SAWYAN — منصة الاستهلاك الاستثماري العالمية (Buy and Make Money)</div>
+                    <div class="card-notes">📌 <em>الجملة الرسمية الأولى المعتمدة من الإدارة للتعريف بالمنصة عالمياً ومحلياً.</em></div>
                 </div>
-                <h4 class="card-title">${item.title}</h4>
-                <div class="card-body-text" id="text-${item.id}">${item.current_text}</div>
-                <div class="card-notes">📌 ${item.usage_notes || 'لا توجد ملاحظات إضافية'}</div>
-            </div>
-            <div class="card-footer">
-                <button class="btn-copy" onclick="copyText('${item.id}', this)">📋 نسخ النص</button>
                 <div class="card-actions">
-                    <button class="btn-history" onclick="viewHistory('${item.id}')">🕒 التاريخ (${item.history ? item.history.length : 0})</button>
-                    <button class="btn-edit" onclick="openEditModal('${item.id}')">✏️ تطوير العبارة</button>
+                    <button type="button" class="btn-copy" onclick="copyText(`SAWYAN — منصة الاستهلاك الاستثماري العالمية (Buy and Make Money)`)">📋 نسخ النص</button>
                 </div>
             </div>
-        `;
-        grid.appendChild(card);
-    });
-}
-
-function copyText(id, btn) {
-    const textEl = document.getElementById(`text-${id}`);
-    if (!textEl) return;
-    navigator.clipboard.writeText(textEl.innerText).then(() => {
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '✓ تم النسخ!';
-        btn.classList.add('copied');
-        setTimeout(() => {
-            btn.innerHTML = originalText;
-            btn.classList.remove('copied');
-        }, 1800);
-    });
-}
-
-function viewHistory(id) {
-    const item = VAULT_DATA.find(i => i.id === id);
-    if (!item) return;
-
-    document.getElementById('historyModalTitle').innerText = `تاريخ التعديلات: [${item.id}] ${item.title}`;
-    const container = document.getElementById('historyContent');
-    container.innerHTML = '';
-
-    // Show current version
-    const currBox = document.createElement('div');
-    currBox.className = 'history-entry';
-    currBox.style.borderRightColor = 'var(--emerald)';
-    currBox.innerHTML = `
-        <div class="history-meta">
-            <strong style="color:var(--emerald);">الإصدار الحالي (Active V${item.version})</strong>
-            <span>النسخة المعتمدة الآن</span>
-        </div>
-        <div class="history-text">${item.current_text}</div>
-    `;
-    container.appendChild(currBox);
-
-    if (!item.history || item.history.length === 0) {
-        const empty = document.createElement('div');
-        empty.className = 'empty-history';
-        empty.innerText = 'هذا هو الإصدار التأسيسي الأول (V1.0)، ولم يطرأ عليه أي تعديل سابق.';
-        container.appendChild(empty);
-    } else {
-        item.history.slice().reverse().forEach(h => {
-            const hBox = document.createElement('div');
-            hBox.className = 'history-entry';
-            hBox.innerHTML = `
-                <div class="history-meta">
-                    <strong style="color:var(--gold);">الإصدار السابق: V${h.version}</strong>
-                    <span>تاريخ الأرشفة: ${h.date}</span>
+            <div class="content-card official-badge-card" data-search="دعوة الانضمام لآلاف الأسر «اكتشف نظام SAWYAN للاستهلاك الاستثماري (Buy and Make Money). انضم إلى آلاف الأسر الذين حولوا مشترياتهم اليومية من السوبر ماركت، الصيدليات، والمطاعم إلخ إلى أرباح حقيقية تنمو كل يوم.»">
+                <div>
+                    <div class="card-top">
+                        <span class="pill-badge pill-official">🏛️ معتمد رسمياً من الإدارة</span>
+                        <span class="card-code">OFFICIAL-002</span>
+                    </div>
+                    <div class="card-title">دعوة الانضمام لآلاف الأسر</div>
+                    <div class="card-text">«اكتشف نظام SAWYAN للاستهلاك الاستثماري (Buy and Make Money). انضم إلى آلاف الأسر الذين حولوا مشترياتهم اليومية من السوبر ماركت، الصيدليات، والمطاعم إلخ إلى أرباح حقيقية تنمو كل يوم.»</div>
+                    <div class="card-notes">📌 <em>الرسالة الافتتاحية المعتمدة لصفحة الهبوط ومقدمة العروض التقديمية.</em></div>
                 </div>
-                <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:6px;">سبب التعديل: ${h.reason}</div>
-                <div class="history-text">${h.text}</div>
-            `;
-            container.appendChild(hBox);
-        });
+                <div class="card-actions">
+                    <button type="button" class="btn-copy" onclick="copyText(`«اكتشف نظام SAWYAN للاستهلاك الاستثماري (Buy and Make Money). انضم إلى آلاف الأسر الذين حولوا مشترياتهم اليومية من السوبر ماركت، الصيدليات، والمطاعم إلخ إلى أرباح حقيقية تنمو كل يوم.»`)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="content-card official-badge-card" data-search="الحرية المالية خطوة واحدة «الحرية المالية ليست وهما — بل حقيقة يفصلك عنها خطوة واحدة»">
+                <div>
+                    <div class="card-top">
+                        <span class="pill-badge pill-official">🏛️ معتمد رسمياً من الإدارة</span>
+                        <span class="card-code">OFFICIAL-003</span>
+                    </div>
+                    <div class="card-title">الحرية المالية خطوة واحدة</div>
+                    <div class="card-text">«الحرية المالية ليست وهما — بل حقيقة يفصلك عنها خطوة واحدة»</div>
+                    <div class="card-notes">📌 <em>جملة الختام والأثر المعتمدة في كافة تصاميم السوشيال ميديا والفيديوهات.</em></div>
+                </div>
+                <div class="card-actions">
+                    <button type="button" class="btn-copy" onclick="copyText(`«الحرية المالية ليست وهما — بل حقيقة يفصلك عنها خطوة واحدة»`)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="content-card official-badge-card" data-search="شعار كلنا SAWYAN «كلنا SAWYAN — سواء كنت متسوقاً أو تاجراً أو تبحث عن دخل إضافي، لدينا ما يناسبك»">
+                <div>
+                    <div class="card-top">
+                        <span class="pill-badge pill-official">🏛️ معتمد رسمياً من الإدارة</span>
+                        <span class="card-code">OFFICIAL-004</span>
+                    </div>
+                    <div class="card-title">شعار كلنا SAWYAN</div>
+                    <div class="card-text">«كلنا SAWYAN — سواء كنت متسوقاً أو تاجراً أو تبحث عن دخل إضافي، لدينا ما يناسبك»</div>
+                    <div class="card-notes">📌 <em>المانترا الرسمية الموحدة للمجتمع بكافة شرائحه.</em></div>
+                </div>
+                <div class="card-actions">
+                    <button type="button" class="btn-copy" onclick="copyText(`«كلنا SAWYAN — سواء كنت متسوقاً أو تاجراً أو تبحث عن دخل إضافي، لدينا ما يناسبك»`)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="content-card official-badge-card" data-search="قسم أنا متسوق «أنا متسوق»
+لا تدفع دون مقابل بعد الآن!
+تسوّق بالسعر الطبيعي من السوبر ماركت والصيدليات والمطاعم.
+وثّق فاتورتك بكود هويتك في ثوانٍ.
+عضوية مجانية 100% بلا رسوم اشتراك.">
+                <div>
+                    <div class="card-top">
+                        <span class="pill-badge pill-official">🏛️ معتمد رسمياً من الإدارة</span>
+                        <span class="card-code">OFFICIAL-005</span>
+                    </div>
+                    <div class="card-title">قسم أنا متسوق</div>
+                    <div class="card-text">«أنا متسوق»<br>لا تدفع دون مقابل بعد الآن!<br>تسوّق بالسعر الطبيعي من السوبر ماركت والصيدليات والمطاعم.<br>وثّق فاتورتك بكود هويتك في ثوانٍ.<br>عضوية مجانية 100% بلا رسوم اشتراك.</div>
+                    <div class="card-notes">📌 <em>البطاقة الرسمية للمتسوقين في الصفحة الرئيسية ومطبوعات التعريف.</em></div>
+                </div>
+                <div class="card-actions">
+                    <button type="button" class="btn-copy" onclick="copyText(`«أنا متسوق»
+لا تدفع دون مقابل بعد الآن!
+تسوّق بالسعر الطبيعي من السوبر ماركت والصيدليات والمطاعم.
+وثّق فاتورتك بكود هويتك في ثوانٍ.
+عضوية مجانية 100% بلا رسوم اشتراك.`)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="content-card official-badge-card" data-search="قسم أنا تاجر «أنا تاجر»
+ضاعف مبيعاتك دون المجازفة بمبالغ تنفق على حملات تسويقية مجهولة المردود.
+ادفع مقابل النتائج فقط.
+آلاف العملاء في انتظارك.
+نحن جيشك التسويقي القادم.
+تفرغ لتطوير منتجك وخدماتك.">
+                <div>
+                    <div class="card-top">
+                        <span class="pill-badge pill-official">🏛️ معتمد رسمياً من الإدارة</span>
+                        <span class="card-code">OFFICIAL-006</span>
+                    </div>
+                    <div class="card-title">قسم أنا تاجر</div>
+                    <div class="card-text">«أنا تاجر»<br>ضاعف مبيعاتك دون المجازفة بمبالغ تنفق على حملات تسويقية مجهولة المردود.<br>ادفع مقابل النتائج فقط.<br>آلاف العملاء في انتظارك.<br>نحن جيشك التسويقي القادم.<br>تفرغ لتطوير منتجك وخدماتك.</div>
+                    <div class="card-notes">📌 <em>العرض المعتمد لأصحاب المتاجر والمطاعم والخدمات.</em></div>
+                </div>
+                <div class="card-actions">
+                    <button type="button" class="btn-copy" onclick="copyText(`«أنا تاجر»
+ضاعف مبيعاتك دون المجازفة بمبالغ تنفق على حملات تسويقية مجهولة المردود.
+ادفع مقابل النتائج فقط.
+آلاف العملاء في انتظارك.
+نحن جيشك التسويقي القادم.
+تفرغ لتطوير منتجك وخدماتك.`)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="content-card official-badge-card" data-search="لماذا يجب أن نكون SAWYAN؟ «لماذا يجب أن نكون SAWYAN؟»
+• صفر مخاطرة، صفر رأس مال.
+• أيا كانت خبرتك أهلا بك.
+• حلال 100%.
+• دخل متنامي.
+• حرية كاملة في اختيار مواعيد العمل.">
+                <div>
+                    <div class="card-top">
+                        <span class="pill-badge pill-official">🏛️ معتمد رسمياً من الإدارة</span>
+                        <span class="card-code">OFFICIAL-007</span>
+                    </div>
+                    <div class="card-title">لماذا يجب أن نكون SAWYAN؟</div>
+                    <div class="card-text">«لماذا يجب أن نكون SAWYAN؟»<br>• صفر مخاطرة، صفر رأس مال.<br>• أيا كانت خبرتك أهلا بك.<br>• حلال 100%.<br>• دخل متنامي.<br>• حرية كاملة في اختيار مواعيد العمل.</div>
+                    <div class="card-notes">📌 <em>النقاط الخمس المعتمدة لكسر التردد عند الزوار الجدد.</em></div>
+                </div>
+                <div class="card-actions">
+                    <button type="button" class="btn-copy" onclick="copyText(`«لماذا يجب أن نكون SAWYAN؟»
+• صفر مخاطرة، صفر رأس مال.
+• أيا كانت خبرتك أهلا بك.
+• حلال 100%.
+• دخل متنامي.
+• حرية كاملة في اختيار مواعيد العمل.`)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="content-card official-badge-card" data-search="آلية العمل: تحول من مستهلك لصاحب مشروع «آلية العمل»
+في 3 خطوات مجانية تحول من مستهلك لصاحب مشروع:
+1. غيّر وجهتك (استهلك بذكاء): لا تدفع دون مقابل بعد الآن! حوّل مشترياتك الاعتيادية إلى المحلات والمواقع الشريكة لمنصة سويّاً.
+2. ابنِ مجتمعك وابدأ بجني الأرباح، ضاعف دخلك: إبدأ بدعوة معارفك.. أنت تقدم لهم خدمة عظيمة.
+3. ضاعف دخلك: قم بدعوة فريقك لتكرار الخطوتين السابقتين، وكلما اتسع فريقك زاد دخلك ودخلهم.">
+                <div>
+                    <div class="card-top">
+                        <span class="pill-badge pill-official">🏛️ معتمد رسمياً من الإدارة</span>
+                        <span class="card-code">OFFICIAL-008</span>
+                    </div>
+                    <div class="card-title">آلية العمل: تحول من مستهلك لصاحب مشروع</div>
+                    <div class="card-text">«آلية العمل»<br>في 3 خطوات مجانية تحول من مستهلك لصاحب مشروع:<br>1. غيّر وجهتك (استهلك بذكاء): لا تدفع دون مقابل بعد الآن! حوّل مشترياتك الاعتيادية إلى المحلات والمواقع الشريكة لمنصة سويّاً.<br>2. ابنِ مجتمعك وابدأ بجني الأرباح، ضاعف دخلك: إبدأ بدعوة معارفك.. أنت تقدم لهم خدمة عظيمة.<br>3. ضاعف دخلك: قم بدعوة فريقك لتكرار الخطوتين السابقتين، وكلما اتسع فريقك زاد دخلك ودخلهم.</div>
+                    <div class="card-notes">📌 <em>الشرح الرسمي المعتمد لرحلة العضو في الموقع.</em></div>
+                </div>
+                <div class="card-actions">
+                    <button type="button" class="btn-copy" onclick="copyText(`«آلية العمل»
+في 3 خطوات مجانية تحول من مستهلك لصاحب مشروع:
+1. غيّر وجهتك (استهلك بذكاء): لا تدفع دون مقابل بعد الآن! حوّل مشترياتك الاعتيادية إلى المحلات والمواقع الشريكة لمنصة سويّاً.
+2. ابنِ مجتمعك وابدأ بجني الأرباح، ضاعف دخلك: إبدأ بدعوة معارفك.. أنت تقدم لهم خدمة عظيمة.
+3. ضاعف دخلك: قم بدعوة فريقك لتكرار الخطوتين السابقتين، وكلما اتسع فريقك زاد دخلك ودخلهم.`)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="content-card official-badge-card" data-search="للتجار: 3 خطوات تقفز بمبيعاتك «للتجار: في 3 خطوات اقفز بمبيعات مشروعك لأبعد مدى»
+1. أنشئ حساب متجرك مجاناً.
+2. حدد نسبة عمولات متوازنة تستطيع ان تردها لجيش عملاء سويا إذا حولوا مشترياتهم لك.
+3. وثق لكل عميل فاتورته بتطبيق سويا.">
+                <div>
+                    <div class="card-top">
+                        <span class="pill-badge pill-official">🏛️ معتمد رسمياً من الإدارة</span>
+                        <span class="card-code">OFFICIAL-009</span>
+                    </div>
+                    <div class="card-title">للتجار: 3 خطوات تقفز بمبيعاتك</div>
+                    <div class="card-text">«للتجار: في 3 خطوات اقفز بمبيعات مشروعك لأبعد مدى»<br>1. أنشئ حساب متجرك مجاناً.<br>2. حدد نسبة عمولات متوازنة تستطيع ان تردها لجيش عملاء سويا إذا حولوا مشترياتهم لك.<br>3. وثق لكل عميل فاتورته بتطبيق سويا.</div>
+                    <div class="card-notes">📌 <em>الدليل الإرشادي السريع المعتمد للتعاقد مع التجار.</em></div>
+                </div>
+                <div class="card-actions">
+                    <button type="button" class="btn-copy" onclick="copyText(`«للتجار: في 3 خطوات اقفز بمبيعات مشروعك لأبعد مدى»
+1. أنشئ حساب متجرك مجاناً.
+2. حدد نسبة عمولات متوازنة تستطيع ان تردها لجيش عملاء سويا إذا حولوا مشترياتهم لك.
+3. وثق لكل عميل فاتورته بتطبيق سويا.`)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="content-card official-badge-card" data-search="تجار مميزون حول العالم «تجار مميزون — تعرف على آلاف التجار المعتمدين من سويا حول العالم بأغلب المجالات»">
+                <div>
+                    <div class="card-top">
+                        <span class="pill-badge pill-official">🏛️ معتمد رسمياً من الإدارة</span>
+                        <span class="card-code">OFFICIAL-010</span>
+                    </div>
+                    <div class="card-title">تجار مميزون حول العالم</div>
+                    <div class="card-text">«تجار مميزون — تعرف على آلاف التجار المعتمدين من سويا حول العالم بأغلب المجالات»</div>
+                    <div class="card-notes">📌 <em>عنوان دليل المتاجر والشركاء في الموقع والتطبيق.</em></div>
+                </div>
+                <div class="card-actions">
+                    <button type="button" class="btn-copy" onclick="copyText(`«تجار مميزون — تعرف على آلاف التجار المعتمدين من سويا حول العالم بأغلب المجالات»`)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="content-card official-badge-card" data-search="أهلاً بك في عالم الاستهلاك الاستثماري «أهلا بك في عالم الاستهلاك الاستثماري (Buy and Make Money) — حيث تصنع مشروعك ببساطة ليس فقط من مشترياتك اليومية بل من مشتريات آلاف الأعضاء بفريقك»">
+                <div>
+                    <div class="card-top">
+                        <span class="pill-badge pill-official">🏛️ معتمد رسمياً من الإدارة</span>
+                        <span class="card-code">OFFICIAL-011</span>
+                    </div>
+                    <div class="card-title">أهلاً بك في عالم الاستهلاك الاستثماري</div>
+                    <div class="card-text">«أهلا بك في عالم الاستهلاك الاستثماري (Buy and Make Money) — حيث تصنع مشروعك ببساطة ليس فقط من مشترياتك اليومية بل من مشتريات آلاف الأعضاء بفريقك»</div>
+                    <div class="card-notes">📌 <em>البيان التأسيسي المعتمد للمنصة.</em></div>
+                </div>
+                <div class="card-actions">
+                    <button type="button" class="btn-copy" onclick="copyText(`«أهلا بك في عالم الاستهلاك الاستثماري (Buy and Make Money) — حيث تصنع مشروعك ببساطة ليس فقط من مشترياتك اليومية بل من مشتريات آلاف الأعضاء بفريقك»`)">📋 نسخ النص</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 3: CANDIDATE MARKETING PHRASES (العبارات والرسائل التسويقية المرشحة) -->
+    <div id="tab-candidate" class="tab-content">
+        <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 14px 20px; margin-bottom: 24px; color: #fbbf24; font-weight: 700;">
+            💡 <strong>بنك الأفكار التسويقية الاستراتيجية:</strong> عبارات وخطافات تسويقية مستخرجة ومصاغة بعناية من الشروحات المرئية لتناسب الريلز، البوستات، والرسائل المباشرة.
+        </div>
+        <div class="cards-grid" id="candidateGrid">
+            <div class="content-card" data-search="سؤال العشرين سنة ومحل الملابس لو بتشتري أنت وعيلتك من نفس المحل بقالكم 20 سنة.. هل تقدر تقله اديني شهر واحد مجاناً لأنني عميل وفي؟ مستحيل! في SAWYAN وفاءك لمشترياتك هو أساس دخلك.">
+                <div>
+                    <div class="card-top">
+                        <span class="pill-badge pill-candidate">💡 فكرة تسويقية مرشحة</span>
+                        <span class="card-code">HOOK-001</span>
+                    </div>
+                    <div class="card-title">سؤال العشرين سنة ومحل الملابس</div>
+                    <div class="card-text">لو بتشتري أنت وعيلتك من نفس المحل بقالكم 20 سنة.. هل تقدر تقله اديني شهر واحد مجاناً لأنني عميل وفي؟ مستحيل! في SAWYAN وفاءك لمشترياتك هو أساس دخلك.</div>
+                    <div class="card-notes">📌 <em>أول 3 ثوانٍ في الفيديوهات القصيرة، نسبة استبقاء المشاهدين تتجاوز 80%.</em></div>
+                </div>
+                <div class="card-actions">
+                    <button type="button" class="btn-copy" onclick="copyText(`لو بتشتري أنت وعيلتك من نفس المحل بقالكم 20 سنة.. هل تقدر تقله اديني شهر واحد مجاناً لأنني عميل وفي؟ مستحيل! في SAWYAN وفاءك لمشترياتك هو أساس دخلك.`)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="content-card" data-search="أين ذهبت ملايين فواتير السوبر ماركت؟ كم أنفقت طوال حياتك على السوبر ماركت والصيدلية والمطاعم؟ ماذا لو عاد كل هذا الاستهلاك كأرباح شهرية تتنامى كل يوم؟">
+                <div>
+                    <div class="card-top">
+                        <span class="pill-badge pill-candidate">💡 فكرة تسويقية مرشحة</span>
+                        <span class="card-code">HOOK-002</span>
+                    </div>
+                    <div class="card-title">أين ذهبت ملايين فواتير السوبر ماركت؟</div>
+                    <div class="card-text">كم أنفقت طوال حياتك على السوبر ماركت والصيدلية والمطاعم؟ ماذا لو عاد كل هذا الاستهلاك كأرباح شهرية تتنامى كل يوم؟</div>
+                    <div class="card-notes">📌 <em>يصلح كمنشور تفاعلي على فيسبوك وتويتر وبداية محتوى مرئي.</em></div>
+                </div>
+                <div class="card-actions">
+                    <button type="button" class="btn-copy" onclick="copyText(`كم أنفقت طوال حياتك على السوبر ماركت والصيدلية والمطاعم؟ ماذا لو عاد كل هذا الاستهلاك كأرباح شهرية تتنامى كل يوم؟`)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="content-card" data-search="ألم الإعلانات الممولة مجهولة العائد كم تاجر تعرفه خسر آلاف الدولارات في حملات تسويقية مجهولة المردود؟ في SAWYAN: ادفع مقابل النتائج والمبيعات الحقيقية فقط!">
+                <div>
+                    <div class="card-top">
+                        <span class="pill-badge pill-candidate">💡 فكرة تسويقية مرشحة</span>
+                        <span class="card-code">HOOK-003</span>
+                    </div>
+                    <div class="card-title">ألم الإعلانات الممولة مجهولة العائد</div>
+                    <div class="card-text">كم تاجر تعرفه خسر آلاف الدولارات في حملات تسويقية مجهولة المردود؟ في SAWYAN: ادفع مقابل النتائج والمبيعات الحقيقية فقط!</div>
+                    <div class="card-notes">📌 <em>موجه لأصحاب المتاجر والمطاعم على لينكد إن وإنستغرام.</em></div>
+                </div>
+                <div class="card-actions">
+                    <button type="button" class="btn-copy" onclick="copyText(`كم تاجر تعرفه خسر آلاف الدولارات في حملات تسويقية مجهولة المردود؟ في SAWYAN: ادفع مقابل النتائج والمبيعات الحقيقية فقط!`)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="content-card" data-search="أكثر ما تكرهه.. أكبر استثمار في حياتك أكثر ما نفعله كل يوم.. هو أكثر ما نكرهه: الدفع! من اليوم، كل فاتورة تدفعها لم تعد استنزافاً لجيبك، بل بذرة لمشروعك المالي المستقل.">
+                <div>
+                    <div class="card-top">
+                        <span class="pill-badge pill-candidate">💡 فكرة تسويقية مرشحة</span>
+                        <span class="card-code">HOOK-004</span>
+                    </div>
+                    <div class="card-title">أكثر ما تكرهه.. أكبر استثمار في حياتك</div>
+                    <div class="card-text">أكثر ما نفعله كل يوم.. هو أكثر ما نكرهه: الدفع! من اليوم، كل فاتورة تدفعها لم تعد استنزافاً لجيبك، بل بذرة لمشروعك المالي المستقل.</div>
+                    <div class="card-notes">📌 <em>مقدمة قوية جداً للمنشورات والفيديوهات الطويلة.</em></div>
+                </div>
+                <div class="card-actions">
+                    <button type="button" class="btn-copy" onclick="copyText(`أكثر ما نفعله كل يوم.. هو أكثر ما نكرهه: الدفع! من اليوم، كل فاتورة تدفعها لم تعد استنزافاً لجيبك، بل بذرة لمشروعك المالي المستقل.`)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="content-card" data-search="أنت لا تبيع منتجات.. أنت تحمي ميزانية الأسر عندما تشارك SAWYAN مع أصدقائك، أنت لا تطلب منهم شراء سلع لا يحتاجونها.. أنت تهديهم مفتاحاً لتحويل فواتيرهم الإلزامية إلى أرباح تعينهم على غلاء المعيشة.">
+                <div>
+                    <div class="card-top">
+                        <span class="pill-badge pill-candidate">💡 فكرة تسويقية مرشحة</span>
+                        <span class="card-code">CAND-MBR-001</span>
+                    </div>
+                    <div class="card-title">أنت لا تبيع منتجات.. أنت تحمي ميزانية الأسر</div>
+                    <div class="card-text">عندما تشارك SAWYAN مع أصدقائك، أنت لا تطلب منهم شراء سلع لا يحتاجونها.. أنت تهديهم مفتاحاً لتحويل فواتيرهم الإلزامية إلى أرباح تعينهم على غلاء المعيشة.</div>
+                    <div class="card-notes">📌 <em>لجروبات تدريب الأعضاء وقنوات التلغرام لرفع الروح المعنوية.</em></div>
+                </div>
+                <div class="card-actions">
+                    <button type="button" class="btn-copy" onclick="copyText(`عندما تشارك SAWYAN مع أصدقائك، أنت لا تطلب منهم شراء سلع لا يحتاجونها.. أنت تهديهم مفتاحاً لتحويل فواتيرهم الإلزامية إلى أرباح تعينهم على غلاء المعيشة.`)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="content-card" data-search="مشروعك ينمو وأنت نائم في SAWYAN: أنت لا تبني مشروعاً ينتهي بانتهاء ساعات عملك، بل تبني شبكة استهلاك استثماري تعمل في كل دقيقة تشتري فيها أسرة حليباً أو خبزاً أو دواءً حول العالم.">
+                <div>
+                    <div class="card-top">
+                        <span class="pill-badge pill-candidate">💡 فكرة تسويقية مرشحة</span>
+                        <span class="card-code">CAND-MBR-002</span>
+                    </div>
+                    <div class="card-title">مشروعك ينمو وأنت نائم</div>
+                    <div class="card-text">في SAWYAN: أنت لا تبني مشروعاً ينتهي بانتهاء ساعات عملك، بل تبني شبكة استهلاك استثماري تعمل في كل دقيقة تشتري فيها أسرة حليباً أو خبزاً أو دواءً حول العالم.</div>
+                    <div class="card-notes">📌 <em>لرسائل التحفيز الأسبوعية وتكريم القادة.</em></div>
+                </div>
+                <div class="card-actions">
+                    <button type="button" class="btn-copy" onclick="copyText(`في SAWYAN: أنت لا تبني مشروعاً ينتهي بانتهاء ساعات عملك، بل تبني شبكة استهلاك استثماري تعمل في كل دقيقة تشتري فيها أسرة حليباً أو خبزاً أو دواءً حول العالم.`)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="content-card" data-search="زبائن يبحثون عنك بالاسم في كل منصات التسويق أنت تطارد العميل.. في SAWYAN أعضاء المنصة هم من يبحثون عن متجرك على الخريطة ليوجهوا كل مشترياتهم إليك!">
+                <div>
+                    <div class="card-top">
+                        <span class="pill-badge pill-candidate">💡 فكرة تسويقية مرشحة</span>
+                        <span class="card-code">CAND-MCH-001</span>
+                    </div>
+                    <div class="card-title">زبائن يبحثون عنك بالاسم</div>
+                    <div class="card-text">في كل منصات التسويق أنت تطارد العميل.. في SAWYAN أعضاء المنصة هم من يبحثون عن متجرك على الخريطة ليوجهوا كل مشترياتهم إليك!</div>
+                    <div class="card-notes">📌 <em>لبروشورات استقطاب التجار والمقابلات المباشرة مع أصحاب الأعمال.</em></div>
+                </div>
+                <div class="card-actions">
+                    <button type="button" class="btn-copy" onclick="copyText(`في كل منصات التسويق أنت تطارد العميل.. في SAWYAN أعضاء المنصة هم من يبحثون عن متجرك على الخريطة ليوجهوا كل مشترياتهم إليك!`)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="content-card" data-search="دعوة الأهل والأصدقاء المباشرة السلام عليكم ورحمة الله.. كلنا شهرياً بنصرف مصاريف البيت من سوبر ماركت وصيدليات ومطاعم وما بيرجع لنا منها ولا قرش. حابب أشاركك منصة عالمية راقية اسمها SAWYAN (الاستهلاك الاستثماري: Buy and Make Money).. فكرتها إننا بنشتري بنفس أسعارنا العادية من المحلات الشريكة، وفواتيرنا بتتحول لأرباح حقيقية بتنزل بحسابنا كل شهر. التسجيل مجاني تماماً 100% وبدون أي شروط. شوف التفاصيل وسجل من هنا: sawyan.net بكود عضويتي: [كود_عضويتك]">
+                <div>
+                    <div class="card-top">
+                        <span class="pill-badge pill-candidate">💡 فكرة تسويقية مرشحة</span>
+                        <span class="card-code">MSG-WA-001</span>
+                    </div>
+                    <div class="card-title">دعوة الأهل والأصدقاء المباشرة</div>
+                    <div class="card-text">السلام عليكم ورحمة الله.. كلنا شهرياً بنصرف مصاريف البيت من سوبر ماركت وصيدليات ومطاعم وما بيرجع لنا منها ولا قرش. حابب أشاركك منصة عالمية راقية اسمها SAWYAN (الاستهلاك الاستثماري: Buy and Make Money).. فكرتها إننا بنشتري بنفس أسعارنا العادية من المحلات الشريكة، وفواتيرنا بتتحول لأرباح حقيقية بتنزل بحسابنا كل شهر. التسجيل مجاني تماماً 100% وبدون أي شروط. شوف التفاصيل وسجل من هنا: sawyan.net بكود عضويتي: [كود_عضويتك]</div>
+                    <div class="card-notes">📌 <em>قالب واتساب جاهز للإرسال السريع للأقارب والمعارف.</em></div>
+                </div>
+                <div class="card-actions">
+                    <button type="button" class="btn-copy" onclick="copyText(`السلام عليكم ورحمة الله.. كلنا شهرياً بنصرف مصاريف البيت من سوبر ماركت وصيدليات ومطاعم وما بيرجع لنا منها ولا قرش. حابب أشاركك منصة عالمية راقية اسمها SAWYAN (الاستهلاك الاستثماري: Buy and Make Money).. فكرتها إننا بنشتري بنفس أسعارنا العادية من المحلات الشريكة، وفواتيرنا بتتحول لأرباح حقيقية بتنزل بحسابنا كل شهر. التسجيل مجاني تماماً 100% وبدون أي شروط. شوف التفاصيل وسجل من هنا: sawyan.net بكود عضويتي: [كود_عضويتك]`)">📋 نسخ النص</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: FULL SCRIPTS (السكربتات الإعلانية الثلاثة المشكولة) -->
+    <div id="tab-scripts" class="tab-content">
+        <div class="script-hero-box" data-search="فيديو الواجهة الرئيسي المعتمد (45 ثانية) «أَكْثَرُ مَا نَفْعَلُهُ كُلَّ يَوْمٍ.. هُوَ أَكْثَرُ مَا نَكْرَهُهُ.. الدَّفْعُ!»
+«مِنَ اليَوْمِ.. تَغَيَّرَ الوَضْعُ! أَهْلاً بِكَ فِي SAWYAN مَنَصَّةِ الِاسْتِهْلَاكِ الِاسْتِثْمَارِيِّ العَالَمِيَّةِ.»
+«تَسَوَّقْ بِنَفْسِ أَسْعَارِكَ الطَّبِيعِيَّةِ مِنَ السُّوبَر مَارْكِت، وَالصَّيْدَلِيَّةِ، وَالمَطْعَمِ.. وَلَكِنْ هَذِهِ المَرَّةَ: مَدْفُوعَاتُكَ لَنْ تَضِيعَ، بَلْ سَتَتَحَوَّلُ إِلَى عَائِدَاتٍ حَقِيقِيَّةٍ تَنْمُو كُلَّ شَهْرٍ.»
+«فَقَطْ غَيِّرْ مَتْجَرَكَ، وَتَسَوَّقْ مَعَ المَتَاجِرِ الَّتِي تَعَاقَدْنَا مَعَهَا لِنَتَشَارَكَكَ الأَرْبَاحَ.. فَقَطْ أَخْبِرِ المَتْجَرَ الشَّرِيكَ أَنَّكَ عُضْوٌ بِـ SAWYAN، وَشَارِكِ الفِكْرَةَ مَعَ مَعَارِفِكَ لِيَتَضَاعَفَ دَخْلُكَ وَدَخْلُهُمْ!»
+«وَلِلتُّجَّارِ: لَا مُجَازَفَةَ بِإِعْلَانَاتٍ مَجْهُولَةِ العَائِدِ بَعْدَ الآنَ.. آلَافُ العُمَلَاءِ فِي انْتِظَارِكَ، وَادْفَعْ فَقَطْ مُقَابِلَ النَّتَائِجِ.. لَا الوُعُودِ!»
+«صِفْرُ مُخَاطَرَةٍ.. صِفْرُ رَأْسِ مَالٍ.. صِفْرُ مُؤَهِّلَاتٍ!»
+«الحُرِّيَّةُ المَالِيَّةُ لَيْسَتْ وَهْماً.. بَلْ حَقِيقَةٌ يَفْصِلُكَ عَنْهَا خَطْوَةٌ وَاحِدَةٌ.. SAWYAN.»">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                <span class="pill-badge pill-official">الخيار 1: الصدمة الإيجابية (السكربت المعتمد والمشكول)</span>
+                <button type="button" class="btn-copy" onclick="copyText(`«أَكْثَرُ مَا نَفْعَلُهُ كُلَّ يَوْمٍ.. هُوَ أَكْثَرُ مَا نَكْرَهُهُ.. الدَّفْعُ!»
+«مِنَ اليَوْمِ.. تَغَيَّرَ الوَضْعُ! أَهْلاً بِكَ فِي SAWYAN مَنَصَّةِ الِاسْتِهْلَاكِ الِاسْتِثْمَارِيِّ العَالَمِيَّةِ.»
+«تَسَوَّقْ بِنَفْسِ أَسْعَارِكَ الطَّبِيعِيَّةِ مِنَ السُّوبَر مَارْكِت، وَالصَّيْدَلِيَّةِ، وَالمَطْعَمِ.. وَلَكِنْ هَذِهِ المَرَّةَ: مَدْفُوعَاتُكَ لَنْ تَضِيعَ، بَلْ سَتَتَحَوَّلُ إِلَى عَائِدَاتٍ حَقِيقِيَّةٍ تَنْمُو كُلَّ شَهْرٍ.»
+«فَقَطْ غَيِّرْ مَتْجَرَكَ، وَتَسَوَّقْ مَعَ المَتَاجِرِ الَّتِي تَعَاقَدْنَا مَعَهَا لِنَتَشَارَكَكَ الأَرْبَاحَ.. فَقَطْ أَخْبِرِ المَتْجَرَ الشَّرِيكَ أَنَّكَ عُضْوٌ بِـ SAWYAN، وَشَارِكِ الفِكْرَةَ مَعَ مَعَارِفِكَ لِيَتَضَاعَفَ دَخْلُكَ وَدَخْلُهُمْ!»
+«وَلِلتُّجَّارِ: لَا مُجَازَفَةَ بِإِعْلَانَاتٍ مَجْهُولَةِ العَائِدِ بَعْدَ الآنَ.. آلَافُ العُمَلَاءِ فِي انْتِظَارِكَ، وَادْفَعْ فَقَطْ مُقَابِلَ النَّتَائِجِ.. لَا الوُعُودِ!»
+«صِفْرُ مُخَاطَرَةٍ.. صِفْرُ رَأْسِ مَالٍ.. صِفْرُ مُؤَهِّلَاتٍ!»
+«الحُرِّيَّةُ المَالِيَّةُ لَيْسَتْ وَهْماً.. بَلْ حَقِيقَةٌ يَفْصِلُكَ عَنْهَا خَطْوَةٌ وَاحِدَةٌ.. SAWYAN.»`)">📋 نسخ السكربت كاملاً</button>
+            </div>
+            <div class="vocalized-script-text">«أَكْثَرُ مَا نَفْعَلُهُ كُلَّ يَوْمٍ.. هُوَ أَكْثَرُ مَا نَكْرَهُهُ.. الدَّفْعُ!»<br>«مِنَ اليَوْمِ.. تَغَيَّرَ الوَضْعُ! أَهْلاً بِكَ فِي SAWYAN مَنَصَّةِ الِاسْتِهْلَاكِ الِاسْتِثْمَارِيِّ العَالَمِيَّةِ.»<br>«تَسَوَّقْ بِنَفْسِ أَسْعَارِكَ الطَّبِيعِيَّةِ مِنَ السُّوبَر مَارْكِت، وَالصَّيْدَلِيَّةِ، وَالمَطْعَمِ.. وَلَكِنْ هَذِهِ المَرَّةَ: مَدْفُوعَاتُكَ لَنْ تَضِيعَ، بَلْ سَتَتَحَوَّلُ إِلَى عَائِدَاتٍ حَقِيقِيَّةٍ تَنْمُو كُلَّ شَهْرٍ.»<br>«فَقَطْ غَيِّرْ مَتْجَرَكَ، وَتَسَوَّقْ مَعَ المَتَاجِرِ الَّتِي تَعَاقَدْنَا مَعَهَا لِنَتَشَارَكَكَ الأَرْبَاحَ.. فَقَطْ أَخْبِرِ المَتْجَرَ الشَّرِيكَ أَنَّكَ عُضْوٌ بِـ SAWYAN، وَشَارِكِ الفِكْرَةَ مَعَ مَعَارِفِكَ لِيَتَضَاعَفَ دَخْلُكَ وَدَخْلُهُمْ!»<br>«وَلِلتُّجَّارِ: لَا مُجَازَفَةَ بِإِعْلَانَاتٍ مَجْهُولَةِ العَائِدِ بَعْدَ الآنَ.. آلَافُ العُمَلَاءِ فِي انْتِظَارِكَ، وَادْفَعْ فَقَطْ مُقَابِلَ النَّتَائِجِ.. لَا الوُعُودِ!»<br>«صِفْرُ مُخَاطَرَةٍ.. صِفْرُ رَأْسِ مَالٍ.. صِفْرُ مُؤَهِّلَاتٍ!»<br>«الحُرِّيَّةُ المَالِيَّةُ لَيْسَتْ وَهْماً.. بَلْ حَقِيقَةٌ يَفْصِلُكَ عَنْهَا خَطْوَةٌ وَاحِدَةٌ.. SAWYAN.»</div>
+            <div style="color:#94a3b8; font-size:0.9rem; margin-top:12px;">📌 الخيار المعتمد رسمياً للواجهة الرئيسية، مع تشكيل صوتي كامل جاهز للتسجيل.</div>
+        </div>
+        <div class="script-hero-box" data-search="رحلة الـ 3 خطوات والمكعب البلوري (45 ثانية) «طوال عقود.. كان المستهلك هو الحلقة الأضعف: تدفع المال، تستهلك السلعة، وتعود لنقطة الصفر. نظام SAWYAN جاء ليعيد كتابة القواعد: الاستهلاك الاستثماري (Buy and Make Money). مشترياتك المعتادة أصبحت أصلك الاستثماري الأول. في 3 خطوات مجانية فقط:
+1. غيّر وجهتك للمتاجر المعتمدة.
+2. وثّق فاتورتك بكود هويتك في ثوانٍ.
+3. ابنِ مجتمعك واشهد نمو عائداتك شهراً بعد شهر.
+نظام عادل، حلال 100%، بدون بضائع مخزنة، ولا وعود سرابية. ربح حقيقي قائم على فواتير حقيقية. انضم إلينا اليوم على sawyan.net.»">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                <span class="pill-badge pill-script">الخيار 2: موشن جرافيك 3D</span>
+                <button type="button" class="btn-copy" onclick="copyText(`«طوال عقود.. كان المستهلك هو الحلقة الأضعف: تدفع المال، تستهلك السلعة، وتعود لنقطة الصفر. نظام SAWYAN جاء ليعيد كتابة القواعد: الاستهلاك الاستثماري (Buy and Make Money). مشترياتك المعتادة أصبحت أصلك الاستثماري الأول. في 3 خطوات مجانية فقط:
+1. غيّر وجهتك للمتاجر المعتمدة.
+2. وثّق فاتورتك بكود هويتك في ثوانٍ.
+3. ابنِ مجتمعك واشهد نمو عائداتك شهراً بعد شهر.
+نظام عادل، حلال 100%، بدون بضائع مخزنة، ولا وعود سرابية. ربح حقيقي قائم على فواتير حقيقية. انضم إلينا اليوم على sawyan.net.»`)">📋 نسخ السكربت كاملاً</button>
+            </div>
+            <div class="vocalized-script-text">«طوال عقود.. كان المستهلك هو الحلقة الأضعف: تدفع المال، تستهلك السلعة، وتعود لنقطة الصفر. نظام SAWYAN جاء ليعيد كتابة القواعد: الاستهلاك الاستثماري (Buy and Make Money). مشترياتك المعتادة أصبحت أصلك الاستثماري الأول. في 3 خطوات مجانية فقط:<br>1. غيّر وجهتك للمتاجر المعتمدة.<br>2. وثّق فاتورتك بكود هويتك في ثوانٍ.<br>3. ابنِ مجتمعك واشهد نمو عائداتك شهراً بعد شهر.<br>نظام عادل، حلال 100%، بدون بضائع مخزنة، ولا وعود سرابية. ربح حقيقي قائم على فواتير حقيقية. انضم إلينا اليوم على sawyan.net.»</div>
+            <div style="color:#94a3b8; font-size:0.9rem; margin-top:12px;">📌 سكربت بصري ثلاثي الأبعاد يركز على بساطة الخطوات الثلاث ونقاء الفكرة.</div>
+        </div>
+        <div class="script-hero-box" data-search="حكاية أسرة وتاجر: كلنا SAWYAN (60 ثانية) «كل صباح.. نخرج لنعمل، لنلبي احتياجات من نحب. نشتري، نستهلك، ونبذل ما نملك لتأمين مستقبل عائلاتنا. لكن ماذا لو كانت كل فاتورة تدفعها لم تعد استنزافاً لراتبك.. بل خطوة جديدة نحو حريتك المالية واستقرارك؟ هنا ولدت فكرة SAWYAN.. أن نكون معاً. أنت لست زبوناً عادياً، بل شريك في الأرباح. تسوّق بالسعر الطبيعي، ودلّ من تحب على نفس الطريق. ولأن التجارة شراكة وأمان: تجارنا لا يدفعون ميزانيات تسويق ضائعة، بل يستقبلون مجتمعاً من آلاف الأسر الموجهة لمتجرهم بولاء دائم. سواء كنت متسوقاً، أو تاجراً، أو تبحث عن دخل يحمي غدك.. مكانك بيننا. كلنا SAWYAN — منصة الاستهلاك الاستثماري العالمية.»">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                <span class="pill-badge pill-script">الخيار 3: الدراما الوثائقية</span>
+                <button type="button" class="btn-copy" onclick="copyText(`«كل صباح.. نخرج لنعمل، لنلبي احتياجات من نحب. نشتري، نستهلك، ونبذل ما نملك لتأمين مستقبل عائلاتنا. لكن ماذا لو كانت كل فاتورة تدفعها لم تعد استنزافاً لراتبك.. بل خطوة جديدة نحو حريتك المالية واستقرارك؟ هنا ولدت فكرة SAWYAN.. أن نكون معاً. أنت لست زبوناً عادياً، بل شريك في الأرباح. تسوّق بالسعر الطبيعي، ودلّ من تحب على نفس الطريق. ولأن التجارة شراكة وأمان: تجارنا لا يدفعون ميزانيات تسويق ضائعة، بل يستقبلون مجتمعاً من آلاف الأسر الموجهة لمتجرهم بولاء دائم. سواء كنت متسوقاً، أو تاجراً، أو تبحث عن دخل يحمي غدك.. مكانك بيننا. كلنا SAWYAN — منصة الاستهلاك الاستثماري العالمية.»`)">📋 نسخ السكربت كاملاً</button>
+            </div>
+            <div class="vocalized-script-text">«كل صباح.. نخرج لنعمل، لنلبي احتياجات من نحب. نشتري، نستهلك، ونبذل ما نملك لتأمين مستقبل عائلاتنا. لكن ماذا لو كانت كل فاتورة تدفعها لم تعد استنزافاً لراتبك.. بل خطوة جديدة نحو حريتك المالية واستقرارك؟ هنا ولدت فكرة SAWYAN.. أن نكون معاً. أنت لست زبوناً عادياً، بل شريك في الأرباح. تسوّق بالسعر الطبيعي، ودلّ من تحب على نفس الطريق. ولأن التجارة شراكة وأمان: تجارنا لا يدفعون ميزانيات تسويق ضائعة، بل يستقبلون مجتمعاً من آلاف الأسر الموجهة لمتجرهم بولاء دائم. سواء كنت متسوقاً، أو تاجراً، أو تبحث عن دخل يحمي غدك.. مكانك بيننا. كلنا SAWYAN — منصة الاستهلاك الاستثماري العالمية.»</div>
+            <div style="color:#94a3b8; font-size:0.9rem; margin-top:12px;">📌 سكربت ملهم للأفلام الوثائقية والمناسبات الكبرى.</div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toastMsg">تم النسخ إلى الحافظة بنجاح ✓</div>
+
+<script>
+function switchTab(tabId) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+    const btns = Array.from(document.querySelectorAll('.tab-btn'));
+    const activeBtn = btns.find(b => b.getAttribute('onclick') && b.getAttribute('onclick').includes(tabId));
+    if (activeBtn) activeBtn.classList.add('active');
+
+    const targetTab = document.getElementById('tab-' + tabId);
+    if (targetTab) targetTab.classList.add('active');
+}
+
+function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+            showToast('تم نسخ النص بنجاح ✓');
+        }).catch(() => fallbackCopy(text));
+    } else {
+        fallbackCopy(text);
     }
-
-    openModal('historyModal');
 }
 
-function openEditModal(id) {
-    const item = VAULT_DATA.find(i => i.id === id);
-    if (!item) return;
-
-    document.getElementById('editItemId').value = item.id;
-    document.getElementById('editTitle').value = item.title;
-    document.getElementById('editText').value = item.current_text;
-    document.getElementById('editReason').value = '';
-    document.getElementById('editNotes').value = item.usage_notes || '';
-    document.getElementById('editModalTitle').innerText = `تطوير العبارة: [${item.id}] — إصدار جديد`;
-
-    openModal('editModal');
+function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('تم نسخ النص بنجاح ✓');
 }
 
-function saveEdit(e) {
-    e.preventDefault();
-    const id = document.getElementById('editItemId').value;
-    const item = VAULT_DATA.find(i => i.id === id);
-    if (!item) return;
-
-    const newTitle = document.getElementById('editTitle').value.trim();
-    const newText = document.getElementById('editText').value.trim();
-    const reason = document.getElementById('editReason').value.trim();
-    const notes = document.getElementById('editNotes').value.trim();
-
-    // Push current to history if text changed
-    if (newText !== item.current_text) {
-        if (!item.history) item.history = [];
-        item.history.push({
-            version: item.version,
-            date: new Date().toISOString().split('T')[0],
-            reason: reason,
-            text: item.current_text
-        });
-
-        // Bump version
-        const vNum = parseFloat(item.version) || 1.0;
-        item.version = (vNum + 0.1).toFixed(1);
-    }
-
-    item.title = newTitle;
-    item.current_text = newText;
-    item.usage_notes = notes;
-
-    closeModal('editModal');
-    renderItems();
-    alert(`تم حفظ الإصدار الجديد (V${item.version}) بنجاح! تم نقل النص السابق للأرشيف التاريخي.`);
+function showToast(msg) {
+    const t = document.getElementById('toastMsg');
+    t.innerText = msg;
+    t.classList.add('show');
+    setTimeout(() => {
+        t.classList.remove('show');
+    }, 2500);
 }
 
-function openAddNewModal() {
-    const newId = `ITEM-${String(VAULT_DATA.length + 1).padStart(3, '0')}`;
-    const newItem = {
-        id: newId,
-        category: 'custom',
-        audience: 'all',
-        type: 'عبارة جديدة',
-        title: 'فكرة أو صياغة جديدة',
-        current_text: '',
-        status: 'draft',
-        version: '1.0',
-        history: [],
-        usage_notes: ''
-    };
-    VAULT_DATA.unshift(newItem);
-    openEditModal(newId);
-}
-
-function exportJSON() {
-    const exportObj = {
-        system: "SAWYAN Strategic Marketing & Content Vault",
-        version: "1.1.0",
-        last_updated: new Date().toISOString().split('T')[0],
-        domain: "sawyan.net",
-        items: VAULT_DATA
-    };
-    const str = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj, null, 2));
-    const dlAnchor = document.createElement('a');
-    dlAnchor.setAttribute("href", str);
-    dlAnchor.setAttribute("download", `marketing_content_vault_${new Date().toISOString().split('T')[0]}.json`);
-    dlAnchor.click();
-}
-
-function exportMarkdown() {
-    let md = `# 🏛️ بنك المحتوى والتسويق الاستراتيجي — SAWYAN\n\n`;
-    md += `> تاريخ التصدير: ${new Date().toISOString().split('T')[0]} | الدومين: sawyan.net\n\n`;
-    VAULT_DATA.forEach(i => {
-        md += `### [${i.id}] ${i.title}\n`;
-        md += `* **النوع:** ${i.type} | **الجمهور:** ${i.audience} | **الإصدار:** V${i.version}\n`;
-        md += `> ${i.current_text}\n\n`;
-        if (i.history && i.history.length > 0) {
-            md += `* **تاريخ التعديلات السابقة:**\n`;
-            i.history.forEach(h => {
-                md += `  - *V${h.version} (${h.date}):* ${h.reason}\n`;
-            });
-            md += `\n`;
+function filterContent() {
+    const q = document.getElementById('liveSearchInput').value.trim().toLowerCase();
+    
+    // Filter cards
+    document.querySelectorAll('[data-search]').forEach(el => {
+        const text = el.getAttribute('data-search').toLowerCase();
+        if (!q || text.includes(q)) {
+            el.style.display = '';
+        } else {
+            el.style.display = 'none';
         }
-        md += `---\n\n`;
     });
 
-    const str = "data:text/markdown;charset=utf-8," + encodeURIComponent(md);
-    const dlAnchor = document.createElement('a');
-    dlAnchor.setAttribute("href", str);
-    dlAnchor.setAttribute("download", `SAWYAN_CONTENT_VAULT_${new Date().toISOString().split('T')[0]}.md`);
-    dlAnchor.click();
+    // Filter table rows
+    const rows = document.querySelectorAll('#storyboardTable tbody tr');
+    rows.forEach(r => {
+        const rText = r.innerText.toLowerCase();
+        if (!q || rText.includes(q)) {
+            r.style.display = '';
+        } else {
+            r.style.display = 'none';
+        }
+    });
 }
 
-function openModal(id) {
-    document.getElementById(id).classList.add('open');
+function copyTableContent() {
+    let out = 'جدول المشاهد والإخراج (ثانية بثانية) — SAWYAN\n\n';
+    document.querySelectorAll('#storyboardTable tbody tr').forEach(r => {
+        const cols = r.querySelectorAll('td');
+        out += `التوقيت: ${cols[0].innerText}\nالمشهد: ${cols[1].innerText}\nالتعليق الصوتي: ${cols[2].innerText}\nالمؤثرات: ${cols[3].innerText}\nالنصوص: ${cols[4].innerText}\n------------------------\n`;
+    });
+    copyText(out);
 }
 
-function closeModal(id) {
-    document.getElementById(id).classList.remove('open');
+function copyAllContent() {
+    let out = 'بنك محتوى SAWYAN — الملف الشامل\n\n';
+    out += '=== العبارات المعتمدة من الإدارة ===\n';
+    document.querySelectorAll('#officialGrid .content-card').forEach(c => {
+        out += c.querySelector('.card-title').innerText + ':\n' + c.querySelector('.card-text').innerText + '\n\n';
+    });
+    out += '\n=== العبارات المرشحة ===\n';
+    document.querySelectorAll('#candidateGrid .content-card').forEach(c => {
+        out += c.querySelector('.card-title').innerText + ':\n' + c.querySelector('.card-text').innerText + '\n\n';
+    });
+    copyText(out);
 }
 
-// Close on escape
-window.addEventListener('keydown', e => {
-    if (e.key === 'Escape') {
-        document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
-    }
-});
-
-// Initialize
-loadVault();
+function downloadJSON() {
+    const a = document.createElement('a');
+    a.href = '../../specs/marketing_content_vault.json';
+    a.download = 'marketing_content_vault.json';
+    a.click();
+}
 </script>
-
 </body>
 </html>
