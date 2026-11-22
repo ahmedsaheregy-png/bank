@@ -185,24 +185,16 @@
         });
     }
 
-    function getMatchingMerchants() {
-        let list = [];
-        if (isProdEnvironment()) {
-            list = Array.isArray(livePortalMerchants) ? livePortalMerchants : [];
-        } else {
-            const demoList = Array.isArray(window.globalDemoMerchants) ? window.globalDemoMerchants : [];
-            const liveDemo = Array.isArray(livePortalMerchants) ? livePortalMerchants : [];
-            const existingCodes = new Set(liveDemo.map(function (x) { return x.code; }));
-            list = liveDemo.concat(demoList.filter(function (d) { return !existingCodes.has(d.code); }));
-        }
-        if (currentGeo.country === 'PIONEER') return [];
+    let lastCountryFallbackUsed = false;
 
+    function filterMerchantsPool(list, includeCityFilter) {
         return list.filter(function (m) {
             if (currentGeo.country !== 'ALL' && m.country !== currentGeo.country) {
                 return false;
             }
-            if (currentGeo.country !== 'ALL' && currentGeo.city && currentGeo.city !== 'all') {
-                if (m.cityKey !== currentGeo.city) return false;
+            if (includeCityFilter && currentGeo.country !== 'ALL' && currentGeo.city && currentGeo.city !== 'all') {
+                if (m.cityKey && m.cityKey !== 'all' && m.cityKey !== currentGeo.city) return false;
+                if (!m.cityKey) return false;
             }
             if (explorerState.storeType !== 'all') {
                 if (m.merchantType !== explorerState.storeType && m.merchantType !== 'both') {
@@ -227,6 +219,30 @@
             }
             return true;
         });
+    }
+
+    function getMatchingMerchants() {
+        let list = [];
+        lastCountryFallbackUsed = false;
+        if (isProdEnvironment()) {
+            list = Array.isArray(livePortalMerchants) ? livePortalMerchants : [];
+        } else {
+            const demoList = Array.isArray(window.globalDemoMerchants) ? window.globalDemoMerchants : [];
+            const liveDemo = Array.isArray(livePortalMerchants) ? livePortalMerchants : [];
+            const existingCodes = new Set(liveDemo.map(function (x) { return x.code; }));
+            list = liveDemo.concat(demoList.filter(function (d) { return !existingCodes.has(d.code); }));
+        }
+        if (currentGeo.country === 'PIONEER') return [];
+
+        const strictMatches = filterMerchantsPool(list, true);
+        if (strictMatches.length === 0 && currentGeo.country !== 'ALL' && currentGeo.city && currentGeo.city !== 'all') {
+            const countryWideMatches = filterMerchantsPool(list, false);
+            if (countryWideMatches.length > 0) {
+                lastCountryFallbackUsed = true;
+                return countryWideMatches;
+            }
+        }
+        return strictMatches;
     }
 
     function renderCategoryChips() {
@@ -281,10 +297,9 @@
         const locationText = `${m.countryName || ''} — ${m.city || ''}`;
         const detailHref = `public/merchants.html?country=${encodeURIComponent(m.country)}&city=${encodeURIComponent(m.cityKey || 'all')}&merchant=${encodeURIComponent(m.id)}`;
 
-        const isSafeHero = m.image && /^(https:\/\/|data:image\/(jpeg|jpg|png|webp);base64,|assets\/|\.\.\/assets\/)/i.test(String(m.image));
-        const heroVisual = isSafeHero
-            ? `<img src="${escapeHtml(m.image)}" alt="${escapeHtml(m.businessName)}" class="merchant-hero-img" loading="lazy" onerror="this.style.display='none';this.parentElement.insertAdjacentHTML('afterbegin','<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:3rem;background:linear-gradient(135deg,#0f2744 0%,#065f46 100%);color:#fff;\\'>${icon}</div>')">`
-            : `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:3rem; background:linear-gradient(135deg,#0f2744 0%,#065f46 100%); color:#ffffff;">${icon}</div>`;
+        const isSafeHero = m.image && /^(https:\/\/|data:image\/(jpeg|jpg|png|webp);base64,|assets\/|\.\.\/assets\/|shared\/assets\/)/i.test(String(m.image));
+        const fallbackImg = 'shared/assets/card-merchant.jpg';
+        const heroVisual = `<img src="${escapeHtml(isSafeHero ? m.image : fallbackImg)}" alt="${escapeHtml(m.businessName)}" class="merchant-hero-img" loading="lazy" onerror="this.onerror=null;if(this.src.indexOf('card-merchant.jpg')===-1){this.src='${fallbackImg}';}else{this.style.display='none';}">`;
         const isSafeLogo = m.logoUrl && /^(https:\/\/|data:image\/(jpeg|jpg|png|webp);base64,|assets\/|\.\.\/assets\/)/i.test(String(m.logoUrl));
         const badgeVisual = isSafeLogo
             ? `<img src="${escapeHtml(m.logoUrl)}" alt="" style="width:28px;height:28px;border-radius:8px;object-fit:cover;border:1px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.2);" loading="lazy">`
@@ -325,18 +340,18 @@
         `;
     }
 
-    function renderPioneerCardHtml(cfg) {
+    function renderExpansionCardHtml(cfg) {
         const regMemberHref = `member-dashboard/register.html?country=${encodeURIComponent(cfg.code)}&city=${encodeURIComponent(currentGeo.city || 'all')}`;
         const regMerchHref = `merchant-dashboard/register.html?country=${encodeURIComponent(cfg.code)}&city=${encodeURIComponent(currentGeo.city || 'all')}`;
         return `
-            <div class="pioneer-card">
-                <div style="font-size:2.6rem; margin-bottom:10px;">🚀</div>
-                <h3 style="margin:0 0 8px; font-size:1.35rem; color:#065f46;">أنت في طليعة التوسع: وضع المؤسس الرائد (Pioneer Mode)</h3>
-                <p style="max-width:640px; margin:0 auto 18px; color:#334155; line-height:1.7;">
-                    لم تُضف فروع تجريبية مطابقة لهذا التحديد بعد — لكن تسجيلك وبناء فريقك يعملان <strong>عالمياً بلا قيود جغرافية</strong>، ويمكنك التسوق من المتاجر الإلكترونية العالمية أو ترشيح أول تاجر في مدينتك!
+            <div class="expansion-card">
+                <div style="font-size:2.2rem; margin-bottom:8px;">🌍</div>
+                <h3>التوسّع جارٍ في ${escapeHtml(cfg.name)}</h3>
+                <p>
+                    لا توجد متاجر محلية مضافة بعد لهذا النطاق — لكن تسجيلك وبناء فريقك يعملان <strong>عالمياً بلا قيود جغرافية</strong>، ويمكنك التسوق من المتاجر الإلكترونية أو ترشيح أول تاجر في مدينتك!
                 </p>
                 <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
-                    <a href="${regMemberHref}" class="btn btn-primary btn-sm">سجّل كعضو مؤسس مجاناً</a>
+                    <a href="${regMemberHref}" class="btn btn-primary btn-sm">سجّل مجاناً الآن</a>
                     <a href="${regMerchHref}" class="btn btn-secondary btn-sm">رشّح أو سجّل أول تاجر في مدينتك</a>
                     <button type="button" id="resetToGlobalMerchantsBtn" class="btn btn-outline btn-sm">عرض جميع التجار العالميين 🌍</button>
                 </div>
@@ -352,7 +367,7 @@
         const matched = getMatchingMerchants();
 
         if (matched.length === 0) {
-            grid.innerHTML = renderPioneerCardHtml(cfg);
+            grid.innerHTML = renderExpansionCardHtml(cfg);
             const resetBtn = byId('resetToGlobalMerchantsBtn');
             if (resetBtn) {
                 resetBtn.addEventListener('click', function () {
@@ -379,7 +394,20 @@
             return (b.transactionsCount || 0) - (a.transactionsCount || 0);
         });
 
-        grid.innerHTML = sorted.slice(0, 8).map(buildMerchantCardHtml).join('');
+        let noticeHtml = '';
+        if (currentGeo.country !== 'ALL' && (lastCountryFallbackUsed || (currentGeo.city && currentGeo.city !== 'all'))) {
+            const cities = cfg.cities || {};
+            const cName = cities[currentGeo.city] || '';
+            const scopeNote = cName && cName !== 'جميع المدن' ? `${cfg.name} (${cName})` : cfg.name;
+            noticeHtml = `
+                <div class="geo-fallback-notice">
+                    <span>📍 المتاجر المعتمدة المتاحة في نطاق <strong>${escapeHtml(scopeNote)}</strong> وتشمل عموم الدولة:</span>
+                    <span>عدد المتاجر: ${matched.length}</span>
+                </div>
+            `;
+        }
+
+        grid.innerHTML = noticeHtml + sorted.slice(0, 8).map(buildMerchantCardHtml).join('');
 
         grid.querySelectorAll('.merchant-card[data-merchant-id]').forEach(function (card) {
             card.addEventListener('click', function (e) {
@@ -441,7 +469,15 @@
             return cfg.code === 'ALL' ? true : m.country === cfg.code;
         });
         const isProd = isProdEnvironment();
-        const merchCountText = cfg.code === 'PIONEER' ? 'قريباً' : `${allInGeo.length}`;
+        const liveMerchantCount = allInGeo.length;
+        const showLiveMatureStats = (!isProd && allInGeo.length >= 15) || (isProd && liveMerchantCount >= 15);
+        const valueStrip = byId('heroValueStrip');
+        const liveMetricsStrip = byId('heroCompactLiveMetrics');
+        if (valueStrip) valueStrip.style.display = showLiveMatureStats ? 'none' : 'grid';
+        if (liveMetricsStrip) liveMetricsStrip.style.display = showLiveMatureStats ? 'grid' : 'none';
+        if (byId('valueStripCurrency')) byId('valueStripCurrency').textContent = cfg.currencyCode || 'USD';
+
+        const merchCountText = `${liveMerchantCount}`;
         if (byId('stat-merchants')) byId('stat-merchants').textContent = merchCountText;
         if (byId('bigStatMerchants')) byId('bigStatMerchants').textContent = merchCountText;
         if (byId('stat-members')) byId('stat-members').textContent = isProd ? '0' : '60';
@@ -469,7 +505,7 @@
             byId('walletMonthGain').textContent = `+${mVal}`;
         }
         if (byId('walletPreviewGeoTag')) {
-            byId('walletPreviewGeoTag').textContent = `${cfg.flag} ${cfg.name} (${cfg.currencyCode})`;
+            byId('walletPreviewGeoTag').textContent = `نموذج توضيحي • ${cfg.flag} ${cfg.currencyCode}`;
         }
         if (byId('walletPreviewAmount')) {
             const sampleWallet = Number((124.50 * cfg.fxRate).toFixed(2));
@@ -711,6 +747,108 @@
         });
     }
 
+    function initPromoPlayer() {
+        const card = byId('promoTheatreCard');
+        if (!card) return;
+
+        // Allow drop-in filmed MP4 / YouTube video later via window.SAWYAN_PROMO_VIDEO_URL
+        if (window.SAWYAN_PROMO_VIDEO_URL) {
+            const stage = byId('promoMediaStage');
+            const url = String(window.SAWYAN_PROMO_VIDEO_URL);
+            if (stage && /^https:\/\/.+\.(mp4|webm)(\?.*)?$/i.test(url)) {
+                stage.innerHTML = `<video controls playsinline poster="shared/assets/promo-poster.jpg" style="width:100%;height:100%;object-fit:cover;background:#000;"><source src="${escapeHtml(url)}" type="video/mp4"></video>`;
+                return;
+            }
+        }
+
+        const scenes = [
+            {
+                img: 'shared/assets/card-shopper.jpg',
+                badge: 'المشهد 1 من 4 • التسوق اليومي',
+                title: '1. غيّر وجهتك — لا تدفع دون مقابل بعد الآن!',
+                body: 'تسوّق بالسعر الطبيعي من السوبر ماركت والصيدليات والمطاعم المعتمدة واحصل على عائدات حقيقية تنمو كل يوم.',
+                pct: 25
+            },
+            {
+                img: 'shared/assets/promo-poster.jpg',
+                badge: 'المشهد 2 من 4 • التوثيق والعائد',
+                title: '2. وثّق فاتورتك بكود هويتك في ثوانٍ',
+                body: 'ينعكس عائد الاستهلاك الاستثماري مباشرة في صندوق الهدف الشهري داخل محفظتك بعملتك المحلية.',
+                pct: 50
+            },
+            {
+                img: 'shared/assets/card-merchant.jpg',
+                badge: 'المشهد 3 من 4 • للتجار المعتمدين',
+                title: '3. أنا تاجر: ادفع مقابل النتائج فقط',
+                body: 'ضاعف مبيعاتك دون المجازفة بمبالغ تُنفق على حملات تسويقية مجهولة المردود واستقبل آلاف العملاء.',
+                pct: 75
+            },
+            {
+                img: 'shared/assets/card-why-sawyan.jpg',
+                badge: 'المشهد 4 من 4 • ضاعف دخلك',
+                title: '4. فرصة حقيقية لبناء دخل إضافي مستدام',
+                body: 'صفر مخاطرة، صفر رأس مال، حلال 100% — كلما اتسع فريقك زاد دخلك ودخلهم.',
+                pct: 100
+            }
+        ];
+
+        let idx = 0;
+        let playing = false;
+        let timerId = null;
+
+        function setScene(nextIdx, keepPlaying) {
+            idx = ((nextIdx % scenes.length) + scenes.length) % scenes.length;
+            const sc = scenes[idx];
+            if (byId('promoSlideImg')) byId('promoSlideImg').src = sc.img;
+            if (byId('promoSceneCounter')) byId('promoSceneCounter').textContent = sc.badge;
+            if (byId('promoCaptionTitle')) byId('promoCaptionTitle').textContent = sc.title;
+            if (byId('promoCaptionBody')) byId('promoCaptionBody').textContent = sc.body;
+            if (byId('promoProgressFill')) byId('promoProgressFill').style.width = `${sc.pct}%`;
+            document.querySelectorAll('.promo-chapter-btn').forEach(function (btn) {
+                btn.classList.toggle('active', Number(btn.getAttribute('data-scene')) === idx);
+            });
+            if (!keepPlaying && playing) {
+                clearInterval(timerId);
+                startLoop();
+            }
+        }
+
+        function startLoop() {
+            playing = true;
+            card.classList.add('is-playing');
+            if (byId('promoToggleBtn')) byId('promoToggleBtn').textContent = '⏸ إيقاف مؤقت';
+            clearInterval(timerId);
+            timerId = setInterval(function () { setScene(idx + 1, true); }, 4200);
+        }
+
+        function stopLoop() {
+            playing = false;
+            card.classList.remove('is-playing');
+            if (byId('promoToggleBtn')) byId('promoToggleBtn').textContent = '▶ تشغيل الجولة';
+            clearInterval(timerId);
+        }
+
+        if (byId('promoCenterPlayBtn')) byId('promoCenterPlayBtn').addEventListener('click', startLoop);
+        if (byId('promoToggleBtn')) {
+            byId('promoToggleBtn').addEventListener('click', function () {
+                if (playing) stopLoop(); else startLoop();
+            });
+        }
+        if (byId('heroWatchPromoBtn')) {
+            byId('heroWatchPromoBtn').addEventListener('click', function () {
+                const sec = byId('promo-explainer');
+                if (sec) sec.scrollIntoView({ behavior: 'smooth' });
+                setScene(0, false);
+                startLoop();
+            });
+        }
+        document.querySelectorAll('.promo-chapter-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                setScene(Number(btn.getAttribute('data-scene') || 0), false);
+            });
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         hydrateBrandLogos();
         initThemeToggle();
@@ -718,6 +856,7 @@
         initGeoModal();
         initExplorerControls();
         initHowItWorksTabs();
+        initPromoPlayer();
         initHomeVerifier();
 
         const detected = window.SAWYAN_GEO

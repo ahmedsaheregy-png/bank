@@ -154,7 +154,7 @@
         if (state.country === 'PIONEER') return [];
         const list = getAllMerchants().filter(function (m) {
             if (state.country !== 'ALL' && m.country !== state.country) return false;
-            if (state.country !== 'ALL' && state.city !== 'all' && m.cityKey !== state.city) return false;
+            if (state.country !== 'ALL' && state.city !== 'all' && m.cityKey && m.cityKey !== 'all' && m.cityKey !== state.city) return false;
             if (state.type !== 'all' && m.merchantType !== state.type && m.merchantType !== 'both') return false;
             if (state.category !== 'all' && m.categorySlug !== state.category) return false;
             if (state.search) {
@@ -186,7 +186,7 @@
 
         if (countEl) {
             countEl.textContent = state.country === 'PIONEER'
-                ? 'وضع المؤسس الرائد — هذه المنطقة قيد التأسيس'
+                ? 'التوسّع جارٍ في هذه المنطقة — تسجيلك وبناء فريقك متاحان فوراً'
                 : `عرض ${items.length} تاجر معتمد في نطاق ${cfg.name}`;
         }
 
@@ -197,7 +197,7 @@
                 const titleEl = byId('empty-state-title');
                 if (titleEl) {
                     titleEl.textContent = state.country === 'PIONEER'
-                        ? '🚀 كن أول مؤسس أو تاجر في هذه المدينة!'
+                        ? '🌍 التوسّع جارٍ في هذه المدينة — رشّح أول متجر!'
                         : 'لا توجد متاجر مطابقة لهذا البحث حالياً';
                 }
             }
