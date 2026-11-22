@@ -19,8 +19,8 @@
         const iconSize = isCompact ? 28 : 34;
         const wordFontSize = isCompact ? '1.12rem' : '1.38rem';
         const wordPadTop = isCompact ? '4px' : '6px';
-        const diacriticTop = isCompact ? '-9px' : '-11px';
-        const diacriticSize = isCompact ? '0.98rem' : '1.15rem';
+        const diacriticTop = isCompact ? '-10px' : '-13px';
+        const diacriticSize = isCompact ? '1.05rem' : '1.28rem';
         const bankBadge = BRAND_CONFIG.showBank
             ? '<span style="font-size:0.78rem;font-weight:800;background:#1d4ed8;color:#fff;padding:2px 7px;border-radius:6px;margin-right:6px;">BANK</span>'
             : '';

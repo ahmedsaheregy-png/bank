@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>معاينة هويات لوجو SAWYAN — الشدة والفتحة ولوحات الألوان</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Poppins:wght@700;800;900&family=Tajawal:wght@700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-page: #0a0f1d;
+            --text-page: #f8fafc;
+            --card-dark: #111827;
+            --card-light: #ffffff;
+            --border-dark: #1f2937;
+            --border-light: #e2e8f0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Cairo', system-ui, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-page);
+            padding: 30px 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 36px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #38bdf8, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p.subtitle {
+            font-size: 1rem;
+            color: #94a3b8;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .diacritic-highlight-card {
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 24px;
+        }
+
+        .diacritic-zoom-view {
+            text-align: center;
+            background: #0f172a;
+            border: 2px dashed #10b981;
+            border-radius: 12px;
+            padding: 20px 40px;
+        }
+
+        .macro-y {
+            font-family: 'Poppins', sans-serif;
+            font-size: 5rem;
+            font-weight: 900;
+            color: #10b981;
+            position: relative;
+            display: inline-block;
+            line-height: 1;
+        }
+
+        .macro-shaddah-fathah {
+            position: absolute;
+            top: -24px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Tajawal', sans-serif;
+            font-size: 3.6rem;
+            color: #34d399;
+            font-weight: 900;
+            line-height: 1;
+            text-shadow: 0 0 16px rgba(52, 211, 153, 0.6);
+        }
+
+        .themes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .theme-card {
+            background: var(--card-dark);
+            border: 1px solid var(--border-dark);
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .theme-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .theme-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #1f2937;
+            padding-bottom: 12px;
+        }
+
+        .theme-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .color-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        /* Preview stage */
+        .preview-box {
+            border-radius: 12px;
+            padding: 28px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 130px;
+            position: relative;
+        }
+
+        .preview-box.dark {
+            background: #0b1120;
+            border: 1px solid #1e293b;
+        }
+
+        .preview-box.light {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+        }
+
+        .preview-label {
+            position: absolute;
+            top: 8px;
+            left: 10px;
+            font-size: 0.72rem;
+            color: #64748b;
+            font-weight: 600;
+            direction: ltr;
+        }
+
+        .theme-desc {
+            font-size: 0.88rem;
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+
+        .theme-specs {
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 0.78rem;
+            color: #cbd5e1;
+            direction: ltr;
+            text-align: left;
+            font-family: Consolas, monospace;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .themes-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>هويات لوجو SAWYAN المتطورة</h1>
+        <p class="subtitle">ضبط دقيق للشدة والفتحة (ـَّ) فوق حرف الـ Y مع 3 خيارات لونية فاخرة في فلك (الأخضر، الأزرق، والأبيض) دون المساس بهيكل وعناصر اللوجو الدستورية.</p>
+    </header>
+
+    <!-- Diacritic Calibration Showcase -->
+    <div class="diacritic-highlight-card">
+        <div>
+            <h2 style="font-size:1.3rem; margin-bottom:8px; color:#34d399;">🎯 دقة ضبط الشدة والفتحة فوق حرف الـ Y</h2>
+            <p style="color:#cbd5e1; font-size:0.92rem; max-width:550px; line-height:1.7;">
+                تمت معايرة الشدة والفتحة هندسياً لتستقر تماماً في بؤرة تفرع حرف الـ <strong>Y</strong>، مع هامش فاصل نقي (Clear Space) يمنع الالتصاق أو التداخل في الشاشات المصغرة، ويحافظ على نطق الكلمة الدستوري: <strong>«سَوِيًّا — SAWYAN»</strong>.
+            </p>
+        </div>
+        <div class="diacritic-zoom-view">
+            <span class="macro-y">
+                Y
+                <span class="macro-shaddah-fathah">&#x0651;&#x064E;</span>
+            </span>
+            <div style="font-size:0.75rem; color:#94a3b8; margin-top:8px;">معايرة ميكرو-بصرية مركزية 100%</div>
+        </div>
+    </div>
+
+    <!-- The 3 Color Choices -->
+    <div class="themes-grid">
+
+        <!-- Choice 1: Emerald / Green -->
+        <div class="theme-card" style="border-color: rgba(16, 185, 129, 0.4);">
+            <div class="theme-header">
+                <div class="theme-title">
+                    <span class="color-dot" style="background:#10b981; box-shadow:0 0 8px #10b981;"></span>
+                    <span>1. فلك الأخضر: الزمردي الملكي المستدام</span>
+                </div>
+            </div>
+
+            <!-- Dark Preview -->
+            <div class="preview-box dark">
+                <span class="preview-label">Dark Surface</span>
+                <span class="sawyan-brand-mark" dir="ltr" style="display:inline-flex;align-items:center;gap:10px;">
+                    <svg width="42" height="42" viewBox="0 0 40 40" aria-hidden="true" style="flex-shrink:0;">
+                        <defs>
+                            <linearGradient id="grad_green_dark" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#047857"/>
+                                <stop offset="100%" stop-color="#10b981"/>
+                            </linearGradient>
+                        </defs>
+                        <rect x="2" y="2" width="36" height="36" rx="10" fill="url(#grad_green_dark)"/>
+                        <path d="M12 25 C15 16, 25 16, 28 25" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round"/>
+                        <circle cx="20" cy="14" r="3.2" fill="#ffffff"/>
+                    </svg>
+                    <span style="display:inline-flex;flex-direction:column;line-height:1.05;">
+                        <span style="position:relative;font-family:'Poppins',sans-serif;font-weight:900;font-size:1.6rem;letter-spacing:0.8px;color:#ffffff;display:inline-block;padding-top:7px;">
+                            SAW<span style="position:relative;display:inline-block;color:#10b981;">Y<span aria-hidden="true" style="position:absolute;top:-13px;left:50%;transform:translateX(-50%);font-family:'Tajawal',sans-serif;font-size:1.3rem;line-height:1;color:#34d399;font-weight:900;">&#x0651;&#x064E;</span></span>AN
+                        </span>
+                        <span style="font-family:'Cairo',sans-serif;font-size:0.75rem;font-weight:700;color:#94a3b8;text-align:right;" dir="rtl">منصة الاستهلاك الاستثماري العالمية</span>
+                    </span>
+                </span>
+            </div>
+
+            <!-- Light Preview -->
+            <div class="preview-box light">
+                <span class="preview-label">Light Surface</span>
+                <span class="sawyan-brand-mark" dir="ltr" style="display:inline-flex;align-items:center;gap:10px;">
+                    <svg width="42" height="42" viewBox="0 0 40 40" aria-hidden="true" style="flex-shrink:0;">
+                        <defs>
+                            <linearGradient id="grad_green_light" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#065f46"/>
+                                <stop offset="100%" stop-color="#059669"/>
+                            </linearGradient>
+                        </defs>
+                        <rect x="2" y="2" width="36" height="36" rx="10" fill="url(#grad_green_light)"/>
+                        <path d="M12 25 C15 16, 25 16, 28 25" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round"/>
+                        <circle cx="20" cy="14" r="3.2" fill="#ffffff"/>
+                    </svg>
+                    <span style="display:inline-flex;flex-direction:column;line-height:1.05;">
+                        <span style="position:relative;font-family:'Poppins',sans-serif;font-weight:900;font-size:1.6rem;letter-spacing:0.8px;color:#0f2744;display:inline-block;padding-top:7px;">
+                            SAW<span style="position:relative;display:inline-block;color:#047857;">Y<span aria-hidden="true" style="position:absolute;top:-13px;left:50%;transform:translateX(-50%);font-family:'Tajawal',sans-serif;font-size:1.3rem;line-height:1;color:#059669;font-weight:900;">&#x0651;&#x064E;</span></span>AN
+                        </span>
+                        <span style="font-family:'Cairo',sans-serif;font-size:0.75rem;font-weight:700;color:#475569;text-align:right;" dir="rtl">منصة الاستهلاك الاستثماري العالمية</span>
+                    </span>
+                </span>
+            </div>
+
+            <p class="theme-desc">
+                يعكس الهوية الدستورية الحالية لمشروع SAWYAN: يرمز للوفرة، الاستهلاك الحلال، نمو الأرباح المستمر، والأمان الأسري.
+            </p>
+            <div class="theme-specs">
+                Primary: #047857 | Accent Y: #10b981 / #059669<br>
+                Diacritic: Centered Top (-13px) | Weight: 900
+            </div>
+        </div>
+
+        <!-- Choice 2: Sapphire / Blue -->
+        <div class="theme-card" style="border-color: rgba(59, 130, 246, 0.4);">
+            <div class="theme-header">
+                <div class="theme-title">
+                    <span class="color-dot" style="background:#2563eb; box-shadow:0 0 8px #2563eb;"></span>
+                    <span>2. فلك الأزرق: الياقوتي والسيادي المؤسسي</span>
+                </div>
+            </div>
+
+            <!-- Dark Preview -->
+            <div class="preview-box dark">
+                <span class="preview-label">Dark Surface</span>
+                <span class="sawyan-brand-mark" dir="ltr" style="display:inline-flex;align-items:center;gap:10px;">
+                    <svg width="42" height="42" viewBox="0 0 40 40" aria-hidden="true" style="flex-shrink:0;">
+                        <defs>
+                            <linearGradient id="grad_blue_dark" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#1d4ed8"/>
+                                <stop offset="100%" stop-color="#38bdf8"/>
+                            </linearGradient>
+                        </defs>
+                        <rect x="2" y="2" width="36" height="36" rx="10" fill="url(#grad_blue_dark)"/>
+                        <path d="M12 25 C15 16, 25 16, 28 25" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round"/>
+                        <circle cx="20" cy="14" r="3.2" fill="#ffffff"/>
+                    </svg>
+                    <span style="display:inline-flex;flex-direction:column;line-height:1.05;">
+                        <span style="position:relative;font-family:'Poppins',sans-serif;font-weight:900;font-size:1.6rem;letter-spacing:0.8px;color:#ffffff;display:inline-block;padding-top:7px;">
+                            SAW<span style="position:relative;display:inline-block;color:#38bdf8;">Y<span aria-hidden="true" style="position:absolute;top:-13px;left:50%;transform:translateX(-50%);font-family:'Tajawal',sans-serif;font-size:1.3rem;line-height:1;color:#60a5fa;font-weight:900;">&#x0651;&#x064E;</span></span>AN
+                        </span>
+                        <span style="font-family:'Cairo',sans-serif;font-size:0.75rem;font-weight:700;color:#94a3b8;text-align:right;" dir="rtl">منصة الاستهلاك الاستثماري العالمية</span>
+                    </span>
+                </span>
+            </div>
+
+            <!-- Light Preview -->
+            <div class="preview-box light">
+                <span class="preview-label">Light Surface</span>
+                <span class="sawyan-brand-mark" dir="ltr" style="display:inline-flex;align-items:center;gap:10px;">
+                    <svg width="42" height="42" viewBox="0 0 40 40" aria-hidden="true" style="flex-shrink:0;">
+                        <defs>
+                            <linearGradient id="grad_blue_light" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#0f172a"/>
+                                <stop offset="100%" stop-color="#1d4ed8"/>
+                            </linearGradient>
+                        </defs>
+                        <rect x="2" y="2" width="36" height="36" rx="10" fill="url(#grad_blue_light)"/>
+                        <path d="M12 25 C15 16, 25 16, 28 25" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round"/>
+                        <circle cx="20" cy="14" r="3.2" fill="#ffffff"/>
+                    </svg>
+                    <span style="display:inline-flex;flex-direction:column;line-height:1.05;">
+                        <span style="position:relative;font-family:'Poppins',sans-serif;font-weight:900;font-size:1.6rem;letter-spacing:0.8px;color:#0b1329;display:inline-block;padding-top:7px;">
+                            SAW<span style="position:relative;display:inline-block;color:#1d4ed8;">Y<span aria-hidden="true" style="position:absolute;top:-13px;left:50%;transform:translateX(-50%);font-family:'Tajawal',sans-serif;font-size:1.3rem;line-height:1;color:#2563eb;font-weight:900;">&#x0651;&#x064E;</span></span>AN
+                        </span>
+                        <span style="font-family:'Cairo',sans-serif;font-size:0.75rem;font-weight:700;color:#475569;text-align:right;" dir="rtl">منصة الاستهلاك الاستثماري العالمية</span>
+                    </span>
+                </span>
+            </div>
+
+            <p class="theme-desc">
+                يرمز للهيبة المؤسسية والتقنية المالية الرقمية (Global Fintech Authority)، يمنح شعوراً بالثقة، الاستقرار، والانتشار الدولي.
+            </p>
+            <div class="theme-specs">
+                Primary: #1d4ed8 | Accent Y: #38bdf8 / #2563eb<br>
+                Diacritic: Centered Top (-13px) | Weight: 900
+            </div>
+        </div>
+
+        <!-- Choice 3: Pure White & Monochrome -->
+        <div class="theme-card" style="border-color: rgba(255, 255, 255, 0.4);">
+            <div class="theme-header">
+                <div class="theme-title">
+                    <span class="color-dot" style="background:#ffffff; box-shadow:0 0 8px #ffffff;"></span>
+                    <span>3. فلك الأبيض: النقاء والشفافية التيتانيوم</span>
+                </div>
+            </div>
+
+            <!-- Dark Preview -->
+            <div class="preview-box dark" style="background:#000000; border-color:#262626;">
+                <span class="preview-label">Dark Surface</span>
+                <span class="sawyan-brand-mark" dir="ltr" style="display:inline-flex;align-items:center;gap:10px;">
+                    <svg width="42" height="42" viewBox="0 0 40 40" aria-hidden="true" style="flex-shrink:0;">
+                        <rect x="2" y="2" width="36" height="36" rx="10" fill="#ffffff"/>
+                        <path d="M12 25 C15 16, 25 16, 28 25" stroke="#000000" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+                        <circle cx="20" cy="14" r="3.2" fill="#000000"/>
+                    </svg>
+                    <span style="display:inline-flex;flex-direction:column;line-height:1.05;">
+                        <span style="position:relative;font-family:'Poppins',sans-serif;font-weight:900;font-size:1.6rem;letter-spacing:0.8px;color:#ffffff;display:inline-block;padding-top:7px;">
+                            SAW<span style="position:relative;display:inline-block;color:#ffffff;">Y<span aria-hidden="true" style="position:absolute;top:-13px;left:50%;transform:translateX(-50%);font-family:'Tajawal',sans-serif;font-size:1.3rem;line-height:1;color:#ffffff;font-weight:900;text-shadow:0 0 8px rgba(255,255,255,0.8);">&#x0651;&#x064E;</span></span>AN
+                        </span>
+                        <span style="font-family:'Cairo',sans-serif;font-size:0.75rem;font-weight:700;color:#94a3b8;text-align:right;" dir="rtl">منصة الاستهلاك الاستثماري العالمية</span>
+                    </span>
+                </span>
+            </div>
+
+            <!-- Light Preview -->
+            <div class="preview-box light">
+                <span class="preview-label">Light Surface</span>
+                <span class="sawyan-brand-mark" dir="ltr" style="display:inline-flex;align-items:center;gap:10px;">
+                    <svg width="42" height="42" viewBox="0 0 40 40" aria-hidden="true" style="flex-shrink:0;">
+                        <rect x="2" y="2" width="36" height="36" rx="10" fill="#0f172a"/>
+                        <path d="M12 25 C15 16, 25 16, 28 25" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round"/>
+                        <circle cx="20" cy="14" r="3.2" fill="#ffffff"/>
+                    </svg>
+                    <span style="display:inline-flex;flex-direction:column;line-height:1.05;">
+                        <span style="position:relative;font-family:'Poppins',sans-serif;font-weight:900;font-size:1.6rem;letter-spacing:0.8px;color:#0f172a;display:inline-block;padding-top:7px;">
+                            SAW<span style="position:relative;display:inline-block;color:#0f172a;">Y<span aria-hidden="true" style="position:absolute;top:-13px;left:50%;transform:translateX(-50%);font-family:'Tajawal',sans-serif;font-size:1.3rem;line-height:1;color:#0f172a;font-weight:900;">&#x0651;&#x064E;</span></span>AN
+                        </span>
+                        <span style="font-family:'Cairo',sans-serif;font-size:0.75rem;font-weight:700;color:#64748b;text-align:right;" dir="rtl">منصة الاستهلاك الاستثماري العالمية</span>
+                    </span>
+                </span>
+            </div>
+
+            <p class="theme-desc">
+                طراز مينيماليست عالمي (Ultra-Clean Monochromatic)، يعبر عن الشفافية الصفرية المطلقة، وضوح الحسابات، والفخامة العصرية.
+            </p>
+            <div class="theme-specs">
+                Primary: #ffffff / #0f172a | Accent Y: Pure White / Jet Black<br>
+                Diacritic: Centered Top (-13px) | Weight: 900
+            </div>
+        </div>
+
+    </div>
+</div>
+
+</body>
+</html>
