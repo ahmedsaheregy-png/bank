@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>خزنة المحتوى والتسويق الاستراتيجي — SAWYAN Content Vault</title>
+    <link rel="icon" type="image/svg+xml" href="../../shared/assets/sawyan-icon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0f1d;
+            --card-bg: #111827;
+            --card-border: #1f2937;
+            --emerald: #10b981;
+            --emerald-dark: #047857;
+            --gold: #f59e0b;
+            --gold-light: #fde68a;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --danger: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 24px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+
+        /* Top Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--card-border);
+            margin-bottom: 24px;
+        }
+
+        .brand-title {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .brand-logo-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--emerald-dark), var(--emerald));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 24px;
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+        }
+
+        .brand-title h1 {
+            font-size: 1.6rem;
+            font-weight: 800;
+            background: linear-gradient(to left, #fff, var(--gold-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-title p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: #1f2937;
+            color: #fff;
+            border: 1px solid #374151;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background: #374151;
+            border-color: #4b5563;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--emerald-dark), var(--emerald));
+            border: none;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-gold {
+            background: linear-gradient(135deg, #b45309, var(--gold));
+            border: none;
+            color: #fff;
+        }
+
+        /* Guardrail Notice */
+        .guardrails-box {
+            background: rgba(180, 83, 9, 0.12);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 10px;
+            padding: 12px 18px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 0.88rem;
+        }
+
+        .guardrails-box strong {
+            color: var(--gold);
+        }
+
+        .forbidden-pills {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .pill-forbidden {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            text-decoration: line-through;
+        }
+
+        .pill-canonical {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        /* Controls & Filter Bar */
+        .controls-bar {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .controls-bar {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .search-input {
+            width: 100%;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: var(--emerald);
+        }
+
+        .filters-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            color: var(--text-muted);
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .filter-btn.active, .filter-btn:hover {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--emerald);
+            border-color: var(--emerald);
+        }
+
+        /* Items Grid */
+        .vault-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 20px;
+        }
+
+        @media (max-width: 480px) {
+            .vault-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .vault-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: transform 0.2s, border-color 0.2s;
+            position: relative;
+        }
+
+        .vault-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(16, 185, 129, 0.4);
+        }
+
+        .card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .badge-id {
+            background: #1f2937;
+            color: var(--gold);
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 6px;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-audience {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 6px;
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .badge-ver {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-right: 6px;
+        }
+
+        .card-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .card-body-text {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 14px;
+            color: #e5e7eb;
+            font-size: 0.92rem;
+            line-height: 1.65;
+            margin-bottom: 14px;
+            white-space: pre-wrap;
+            position: relative;
+        }
+
+        .card-notes {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+            border-top: 1px dashed var(--card-border);
+            padding-top: 8px;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn-copy {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--emerald);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-copy:hover {
+            background: var(--emerald);
+            color: #fff;
+        }
+
+        .btn-copy.copied {
+            background: #10b981;
+            color: #fff;
+        }
+
+        .btn-history {
+            background: #1f2937;
+            color: var(--text-muted);
+            border: 1px solid #374151;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        .btn-edit {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--gold);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .modal-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            width: 100%;
+            max-width: 650px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 12px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #d1d5db;
+        }
+
+        .form-control {
+            width: 100%;
+            background: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            color: #fff;
+            padding: 10px;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .form-control:focus {
+            border-color: var(--emerald);
+        }
+
+        .history-entry {
+            background: #1f2937;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-right: 4px solid var(--gold);
+        }
+
+        .history-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .history-text {
+            font-size: 0.88rem;
+            color: #e5e7eb;
+            white-space: pre-wrap;
+        }
+
+        .empty-history {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 20px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="brand-title">
+            <div class="brand-logo-icon">S</div>
+            <div>
+                <h1>خزنة المحتوى والتسويق الاستراتيجي</h1>
+                <p>SAWYAN Living Marketing Vault — نظام حفظ وتطوير المحتوى المعتمد مدى الحياة (sawyan.net)</p>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button type="button" class="btn btn-primary" onclick="openAddNewModal()">+ إضافة عبارة / فكرة جديدة</button>
+            <button type="button" class="btn btn-gold" onclick="exportJSON()">📥 تصدير ملف JSON للمستودع</button>
+            <button type="button" class="btn" onclick="exportMarkdown()">📄 تصدير Markdown</button>
+        </div>
+    </header>
+
+    <!-- Guardrails Banner -->
+    <div class="guardrails-box">
+        <div>
+            <strong>🔒 ضوابط الهوية الرسمية الإلزامية:</strong>
+            يُحظر استخدام أي مصطلحات تسويق قديمة لحماية مصداقية المشروع وتأكيد نموذج الاستهلاك الاستثماري.
+        </div>
+        <div class="forbidden-pills">
+            <span class="pill-forbidden">كاشباك</span>
+            <span class="pill-forbidden">SAWYAN BANK</span>
+            <span class="pill-forbidden">التسويق الشبكي</span>
+            <span class="pill-canonical">✓ عائدات الاستهلاك الاستثماري</span>
+            <span class="pill-canonical">✓ صندوق الهدف الشهري</span>
+            <span class="pill-canonical">✓ كلنا SAWYAN</span>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls-bar">
+        <input type="text" id="searchInput" class="search-input" placeholder="🔍 ابحث في العبارات، السيناريوهات، الخطافات، أو الأكواد (مثلاً: SLG, فيديو, تاجر, سوبر ماركت)..." oninput="renderItems()">
+        <div class="filters-group" id="audienceFilters">
+            <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">الكل</button>
+            <button class="filter-btn" data-filter="prospect" onclick="setFilter('prospect')">الزوار الجدد</button>
+            <button class="filter-btn" data-filter="member" onclick="setFilter('member')">الأعضاء والولاء</button>
+            <button class="filter-btn" data-filter="merchant" onclick="setFilter('merchant')">التجار والشركاء</button>
+            <button class="filter-btn" data-filter="video_scripts" onclick="setCategoryFilter('video_scripts')">🎬 الفيديوهات</button>
+            <button class="filter-btn" data-filter="direct_messages" onclick="setCategoryFilter('direct_messages')">💬 رسائل واتساب</button>
+        </div>
+    </div>
+
+    <!-- Vault Grid -->
+    <div class="vault-grid" id="vaultGrid">
+        <!-- Rendered dynamically -->
+    </div>
+</div>
+
+<!-- Modal: History -->
+<div class="modal-overlay" id="historyModal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3 id="historyModalTitle">سجل التعديلات التاريخي</h3>
+            <button class="modal-close" onclick="closeModal('historyModal')">×</button>
+        </div>
+        <div id="historyContent"></div>
+    </div>
+</div>
+
+<!-- Modal: Edit / Evolve -->
+<div class="modal-overlay" id="editModal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3 id="editModalTitle">تطوير العبارة / إصدار جديد</h3>
+            <button class="modal-close" onclick="closeModal('editModal')">×</button>
+        </div>
+        <form id="editForm" onsubmit="saveEdit(event)">
+            <input type="hidden" id="editItemId">
+            <div class="form-group">
+                <label class="form-label">العنوان / المسمى التوضيحي:</label>
+                <input type="text" id="editTitle" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">النص المطور الجديد (لن يُحذف النص القديم بل سينتقل للأرشيف):</label>
+                <textarea id="editText" class="form-control" rows="5" required></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">سبب التعديل / ملاحظات الإصدار (Changelog Note):</label>
+                <input type="text" id="editReason" class="form-control" placeholder="مثلاً: تحسين معدل التحويل لاختبار A/B، تكييف للريلز السريع..." required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">ملاحظات ومواضع الاستخدام:</label>
+                <input type="text" id="editNotes" class="form-control">
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <button type="button" class="btn" onclick="closeModal('editModal')">إلغاء</button>
+                <button type="submit" class="btn btn-primary">حفظ واعتماد الإصدار الجديد</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Embedded Master Seed Data -->
+<script>
+let VAULT_DATA = [];
+let currentAudienceFilter = 'all';
+let currentCategoryFilter = 'all';
+
+// Load initial data
+async function loadVault() {
+    try {
+        const res = await fetch('../../specs/marketing_content_vault.json');
+        if (res.ok) {
+            const data = await res.json();
+            VAULT_DATA = data.items;
+        } else {
+            throw new Error("Local fetch skipped, using embedded seed");
+        }
+    } catch (e) {
+        // Fallback default dataset
+        VAULT_DATA = [
+            {
+                "id": "SLG-001",
+                "category": "slogans",
+                "audience": "all",
+                "type": "شعار رئيسي",
+                "title": "الشعار المعتمد الأساسي للمنصة",
+                "current_text": "SAWYAN — منصة الاستهلاك الاستثماري العالمية (Buy and Make Money)",
+                "status": "canonical",
+                "version": "1.0",
+                "history": [],
+                "usage_notes": "يوضع في الهيدر الرئيسي للموقع، في بطاقات التعريف الرسمية، وفي نهاية كافة الفيديوهات والمطبوعات."
+            },
+            {
+                "id": "SLG-002",
+                "category": "slogans",
+                "audience": "consumer",
+                "type": "مانترا كسر الجمود",
+                "title": "معادلة تحويل الدفع إلى استثمار",
+                "current_text": "أكثر ما تكرهه هو الدفع.. من اليوم حوّل مشترياتك اليومية إلى أكبر استثمار في حياتك.",
+                "status": "canonical",
+                "version": "1.0",
+                "history": [],
+                "usage_notes": "ممتاز للبانرات الإعلانية الافتتاحية والمقدمات الصوتية للريلز."
+            },
+            {
+                "id": "SLG-003",
+                "category": "slogans",
+                "audience": "consumer",
+                "type": "شعار استهلاكي",
+                "title": "قاعدة الاستهلاك الذكي",
+                "current_text": "لا تدفع دون مقابل بعد الآن! تسوّق، وثّق، واربح.",
+                "status": "canonical",
+                "version": "1.0",
+                "history": [],
+                "usage_notes": "يوضع على بطاقة المتسوق وقسم آلية العمل."
+            },
+            {
+                "id": "SLG-004",
+                "category": "slogans",
+                "audience": "community",
+                "type": "شعار الهوية والانتماء",
+                "title": "شعار المجتمع الموحد",
+                "current_text": "كلنا SAWYAN — سواء كنت متسوقاً أو تاجراً أو تبحث عن دخل إضافي، لدينا ما يناسبك.",
+                "status": "canonical",
+                "version": "1.0",
+                "history": [],
+                "usage_notes": "شعار جامع لكل الفئات، ممتاز للفواصل الإعلانية وقمصان الفعاليات."
+            },
+            {
+                "id": "HOOK-001",
+                "category": "hooks",
+                "audience": "prospect",
+                "type": "خطاف ريلز وتيك توك",
+                "title": "سؤال العشرين سنة ومحل الملابس",
+                "current_text": "لو بتشتري أنت وعيلتك من نفس المحل بقالكم 20 سنة.. هل تقدر تقله اديني شهر واحد مجاناً لأنني عميل وفي؟ مستحيل! في SAWYAN وفاءك لمشترياتك هو أساس دخلك.",
+                "status": "canonical",
+                "version": "1.0",
+                "history": [],
+                "usage_notes": "أول 3 ثوانٍ في الفيديوهات القصيرة، نسبة استبقاء المشاهدين تتجاوز 80%."
+            },
+            {
+                "id": "HOOK-002",
+                "category": "hooks",
+                "audience": "prospect",
+                "type": "خطاف فضول مالي",
+                "title": "أين ذهبت ملايين فواتير السوبر ماركت؟",
+                "current_text": "كم أنفقت طوال حياتك على السوبر ماركت والصيدلية والمطاعم؟ ماذا لو عاد كل هذا الاستهلاك كأرباح شهرية تتنامى كل يوم؟",
+                "status": "canonical",
+                "version": "1.0",
+                "history": [],
+                "usage_notes": "يصلح كمنشور تفاعلي على فيسبوك وتويتر وبداية محتوى مرئي."
+            },
+            {
+                "id": "HOOK-003",
+                "category": "hooks",
+                "audience": "merchant",
+                "type": "خطاف استقطاب التجار",
+                "title": "ألم الإعلانات الممولة مجهولة العائد",
+                "current_text": "كم تاجر تعرفه خسر آلاف الدولارات في حملات تسويقية مجهولة المردود؟ في SAWYAN: ادفع مقابل النتائج والمبيعات الحقيقية فقط!",
+                "status": "canonical",
+                "version": "1.0",
+                "history": [],
+                "usage_notes": "موجه لأصحاب المتاجر والمطاعم على لينكد إن وإنستغرام."
+            },
+            {
+                "id": "SCRIPT-001",
+                "category": "video_scripts",
+                "audience": "prospect",
+                "type": "سيناريو فيديو سينمائي",
+                "title": "فيديو الواجهة الرئيسية: الصدمة الإيجابية (45 ثانية)",
+                "current_text": "«أكثر ما نفعله كل يوم هو الدفع.. وأكثر ما نكرهه هو أن ندفع دون مقابل! من اليوم المعادلة تغيرت كلياً.. أهلاً بك في SAWYAN: منصة الاستهلاك الاستثماري العالمية. تسوّق بنفس أسعارك الطبيعية من السوبر ماركت والصيدلية والمطعم.. ولكن هذه المرة: فاتورتك لا تضيع، بل تتحول إلى عائدات حقيقية تنمو كل شهر. صفر مخاطرة، صفر رأس مال! فقط غيّر وجهتك، وثّق فاتورتك، وشارك الفكرة مع معارفك لتضاعف دخلك ودخلهم. وللتجار: لا مجازفة بإعلانات مجهولة بعد الآن.. آلاف العملاء في انتظارك، وادفع مقابل النتائج فقط! الحرية المالية ليست وهماً.. بل خطوة يفصلك عنها قرارك اليوم. كلنا SAWYAN.»",
+                "status": "canonical",
+                "version": "1.0",
+                "history": [],
+                "usage_notes": "الخيار الأول في الواجهة الرئيسية للموقع، فيديو سريع الحركة بجودة 4K."
+            },
+            {
+                "id": "SCRIPT-002",
+                "category": "video_scripts",
+                "audience": "all",
+                "type": "سيناريو موشن جرافيك 3D",
+                "title": "رحلة الـ 3 خطوات والمكعب البلوري (45 ثانية)",
+                "current_text": "«طوال عقود.. كان المستهلك هو الحلقة الأضعف: تدفع المال، تستهلك السلعة، وتعود لنقطة الصفر. نظام SAWYAN جاء ليعيد كتابة القواعد: الاستهلاك الاستثماري (Buy and Make Money). مشترياتك المعتادة أصبحت أصلك الاستثماري الأول. في 3 خطوات مجانية فقط: 1. غيّر وجهتك للمتاجر المعتمدة. 2. وثّق فاتورتك بكود هويتك في ثوانٍ. 3. ابنِ مجتمعك واشهد نمو عائداتك شهراً بعد شهر. نظام عادل، حلال 100%، بدون بضائع مخزنة، ولا وعود سرابية. ربح حقيقي قائم على فواتير حقيقية. انضم إلينا اليوم على sawyan.net.»",
+                "status": "canonical",
+                "version": "1.0",
+                "history": [],
+                "usage_notes": "موشن ثلاثي الأبعاد فاخر يركز على الشفافية والسهولة."
+            },
+            {
+                "id": "SCRIPT-003",
+                "category": "video_scripts",
+                "audience": "community",
+                "type": "سيناريو دراما وثائقية",
+                "title": "حكاية أسرة وتاجر: كلنا SAWYAN (60 ثانية)",
+                "current_text": "«كل صباح.. نخرج لنعمل، لنلبي احتياجات من نحب. نشتري، نستهلك، ونبذل ما نملك لتأمين مستقبل عائلاتنا. لكن ماذا لو كانت كل فاتورة تدفعها لم تعد استنزافاً لراتبك.. بل خطوة جديدة نحو حريتك المالية واستقرارك؟ هنا ولدت فكرة SAWYAN.. أن نكون معاً. أنت لست زبوناً عادياً، بل شريك في الأرباح. تسوّق بالسعر الطبيعي، ودلّ من تحب على نفس الطريق. ولأن التجارة شراكة وأمان: تجارنا لا يدفعون ميزانيات تسويق ضائعة، بل يستقبلون مجتمعاً من آلاف الأسر الموجهة لمتجرهم بولاء دائم. سواء كنت متسوقاً، أو تاجراً، أو تبحث عن دخل يحمي غدك.. مكانك بيننا. كلنا SAWYAN — منصة الاستهلاك الاستثماري العالمية.»",
+                "status": "canonical",
+                "version": "1.0",
+                "history": [],
+                "usage_notes": "وثائقي ملهم للاحتفاليات والمؤتمرات وحملات بناء الوعي طويل المدى."
+            },
+            {
+                "id": "MSG-001",
+                "category": "direct_messages",
+                "audience": "prospect",
+                "type": "رسالة واتساب لدعوة المعارف",
+                "title": "دعوة صديق للانضمام إلى منصة سويا",
+                "current_text": "السلام عليكم يا أخي الغالي.. كلنا شهرياً بنصرف مبالغ على السوبر ماركت والمطاعم والصيدلية ومستلزمات البيت، وبدون ما يرجع لنا منها شيء. اكتشفت منصة عالمية راقية اسمها SAWYAN للاستهلاك الاستثماري (Buy and Make Money). فكرتها ببساطة وبدون أي رسوم اشتراك: إنك بتشتري نفس احتياجاتك العادية من المتاجر الشريكة وبنفس سعرها الطبيعي، ولكن الفاتورة بتتحول لأرباح حقيقية ودخل شهري متنامٍ لك ولكل عيلتك. حبيت أشاركك الفكرة لأنها بتنفع كل بيت، وتقدر تبدأ وتسجل مجاناً من هنا: sawyan.net بكود عضويتي: [ضع_كودك_هنا].",
+                "status": "canonical",
+                "version": "1.0",
+                "history": [],
+                "usage_notes": "رسالة موجهة للأعضاء الحاليين لإرسالها لأقربائهم وأصدقائهم بثقة عالية وبدون حرج."
+            },
+            {
+                "id": "COMM-001",
+                "category": "community_loyalty",
+                "audience": "member",
+                "type": "شحن همم وتأكيد الرؤية",
+                "title": "أنت تقدم خدمة عظيمة لمجتمعك",
+                "current_text": "عندما تدعو صديقك إلى SAWYAN، أنت لا تطلب منه فضلاً ولا تبيعه منتجاً لا يحتاجه.. أنت تقدم له أعظم خدمة: حماية ميزانية بيته وصناعة دخل شهري له ولأسرته يبدأ من نفس فواتيره اليومية.",
+                "status": "canonical",
+                "version": "1.0",
+                "history": [],
+                "usage_notes": "رسالة لجروبات تدريب وتأهيل الأعضاء وقنوات التلغرام الداخلية."
+            }
+        ];
+    }
+    renderItems();
+}
+
+function setFilter(aud) {
+    currentAudienceFilter = aud;
+    currentCategoryFilter = 'all';
+    updateFilterUI();
+    renderItems();
+}
+
+function setCategoryFilter(cat) {
+    currentCategoryFilter = cat;
+    currentAudienceFilter = 'all';
+    updateFilterUI();
+    renderItems();
+}
+
+function updateFilterUI() {
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        const bAud = btn.getAttribute('data-filter');
+        if (bAud === currentAudienceFilter || bAud === currentCategoryFilter) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+}
+
+function renderItems() {
+    const query = document.getElementById('searchInput').value.trim().toLowerCase();
+    const grid = document.getElementById('vaultGrid');
+    grid.innerHTML = '';
+
+    const filtered = VAULT_DATA.filter(item => {
+        // audience
+        if (currentAudienceFilter !== 'all' && item.audience !== currentAudienceFilter && item.audience !== 'all') {
+            return false;
+        }
+        // category
+        if (currentCategoryFilter !== 'all' && item.category !== currentCategoryFilter) {
+            return false;
+        }
+        // query
+        if (query) {
+            const combined = `${item.id} ${item.title} ${item.current_text} ${item.type} ${item.usage_notes}`.toLowerCase();
+            if (!combined.includes(query)) return false;
+        }
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        grid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 40px; color: var(--text-muted);">
+            لا توجد عناصر مطابقة لخيارات البحث.
+        </div>`;
+        return;
+    }
+
+    filtered.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'vault-card';
+
+        const audLabel = {
+            'all': 'الجميع',
+            'prospect': 'متسوق محتمل',
+            'consumer': 'متسوق',
+            'member': 'عضو حالي',
+            'merchant': 'تاجر شريك',
+            'community': 'مجتمع SAWYAN'
+        }[item.audience] || item.audience;
+
+        card.innerHTML = `
+            <div>
+                <div class="card-top">
+                    <div>
+                        <span class="badge-id">${item.id}</span>
+                        <span class="badge-ver">الإصدار ${item.version}</span>
+                    </div>
+                    <span class="badge-audience">${audLabel} • ${item.type}</span>
+                </div>
+                <h4 class="card-title">${item.title}</h4>
+                <div class="card-body-text" id="text-${item.id}">${item.current_text}</div>
+                <div class="card-notes">📌 ${item.usage_notes || 'لا توجد ملاحظات إضافية'}</div>
+            </div>
+            <div class="card-footer">
+                <button class="btn-copy" onclick="copyText('${item.id}', this)">📋 نسخ النص</button>
+                <div class="card-actions">
+                    <button class="btn-history" onclick="viewHistory('${item.id}')">🕒 التاريخ (${item.history ? item.history.length : 0})</button>
+                    <button class="btn-edit" onclick="openEditModal('${item.id}')">✏️ تطوير العبارة</button>
+                </div>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+function copyText(id, btn) {
+    const textEl = document.getElementById(`text-${id}`);
+    if (!textEl) return;
+    navigator.clipboard.writeText(textEl.innerText).then(() => {
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '✓ تم النسخ!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove('copied');
+        }, 1800);
+    });
+}
+
+function viewHistory(id) {
+    const item = VAULT_DATA.find(i => i.id === id);
+    if (!item) return;
+
+    document.getElementById('historyModalTitle').innerText = `تاريخ التعديلات: [${item.id}] ${item.title}`;
+    const container = document.getElementById('historyContent');
+    container.innerHTML = '';
+
+    // Show current version
+    const currBox = document.createElement('div');
+    currBox.className = 'history-entry';
+    currBox.style.borderRightColor = 'var(--emerald)';
+    currBox.innerHTML = `
+        <div class="history-meta">
+            <strong style="color:var(--emerald);">الإصدار الحالي (Active V${item.version})</strong>
+            <span>النسخة المعتمدة الآن</span>
+        </div>
+        <div class="history-text">${item.current_text}</div>
+    `;
+    container.appendChild(currBox);
+
+    if (!item.history || item.history.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-history';
+        empty.innerText = 'هذا هو الإصدار التأسيسي الأول (V1.0)، ولم يطرأ عليه أي تعديل سابق.';
+        container.appendChild(empty);
+    } else {
+        item.history.slice().reverse().forEach(h => {
+            const hBox = document.createElement('div');
+            hBox.className = 'history-entry';
+            hBox.innerHTML = `
+                <div class="history-meta">
+                    <strong style="color:var(--gold);">الإصدار السابق: V${h.version}</strong>
+                    <span>تاريخ الأرشفة: ${h.date}</span>
+                </div>
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:6px;">سبب التعديل: ${h.reason}</div>
+                <div class="history-text">${h.text}</div>
+            `;
+            container.appendChild(hBox);
+        });
+    }
+
+    openModal('historyModal');
+}
+
+function openEditModal(id) {
+    const item = VAULT_DATA.find(i => i.id === id);
+    if (!item) return;
+
+    document.getElementById('editItemId').value = item.id;
+    document.getElementById('editTitle').value = item.title;
+    document.getElementById('editText').value = item.current_text;
+    document.getElementById('editReason').value = '';
+    document.getElementById('editNotes').value = item.usage_notes || '';
+    document.getElementById('editModalTitle').innerText = `تطوير العبارة: [${item.id}] — إصدار جديد`;
+
+    openModal('editModal');
+}
+
+function saveEdit(e) {
+    e.preventDefault();
+    const id = document.getElementById('editItemId').value;
+    const item = VAULT_DATA.find(i => i.id === id);
+    if (!item) return;
+
+    const newTitle = document.getElementById('editTitle').value.trim();
+    const newText = document.getElementById('editText').value.trim();
+    const reason = document.getElementById('editReason').value.trim();
+    const notes = document.getElementById('editNotes').value.trim();
+
+    // Push current to history if text changed
+    if (newText !== item.current_text) {
+        if (!item.history) item.history = [];
+        item.history.push({
+            version: item.version,
+            date: new Date().toISOString().split('T')[0],
+            reason: reason,
+            text: item.current_text
+        });
+
+        // Bump version
+        const vNum = parseFloat(item.version) || 1.0;
+        item.version = (vNum + 0.1).toFixed(1);
+    }
+
+    item.title = newTitle;
+    item.current_text = newText;
+    item.usage_notes = notes;
+
+    closeModal('editModal');
+    renderItems();
+    alert(`تم حفظ الإصدار الجديد (V${item.version}) بنجاح! تم نقل النص السابق للأرشيف التاريخي.`);
+}
+
+function openAddNewModal() {
+    const newId = `ITEM-${String(VAULT_DATA.length + 1).padStart(3, '0')}`;
+    const newItem = {
+        id: newId,
+        category: 'custom',
+        audience: 'all',
+        type: 'عبارة جديدة',
+        title: 'فكرة أو صياغة جديدة',
+        current_text: '',
+        status: 'draft',
+        version: '1.0',
+        history: [],
+        usage_notes: ''
+    };
+    VAULT_DATA.unshift(newItem);
+    openEditModal(newId);
+}
+
+function exportJSON() {
+    const exportObj = {
+        system: "SAWYAN Strategic Marketing & Content Vault",
+        version: "1.1.0",
+        last_updated: new Date().toISOString().split('T')[0],
+        domain: "sawyan.net",
+        items: VAULT_DATA
+    };
+    const str = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj, null, 2));
+    const dlAnchor = document.createElement('a');
+    dlAnchor.setAttribute("href", str);
+    dlAnchor.setAttribute("download", `marketing_content_vault_${new Date().toISOString().split('T')[0]}.json`);
+    dlAnchor.click();
+}
+
+function exportMarkdown() {
+    let md = `# 🏛️ بنك المحتوى والتسويق الاستراتيجي — SAWYAN\n\n`;
+    md += `> تاريخ التصدير: ${new Date().toISOString().split('T')[0]} | الدومين: sawyan.net\n\n`;
+    VAULT_DATA.forEach(i => {
+        md += `### [${i.id}] ${i.title}\n`;
+        md += `* **النوع:** ${i.type} | **الجمهور:** ${i.audience} | **الإصدار:** V${i.version}\n`;
+        md += `> ${i.current_text}\n\n`;
+        if (i.history && i.history.length > 0) {
+            md += `* **تاريخ التعديلات السابقة:**\n`;
+            i.history.forEach(h => {
+                md += `  - *V${h.version} (${h.date}):* ${h.reason}\n`;
+            });
+            md += `\n`;
+        }
+        md += `---\n\n`;
+    });
+
+    const str = "data:text/markdown;charset=utf-8," + encodeURIComponent(md);
+    const dlAnchor = document.createElement('a');
+    dlAnchor.setAttribute("href", str);
+    dlAnchor.setAttribute("download", `SAWYAN_CONTENT_VAULT_${new Date().toISOString().split('T')[0]}.md`);
+    dlAnchor.click();
+}
+
+function openModal(id) {
+    document.getElementById(id).classList.add('open');
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+}
+
+// Close on escape
+window.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
+    }
+});
+
+// Initialize
+loadVault();
+</script>
+
+</body>
+</html>
