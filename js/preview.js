@@ -758,7 +758,7 @@
         const scenes = [
             {
                 start: 0.0,
-                end: 5.573,
+                end: 4.0,
                 img: 'shared/assets/card-shopper.jpg',
                 badge: 'المشهد 1 من 6 • الصدمة الإيجابية',
                 title: '1. «أَكْثَرُ مَا نَفْعَلُهُ كُلَّ يَوْمٍ.. هُوَ أَكْثَرُ مَا نَكْرَهُهُ.. الدَّفْعُ!»',
@@ -766,8 +766,8 @@
                 pct: 16
             },
             {
-                start: 5.573,
-                end: 13.787,
+                start: 4.0,
+                end: 9.238,
                 img: 'shared/assets/promo-poster.jpg',
                 badge: 'المشهد 2 من 6 • نقطة التحول',
                 title: '2. «مِنَ اليَوْمِ.. تَغَيَّرَ الوَضْعُ! أَهْلاً بِكَ فِي SAWYAN»',
@@ -775,8 +775,8 @@
                 pct: 33
             },
             {
-                start: 13.787,
-                end: 26.156,
+                start: 9.238,
+                end: 18.433,
                 img: 'shared/assets/card-shopper.jpg',
                 badge: 'المشهد 3 من 6 • التسوق والعائد الشهري',
                 title: '3. «تَسَوَّقْ بِنَفْسِ أَسْعَارِكَ الطَّبِيعِيَّةِ.. مَدْفُوعَاتُكَ لَنْ تَضِيعَ»',
@@ -784,8 +784,8 @@
                 pct: 50
             },
             {
-                start: 26.156,
-                end: 39.251,
+                start: 18.433,
+                end: 28.667,
                 img: 'shared/assets/card-why-sawyan.jpg',
                 badge: 'المشهد 4 من 6 • آلية العمل ومضاعفة الدخل',
                 title: '4. «فَقَطْ غَيِّرْ مَتْجَرَكَ.. وَشَارِكِ الفِكْرَةَ مَعَ مَعَارِفِكَ لِيَتَضَاعَفَ دَخْلُكَ وَدَخْلُهُمْ!»',
@@ -793,8 +793,8 @@
                 pct: 68
             },
             {
-                start: 39.251,
-                end: 54.251,
+                start: 28.667,
+                end: 40.435,
                 img: 'shared/assets/card-merchant.jpg',
                 badge: 'المشهد 5 من 6 • للتجار والأركان الثلاثة',
                 title: '5. «وَلِلتُّجَّارِ: ادْفَعْ فَقَطْ مُقَابِلَ النَّتَائِجِ.. صِفْرُ مُخَاطَرَةٍ • صِفْرُ رَأْسِ مَالٍ • صِفْرُ مُؤَهِّلَاتٍ»',
@@ -802,8 +802,8 @@
                 pct: 86
             },
             {
-                start: 54.251,
-                end: 63.258,
+                start: 40.435,
+                end: 47.691,
                 img: 'shared/assets/promo-poster.jpg',
                 badge: 'المشهد 6 من 6 • الحرية المالية',
                 title: '6. «الحُرِّيَّةُ المَالِيَّةُ لَيْسَتْ وَهْماً.. بَلْ حَقِيقَةٌ يَفْصِلُكَ عَنْهَا خَطْوَةٌ وَاحِدَةٌ.. SAWYAN»',
@@ -852,7 +852,7 @@
         if (vid) {
             vid.addEventListener('timeupdate', function () {
                 const ct = vid.currentTime || 0;
-                const dur = vid.duration || 63.258;
+                const dur = vid.duration || 47.691;
                 const pct = Math.min(100, Math.round((ct / dur) * 100));
                 let foundIdx = 0;
                 for (let i = 0; i < scenes.length; i++) {
