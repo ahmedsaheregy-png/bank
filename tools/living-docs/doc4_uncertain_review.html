@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚠️ بنود غير متأكد منها وقيد المراجعة مع المؤسس - SAWYAN</title>
+    <style>
+        body {
+            font-family: 'Calibri', 'Segoe UI', Tahoma, Arial, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            line-height: 1.85;
+            padding: 20px 15px;
+            margin: 0;
+            font-size: 1.15rem;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container-wrap {
+            max-width: 1060px;
+            margin: 0 auto;
+        }
+        .edit-toolbar {
+            position: sticky;
+            top: 10px;
+            z-index: 9999;
+            background: #ffffff;
+            border: 2px solid #10b981;
+            border-radius: 12px;
+            padding: 12px 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        .paper {
+            background: #ffffff;
+            padding: 50px 58px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+            border: 1px solid #e2e8f0;
+            outline: none;
+        }
+        .paper[contenteditable="true"]:focus {
+            border-color: #10b981;
+        }
+        .hero-banner {
+            background: linear-gradient(135deg, #10b981 0%, #047857 50%, #1d4ed8 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 14px;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .hero-banner h1 {
+            color: white;
+            font-size: 2.35rem;
+            margin: 0 0 10px 0;
+            font-weight: 800;
+            font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        .hero-banner p {
+            color: #e0e7ff;
+            font-size: 1.18rem;
+            margin: 0;
+            font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif;
+        }
+        h1 {
+            color: #065f46;
+            font-size: 2.0rem;
+            margin-top: 35px;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #10b981;
+            padding-bottom: 10px;
+            font-weight: 700;
+            font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif;
+        }
+        h2 {
+            color: #047857;
+            font-size: 1.62rem;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #a7f3d0;
+            padding-bottom: 8px;
+            font-weight: 700;
+            font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif;
+        }
+        h3 {
+            color: #1e40af;
+            font-size: 1.32rem;
+            margin-top: 25px;
+            margin-bottom: 12px;
+            border-right: 5px solid #3b82f6;
+            padding-right: 12px;
+            font-weight: 700;
+            font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif;
+        }
+        h4 {
+            color: #334155;
+            font-size: 1.16rem;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-weight: 700;
+            font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif;
+        }
+        p, li {
+            margin-bottom: 12px;
+            font-size: 1.14rem;
+            font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif;
+        }
+        @media print {
+            .edit-toolbar { display: none; }
+            body { background: white; padding: 0; }
+            .paper { box-shadow: none; border: none; padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-wrap">
+        
+        <!-- شريط التحرير السحابي والحفظ المباشر المتطور -->
+        <div class="edit-toolbar" style="position: sticky; top: 10px; z-index: 9999; background: #ffffff; border: 2px solid #10b981; border-radius: 12px; padding: 12px 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 10px;">
+            <div style="font-weight: 700; color: #047857; font-size: 1.02rem; display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.3rem;">✏️</span>
+                <span>وضع التعديل المباشر أونلاين مفعّل — انقر على أي نص وعدّله مباشرة!</span>
+                <span id="save-status" style="font-size: 0.92rem; color: #059669; font-weight: 700; margin-right: 8px;"></span>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button type="button" onclick="saveToBrowserStorage()" style="background: #059669; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 800; cursor: pointer; box-shadow: 0 2px 8px rgba(5,150,105,0.3);">💾 حفظ التعديلات (Auto-Saved)</button>
+                <button type="button" onclick="downloadUpdatedHtml()" style="background: #d97706; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: 700; cursor: pointer;">📥 تحميل نسخة HTML المحدثة</button>
+                <button type="button" onclick="copyToDocs()" style="background: #2563eb; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: 700; cursor: pointer;">📋 نسخ لـ Google Docs</button>
+                <button type="button" onclick="window.print()" style="background: #475569; color: white; border: none; padding: 8px 12px; border-radius: 8px; font-weight: 600; cursor: pointer;">🖨️ طباعة</button>
+                <button type="button" onclick="resetToOriginal()" style="background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; padding: 8px 10px; border-radius: 8px; font-weight: 600; cursor: pointer;" title="استعادة النسخة الأصلية">🔄 إعادة ضبط</button>
+            </div>
+        </div>
+    
+<div style="display: flex; gap: 10px;">
+                <button onclick="copyToDocs()" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-family: 'Calibri', sans-serif; font-size: 1rem; font-weight: 700; cursor: pointer;">📋 نسخ النص لـ Google Docs</button>
+                <button onclick="window.print()" style="background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-family: 'Calibri', sans-serif; font-size: 1rem; font-weight: 700; cursor: pointer;">🖨️ طباعة / حفظ PDF</button>
+            </div>
+        </div>
+        <div id="editable-content" class="paper" contenteditable="true" spellcheck="false">
+            <div class="hero-banner">
+                <h1>⚠️ بنود غير متأكد منها وقيد المراجعة مع المؤسس</h1>
+                <p>SAWYAN — Official Ecosystem Master Blueprint (Updated 2026-11-16)</p>
+            </div>
+            <h1>⚠️ بنود غير متأكد منها وقيد المراجعة مع المؤسس — SAWYAN</h1>
+<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
+<p style="margin: 0 0 8px 0;"><strong style="color: #0f172a; font-weight: 700;">صفة الملف:</strong> سجل معزول ومستقل للبنود والأفكار التي تحتاج إعادة فحص وتدقيقاً قبل اعتمادها.</p>
+<p style="margin: 0 0 8px 0;"><strong style="color: #0f172a; font-weight: 700;">القاعدة الحاكمة:</strong> أي بند يُدرج في هذا الملف <strong style="color: #0f172a; font-weight: 700;">يُجمَّد تعليقه ولا يُثبَّت في الوثائق الثلاث الرسمية</strong> (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">وصف_الموقع_البناء_2</code>، <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">خطة_الدخل_الرسمية</code>، <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">الملف_التقني_للمطورين</code>) إلا بعد أن يراجعه المؤسس ويصدر قراره الحاسم بشأنه (اعتماداً، أو تعديلاً، أو إلغاءً).</p>
+</blockquote>
+<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
+<h2>📌 البند رقم (1) [من النقطة رقم 6]: باركود العضو (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">QR Code</code>) وعلاقته بساعة الموبايل عند انقطاع الإنترنت</h2>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">التاريخ:</strong> 2026-11-16</li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة الحالية:</strong> ⏸️ <strong style="color: #0f172a; font-weight: 700;">معلّق — قيد مراجعة المؤسس (لم يُرتح لتعقيده التقني ولم يُضف للوثائق كمتن نهائي)</strong>.</li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الموقع المرتبط في الوثائق لاحقاً عند الحسم:</strong> الوركفلو الثالث — المسار (أ) و(ج) في <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">وصف_الموقع_البناء_2.md</code>، والبند <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">7.2</code> في <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">الملف_التقني_للمطورين.md</code> (علماً أن النصوص القديمة ما زالت تحتوي إشارتين مختلفتين تحتاجان توحيداً فور الحسم النهائي: «لعملية واحدة» في المسار أ وج، مقابل توصيف <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">HMAC-TOTP 60s</code> في القسم التقني <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">7.2</code>).</li>
+</ul>
+<h3>1. أصل الفكرة التي كانت مقترحة</h3>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;">افتُرض أن العضو إذا انقطع عنه الإنترنت داخل المحل فسيفتح التطبيق ويعرض باركوداً يتغير تلقائياً كل <strong style="color: #0f172a; font-weight: 700;"><code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">60</code> ثانية</strong> بالاعتماد على ساعة الموبايل، وعندما يمسحه التاجر يتحقق السيرفر من تطابق الوقت عبر تسامح <strong style="color: #0f172a; font-weight: 700;"><code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">±2–3</code> دقائق</strong> ومعالجة فرق ساعة الهاتف عن السيرفر (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">Server Clock Offset</code>) + حرق رقم الباركود لمرة واحدة (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">Nonce</code>).</li>
+</ul>
+<h3>2. السبب الجوهري لعدم الارتياح (مراجعة منطقية وتجارية)</h3>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;">في منظومة سويا، مسح التاجر لباركود العضو <strong style="color: #0f172a; font-weight: 700;">لا يسحب مالاً من حساب العضو، بل يخصم العمولة من رصيد التاجر نفسه ويعطي العضو نقاطاً وعمولات!</strong></li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;">وبالتالي، <strong style="color: #0f172a; font-weight: 700;">لا توجد أي مصلحة للتاجر أصلاً في «سرقة صورة باركود عضو أو إعادة تمريرها»</strong> ليخصم من جيب محله هو ويعطي العضو عمولة مجانية!</li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;">وبناءً على ذلك:</li>
+</ul>
+<ol style="padding-right: 28px; margin: 12px 0;">
+<li value="1" style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;">ربط الباركود بساعة الموبايل وتقديمها وتأخيرها كل <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">60</code> ثانية يضيف <strong style="color: #0f172a; font-weight: 700;">تعقيداً هندسياً غير مبرر</strong> لخطر شبه منعدم من طرف التاجر.</li>
+<li value="2" style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;">قد يتسبب في <strong style="color: #0f172a; font-weight: 700;">إحراج وتعطيل العضو البسيط أمام الكاشير</strong> إذا كانت ساعة هاتفه غير مضبوطة أو مضى وقت انتظار طويل في الطابور فتغير الباركود أثناء المحاسبة أو رُفض عند السيرفر.</li>
+<li value="3" style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;">وجود أداة <strong style="color: #0f172a; font-weight: 700;"><code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">Duplicate Scan Prevention</code></strong> في السيرفر (تمنع تسجيل نفس الفاتورة مرتين في نفس اللحظة بالخطأ) مع <strong style="color: #0f172a; font-weight: 700;">إلزامية تصوير الفاتورة أو السلعة</strong> وخصم العمولة من رصيد التاجر يغني تماماً عن تعقيد تغيير الباركود كل <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">60</code> ثانية بالساعة.</li>
+</ol>
+<h3>3. البدائل العملية البسيطة المطروحة لحسم المؤسس</h3>
+<div style="overflow-x: auto; margin: 18px 0;">
+<table style="width: 100%; border-collapse: collapse; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 1.02rem;">
+<thead><tr style="background: #065f46; color: #ffffff;">
+<th style="padding: 11px 13px; border: 1px solid #047857; text-align: right; font-weight: 700;">البديل</th>
+<th style="padding: 11px 13px; border: 1px solid #047857; text-align: right; font-weight: 700;">الوصف التشغيلي</th>
+<th style="padding: 11px 13px; border: 1px solid #047857; text-align: right; font-weight: 700;">الميزة الرئيسية</th>
+<th style="padding: 11px 13px; border: 1px solid #047857; text-align: right; font-weight: 700;">الملاحظة الرقابية</th>
+</tr></thead><tbody>
+<tr style="background: #ffffff;">
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><strong style="color: #0f172a; font-weight: 700;">البديل (أ) — الأبسط والأضمن تشغيلياً (الباركود الثابت + حماية السيرفر)</strong></td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">باركود ثابت وبسيط لهوية العضو (مثل بطاقة عضوية ذكية لا تتأثر بساعة الموبايل إطلاقاً ولا تحتاج إنترنت)، يعمل في كل وقت حتى لو انقطع الإنترنت أو كانت ساعة الهاتف مختلفة.</td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">أسرع مسح أمام الكاشير، صفر أعطال بسبب ساعة الموبايل، يعمل أوفلاين 100%.</td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">يُحصَّن بقفل السيرفر لمنع تكرار نفس الفاتورة بالخطأ خلال نفس الدقيقة (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">Duplicate Scan Prevention</code>) + إرفاق صورة الفاتورة/السلعة + الإشعار الفوري للعضو بكل عملية تُسجل باسمه.</td>
+</tr>
+<tr style="background: #f8fafc;">
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><strong style="color: #0f172a; font-weight: 700;">البديل (ب) — الاكتفاء بالطرق المباشرة بدون باركود متغير</strong></td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">عند انقطاع باقة العضو، يقرأ التاجر <strong style="color: #0f172a; font-weight: 700;">كود العضوية القصير</strong> (مثلاً <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">1042</code>) أو <strong style="color: #0f172a; font-weight: 700;">رقم الموبايل</strong> على شاشة التاجر، أو يتصل العضو بـ <strong style="color: #0f172a; font-weight: 700;"><code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">Wi-Fi</code> المتجر</strong> (عبر باركود الشبكة الموجود في المحل).</td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">يلغي مشكلة الأوفلاين بالكامل من جذورها وبلا أي تعقيد في التطبيق.</td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">يتطلب من التاجر كتابة الكود أو الموبايل يدوياً (3 ثوانٍ) بدلاً من الكاميرا السريعة.</td>
+</tr>
+<tr style="background: #ffffff;">
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><strong style="color: #0f172a; font-weight: 700;">البديل (ج) — الإبقاء على الباركود المتغير بنافذة سماحية واسعة</strong></td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">الإبقاء على باركود متغير أو مرتبط برمز الجلسة لكن دون تعقيد التزامن الصارم بالدقائق.</td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">يحافظ على مظهر «الرمز المتجدد» لمن يظنون أنه أكثر أماناً.</td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">ما زال أقل بساطة من الباركود الثابت (البديل أ) عند انقطاع الإنترنت التام.</td>
+</tr>
+</tbody></table></div>
+<h3>4. القرار المنتظر من المؤسس</h3>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;">[ ] اعتماد <strong style="color: #0f172a; font-weight: 700;">البديل (أ)</strong>: تثبيت <strong style="color: #0f172a; font-weight: 700;">باركود العضوية الثابت والبسيط</strong> وحذف تعقيد ساعة الموبايل و<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">TOTP</code> من المواصفات التقنية والوثائق.</li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;">[ ] اعتماد <strong style="color: #0f172a; font-weight: 700;">البديل (ب)</strong>: الاكتفاء بكود العضو / الموبايل / <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">Wi-Fi</code> المحل عند انقطاع الإنترنت.</li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;">[ ] الإبقاء على البند معلقاً لمزيد من المناقشة لاحقاً.</li>
+</ul>
+<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
+<h2>📌 البند رقم (2) [أُلغي وحُسم نهائياً بقرار المؤسس — 2026-11-18]: شطب فكرة دين المرتجع المتأخر بعد يوم الصرف (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">Clawback Wallet Offset</code>) لزوال محلها</h2>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">تاريخ الحسم النهائي:</strong> 2026-11-18</li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة الحالية:</strong> ✅ <strong style="color: #0f172a; font-weight: 700;">مغلق ومحسوم نهائياً بقرار المؤسس (تم شطب المرتجعات النظامية بعد يوم الصرف <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">15</code> وإلغاء الأرصدة السالبة و<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">Rolling Reserve</code> بالكامل).</strong></li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">نص قرار المؤسس المعتمد والمثبّت في الوثائق والكود (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">D5 المحدّث</code>):</strong></li>
+</ul>
+<ol style="padding-right: 28px; margin: 12px 0;">
+<li value="1" style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">صفر تحمّل للخزانة (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">0.00$</code>):</strong> لا تتحمل خزانة الشركة أي قرش في أي عملية مرتجع؛ ولا يوجد في النظام «احتياطي مرتجعات دوار» ولا «رصيد سالب في صندوق هدف العضو».</li>
+<li value="2" style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">المرتجع خلال الـ <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">14</code> يوماً قبل الصرف + حماية الكاري أون (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">Carry-On</code>):</strong> إذا أرجع العضو سلعة قبل يوم الصرف (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">15</code>) تُلغى العملية وكل ما يترتب عليها؛ فإن كان رصيد <strong style="color: #0f172a; font-weight: 700;">الكاري أون (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">Carry-On</code>)</strong> المرحّل يغطي العجز في الهدف الشهري، يُخصم العجز من الكاري أون لصالح الهدف الشهري ويحتفظ العضو بتأهله، وإن لم يغطِّ يسقط تأهله وتُلغى أي عمولات وُزعت بسببه على من فوقه قبل الصرف.</li>
+<li value="3" style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحظر القاطع بعد يوم الصرف (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">يوم 15</code>):</strong> ينص النظام برمجياً وتعاقدياً على <strong style="color: #0f172a; font-weight: 700;">عدم قبول أي مرتجعات تخص شهراً مغلقاً بعد يوم صرفه (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">يوم 15</code> من الشهر الجديد)</strong>؛ فإن وافق البائع (التاجر) على قبول المرتجع بعد يوم الصرف <strong style="color: #0f172a; font-weight: 700;">يتحمله البائع الذي وافق على ذلك وحده بالكامل (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">100%</code>)</strong> خارج نظام عمولات سوياً.</li>
+</ol>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النتيجة الهندسية:</strong> بسقوط وجود أي رصيد سالب أصلاً في صندوق الهدف بعد يوم <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">15</code>، زال محل هذا البند المجمّد تماماً وأُغلق نهائياً.</li>
+</ul>
+<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
+<h2>📌 البند رقم (3) [مُنفَّذ مؤقتاً بتوصية اللجنتين (26/26) — 2026-11-18 — قيد مراجعة المؤسس المستمرة]: الفرز ثنائي الفئة لتذاكر نزاع المرتجع المفتوحة قبل صرف يوم <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">15</code> («الخيار 1-أ»)</h2>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">تاريخ الإدراج:</strong> 2026-11-18</li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة الحالية:</strong> ⚠️ <strong style="color: #0f172a; font-weight: 700;">مُنفَّذ مؤقتاً بتوصية اللجنتين الاستشارية والتقنية بالإجماع (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">26/26</code>) وقيد مراجعة المؤسس المستمرة (لم يحسم المؤسس قناعته النهائية به بعد، وأمر بتسجيله هنا للمراجعة اللاحقة).</strong></li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">المواقع المرتبطة في النظام والوثائق:</strong></li>
+<li style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;">قاعدة البيانات: الدالة <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">sawyan.finalize_settlement_payout_step5_6</code> في <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">database/07_remediation_security_and_settlement_patch.sql</code>، والدالة <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">sawyan.submit_member_dispute</code> في <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">database/06_stage4_member_and_portal_rpcs.sql</code>، وحزمة الإدارة <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">sawyan.get_admin_sovereign_bundle</code> في <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">database/09_stage6_admin_governance_and_launch_rpcs.sql</code>.</li>
+<li style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;">الوثائق: الوركفلو السادس (البند <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">4</code>) في <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">وصف_الموقع_البناء_2.md</code>، وتوصيف الإقفال وحظر الـ <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">Clawback</code> في <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">الملف_التقني_للمطورين.md</code>.</li>
+</ul>
+<h3>1. أصل الإشكال الذي أُثير في النقاش</h3>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;">في نزاعات المرتجع المفتوحة أواخر نافذة الـ <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">14</code> يوماً (بين العميل والتاجر قبل صرف يوم <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">15</code> الساعة <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">18:00</code> بالتوقيت المحلي): قد تكون قيمة الفاتورة المتنازع عليها صغيرة جداً (مثلاً <strong style="color: #0f172a; font-weight: 700;"><code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">1$</code> أو <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">2$</code></strong>)، لكنها هي <strong style="color: #0f172a; font-weight: 700;">الدولار الفاصل الحرج (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">Pivot Dollar</code>)</strong> الذي يتوقف عليه إكمال العضو لهدفه الشهري (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">24.75$</code>)؛ فإذا تُرك التأهل قائماً ثم اتضح أن السلعة أُرجعت فعلاً بعد فوات يوم الصرف (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">15</code>) فستُصرف عمولات أعلى الشجرة (قد تبلغ آلاف الدولارات — مثلاً <strong style="color: #0f172a; font-weight: 700;"><code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">4,000$</code></strong> لقائد تحته شبكة مؤهلة أو تفتح تأهل القائد نفسه عبر <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">D1</code>)، والعكس لو وُضعت قاعدة تجميد عمياء على أي مبلغ تافه لأي تذكرة أو لوعاء الدولة كله فستتأخر مصالح الآلاف من الأبرياء.</li>
+</ul>
+<h3>2. القاعدة المُنفَّذة حالياً بالنظام (الخيار <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">1-أ</code> — بتوصية <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">26/26</code>)</h3>
+<ol style="padding-right: 28px; margin: 12px 0;">
+<li value="1" style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الفحص الرياضي الحتمي «لكسر التأهل»:</strong></li>
+</ol>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;">يحسب النظام تلقائياً لكل تذكرة نزاع مفتوحة متعلقة بمرتجع (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">return_stalled</code> أو <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">merchant_return_escalation</code>): هل لو طُرحت الفاتورة المتنازع عليها من رصيد <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">(carry_on_in_usd + current_month_purchases_usd)</code> ينخفض الرصيد من <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">&gt;= target_required_usd</code> إلى <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">&lt; target_required_usd</code> أم لا؟</li>
+</ul>
+<ol style="padding-right: 28px; margin: 12px 0;">
+<li value="2" style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">المسار الأوّل — تذكرة غير كاسرة للتأهل (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">Non-Qualification-Breaking</code> 🟢):</strong></li>
+</ol>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;">أي تذكرة لا يتوقف عليها تأهل العضو (سواء كان لديه فائض <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">Carry-On</code> يغطيها أو كان غير مؤهل أصلاً): <strong style="color: #0f172a; font-weight: 700;">لا تعرقل صرف أي عضو ولا توقف زر صرف الدولة في يوم <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">15</code></strong>؛ لأن التوزيع لا يتأثر بسقوطها أو بقائها.</li>
+</ul>
+<ol style="padding-right: 28px; margin: 12px 0;">
+<li value="3" style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">المسار الثاني — تذكرة كاسرة للتأهل (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">Qualification-Breaking</code> 🔴):</strong></li>
+</ol>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;">يُشترط لتسجيل نزاع مرتجع (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">return_stalled</code>) وجود <strong style="color: #0f172a; font-weight: 700;">إثبات مادي (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">evidence_url</code> / فيديو / صوت / طلب مرتجع قائم)</strong> منعاً للتخريب الكيدي الفارغ، وتُصعَّد فوراً أولوية قصوى (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">P0</code> بمهلة <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">12</code> ساعة مع إشارة <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">is_qualification_breaking = true</code> في لوحة الإدارة).</li>
+<li style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;">إذا بقيت تذكرة كاسرة للتأهل مفتوحة قبل صرف يوم <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">15</code>، <strong style="color: #0f172a; font-weight: 700;">يتوقف زر صرف الدولة المتأثرة وحدها فقط (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">QUALIFICATION_BREAKING_DISPUTE_OPEN</code>)</strong> — كما يتوقف صرف الدولة الأجنبية المرتبطة عبر قاعدة <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">D1</code> إذا كانت التذكرة الكاسرة في دولة إقامة صاحب <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">D1</code> — بينما <strong style="color: #0f172a; font-weight: 700;">تُصرف بقية الدول النظيفة في موعدها فوراً بلا تعطيل</strong> حتى يفصل الأدمن في التذكرة الحرجة خلال مهلة الصرف (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">15</code> — <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">18:00</code> محلياً).</li>
+</ul>
+<ol style="padding-right: 28px; margin: 12px 0;">
+<li value="4" style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">ثبات مبدأ صفر رصيد سالب (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">D5</code>):</strong> بمجرد إقفال الشهر وصرف يوم <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">15</code>، لا يُمس أي أب ولا يوضع أي رصيد سالب؛ ولذا نُفِّذ حسم كل التذاكر الكاسرة للتأهل <strong style="color: #0f172a; font-weight: 700;">قبل</strong> إطلاق الصرف لا بعده.</li>
+</ol>
+<h3>3. تحفّظ المؤسس والبدائل المطروحة عند المراجعة اللاحقة</h3>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;">احتفظ المؤسس بحقه في مراجعة هذه الآلية عملياً قبل الإطلاق أو بعده خشية استغلال تعطيل صرف دولة بأكملها عبر نزاع كيدي أو نزاع مؤجل عمداً، أو من صعوبة حسم بعض النزاعات الميدانية خلال الساعات القليلة بين <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">23:59:59</code> من اليوم <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">14</code> والساعة <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">18:00</code> من اليوم <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">15</code>.</li>
+</ul>
+<div style="overflow-x: auto; margin: 18px 0;">
+<table style="width: 100%; border-collapse: collapse; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 1.02rem;">
+<thead><tr style="background: #065f46; color: #ffffff;">
+<th style="padding: 11px 13px; border: 1px solid #047857; text-align: right; font-weight: 700;">البديل المطروح للمراجعة</th>
+<th style="padding: 11px 13px; border: 1px solid #047857; text-align: right; font-weight: 700;">الآلية المقترحة</th>
+<th style="padding: 11px 13px; border: 1px solid #047857; text-align: right; font-weight: 700;">الميزة</th>
+<th style="padding: 11px 13px; border: 1px solid #047857; text-align: right; font-weight: 700;">التحفّظ / التكلفة</th>
+</tr></thead><tbody>
+<tr style="background: #ffffff;">
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><strong style="color: #0f172a; font-weight: 700;">الحالي (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">1-أ</code> — المنفَّذ مؤقتاً)</strong></td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">تصعيد <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">P0</code> + دليل إلزامي + إيقاف صرف <strong style="color: #0f172a; font-weight: 700;">الدولة المتأثرة فقط</strong> عند وجود تذكرة كاسرة للتأهل مفتوحة، وعدم إيقاف أي تذكرة غير كاسرة.</td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">دقة رياضية <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">100%</code> ومنع التوزيع الوهمي بأي دولار فاصل دون تحميل الخزانة أو الأبرياء في الدول الأخرى أي أثر.</td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">لو تعطل حسم تذكرة كاسرة حتى الساعة <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">18:00</code> يوم <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">15</code> يتأخر صرف تلك الدولة وحدها لحين الفصل الإداري.</td>
+</tr>
+<tr style="background: #f8fafc;">
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><strong style="color: #0f172a; font-weight: 700;">البديل (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">1-ب</code>) — استبعاد موقت للعضو فقط دون إيقاف الدولة</strong></td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">استبعاد التذكرة المتنازع عليها موقتاً من تأهل صاحبها يوم <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">15</code> وإطلاق صرف الدولة في موعده (فإن حُكم لصالح العضو لاحقاً يُسوَّى استثنائياً).</td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">صرف الدولة لا يتأخر دقيقة واحدة لأي فرد.</td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">يتعارض إذا خسرت شجرة <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">11</code> مستفيداً عمولتها بسبب ماطلة التاجر إلا لو دفعت جهة ما التعويض لاحقاً.</td>
+</tr>
+<tr style="background: #ffffff;">
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><strong style="color: #0f172a; font-weight: 700;">البديل (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">1-ج</code>) — تقصير مهلة القطع الصارم إلى اليوم <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">12</code> أو <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">13</code></strong></td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">قصر تسليم المرتجع عند التاجر ليوم <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">12</code>/<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">13</code> وإعطاء أيام <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">13–14</code> للفصل الإداري قبل صرف يوم <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">15</code>.</td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">يمنح الإدارة <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">48–72</code> ساعة مريحة للحسم دون توتر الساعات الأخيرة.</td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">يقلّص نافذة إرجاع العميل الفعلي لدى التاجر من <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">14</code> إلى <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">12</code> يوماً افتراضياً (ويمكن ضبطه مستقبلاً بتعديل رقم <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">return_cutoff_day</code> في إعداد كل دولة).</td>
+</tr>
+</tbody></table></div>
+<h3>4. القرار المنتظر من المؤسس عند المراجعة النهائية</h3>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;">[ ] اعتماد الخيار <strong style="color: #0f172a; font-weight: 700;"><code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">1-أ</code></strong> نهائياً وإزالته من هذا الملف.</li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;">[ ] الانتقال إلى <strong style="color: #0f172a; font-weight: 700;"><code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">1-ب</code></strong> (صرف بلا تعطيل للدولة) أو <strong style="color: #0f172a; font-weight: 700;"><code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">1-ج</code></strong> (تقديم مهلة القطع <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">return_cutoff_day</code> لضمان مهلة إدارية أطول قبل الصرف).</li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;">[x] الإبقاء عليه منفّذاً مؤقتاً ومعلّقاً في هذا السجل لمزيد من الاختبار والتجربة الميدانية.</li>
+</ul>
+        </div>
+    </div>
+    
+    <script>
+        const STORAGE_KEY = "sawyan_doc4_uncertain_review";
+
+        function getEditableEl() {
+            return document.getElementById('editable-content') || document.querySelector('.paper');
+        }
+
+        // Save directly to browser storage
+        function saveToBrowserStorage() {
+            const paper = getEditableEl();
+            if (!paper) return;
+            const statusEl = document.getElementById('save-status');
+            try {
+                const contentHtml = paper.innerHTML;
+                localStorage.setItem(STORAGE_KEY, contentHtml);
+                localStorage.setItem(STORAGE_KEY + '_time', new Date().toLocaleTimeString('ar-EG'));
+                if (statusEl) {
+                    statusEl.textContent = '✓ تم الحفظ في المتصفح (' + new Date().toLocaleTimeString('ar-EG') + ')';
+                    statusEl.style.color = '#059669';
+                }
+            } catch (e) {
+                if (statusEl) {
+                    statusEl.textContent = '⚠️ مساحة التخزين ممتلئة';
+                    statusEl.style.color = '#dc2626';
+                }
+            }
+        }
+
+        // Auto restore on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            const paper = getEditableEl();
+            if (!paper) return;
+            // Ensure paper is editable
+            paper.setAttribute('contenteditable', 'true');
+            paper.setAttribute('spellcheck', 'false');
+
+            const saved = localStorage.getItem(STORAGE_KEY);
+            const savedTime = localStorage.getItem(STORAGE_KEY + '_time');
+            if (saved) {
+                paper.innerHTML = saved;
+                const statusEl = document.getElementById('save-status');
+                if (statusEl) {
+                    statusEl.textContent = '✓ تم استرجاع آخر تعديلاتك المحفوظة (' + (savedTime || '') + ')';
+                    statusEl.style.color = '#059669';
+                }
+            }
+
+            // Auto-save on input with debounce
+            let timeout = null;
+            paper.addEventListener('input', () => {
+                const statusEl = document.getElementById('save-status');
+                if (statusEl) statusEl.textContent = '⏳ جاري الحفظ التلقائي...';
+                clearTimeout(timeout);
+                timeout = setTimeout(saveToBrowserStorage, 1000);
+            });
+        });
+
+        // Download full updated HTML
+        function downloadUpdatedHtml() {
+            saveToBrowserStorage();
+            const clone = document.documentElement.cloneNode(true);
+            const fullHtml = '<!DOCTYPE html>\n' + clone.outerHTML;
+            const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "بنود_غير_متأكد_للمراجعة.html";
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Copy rich formatted text to Google Docs
+        function copyToDocs() {
+            const paper = getEditableEl();
+            if (!paper) return;
+            const range = document.createRange();
+            range.selectNode(paper);
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+            try {
+                document.execCommand('copy');
+                alert('✅ تم نسخ محتوى الوثيقة كاملاً بكافة التنسيقات والألوان!\nيمكنك الآن لصقه مباشرة في Google Docs بالضغط على Ctrl + V');
+            } catch (e) {
+                alert('يرجى تحديد النص والضغط على Ctrl + C');
+            }
+            window.getSelection().removeAllRanges();
+        }
+
+        // Reset to original canonical version
+        function resetToOriginal() {
+            if (confirm('هل أنت متأكد من رغبتك في حذف التعديلات واستعادة النسخة الأصلية المعتمدة؟')) {
+                localStorage.removeItem(STORAGE_KEY);
+                localStorage.removeItem(STORAGE_KEY + '_time');
+                location.reload();
+            }
+        }
+
+        // Ctrl+S shortcut
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                e.preventDefault();
+                saveToBrowserStorage();
+            }
+        });
+    </script>
+    
+</body>
+</html>

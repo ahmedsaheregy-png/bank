@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>بوابة وثائق وبنك محتوى SAWYAN التفاعلية — Live Online Hub</title>
+    <link rel="icon" type="image/svg+xml" href="../../shared/assets/sawyan-icon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0f1d;
+            --card-bg: #111827;
+            --card-border: #1f2937;
+            --emerald: #10b981;
+            --emerald-dark: #047857;
+            --gold: #f59e0b;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Cairo', system-ui, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 30px 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .brand-badge {
+            display: inline-block;
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 4px 14px;
+            border-radius: 999px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #fff, #a7f3d0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        p.desc {
+            color: var(--text-muted);
+            font-size: 1.05rem;
+            max-width: 720px;
+            margin: 0 auto;
+        }
+
+        .docs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 22px;
+            margin-bottom: 40px;
+        }
+
+        .doc-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .doc-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(16, 185, 129, 0.4);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+
+        .doc-card.featured {
+            border-color: var(--emerald);
+            background: linear-gradient(180deg, rgba(16, 185, 129, 0.08) 0%, var(--card-bg) 100%);
+        }
+
+        .doc-tag {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 6px;
+            display: inline-block;
+            margin-bottom: 12px;
+        }
+
+        .tag-core {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .tag-vault {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--gold);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .doc-title {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .doc-desc {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .doc-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            text-decoration: none;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--emerald-dark), var(--emerald));
+            color: #fff;
+            flex: 1;
+            justify-content: center;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.92;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #1f2937;
+            color: #cbd5e1;
+            border: 1px solid #374151;
+        }
+
+        .btn-secondary:hover {
+            background: #374151;
+        }
+
+        .features-banner {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.92rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <span class="brand-badge">SAWYAN LIVING PORTAL • 2026</span>
+        <h1>بوابة وثائق وبنك محتوى SAWYAN التفاعلية</h1>
+        <p class="desc">روابط سحابية تفاعلية مباشرة ومرفوعة أونلاين تمكّنك من التعديل الحر في أي سطر، الحفظ التلقائي في المتصفح، التصدير، والنسخ بنقرة واحدة دون أي خطوات وسيطة.</p>
+    </header>
+
+    <div class="docs-grid">
+
+        <!-- Doc 5: Content Vault (Featured) -->
+        <div class="doc-card featured">
+            <div>
+                <span class="doc-tag tag-vault">⭐ بنك المحتوى والتسويق الاستراتيجي</span>
+                <h2 class="doc-title">خزنة المحتوى والتسويق الاستراتيجي</h2>
+                <p class="doc-desc">مخزون العبارات المعتمدة، خطافات السوشيال ميديا، سيناريوهات الفيديوهات المشكولة صوتياً، ورسائل الواتساب، مع نظام أرشفة التعديلات ومدير النسخ.</p>
+            </div>
+            <div class="doc-actions">
+                <a href="../content-vault/index.html" class="btn btn-primary" target="_blank">💻 فتح لوحة التحكم التفاعلية</a>
+                <a href="doc5_content_vault.html" class="btn btn-secondary" target="_blank">📄 وثيقة التعديل المباشر</a>
+            </div>
+        </div>
+
+        <!-- Doc 1: Site Operations -->
+        <div class="doc-card">
+            <div>
+                <span class="doc-tag tag-core">الوثيقة 1 • الدستور التشغيلي</span>
+                <h2 class="doc-title">وصف الموقع والعمليات (البناء 2)</h2>
+                <p class="doc-desc">الدليل الشامل لكل شاشات المنصة، دورة حياة الفاتورة، نظام الأمان، وبوابة التجار والأعضاء والإدارة.</p>
+            </div>
+            <div class="doc-actions">
+                <a href="doc1_site_operations.html" class="btn btn-primary" target="_blank">✏️ فتح وتعديل الوثيقة أونلاين</a>
+                <a href="https://docs.google.com/document/d/1v_8I2vsV_J_Zx5XgnxHF6g6SeDkD_u4owrFM1J_Vm1g/edit" class="btn btn-secondary" target="_blank">Google Docs</a>
+            </div>
+        </div>
+
+        <!-- Doc 2: Income Plan -->
+        <div class="doc-card">
+            <div>
+                <span class="doc-tag tag-core">الوثيقة 2 • خطة الأرباح</span>
+                <h2 class="doc-title">خطة الدخل والشجرة الدولية الرسمية</h2>
+                <p class="doc-desc">المحرك المالي، القواعد الست الإلزامية، أرباح الأجيال، صندوق الهدف الشهري، وصندوق الستوبر المحاسبي.</p>
+            </div>
+            <div class="doc-actions">
+                <a href="doc2_income_plan.html" class="btn btn-primary" target="_blank">✏️ فتح وتعديل الوثيقة أونلاين</a>
+                <a href="https://docs.google.com/document/d/1pFh-3mxLQ0rzeOnOt1FJsqmuV_R-FzOknhMFQieIR8A/edit" class="btn btn-secondary" target="_blank">Google Docs</a>
+            </div>
+        </div>
+
+        <!-- Doc 3: Technical Specs -->
+        <div class="doc-card">
+            <div>
+                <span class="doc-tag tag-core">الوثيقة 3 • الهندسة البرمجية</span>
+                <h2 class="doc-title">الملف التقني للمطورين وقواعد البيانات</h2>
+                <p class="doc-desc">المعمارية التقنية، دوال PostgreSQL RPC، جداول dual-schema، وتكامل المنصة الكامل.</p>
+            </div>
+            <div class="doc-actions">
+                <a href="doc3_technical_specs.html" class="btn btn-primary" target="_blank">✏️ فتح وتعديل الوثيقة أونلاين</a>
+            </div>
+        </div>
+
+        <!-- Doc 4: Review Items -->
+        <div class="doc-card">
+            <div>
+                <span class="doc-tag tag-core">الوثيقة 4 • المراجعة والقرارات</span>
+                <h2 class="doc-title">بنود غير متأكد منها للمراجعة مع المؤسس</h2>
+                <p class="doc-desc">سجل القرارات المجمدة والتعديلات المعلقة للبت النهائي من الإدارة العليا.</p>
+            </div>
+            <div class="doc-actions">
+                <a href="doc4_uncertain_review.html" class="btn btn-primary" target="_blank">✏️ فتح وتعديل الوثيقة أونلاين</a>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="features-banner">
+        💡 <strong>ميزة التعديل المباشر (Direct In-Browser Editing):</strong> يمكنك النقر على أي فقرة أو عنوان في أي وثيقة وتعديلها فوراً، وسيتم حفظ تعديلاتك تلقائياً في ذاكرة متصفحك، كما يمكنك الضغط على <em>«📥 تحميل نسخة HTML»</em> أو <em>«📋 نسخ لـ Google Docs»</em> في أي لحظة.
+    </div>
+</div>
+
+</body>
+</html>

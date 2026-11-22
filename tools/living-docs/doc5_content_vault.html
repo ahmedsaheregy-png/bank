@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>بنك المحتوى والرسائل التسويقية الاستراتيجي — SAWYAN</title>
+    <style>
+        body {
+            font-family: 'Calibri', 'Segoe UI', Tahoma, Arial, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            line-height: 1.85;
+            padding: 20px 15px;
+            margin: 0;
+            font-size: 1.15rem;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container-wrap {
+            max-width: 1060px;
+            margin: 0 auto;
+        }
+        .edit-toolbar {
+            position: sticky;
+            top: 10px;
+            z-index: 9999;
+            background: #ffffff;
+            border: 2px solid #10b981;
+            border-radius: 12px;
+            padding: 12px 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .paper {
+            background: #ffffff;
+            padding: 50px 58px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+            border: 1px solid #e2e8f0;
+            outline: none;
+        }
+        .paper[contenteditable="true"]:focus {
+            border-color: #10b981;
+        }
+        .hero-banner {
+            background: linear-gradient(135deg, #10b981 0%, #047857 50%, #1d4ed8 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 14px;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .hero-banner h1 {
+            color: white;
+            font-size: 2.35rem;
+            margin: 0 0 10px 0;
+            font-weight: 800;
+        }
+        .hero-banner p {
+            color: #e0e7ff;
+            font-size: 1.18rem;
+            margin: 0;
+        }
+        h1 {
+            color: #065f46;
+            font-size: 2.0rem;
+            margin-top: 35px;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #10b981;
+            padding-bottom: 10px;
+            font-weight: 700;
+        }
+        h2 {
+            color: #047857;
+            font-size: 1.62rem;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #a7f3d0;
+            padding-bottom: 8px;
+            font-weight: 700;
+        }
+        h3 {
+            color: #1e40af;
+            font-size: 1.32rem;
+            margin-top: 25px;
+            margin-bottom: 12px;
+            border-right: 5px solid #3b82f6;
+            padding-right: 12px;
+            font-weight: 700;
+        }
+        h4 {
+            color: #334155;
+            font-size: 1.16rem;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        p, li {
+            margin-bottom: 14px;
+            font-size: 1.14rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #cbd5e1;
+            padding: 10px 14px;
+            text-align: right;
+        }
+        th {
+            background: #f1f5f9;
+            color: #0f172a;
+            font-weight: 700;
+        }
+        @media print {
+            .edit-toolbar { display: none; }
+            body { background: white; padding: 0; }
+            .paper { box-shadow: none; border: none; padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-wrap">
+        <!-- شريط التحرير السحابي والحفظ المباشر -->
+        <div class="edit-toolbar">
+            <div style="font-weight: 700; color: #047857; font-size: 1.02rem; display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.3rem;">✏️</span>
+                <span>وضع التعديل المباشر مفعّل — انقر على أي نص وعدّله مباشرة!</span>
+                <span id="save-status" style="font-size: 0.92rem; color: #059669; font-weight: 700; margin-right: 8px;"></span>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button type="button" onclick="saveToBrowserStorage()" style="background: #059669; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 800; cursor: pointer; box-shadow: 0 2px 8px rgba(5,150,105,0.3);">💾 حفظ التعديلات (Auto-Saved)</button>
+                <button type="button" onclick="downloadUpdatedHtml()" style="background: #d97706; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: 700; cursor: pointer;">📥 تحميل نسخة HTML المحدثة</button>
+                <button type="button" onclick="copyToDocs()" style="background: #2563eb; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: 700; cursor: pointer;">📋 نسخ لـ Google Docs</button>
+                <button type="button" onclick="window.print()" style="background: #475569; color: white; border: none; padding: 8px 12px; border-radius: 8px; font-weight: 600; cursor: pointer;">🖨️ طباعة</button>
+                <button type="button" onclick="resetToOriginal()" style="background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; padding: 8px 10px; border-radius: 8px; font-weight: 600; cursor: pointer;">🔄 إعادة ضبط</button>
+            </div>
+        </div>
+
+        <div class="hero-banner">
+            <h1>🏛️ بنك المحتوى والرسائل التسويقية الاستراتيجي</h1>
+            <p>SAWYAN Strategic Content Vault — وثيقة الهوية والرسائل الإعلانية والسيناريوهات المعتمدة (sawyan.net)</p>
+        </div>
+
+        <div class="paper" id="editable-content" contenteditable="true" spellcheck="false">
+            <h1>🏛️ بنك المحتوى والرسائل التسويقية الاستراتيجي — SAWYAN (Living Content Vault)</h1>
+<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
+<p style="margin: 0 0 8px 0;"><strong style="color: #0f172a; font-weight: 700;">الإصدار الدستوري:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0.0</code></p>
+<p style="margin: 0 0 8px 0;"><strong style="color: #0f172a; font-weight: 700;">الدومين المعتمد:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">sawyan.net</code></p>
+<p style="margin: 0 0 8px 0;"><strong style="color: #0f172a; font-weight: 700;">حالة الوثيقة:</strong> معتمدة رسمياً ومحمية بنظام أرشفة الإصدارات التراكمي (Never-Lost Versioning)</p>
+<p style="margin: 0 0 8px 0;"><strong style="color: #0f172a; font-weight: 700;">المرجع التقني والبياني:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">specs/marketing_content_vault.json</code></p>
+</blockquote>
+<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
+<h2>1. الفلسفة ونظام حفظ وتطوير المحتوى مدى الحياة (Architecture of Never-Lost Copy)</h2>
+<p style="margin-bottom: 14px; line-height: 1.85;">لضمان الاحتفاظ بكل عبارة وفكرة وسكربت طوال عمر المشروع، وتطويرها باستمرار دون فقدان أي مسودة سابقة، يتبع هذا البنك المعايير الثلاثة التالية:</p>
+<ol style="padding-right: 28px; margin: 12px 0;">
+<li value="1" style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الهوية الرقمية الثابتة (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">Immutable Item ID</code>):</strong></li>
+</ol>
+<p style="margin-bottom: 14px; line-height: 1.85;">كل عبارة أو سكربت يمتلك كوداً فريداً لا يتغير أبداً (مثل <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">SLG-001</code>, <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">HOOK-001</code>, <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">SCRIPT-001</code>)، مهما تم تعديل نصه مستقبلاً.</p>
+<ol style="padding-right: 28px; margin: 12px 0;">
+<li value="2" style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">سجل التاريخ المتراكم (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">Cumulative Version History</code>):</strong></li>
+</ol>
+<p style="margin-bottom: 14px; line-height: 1.85;">عند تعديل أي عبارة، <strong style="color: #0f172a; font-weight: 700;">لا يُمسح النص القديم إطلاقاً</strong>، بل يُنقل تلقائياً إلى سجل <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">history</code> الخاص بالبند مع ذكر:</p>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;">رقم الإصدار السابق (مثلاً <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code>).</li>
+<li style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;">تاريخ التعديل.</li>
+<li style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;">سبب التعديل (مثلاً: تحسين معدل التحويل، تجربة A/B، تكييف لقناة جديدة).</li>
+</ul>
+<ol style="padding-right: 28px; margin: 12px 0;">
+<li value="3" style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">أداة لوحة التحكم التفاعلية (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">Interactive Content Dashboard</code>):</strong></li>
+</ol>
+<p style="margin-bottom: 14px; line-height: 1.85;">تطبيق ويب مستقل في <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">tools/content-vault/index.html</code> يسمح بالبحث اللحظي، النسخ بنقرة واحدة، وإضافة وتعديل الإصدارات وتصديرها بصيغة JSON و Markdown بضغطة زر.</p>
+<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
+<h2>2. جدول الممنوعات والمعتمدات اللفظية (Guardrails &amp; Terminology)</h2>
+<div style="overflow-x: auto; margin: 18px 0;">
+<table style="width: 100%; border-collapse: collapse; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 1.02rem;">
+<thead><tr style="background: #065f46; color: #ffffff;">
+<th style="padding: 11px 13px; border: 1px solid #047857; text-align: right; font-weight: 700;">❌ المصطلحات الممنوعة قطعاً (Forbidden)</th>
+<th style="padding: 11px 13px; border: 1px solid #047857; text-align: right; font-weight: 700;">السبب الدستوري والمهني</th>
+<th style="padding: 11px 13px; border: 1px solid #047857; text-align: right; font-weight: 700;">✅ البديل المعتمد الإلزامي (Canonical)</th>
+</tr></thead><tbody>
+<tr style="background: #ffffff;">
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><strong style="color: #0f172a; font-weight: 700;">كاشباك / كاش باك</strong></td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">حصر المفهوم في خصم استهلاكي ضعيف وتسطيح للمشروع</td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><strong style="color: #0f172a; font-weight: 700;">عائدات الاستهلاك الاستثماري (Buy and Make Money)</strong></td>
+</tr>
+<tr style="background: #f8fafc;">
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><strong style="color: #0f172a; font-weight: 700;">SAWYAN BANK</strong></td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">المنصة تقنية استهلاكية مجتمعية وليست بنكاً مصرفياً</td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><strong style="color: #0f172a; font-weight: 700;">SAWYAN</strong> أو <strong style="color: #0f172a; font-weight: 700;">منصة SAWYAN</strong></td>
+</tr>
+<tr style="background: #ffffff;">
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><strong style="color: #0f172a; font-weight: 700;">التسويق الشبكي</strong></td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">ارتباطه بنماذج قديمة ورسوم اشتراك وبضائع إجبارية</td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><strong style="color: #0f172a; font-weight: 700;">بناء المجتمع الاستهلاكي الذكي / مضاعفة الفريق</strong></td>
+</tr>
+<tr style="background: #f8fafc;">
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><strong style="color: #0f172a; font-weight: 700;">-19.75$ / Rolling Reserve</strong></td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">نماذج ملغاة تسبب لبساً محاسبياً</td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><strong style="color: #0f172a; font-weight: 700;">صندوق الهدف الشهري / العائدات المعتمدة</strong></td>
+</tr>
+</tbody></table></div>
+<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
+<h2>3. الشعارات المركزية والمانترا (Slogans &amp; Brand Mantras)</h2>
+<h3>[SLG-001] الشعار الرسمي الأساسي</h3>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code> | <strong style="color: #0f172a; font-weight: 700;">الجمهور:</strong> عام</li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص المعتمد:</strong></li>
+</ul>
+<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
+<p style="margin: 0 0 8px 0;">«SAWYAN — منصة الاستهلاك الاستثماري العالمية (Buy and Make Money)»</p>
+</blockquote>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">مواضع الاستخدام:</strong> الترويسة الرئيسية للموقع <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">sawyan.net</code>، البطاقات الرسمية، خواتيم الفيديوهات.</li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">سجل التعديلات (History):</strong></li>
+<li style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;"><em>الإصدار 1.0 (2026-11-22):</em> النص المعتمد الأصلي من الإدارة.</li>
+</ul>
+<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
+<h3>[SLG-002] معادلة تحويل الدفع إلى استثمار</h3>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code> | <strong style="color: #0f172a; font-weight: 700;">الجمهور:</strong> المتسوقون الجدد</li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص المعتمد:</strong></li>
+</ul>
+<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
+<p style="margin: 0 0 8px 0;">«أكثر ما تكرهه هو الدفع.. من اليوم حوّل مشترياتك اليومية إلى أكبر استثمار في حياتك.»</p>
+</blockquote>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">مواضع الاستخدام:</strong> البانرات الإعلانية الافتتاحية والمقدمات الصوتية للريلز.</li>
+</ul>
+<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
+<h3>[SLG-003] قاعدة الاستهلاك الذكي</h3>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code> | <strong style="color: #0f172a; font-weight: 700;">الجمهور:</strong> المتسوقون</li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص المعتمد:</strong></li>
+</ul>
+<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
+<p style="margin: 0 0 8px 0;">«لا تدفع دون مقابل بعد الآن! تسوّق، وثّق، واربح.»</p>
+</blockquote>
+<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
+<h3>[SLG-004] شعار المجتمع والهوية الجامعة</h3>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code> | <strong style="color: #0f172a; font-weight: 700;">الجمهور:</strong> الجميع</li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص المعتمد:</strong></li>
+</ul>
+<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
+<p style="margin: 0 0 8px 0;">«كلنا SAWYAN — سواء كنت متسوقاً أو تاجراً أو تبحث عن دخل إضافي، لدينا ما يناسبك.»</p>
+</blockquote>
+<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
+<h2>4. خطافات كسر الجمود للسوشيال ميديا (High-Converting Hooks)</h2>
+<h3>[HOOK-001] سؤال الـ 20 سنة ووفاء المتجر</h3>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code> | <strong style="color: #0f172a; font-weight: 700;">القناة:</strong> ريلز / تيك توك / شورتس</li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص المعتمد:</strong></li>
+</ul>
+<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
+<p style="margin: 0 0 8px 0;">«لو بتشتري أنت وعيلتك من نفس المحل بقالكم 20 سنة.. هل تقدر تقله اديني شهر واحد مجاناً لأنني عميل وفي؟ مستحيل! في SAWYAN وفاءك لمشترياتك هو أساس دخلك.»</p>
+</blockquote>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">ملاحظات الأداء:</strong> يوقف تصفح المشاهد في أول ثانيتين بنسبة تزيد عن 80%.</li>
+</ul>
+<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
+<h3>[HOOK-002] أين ذهبت ملايين السوبر ماركت؟</h3>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code> | <strong style="color: #0f172a; font-weight: 700;">القناة:</strong> بوستات / فيديوهات توعوية</li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص المعتمد:</strong></li>
+</ul>
+<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
+<p style="margin: 0 0 8px 0;">«كم أنفقت طوال حياتك على السوبر ماركت والصيدلية والمطاعم؟ ماذا لو عاد كل هذا الاستهلاك كأرباح شهرية تتنامى كل يوم؟»</p>
+</blockquote>
+<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
+<h3>[HOOK-003] ألم الإعلانات الممولة للتجار</h3>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code> | <strong style="color: #0f172a; font-weight: 700;">القناة:</strong> لينكد إن / إنستغرام B2B</li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص المعتمد:</strong></li>
+</ul>
+<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
+<p style="margin: 0 0 8px 0;">«كم تاجر تعرفه خسر آلاف الدولارات في حملات تسويقية مجهولة المردود؟ في SAWYAN: ادفع مقابل النتائج والمبيعات الحقيقية فقط!»</p>
+</blockquote>
+<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
+<h2>5. سيناريوهات الفيديوهات الاحترافية (Production-Ready Video Scripts)</h2>
+<h3>[SCRIPT-PROMO-APPROVED] فيديو الواجهة الرئيسية المعتمد (مشكول صوتياً ومُدقق)</h3>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد رسمياً (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code> | <strong style="color: #0f172a; font-weight: 700;">الجمهور:</strong> الجميع (المتسوق، العضو، والتاجر)</li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص المشكول بدقة للأداء الصوتي (Voiceover Ready):</strong></li>
+</ul>
+<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
+<p style="margin: 0 0 8px 0;">«أَكْثَرُ مَا نَفْعَلُهُ كُلَّ يَوْم.. هُوَ أَكْثَرُ مَا نَكْرَهُهُ.. الدَّفْع!»</p>
+<p style="margin: 0 0 8px 0;">«مِنَ اليَوْم.. تَغَيَّرَ الوَضْع! أَهْلًا بِكَ فِي SAWYAN مَنَصَّةِ الاسْتِهْلَاكِ الاسْتِثْمَارِيِّ العَالَمِيَّة.»</p>
+<p style="margin: 0 0 8px 0;">«تَسَوَّقْ بِنَفْسِ أَسْعَارِكَ الطَّبِيعِيَّةِ مِنَ السُّوبَر مَارْكِت، وَالصَّيْدَلِيَّةِ، وَالمَطْعَم.. وَلَكِنْ هَذِهِ المَرَّة: مَدْفُوعَاتُكَ لَنْ تَضِيع، بَلْ سَتَتَحَوَّلُ إِلَى عَائِدَاتٍ حَقِيقِيَّةٍ تَنْمُو كُلَّ شَهْر.»</p>
+<p style="margin: 0 0 8px 0;">«فَقَطْ غَيِّرْ مَتْجَرَك، وَتَسَوَّقْ مَعَ المَتَاجِرِ الَّتِي تَعَاقَدْنَا مَعَهَا لِنَتَشَارَكَكَ الأَرْبَاح.. فَقَطْ أَخْبِرِ المَتْجَرَ الشَّرِيكَ أَنَّكَ عُضْوٌ بِـ SAWYAN، وَشَارِكِ الفِكْرَةَ مَعَ مَعَارِفِكَ لِيَتَضَاعَفَ دَخْلُكَ وَدَخْلُهُمْ!»</p>
+<p style="margin: 0 0 8px 0;">«وَلِلتُّجَّار: لَا مُجَازَفَةَ بِإِعْلَانَاتٍ مَجْهُولَةِ العَائِدِ بَعْدَ الآن.. آلَافُ العُمَلَاءِ فِي انْتِظَارِك، وَادْفَعْ فَقَطْ مُقَابِلَ النَّتَائِجِ.. لَا الوُعُود!»</p>
+<p style="margin: 0 0 8px 0;">«صِفْرُ مُخَاطَرَة.. صِفْرُ رَأْسِ مَال.. صِفْرُ مُؤَهِّلَات!»</p>
+<p style="margin: 0 0 8px 0;">«الحُرِّيَّةُ المَالِيَّةُ لَيْسَتْ وَهْمًا.. بَلْ حَقِيقَةٌ يَفْصِلُكَ عَنْهَا خَطْوَةٌ وَاحِدَة.. SAWYAN.»</p>
+</blockquote>
+<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
+<h3>[SCRIPT-001] فيديو الواجهة الرئيسية: «الصدمة الإيجابية» (45 ثانية)</h3>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code> | <strong style="color: #0f172a; font-weight: 700;">النمط:</strong> سينمائي سريع الحركة (Fast-Paced 4K)</li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص الصوتي الكامل:</strong></li>
+</ul>
+<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
+<p style="margin: 0 0 8px 0;">«أكثر ما نفعله كل يوم هو الدفع.. وأكثر ما نكرهه هو أن ندفع دون مقابل! من اليوم المعادلة تغيرت كلياً.. أهلاً بك في SAWYAN: منصة الاستهلاك الاستثماري العالمية. تسوّق بنفس أسعارك الطبيعية من السوبر ماركت والصيدلية والمطعم.. ولكن هذه المرة: فاتورتك لا تضيع، بل تتحول إلى عائدات حقيقية تنمو كل شهر. صفر مخاطرة، صفر رأس مال! فقط غيّر وجهتك، وثّق فاتورتك، وشارك الفكرة مع معارفك لتضاعف دخلك ودخلهم. وللتجار: لا مجازفة بإعلانات مجهولة بعد الآن.. آلاف العملاء في انتظارك، وادفع مقابل النتائج فقط! الحرية المالية ليست وهماً.. بل خطوة يفصلك عنها قرارك اليوم. كلنا SAWYAN.»</p>
+</blockquote>
+<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
+<h3>[SCRIPT-002] فيديو الموشن جرافيك: «رحلة الـ 3 خطوات» (45 ثانية)</h3>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code> | <strong style="color: #0f172a; font-weight: 700;">النمط:</strong> موشن جرافيك 3D أيزومتريك فاخر</li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص الصوتي الكامل:</strong></li>
+</ul>
+<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
+<p style="margin: 0 0 8px 0;">«طوال عقود.. كان المستهلك هو الحلقة الأضعف: تدفع المال، تستهلك السلعة، وتعود لنقطة الصفر. نظام SAWYAN جاء ليعيد كتابة القواعد: الاستهلاك الاستثماري (Buy and Make Money). مشترياتك المعتادة أصبحت أصلك الاستثماري الأول. في 3 خطوات مجانية فقط: 1. غيّر وجهتك للمتاجر المعتمدة. 2. وثّق فاتورتك بكود هويتك في ثوانٍ. 3. ابنِ مجتمعك واشهد نمو عائداتك شهراً بعد شهر. نظام عادل، حلال 100%، بدون بضائع مخزنة، ولا وعود سرابية. ربح حقيقي قائم على فواتير حقيقية. انضم إلينا اليوم على sawyan.net.»</p>
+</blockquote>
+<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
+<h3>[SCRIPT-003] الدراما الوثائقية: «كلنا SAWYAN» (60 ثانية)</h3>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code> | <strong style="color: #0f172a; font-weight: 700;">النمط:</strong> دراما وثائقية إنسانية ملهمة</li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص الصوتي الكامل:</strong></li>
+</ul>
+<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
+<p style="margin: 0 0 8px 0;">«كل صباح.. نخرج لنعمل، لنلبي احتياجات من نحب. نشتري، نستهلك، ونبذل ما نملك لتأمين مستقبل عائلاتنا. لكن ماذا لو كانت كل فاتورة تدفعها لم تعد استنزافاً لراتبك.. بل خطوة جديدة نحو حريتك المالية واستقرارك؟ هنا ولدت فكرة SAWYAN.. أن نكون معاً. أنت لست زبوناً عادياً، بل شريك في الأرباح. تسوّق بالسعر الطبيعي، ودلّ من تحب على نفس الطريق. ولأن التجارة شراكة وأمان: تجارنا لا يدفعون ميزانيات تسويق ضائعة، بل يستقبلون مجتمعاً من آلاف الأسر الموجهة لمتجرهم بولاء دائم. سواء كنت متسوقاً، أو تاجراً، أو تبحث عن دخل يحمي غدك.. مكانك بيننا. كلنا SAWYAN — منصة الاستهلاك الاستثماري العالمية.»</p>
+</blockquote>
+<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
+<h2>6. نماذج المراسلات السريعة وبناء الولاء (Direct Messages &amp; Loyalty)</h2>
+<h3>[MSG-001] نموذج دعوة صديق عبر واتساب</h3>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code></li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص الجاهز للنسخ:</strong></li>
+</ul>
+<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
+<p style="margin: 0 0 8px 0;">«السلام عليكم يا أخي الغالي.. كلنا شهرياً بنصرف مبالغ على السوبر ماركت والمطاعم والصيدلية ومستلزمات البيت، وبدون ما يرجع لنا منها شيء. اكتشفت منصة عالمية راقية اسمها SAWYAN للاستهلاك الاستثماري (Buy and Make Money). فكرتها ببساطة وبدون أي رسوم اشتراك: إنك بتشتري نفس احتياجاتك العادية من المتاجر الشريكة وبنفس سعرها الطبيعي، ولكن الفاتورة بتتحول لأرباح حقيقية ودخل شهري متنامٍ لك ولكل عيلتك. حبيت أشاركك الفكرة لأنها بتنفع كل بيت، وتقدر تبدأ وتسجل مجاناً من هنا: sawyan.net بكود عضويتي: [ضع_كودك_هنا].»</p>
+</blockquote>
+<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
+<h3>[COMM-001] شحن همم الأعضاء وبناء الثقة</h3>
+<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code></li>
+<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص:</strong></li>
+</ul>
+<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
+<p style="margin: 0 0 8px 0;">«عندما تدعو صديقك إلى SAWYAN، أنت لا تطلب منه فضلاً ولا تبيعه منتجاً لا يحتاجه.. أنت تقدم له أعظم خدمة: حماية ميزانية بيته وصناعة دخل شهري له ولأسرته يبدأ من نفس فواتيره اليومية.»</p>
+</blockquote>
+<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
+<h2>7. سجل التغييرات التاريخي العام (System Changelog)</h2>
+<div style="overflow-x: auto; margin: 18px 0;">
+<table style="width: 100%; border-collapse: collapse; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 1.02rem;">
+<thead><tr style="background: #065f46; color: #ffffff;">
+<th style="padding: 11px 13px; border: 1px solid #047857; text-align: right; font-weight: 700;">التاريخ</th>
+<th style="padding: 11px 13px; border: 1px solid #047857; text-align: right; font-weight: 700;">رقم الإصدار</th>
+<th style="padding: 11px 13px; border: 1px solid #047857; text-align: right; font-weight: 700;">طبيعة الإجراء</th>
+<th style="padding: 11px 13px; border: 1px solid #047857; text-align: right; font-weight: 700;">المسؤول / الاعتماد</th>
+</tr></thead><tbody>
+<tr style="background: #ffffff;">
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><strong style="color: #0f172a; font-weight: 700;">2026-11-22</strong></td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0.0</code></td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">التأسيس الشامل لبنك المحتوى والرسائل التسويقية، دمج مخرجات الفيديوهات الأربعة، واعتماد سيناريوهات الفيديوهات الثلاثة.</td>
+<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">الإدارة العليا وصانع المحتوى الاستراتيجي</td>
+</tr>
+</tbody></table></div>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = "sawyan_doc5_content_vault";
+
+        function getEditableEl() {
+            return document.getElementById('editable-content') || document.querySelector('.paper');
+        }
+
+        function saveToBrowserStorage() {
+            const paper = getEditableEl();
+            if (!paper) return;
+            const statusEl = document.getElementById('save-status');
+            try {
+                const contentHtml = paper.innerHTML;
+                localStorage.setItem(STORAGE_KEY, contentHtml);
+                localStorage.setItem(STORAGE_KEY + '_time', new Date().toLocaleTimeString('ar-EG'));
+                if (statusEl) {
+                    statusEl.textContent = '✓ تم الحفظ في المتصفح (' + new Date().toLocaleTimeString('ar-EG') + ')';
+                    statusEl.style.color = '#059669';
+                }
+            } catch (e) {
+                if (statusEl) {
+                    statusEl.textContent = '⚠️ خطأ في مساحة التخزين';
+                    statusEl.style.color = '#dc2626';
+                }
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const paper = getEditableEl();
+            if (!paper) return;
+            const saved = localStorage.getItem(STORAGE_KEY);
+            const savedTime = localStorage.getItem(STORAGE_KEY + '_time');
+            if (saved) {
+                paper.innerHTML = saved;
+                const statusEl = document.getElementById('save-status');
+                if (statusEl) {
+                    statusEl.textContent = '✓ تم استرجاع آخر تعديلاتك المحفوظة (' + (savedTime || '') + ')';
+                    statusEl.style.color = '#059669';
+                }
+            }
+
+            let timeout = null;
+            paper.addEventListener('input', () => {
+                const statusEl = document.getElementById('save-status');
+                if (statusEl) statusEl.textContent = '⏳ جاري الحفظ التلقائي...';
+                clearTimeout(timeout);
+                timeout = setTimeout(saveToBrowserStorage, 1000);
+            });
+        });
+
+        function downloadUpdatedHtml() {
+            saveToBrowserStorage();
+            const clone = document.documentElement.cloneNode(true);
+            const fullHtml = '<!DOCTYPE html>\n' + clone.outerHTML;
+            const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "بنك_المحتوى_والتسويق_الاستراتيجي.html";
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function copyToDocs() {
+            const paper = getEditableEl();
+            if (!paper) return;
+            const range = document.createRange();
+            range.selectNode(paper);
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+            try {
+                document.execCommand('copy');
+                alert('✅ تم نسخ محتوى الوثيقة كاملاً بكافة التنسيقات والألوان!\nيمكنك الآن لصقه مباشرة في Google Docs بالضغط على Ctrl + V');
+            } catch (e) {
+                alert('يرجى تحديد النص والضغط على Ctrl + C');
+            }
+            window.getSelection().removeAllRanges();
+        }
+
+        function resetToOriginal() {
+            if (confirm('هل أنت متأكد من رغبتك في حذف التعديلات واستعادة النسخة الأصلية المعتمدة؟')) {
+                localStorage.removeItem(STORAGE_KEY);
+                localStorage.removeItem(STORAGE_KEY + '_time');
+                location.reload();
+            }
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                e.preventDefault();
+                saveToBrowserStorage();
+            }
+        });
+    </script>
+</body>
+</html>
