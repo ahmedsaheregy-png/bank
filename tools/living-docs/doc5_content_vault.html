@@ -2,464 +2,1519 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>بنك المحتوى والرسائل التسويقية الاستراتيجي — SAWYAN</title>
+    <title>بنك محتوى SAWYAN — الوثيقة التفاعلية الحية</title>
+    <link rel="icon" type="image/svg+xml" href="../../shared/assets/sawyan-icon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Poppins:wght@700;800;900&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Calibri', 'Segoe UI', Tahoma, Arial, sans-serif;
-            background: #f8fafc;
-            color: #1e293b;
-            line-height: 1.85;
-            padding: 20px 15px;
-            margin: 0;
-            font-size: 1.15rem;
-            -webkit-font-smoothing: antialiased;
+        :root {
+            --bg-page: #f8fafc;
+            --bg-card: #ffffff;
+            --border-color: #cbd5e1;
+            --border-light: #e2e8f0;
+            --text-primary: #0f172a;
+            --text-secondary: #334155;
+            --text-muted: #64748b;
+            --emerald: #047857;
+            --emerald-light: #ecfdf5;
+            --emerald-border: #10b981;
+            --blue: #1d4ed8;
+            --blue-light: #eff6ff;
+            --amber: #b45309;
+            --amber-light: #fffbeb;
+            --amber-border: #f59e0b;
         }
-        .container-wrap {
-            max-width: 1060px;
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 18px 24px 60px;
+            line-height: 1.75;
+        }
+
+        .container {
+            max-width: 1380px;
             margin: 0 auto;
         }
-        .edit-toolbar {
+
+        /* Sticky Live Edit Toolbar (Like وصف_الموقع_البناء_2.html) */
+        .live-edit-bar {
             position: sticky;
             top: 10px;
-            z-index: 9999;
+            z-index: 1000;
             background: #ffffff;
-            border: 2px solid #10b981;
-            border-radius: 12px;
+            border: 2px solid var(--emerald-border);
+            border-radius: 14px;
             padding: 12px 20px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 22px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 18px;
+            flex-wrap: wrap;
+            gap: 12px;
+            box-shadow: 0 8px 25px rgba(15, 23, 42, 0.08);
+        }
+
+        .edit-status-pill {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            color: var(--emerald);
+            font-size: 0.98rem;
+        }
+
+        .toolbar-btns {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: #f1f5f9;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            background: #e2e8f0;
+        }
+
+        .btn-emerald {
+            background: var(--emerald);
+            color: #ffffff;
+            border-color: var(--emerald);
+        }
+
+        .btn-emerald:hover {
+            background: #065f46;
+        }
+
+        .btn-blue {
+            background: var(--blue);
+            color: #ffffff;
+            border-color: var(--blue);
+        }
+
+        .btn-blue:hover {
+            background: #1e40af;
+        }
+
+        .btn-amber {
+            background: var(--amber-light);
+            color: var(--amber);
+            border-color: var(--amber-border);
+        }
+
+        /* Main Header */
+        header {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px 28px;
+            margin-bottom: 22px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
+        }
+
+        .brand-header {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .brand-title h1 {
+            font-size: 2rem;
+            font-weight: 900;
+            color: #0f172a;
+        }
+
+        .brand-title p {
+            font-size: 0.96rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        /* Filter & Navigation Tabs */
+        .nav-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 14px;
+            border: 1px solid var(--border-color);
+        }
+
+        .tab-btn {
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 0.98rem;
+            font-weight: 800;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.15s;
+        }
+
+        .tab-btn:hover {
+            background: #f1f5f9;
+            color: #0f172a;
+        }
+
+        .tab-btn.active {
+            background: var(--emerald);
+            border-color: var(--emerald);
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(4, 120, 87, 0.25);
+        }
+
+        .tab-count {
+            background: rgba(255,255,255,0.22);
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+        }
+
+        .tab-btn:not(.active) .tab-count {
+            background: #e2e8f0;
+            color: #334155;
+        }
+
+        /* Search Box */
+        .search-wrap {
+            margin-bottom: 24px;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            background: #ffffff;
+            border: 2px solid var(--border-color);
+            color: #0f172a;
+            padding: 14px 46px 14px 18px;
+            border-radius: 12px;
+            font-size: 1.02rem;
+            font-weight: 600;
+            outline: none;
+        }
+
+        .search-input:focus {
+            border-color: var(--emerald);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.2rem;
+        }
+
+        /* Section Containers */
+        .vault-section {
+            margin-bottom: 40px;
+        }
+
+        .section-banner {
+            background: #ffffff;
+            border-right: 6px solid var(--emerald);
+            border-top: 1px solid var(--border-color);
+            border-left: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 18px 24px;
+            margin-bottom: 22px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .section-banner h2 {
+            font-size: 1.45rem;
+            font-weight: 900;
+            color: #0f172a;
+        }
+
+        .section-banner p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        /*Editable Highlight*/
+        [contenteditable="true"] {
+            outline: none;
+            transition: background 0.15s, box-shadow 0.15s;
+            border-radius: 6px;
+        }
+
+        [contenteditable="true"]:hover {
+            background-color: #fefce8 !important;
+            box-shadow: 0 0 0 2px #fde047;
+        }
+
+        [contenteditable="true"]:focus {
+            background-color: #ffffff !important;
+            box-shadow: 0 0 0 3px var(--emerald-border) !important;
+        }
+
+        /* Script + Storyboard Combined Block */
+        .script-master-block {
+            background: #ffffff;
+            border: 2px solid var(--border-color);
+            border-radius: 16px;
+            margin-bottom: 32px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(15, 23, 42, 0.04);
+        }
+
+        .script-block-header {
+            background: #f1f5f9;
+            padding: 18px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .script-badge {
+            background: var(--emerald);
+            color: #ffffff;
+            font-weight: 800;
+            font-size: 0.88rem;
+            padding: 5px 14px;
+            border-radius: 999px;
+        }
+
+        .script-body-area {
+            padding: 24px;
+            border-bottom: 2px solid var(--border-light);
+        }
+
+        .script-title-heading {
+            font-size: 1.35rem;
+            font-weight: 900;
+            color: #0f172a;
+            margin-bottom: 14px;
+            padding: 4px 8px;
+        }
+
+        .vocalized-script-box {
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-right: 5px solid var(--emerald);
+            border-radius: 12px;
+            padding: 20px 24px;
+            font-size: 1.22rem;
+            font-weight: 700;
+            color: #0f172a;
+            line-height: 2.15;
+            white-space: pre-wrap;
+        }
+
+        /* Storyboard Table inside Script Block */
+        .storyboard-sub-header {
+            background: var(--emerald-light);
+            padding: 14px 24px;
+            border-bottom: 1px solid #a7f3d0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             flex-wrap: wrap;
             gap: 10px;
         }
-        .paper {
-            background: #ffffff;
-            padding: 50px 58px;
-            border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.06);
-            border: 1px solid #e2e8f0;
-            outline: none;
+
+        .storyboard-sub-header h4 {
+            color: var(--emerald);
+            font-size: 1.15rem;
+            font-weight: 900;
         }
-        .paper[contenteditable="true"]:focus {
-            border-color: #10b981;
+
+        .table-responsive {
+            overflow-x: auto;
         }
-        .hero-banner {
-            background: linear-gradient(135deg, #10b981 0%, #047857 50%, #1d4ed8 100%);
-            color: white;
-            padding: 40px;
-            border-radius: 14px;
-            text-align: center;
-            margin-bottom: 40px;
-        }
-        .hero-banner h1 {
-            color: white;
-            font-size: 2.35rem;
-            margin: 0 0 10px 0;
-            font-weight: 800;
-        }
-        .hero-banner p {
-            color: #e0e7ff;
-            font-size: 1.18rem;
-            margin: 0;
-        }
-        h1 {
-            color: #065f46;
-            font-size: 2.0rem;
-            margin-top: 35px;
-            margin-bottom: 20px;
-            border-bottom: 3px solid #10b981;
-            padding-bottom: 10px;
-            font-weight: 700;
-        }
-        h2 {
-            color: #047857;
-            font-size: 1.62rem;
-            margin-top: 30px;
-            margin-bottom: 15px;
-            border-bottom: 2px solid #a7f3d0;
-            padding-bottom: 8px;
-            font-weight: 700;
-        }
-        h3 {
-            color: #1e40af;
-            font-size: 1.32rem;
-            margin-top: 25px;
-            margin-bottom: 12px;
-            border-right: 5px solid #3b82f6;
-            padding-right: 12px;
-            font-weight: 700;
-        }
-        h4 {
-            color: #334155;
-            font-size: 1.16rem;
-            margin-top: 20px;
-            margin-bottom: 10px;
-            font-weight: 700;
-        }
-        p, li {
-            margin-bottom: 14px;
-            font-size: 1.14rem;
-        }
-        table {
+
+        .storyboard-table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
-        }
-        th, td {
-            border: 1px solid #cbd5e1;
-            padding: 10px 14px;
             text-align: right;
+            background: #ffffff;
         }
-        th {
+
+        .storyboard-table th {
             background: #f1f5f9;
             color: #0f172a;
+            font-weight: 900;
+            font-size: 0.95rem;
+            padding: 14px 16px;
+            border-bottom: 2px solid var(--border-color);
+            border-left: 1px solid var(--border-light);
+        }
+
+        .storyboard-table td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+            border-left: 1px solid var(--border-light);
+            vertical-align: top;
+            font-size: 0.98rem;
+            color: #0f172a;
+            line-height: 1.75;
+        }
+
+        .storyboard-table tr:hover td {
+            background: #f8fafc;
+        }
+
+        .time-pill {
+            background: var(--amber-light);
+            color: var(--amber);
+            border: 1px solid var(--amber-border);
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 800;
+            font-size: 0.88rem;
+            display: inline-block;
+            direction: ltr;
+        }
+
+        .vo-cell-box {
+            background: var(--emerald-light);
+            border-right: 4px solid var(--emerald);
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-weight: 800;
+            color: #064e3b;
+            font-size: 1.04rem;
+        }
+
+        .typo-cell-box {
+            color: var(--blue);
+            font-weight: 800;
+        }
+
+        /* Phrase Cards Grid */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(430px, 1fr));
+            gap: 20px;
+        }
+
+        @media (max-width: 640px) {
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .phrase-card {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 22px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+            position: relative;
+        }
+
+        .phrase-card.official-card {
+            border-right: 6px solid var(--emerald);
+        }
+
+        .phrase-card.candidate-card {
+            border-right: 6px solid var(--amber-border);
+        }
+
+        .card-meta-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .tag-official {
+            background: var(--emerald-light);
+            color: var(--emerald);
+            border: 1px solid #6ee7b7;
+            padding: 3px 12px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 800;
+        }
+
+        .tag-candidate {
+            background: var(--amber-light);
+            color: var(--amber);
+            border: 1px solid #fcd34d;
+            padding: 3px 12px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 800;
+        }
+
+        .card-id-code {
+            font-family: 'Poppins', sans-serif;
+            font-size: 0.78rem;
+            color: var(--text-muted);
             font-weight: 700;
         }
+
+        .phrase-title {
+            font-size: 1.18rem;
+            font-weight: 900;
+            color: #0f172a;
+            margin-bottom: 12px;
+            padding: 4px 6px;
+        }
+
+        .phrase-body {
+            background: #f8fafc;
+            border: 1px solid var(--border-light);
+            border-radius: 10px;
+            padding: 16px;
+            font-size: 1.06rem;
+            font-weight: 700;
+            color: #0f172a;
+            line-height: 1.85;
+            white-space: pre-wrap;
+            margin-bottom: 14px;
+            flex-grow: 1;
+        }
+
+        .phrase-notes {
+            font-size: 0.86rem;
+            color: var(--text-secondary);
+            margin-bottom: 14px;
+            padding: 4px 6px;
+            font-weight: 600;
+        }
+
+        .card-footer-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid var(--border-light);
+            padding-top: 12px;
+            gap: 8px;
+        }
+
+        /* Modal for Version History Archive */
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.55);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-backdrop.open {
+            display: flex;
+        }
+
+        .modal-box {
+            background: #ffffff;
+            border-radius: 16px;
+            max-width: 750px;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 26px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+        }
+
+        .modal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--border-light);
+            padding-bottom: 14px;
+            margin-bottom: 18px;
+        }
+
+        .history-item {
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-right: 4px solid var(--amber-border);
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 12px;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #047857;
+            color: #ffffff;
+            padding: 12px 28px;
+            border-radius: 999px;
+            font-weight: 800;
+            font-size: 0.96rem;
+            box-shadow: 0 10px 25px rgba(4, 120, 87, 0.35);
+            transition: transform 0.25s ease;
+            z-index: 9999;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
         @media print {
-            .edit-toolbar { display: none; }
-            body { background: white; padding: 0; }
-            .paper { box-shadow: none; border: none; padding: 20px; }
+            .live-edit-bar, .nav-bar, .search-wrap, .card-footer-actions {
+                display: none !important;
+            }
+            body {
+                background: #fff;
+                padding: 0;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container-wrap">
-        <!-- شريط التحرير السحابي والحفظ المباشر -->
-        <div class="edit-toolbar">
-            <div style="font-weight: 700; color: #047857; font-size: 1.02rem; display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 1.3rem;">✏️</span>
-                <span>وضع التعديل المباشر مفعّل — انقر على أي نص وعدّله مباشرة!</span>
-                <span id="save-status" style="font-size: 0.92rem; color: #059669; font-weight: 700; margin-right: 8px;"></span>
-            </div>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button type="button" onclick="saveToBrowserStorage()" style="background: #059669; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 800; cursor: pointer; box-shadow: 0 2px 8px rgba(5,150,105,0.3);">💾 حفظ التعديلات (Auto-Saved)</button>
-                <button type="button" onclick="downloadUpdatedHtml()" style="background: #d97706; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: 700; cursor: pointer;">📥 تحميل نسخة HTML المحدثة</button>
-                <button type="button" onclick="copyToDocs()" style="background: #2563eb; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: 700; cursor: pointer;">📋 نسخ لـ Google Docs</button>
-                <button type="button" onclick="window.print()" style="background: #475569; color: white; border: none; padding: 8px 12px; border-radius: 8px; font-weight: 600; cursor: pointer;">🖨️ طباعة</button>
-                <button type="button" onclick="resetToOriginal()" style="background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; padding: 8px 10px; border-radius: 8px; font-weight: 600; cursor: pointer;">🔄 إعادة ضبط</button>
-            </div>
-        </div>
 
-        <div class="hero-banner">
-            <h1>🏛️ بنك المحتوى والرسائل التسويقية الاستراتيجي</h1>
-            <p>SAWYAN Strategic Content Vault — وثيقة الهوية والرسائل الإعلانية والسيناريوهات المعتمدة (sawyan.net)</p>
+<div class="container">
+    <!-- Sticky Direct-Edit & History Toolbar -->
+    <div class="live-edit-bar">
+        <div class="edit-status-pill">
+            <span>✏️ وضع التعديل المباشر مفعل — اضغط على أي نص أو خلية في الجدول للتعديل فوراً (يُحفظ تلقائياً ولا يضيع أي نص سابق)</span>
+            <span id="saveIndicator" style="background:#ecfdf5; border:1px solid #10b981; padding:2px 10px; border-radius:999px; font-size:0.8rem;">✓ محفوظ تلقائياً</span>
         </div>
-
-        <div class="paper" id="editable-content" contenteditable="true" spellcheck="false">
-            <h1>🏛️ بنك المحتوى والرسائل التسويقية الاستراتيجي — SAWYAN (Living Content Vault)</h1>
-<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
-<p style="margin: 0 0 8px 0;"><strong style="color: #0f172a; font-weight: 700;">الإصدار الدستوري:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0.0</code></p>
-<p style="margin: 0 0 8px 0;"><strong style="color: #0f172a; font-weight: 700;">الدومين المعتمد:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">sawyan.net</code></p>
-<p style="margin: 0 0 8px 0;"><strong style="color: #0f172a; font-weight: 700;">حالة الوثيقة:</strong> معتمدة رسمياً ومحمية بنظام أرشفة الإصدارات التراكمي (Never-Lost Versioning)</p>
-<p style="margin: 0 0 8px 0;"><strong style="color: #0f172a; font-weight: 700;">المرجع التقني والبياني:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">specs/marketing_content_vault.json</code></p>
-</blockquote>
-<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
-<h2>1. الفلسفة ونظام حفظ وتطوير المحتوى مدى الحياة (Architecture of Never-Lost Copy)</h2>
-<p style="margin-bottom: 14px; line-height: 1.85;">لضمان الاحتفاظ بكل عبارة وفكرة وسكربت طوال عمر المشروع، وتطويرها باستمرار دون فقدان أي مسودة سابقة، يتبع هذا البنك المعايير الثلاثة التالية:</p>
-<ol style="padding-right: 28px; margin: 12px 0;">
-<li value="1" style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الهوية الرقمية الثابتة (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">Immutable Item ID</code>):</strong></li>
-</ol>
-<p style="margin-bottom: 14px; line-height: 1.85;">كل عبارة أو سكربت يمتلك كوداً فريداً لا يتغير أبداً (مثل <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">SLG-001</code>, <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">HOOK-001</code>, <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">SCRIPT-001</code>)، مهما تم تعديل نصه مستقبلاً.</p>
-<ol style="padding-right: 28px; margin: 12px 0;">
-<li value="2" style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">سجل التاريخ المتراكم (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">Cumulative Version History</code>):</strong></li>
-</ol>
-<p style="margin-bottom: 14px; line-height: 1.85;">عند تعديل أي عبارة، <strong style="color: #0f172a; font-weight: 700;">لا يُمسح النص القديم إطلاقاً</strong>، بل يُنقل تلقائياً إلى سجل <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">history</code> الخاص بالبند مع ذكر:</p>
-<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
-<li style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;">رقم الإصدار السابق (مثلاً <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code>).</li>
-<li style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;">تاريخ التعديل.</li>
-<li style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;">سبب التعديل (مثلاً: تحسين معدل التحويل، تجربة A/B، تكييف لقناة جديدة).</li>
-</ul>
-<ol style="padding-right: 28px; margin: 12px 0;">
-<li value="3" style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">أداة لوحة التحكم التفاعلية (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">Interactive Content Dashboard</code>):</strong></li>
-</ol>
-<p style="margin-bottom: 14px; line-height: 1.85;">تطبيق ويب مستقل في <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">tools/content-vault/index.html</code> يسمح بالبحث اللحظي، النسخ بنقرة واحدة، وإضافة وتعديل الإصدارات وتصديرها بصيغة JSON و Markdown بضغطة زر.</p>
-<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
-<h2>2. جدول الممنوعات والمعتمدات اللفظية (Guardrails &amp; Terminology)</h2>
-<div style="overflow-x: auto; margin: 18px 0;">
-<table style="width: 100%; border-collapse: collapse; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 1.02rem;">
-<thead><tr style="background: #065f46; color: #ffffff;">
-<th style="padding: 11px 13px; border: 1px solid #047857; text-align: right; font-weight: 700;">❌ المصطلحات الممنوعة قطعاً (Forbidden)</th>
-<th style="padding: 11px 13px; border: 1px solid #047857; text-align: right; font-weight: 700;">السبب الدستوري والمهني</th>
-<th style="padding: 11px 13px; border: 1px solid #047857; text-align: right; font-weight: 700;">✅ البديل المعتمد الإلزامي (Canonical)</th>
-</tr></thead><tbody>
-<tr style="background: #ffffff;">
-<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><strong style="color: #0f172a; font-weight: 700;">كاشباك / كاش باك</strong></td>
-<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">حصر المفهوم في خصم استهلاكي ضعيف وتسطيح للمشروع</td>
-<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><strong style="color: #0f172a; font-weight: 700;">عائدات الاستهلاك الاستثماري (Buy and Make Money)</strong></td>
-</tr>
-<tr style="background: #f8fafc;">
-<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><strong style="color: #0f172a; font-weight: 700;">SAWYAN BANK</strong></td>
-<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">المنصة تقنية استهلاكية مجتمعية وليست بنكاً مصرفياً</td>
-<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><strong style="color: #0f172a; font-weight: 700;">SAWYAN</strong> أو <strong style="color: #0f172a; font-weight: 700;">منصة SAWYAN</strong></td>
-</tr>
-<tr style="background: #ffffff;">
-<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><strong style="color: #0f172a; font-weight: 700;">التسويق الشبكي</strong></td>
-<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">ارتباطه بنماذج قديمة ورسوم اشتراك وبضائع إجبارية</td>
-<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><strong style="color: #0f172a; font-weight: 700;">بناء المجتمع الاستهلاكي الذكي / مضاعفة الفريق</strong></td>
-</tr>
-<tr style="background: #f8fafc;">
-<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><strong style="color: #0f172a; font-weight: 700;">-19.75$ / Rolling Reserve</strong></td>
-<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">نماذج ملغاة تسبب لبساً محاسبياً</td>
-<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><strong style="color: #0f172a; font-weight: 700;">صندوق الهدف الشهري / العائدات المعتمدة</strong></td>
-</tr>
-</tbody></table></div>
-<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
-<h2>3. الشعارات المركزية والمانترا (Slogans &amp; Brand Mantras)</h2>
-<h3>[SLG-001] الشعار الرسمي الأساسي</h3>
-<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code> | <strong style="color: #0f172a; font-weight: 700;">الجمهور:</strong> عام</li>
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص المعتمد:</strong></li>
-</ul>
-<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
-<p style="margin: 0 0 8px 0;">«SAWYAN — منصة الاستهلاك الاستثماري العالمية (Buy and Make Money)»</p>
-</blockquote>
-<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">مواضع الاستخدام:</strong> الترويسة الرئيسية للموقع <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">sawyan.net</code>، البطاقات الرسمية، خواتيم الفيديوهات.</li>
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">سجل التعديلات (History):</strong></li>
-<li style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;"><em>الإصدار 1.0 (2026-11-22):</em> النص المعتمد الأصلي من الإدارة.</li>
-</ul>
-<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
-<h3>[SLG-002] معادلة تحويل الدفع إلى استثمار</h3>
-<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code> | <strong style="color: #0f172a; font-weight: 700;">الجمهور:</strong> المتسوقون الجدد</li>
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص المعتمد:</strong></li>
-</ul>
-<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
-<p style="margin: 0 0 8px 0;">«أكثر ما تكرهه هو الدفع.. من اليوم حوّل مشترياتك اليومية إلى أكبر استثمار في حياتك.»</p>
-</blockquote>
-<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">مواضع الاستخدام:</strong> البانرات الإعلانية الافتتاحية والمقدمات الصوتية للريلز.</li>
-</ul>
-<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
-<h3>[SLG-003] قاعدة الاستهلاك الذكي</h3>
-<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code> | <strong style="color: #0f172a; font-weight: 700;">الجمهور:</strong> المتسوقون</li>
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص المعتمد:</strong></li>
-</ul>
-<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
-<p style="margin: 0 0 8px 0;">«لا تدفع دون مقابل بعد الآن! تسوّق، وثّق، واربح.»</p>
-</blockquote>
-<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
-<h3>[SLG-004] شعار المجتمع والهوية الجامعة</h3>
-<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code> | <strong style="color: #0f172a; font-weight: 700;">الجمهور:</strong> الجميع</li>
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص المعتمد:</strong></li>
-</ul>
-<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
-<p style="margin: 0 0 8px 0;">«كلنا SAWYAN — سواء كنت متسوقاً أو تاجراً أو تبحث عن دخل إضافي، لدينا ما يناسبك.»</p>
-</blockquote>
-<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
-<h2>4. خطافات كسر الجمود للسوشيال ميديا (High-Converting Hooks)</h2>
-<h3>[HOOK-001] سؤال الـ 20 سنة ووفاء المتجر</h3>
-<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code> | <strong style="color: #0f172a; font-weight: 700;">القناة:</strong> ريلز / تيك توك / شورتس</li>
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص المعتمد:</strong></li>
-</ul>
-<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
-<p style="margin: 0 0 8px 0;">«لو بتشتري أنت وعيلتك من نفس المحل بقالكم 20 سنة.. هل تقدر تقله اديني شهر واحد مجاناً لأنني عميل وفي؟ مستحيل! في SAWYAN وفاءك لمشترياتك هو أساس دخلك.»</p>
-</blockquote>
-<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">ملاحظات الأداء:</strong> يوقف تصفح المشاهد في أول ثانيتين بنسبة تزيد عن 80%.</li>
-</ul>
-<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
-<h3>[HOOK-002] أين ذهبت ملايين السوبر ماركت؟</h3>
-<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code> | <strong style="color: #0f172a; font-weight: 700;">القناة:</strong> بوستات / فيديوهات توعوية</li>
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص المعتمد:</strong></li>
-</ul>
-<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
-<p style="margin: 0 0 8px 0;">«كم أنفقت طوال حياتك على السوبر ماركت والصيدلية والمطاعم؟ ماذا لو عاد كل هذا الاستهلاك كأرباح شهرية تتنامى كل يوم؟»</p>
-</blockquote>
-<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
-<h3>[HOOK-003] ألم الإعلانات الممولة للتجار</h3>
-<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code> | <strong style="color: #0f172a; font-weight: 700;">القناة:</strong> لينكد إن / إنستغرام B2B</li>
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص المعتمد:</strong></li>
-</ul>
-<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
-<p style="margin: 0 0 8px 0;">«كم تاجر تعرفه خسر آلاف الدولارات في حملات تسويقية مجهولة المردود؟ في SAWYAN: ادفع مقابل النتائج والمبيعات الحقيقية فقط!»</p>
-</blockquote>
-<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
-<h2>5. سيناريوهات الفيديوهات الاحترافية (Production-Ready Video Scripts)</h2>
-<h3>[SCRIPT-PROMO-APPROVED] فيديو الواجهة الرئيسية المعتمد (مشكول صوتياً ومُدقق)</h3>
-<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد رسمياً (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code> | <strong style="color: #0f172a; font-weight: 700;">الجمهور:</strong> الجميع (المتسوق، العضو، والتاجر)</li>
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص المشكول بدقة للأداء الصوتي (Voiceover Ready):</strong></li>
-</ul>
-<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
-<p style="margin: 0 0 8px 0;">«أَكْثَرُ مَا نَفْعَلُهُ كُلَّ يَوْم.. هُوَ أَكْثَرُ مَا نَكْرَهُهُ.. الدَّفْع!»</p>
-<p style="margin: 0 0 8px 0;">«مِنَ اليَوْم.. تَغَيَّرَ الوَضْع! أَهْلًا بِكَ فِي SAWYAN مَنَصَّةِ الاسْتِهْلَاكِ الاسْتِثْمَارِيِّ العَالَمِيَّة.»</p>
-<p style="margin: 0 0 8px 0;">«تَسَوَّقْ بِنَفْسِ أَسْعَارِكَ الطَّبِيعِيَّةِ مِنَ السُّوبَر مَارْكِت، وَالصَّيْدَلِيَّةِ، وَالمَطْعَم.. وَلَكِنْ هَذِهِ المَرَّة: مَدْفُوعَاتُكَ لَنْ تَضِيع، بَلْ سَتَتَحَوَّلُ إِلَى عَائِدَاتٍ حَقِيقِيَّةٍ تَنْمُو كُلَّ شَهْر.»</p>
-<p style="margin: 0 0 8px 0;">«فَقَطْ غَيِّرْ مَتْجَرَك، وَتَسَوَّقْ مَعَ المَتَاجِرِ الَّتِي تَعَاقَدْنَا مَعَهَا لِنَتَشَارَكَكَ الأَرْبَاح.. فَقَطْ أَخْبِرِ المَتْجَرَ الشَّرِيكَ أَنَّكَ عُضْوٌ بِـ SAWYAN، وَشَارِكِ الفِكْرَةَ مَعَ مَعَارِفِكَ لِيَتَضَاعَفَ دَخْلُكَ وَدَخْلُهُمْ!»</p>
-<p style="margin: 0 0 8px 0;">«وَلِلتُّجَّار: لَا مُجَازَفَةَ بِإِعْلَانَاتٍ مَجْهُولَةِ العَائِدِ بَعْدَ الآن.. آلَافُ العُمَلَاءِ فِي انْتِظَارِك، وَادْفَعْ فَقَطْ مُقَابِلَ النَّتَائِجِ.. لَا الوُعُود!»</p>
-<p style="margin: 0 0 8px 0;">«صِفْرُ مُخَاطَرَة.. صِفْرُ رَأْسِ مَال.. صِفْرُ مُؤَهِّلَات!»</p>
-<p style="margin: 0 0 8px 0;">«الحُرِّيَّةُ المَالِيَّةُ لَيْسَتْ وَهْمًا.. بَلْ حَقِيقَةٌ يَفْصِلُكَ عَنْهَا خَطْوَةٌ وَاحِدَة.. SAWYAN.»</p>
-</blockquote>
-<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
-<h3>[SCRIPT-001] فيديو الواجهة الرئيسية: «الصدمة الإيجابية» (45 ثانية)</h3>
-<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code> | <strong style="color: #0f172a; font-weight: 700;">النمط:</strong> سينمائي سريع الحركة (Fast-Paced 4K)</li>
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص الصوتي الكامل:</strong></li>
-</ul>
-<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
-<p style="margin: 0 0 8px 0;">«أكثر ما نفعله كل يوم هو الدفع.. وأكثر ما نكرهه هو أن ندفع دون مقابل! من اليوم المعادلة تغيرت كلياً.. أهلاً بك في SAWYAN: منصة الاستهلاك الاستثماري العالمية. تسوّق بنفس أسعارك الطبيعية من السوبر ماركت والصيدلية والمطعم.. ولكن هذه المرة: فاتورتك لا تضيع، بل تتحول إلى عائدات حقيقية تنمو كل شهر. صفر مخاطرة، صفر رأس مال! فقط غيّر وجهتك، وثّق فاتورتك، وشارك الفكرة مع معارفك لتضاعف دخلك ودخلهم. وللتجار: لا مجازفة بإعلانات مجهولة بعد الآن.. آلاف العملاء في انتظارك، وادفع مقابل النتائج فقط! الحرية المالية ليست وهماً.. بل خطوة يفصلك عنها قرارك اليوم. كلنا SAWYAN.»</p>
-</blockquote>
-<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
-<h3>[SCRIPT-002] فيديو الموشن جرافيك: «رحلة الـ 3 خطوات» (45 ثانية)</h3>
-<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code> | <strong style="color: #0f172a; font-weight: 700;">النمط:</strong> موشن جرافيك 3D أيزومتريك فاخر</li>
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص الصوتي الكامل:</strong></li>
-</ul>
-<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
-<p style="margin: 0 0 8px 0;">«طوال عقود.. كان المستهلك هو الحلقة الأضعف: تدفع المال، تستهلك السلعة، وتعود لنقطة الصفر. نظام SAWYAN جاء ليعيد كتابة القواعد: الاستهلاك الاستثماري (Buy and Make Money). مشترياتك المعتادة أصبحت أصلك الاستثماري الأول. في 3 خطوات مجانية فقط: 1. غيّر وجهتك للمتاجر المعتمدة. 2. وثّق فاتورتك بكود هويتك في ثوانٍ. 3. ابنِ مجتمعك واشهد نمو عائداتك شهراً بعد شهر. نظام عادل، حلال 100%، بدون بضائع مخزنة، ولا وعود سرابية. ربح حقيقي قائم على فواتير حقيقية. انضم إلينا اليوم على sawyan.net.»</p>
-</blockquote>
-<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
-<h3>[SCRIPT-003] الدراما الوثائقية: «كلنا SAWYAN» (60 ثانية)</h3>
-<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code> | <strong style="color: #0f172a; font-weight: 700;">النمط:</strong> دراما وثائقية إنسانية ملهمة</li>
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص الصوتي الكامل:</strong></li>
-</ul>
-<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
-<p style="margin: 0 0 8px 0;">«كل صباح.. نخرج لنعمل، لنلبي احتياجات من نحب. نشتري، نستهلك، ونبذل ما نملك لتأمين مستقبل عائلاتنا. لكن ماذا لو كانت كل فاتورة تدفعها لم تعد استنزافاً لراتبك.. بل خطوة جديدة نحو حريتك المالية واستقرارك؟ هنا ولدت فكرة SAWYAN.. أن نكون معاً. أنت لست زبوناً عادياً، بل شريك في الأرباح. تسوّق بالسعر الطبيعي، ودلّ من تحب على نفس الطريق. ولأن التجارة شراكة وأمان: تجارنا لا يدفعون ميزانيات تسويق ضائعة، بل يستقبلون مجتمعاً من آلاف الأسر الموجهة لمتجرهم بولاء دائم. سواء كنت متسوقاً، أو تاجراً، أو تبحث عن دخل يحمي غدك.. مكانك بيننا. كلنا SAWYAN — منصة الاستهلاك الاستثماري العالمية.»</p>
-</blockquote>
-<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
-<h2>6. نماذج المراسلات السريعة وبناء الولاء (Direct Messages &amp; Loyalty)</h2>
-<h3>[MSG-001] نموذج دعوة صديق عبر واتساب</h3>
-<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code></li>
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص الجاهز للنسخ:</strong></li>
-</ul>
-<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
-<p style="margin: 0 0 8px 0;">«السلام عليكم يا أخي الغالي.. كلنا شهرياً بنصرف مبالغ على السوبر ماركت والمطاعم والصيدلية ومستلزمات البيت، وبدون ما يرجع لنا منها شيء. اكتشفت منصة عالمية راقية اسمها SAWYAN للاستهلاك الاستثماري (Buy and Make Money). فكرتها ببساطة وبدون أي رسوم اشتراك: إنك بتشتري نفس احتياجاتك العادية من المتاجر الشريكة وبنفس سعرها الطبيعي، ولكن الفاتورة بتتحول لأرباح حقيقية ودخل شهري متنامٍ لك ولكل عيلتك. حبيت أشاركك الفكرة لأنها بتنفع كل بيت، وتقدر تبدأ وتسجل مجاناً من هنا: sawyan.net بكود عضويتي: [ضع_كودك_هنا].»</p>
-</blockquote>
-<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
-<h3>[COMM-001] شحن همم الأعضاء وبناء الثقة</h3>
-<ul style="padding-right: 25px; list-style-type: disc; margin: 12px 0;">
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">الحالة:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: rtl; display: inline-block;">معتمد (Canonical)</code> | <strong style="color: #0f172a; font-weight: 700;">الإصدار الحالي:</strong> <code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0</code></li>
-<li style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">النص:</strong></li>
-</ul>
-<blockquote style="background: #f0fdf4; border-right: 5px solid #10b981; padding: 16px 22px; margin: 20px 0; border-radius: 8px; color: #064e3b; font-size: 1.12rem; line-height: 1.85;">
-<p style="margin: 0 0 8px 0;">«عندما تدعو صديقك إلى SAWYAN، أنت لا تطلب منه فضلاً ولا تبيعه منتجاً لا يحتاجه.. أنت تقدم له أعظم خدمة: حماية ميزانية بيته وصناعة دخل شهري له ولأسرته يبدأ من نفس فواتيره اليومية.»</p>
-</blockquote>
-<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 35px 0;">
-<h2>7. سجل التغييرات التاريخي العام (System Changelog)</h2>
-<div style="overflow-x: auto; margin: 18px 0;">
-<table style="width: 100%; border-collapse: collapse; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 1.02rem;">
-<thead><tr style="background: #065f46; color: #ffffff;">
-<th style="padding: 11px 13px; border: 1px solid #047857; text-align: right; font-weight: 700;">التاريخ</th>
-<th style="padding: 11px 13px; border: 1px solid #047857; text-align: right; font-weight: 700;">رقم الإصدار</th>
-<th style="padding: 11px 13px; border: 1px solid #047857; text-align: right; font-weight: 700;">طبيعة الإجراء</th>
-<th style="padding: 11px 13px; border: 1px solid #047857; text-align: right; font-weight: 700;">المسؤول / الاعتماد</th>
-</tr></thead><tbody>
-<tr style="background: #ffffff;">
-<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><strong style="color: #0f172a; font-weight: 700;">2026-11-22</strong></td>
-<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;"><code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">V1.0.0</code></td>
-<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">التأسيس الشامل لبنك المحتوى والرسائل التسويقية، دمج مخرجات الفيديوهات الأربعة، واعتماد سيناريوهات الفيديوهات الثلاثة.</td>
-<td style="padding: 10px 13px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.75;">الإدارة العليا وصانع المحتوى الاستراتيجي</td>
-</tr>
-</tbody></table></div>
+        <div class="toolbar-btns">
+            <button type="button" class="btn btn-emerald" onclick="addNewPhrasePrompt()">+ إضافة عبارة جديدة</button>
+            <button type="button" class="btn btn-amber" onclick="openHistoryModal()">🕓 أرشيف التعديلات السابقة (<span id="historyCountBadge">0</span>)</button>
+            <button type="button" class="btn btn-blue" onclick="copyAllForGoogleDocs()">📋 نسخ الكل لـ Google Docs</button>
+            <button type="button" class="btn" onclick="downloadUpdatedHTML()">💾 حفظ نسخة HTML</button>
+            <button type="button" class="btn" onclick="window.print()">🖨️ طباعة / PDF</button>
         </div>
     </div>
 
-    <script>
-        const STORAGE_KEY = "sawyan_doc5_content_vault";
+    <!-- Main Header -->
+    <header>
+        <div class="brand-header">
+            <div id="stableBrandLogoMount"></div>
+            <div class="brand-title">
+                <h1 contenteditable="true" data-edit-key="main-title">بنك محتوى SAWYAN</h1>
+                <p contenteditable="true" data-edit-key="main-subtitle">المرجع الدستوري الشامل للسكربتات الإعلانية وجداول المشاهد والإخراج، والعبارات المعتمدة من الإدارة، والأفكار التسويقية (sawyan.net)</p>
+            </div>
+        </div>
+    </header>
 
-        function getEditableEl() {
-            return document.getElementById('editable-content') || document.querySelector('.paper');
+    <!-- View Mode / Section Switcher -->
+    <div class="nav-bar">
+        <button class="tab-btn active" onclick="filterSection('all', this)">
+            📑 عرض الموسوعة كاملة في صفحة واحدة
+        </button>
+        <button class="tab-btn" onclick="filterSection('sec-scripts', this)">
+            🎬 السكربتات وجداول المشاهد والإخراج (ثانية بثانية)
+            <span class="tab-count">3 سكربتات بجدولها الكامل</span>
+        </button>
+        <button class="tab-btn" onclick="filterSection('sec-official', this)">
+            🏛️ العبارات المعتمدة من الإدارة
+            <span class="tab-count">11 نصاً دستورياً</span>
+        </button>
+        <button class="tab-btn" onclick="filterSection('sec-candidate', this)">
+            💡 العبارات والرسائل التسويقية المرشحة
+            <span class="tab-count">8 أفكار وقوالب</span>
+        </button>
+    </div>
+
+    <!-- Instant Search -->
+    <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="liveSearchInput" class="search-input" placeholder="ابحث فوراً في كل المشاهد، السكربتات، العبارات المعتمدة، أو الأفكار المرشحة..." oninput="runSearch()">
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- SECTION 1: UNIFIED SCRIPTS + STORYBOARD & DIRECTION TABLES (ثانية بثانية) -->
+    <!-- ========================================================================= -->
+    <div id="sec-scripts" class="vault-section">
+        <div class="section-banner">
+            <div>
+                <h2>🎬 أولاً: السكربتات الإعلانية مع جدول المشاهد والإخراج الفني (ثانية بثانية)</h2>
+                <p>كل سكربت مدمج معه مباشرة جدول المشاهد البصرية، التوقيت، التعليق الصوتي المشكول، المؤثرات الصوتية، والنصوص على الشاشة — قابلة للتعديل المباشر.</p>
+            </div>
+        </div>
+
+        <div class="script-master-block" data-searchable="true">
+            <div class="script-block-header">
+                <span class="script-badge" contenteditable="true" data-edit-key="SCRIPT-OPT-1-badge">🏆 الخيار 1: السكربت المعتمد رسمياً للواجهة الرئيسية (45 ثانية)</span>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-emerald" onclick="addSceneRow('table-SCRIPT-OPT-1')">+ إضافة مشهد جديد للجدول</button>
+                    <button type="button" class="btn btn-blue" onclick="copyScriptWithTable('SCRIPT-OPT-1')">📋 نسخ السكربت مع جدول المشاهد</button>
+                </div>
+            </div>
+            <div class="script-body-area">
+                <div class="script-title-heading" contenteditable="true" data-edit-key="SCRIPT-OPT-1-title">فيديو الواجهة الرئيسي المعتمد: الصدمة الإيجابية وتحويل الدفع إلى استثمار</div>
+                <div class="vocalized-script-box" id="text-SCRIPT-OPT-1" contenteditable="true" data-edit-key="SCRIPT-OPT-1-fulltext">«أَكْثَرُ مَا نَفْعَلُهُ كُلَّ يَوْمٍ.. هُوَ أَكْثَرُ مَا نَكْرَهُهُ.. الدَّفْعُ!»
+«مِنَ اليَوْمِ.. تَغَيَّرَ الوَضْعُ! أَهْلاً بِكَ فِي SAWYAN مَنَصَّةِ الِاسْتِهْلَاكِ الِاسْتِثْمَارِيِّ العَالَمِيَّةِ.»
+«تَسَوَّقْ بِنَفْسِ أَسْعَارِكَ الطَّبِيعِيَّةِ مِنَ السُّوبَر مَارْكِت، وَالصَّيْدَلِيَّةِ، وَالمَطْعَمِ.. وَلَكِنْ هَذِهِ المَرَّةَ: مَدْفُوعَاتُكَ لَنْ تَضِيعَ، بَلْ سَتَتَحَوَّلُ إِلَى عَائِدَاتٍ حَقِيقِيَّةٍ تَنْمُو كُلَّ شَهْرٍ.»
+«فَقَطْ غَيِّرْ مَتْجَرَكَ، وَتَسَوَّقْ مَعَ المَتَاجِرِ الَّتِي تَعَاقَدْنَا مَعَهَا لِنَتَشَارَكَكَ الأَرْبَاحَ.. فَقَطْ أَخْبِرِ المَتْجَرَ الشَّرِيكَ أَنَّكَ عُضْوٌ بِـ SAWYAN، وَشَارِكِ الفِكْرَةَ مَعَ مَعَارِفِكَ لِيَتَضَاعَفَ دَخْلُكَ وَدَخْلُهُمْ!»
+«وَلِلتُّجَّارِ: لَا مُجَازَفَةَ بِإِعْلَانَاتٍ مَجْهُولَةِ العَائِدِ بَعْدَ الآنَ.. آلَافُ العُمَلَاءِ فِي انْتِظَارِكَ، وَادْفَعْ فَقَطْ مُقَابِلَ النَّتَائِجِ.. لَا الوُعُودِ!»
+«صِفْرُ مُخَاطَرَةٍ.. صِفْرُ رَأْسِ مَالٍ.. صِفْرُ مُؤَهِّلَاتٍ!»
+«الحُرِّيَّةُ المَالِيَّةُ لَيْسَتْ وَهْماً.. بَلْ حَقِيقَةٌ يَفْصِلُكَ عَنْهَا خَطْوَةٌ وَاحِدَةٌ.. SAWYAN.»</div>
+                <div style="margin-top:10px; color:#475569; font-size:0.9rem; font-weight:600;" contenteditable="true" data-edit-key="SCRIPT-OPT-1-notes">📌 السيناريو الرسمي المعتمد للواجهة الرئيسية لموقع sawyan.net مع التشكيل الصوتي الكامل وجدول المشاهد ثانية بثانية.</div>
+            </div>
+            <div class="storyboard-sub-header">
+                <h4>🎥 جدول المشاهد والإخراج الفني التفصيلي (ثانية بثانية) — فيديو الواجهة الرئيسي المعتمد: الصدمة الإيجابية وتحويل الدفع إلى استثمار</h4>
+            </div>
+            <div class="table-responsive">
+                <table class="storyboard-table" id="table-SCRIPT-OPT-1">
+                    <thead>
+                        <tr>
+                            <th style="width:130px;">التوقيت</th>
+                            <th style="width:26%;">المشهد البصري والإخراج (Camera & Visuals)</th>
+                            <th style="width:32%;">التعليق الصوتي المشكول (Voiceover)</th>
+                            <th style="width:17%;">المؤثرات الصوتية والموسيقى (SFX & Music)</th>
+                            <th style="width:15%;">النصوص على الشاشة (On-Screen Typography)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="time-pill" contenteditable="true" data-edit-key="SCRIPT-OPT-1-r0-time">00:00 - 00:05</span></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-1-r0-vis">لقطة سينمائية قريبة جداً (Extreme Macro) لعربة تسوق تُدفع بسرعة، ثم ماكينة كاشير تطبع فاتورة طويلة جداً.</td>
+                            <td><div class="vo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-1-r0-vo">«أَكْثَرُ مَا نَفْعَلُهُ كُلَّ يَوْمٍ.. هُوَ أَكْثَرُ مَا نَكْرَهُهُ.. الدَّفْعُ!»</div></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-1-r0-sfx">صوت حركة عجلات العربة + صوت رنين ماكينة الكاشير الحاد Beep يتكرر بتسارع.</td>
+                            <td class="typo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-1-r0-typo">كم أنفقت طوال حياتك؟ (خط عربي عريض باللون الكحلي والزمردي)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="time-pill" contenteditable="true" data-edit-key="SCRIPT-OPT-1-r1-time">00:05 - 00:12</span></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-1-r1-vis">انتقال سريع (Whip Pan): يد تسحب الفاتورة، تظهر بطاقة/شاشة عليها شعار SAWYAN، يوجه الكاميرا لكود الفاتورة مع وميض أخضر.</td>
+                            <td><div class="vo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-1-r1-vo">«مِنَ اليَوْمِ.. تَغَيَّرَ الوَضْعُ! أَهْلاً بِكَ فِي SAWYAN: مَنَصَّةِ الِاسْتِهْلَاكِ الِاسْتِثْمَارِيِّ العَالَمِيَّةِ.»</div></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-1-r1-sfx">يتلاشى الإيقاع السريع إلى دقة صوتية واثقة عميقة ترج المكان (Cinematic Bass Drop).</td>
+                            <td class="typo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-1-r1-typo">منصة الاستهلاك الاستثماري العالمية (شعار SAWYAN الرسمي)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="time-pill" contenteditable="true" data-edit-key="SCRIPT-OPT-1-r2-time">00:12 - 00:22</span></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-1-r2-vis">مشهد واسع متتابع (Montage): عائلة تتسوق في سوبر ماركت راقٍ، شخص يشتري دواء من صيدلية، أصدقاء في مطعم معتمد، يدفعون بسعرهم الطبيعي ويبتسمون.</td>
+                            <td><div class="vo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-1-r2-vo">«تَسَوَّقْ بِنَفْسِ أَسْعَارِكَ الطَّبِيعِيَّةِ مِنَ السُّوبَر مَارْكِت، وَالصَّيْدَلِيَّةِ، وَالمَطْعَمِ.. وَلَكِنْ هَذِهِ المَرَّةَ: مَدْفُوعَاتُكَ لَنْ تَضِيعَ، بَلْ سَتَتَحَوَّلُ إِلَى عَائِدَاتٍ حَقِيقِيَّةٍ تَنْمُو كُلَّ شَهْرٍ.»</div></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-1-r2-sfx">إيقاع موسيقي تصاعدي حيوي مفعم بالتفاؤل (Upbeat Corporate Strings).</td>
+                            <td class="typo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-1-r2-typo">نفس مشترياتك • نفس أسعارك • عائدات حقيقية</td>
+                        </tr>
+                        <tr>
+                            <td><span class="time-pill" contenteditable="true" data-edit-key="SCRIPT-OPT-1-r3-time">00:22 - 00:32</span></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-1-r3-vis">شاشة منقسمة (Split Screen): في اليمين رسم بياني مضيء يرتفع بسلاسة، وفي اليسار خريطة تفاعلية تضيء فيها شبكة معارف وأسر مترابطة.</td>
+                            <td><div class="vo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-1-r3-vo">«فَقَطْ غَيِّرْ مَتْجَرَكَ، وَتَسَوَّقْ مَعَ المَتَاجِرِ الَّتِي تَعَاقَدْنَا مَعَهَا لِنَتَشَارَكَكَ الأَرْبَاحَ.. فَقَطْ أَخْبِرِ المَتْجَرَ الشَّرِيكَ أَنَّكَ عُضْوٌ بِـ SAWYAN، وَشَارِكِ الفِكْرَةَ مَعَ مَعَارِفِكَ لِيَتَضَاعَفَ دَخْلُكَ وَدَخْلُهُمْ!»</div></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-1-r3-sfx">صوت رنين عملات ناعمة (Soft Chime) مع تصاعد تدريجي للوتيرة الحماسية.</td>
+                            <td class="typo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-1-r3-typo">غيّر متجرك • وثّق فاتورتك • ضاعف دخلك ودخلهم</td>
+                        </tr>
+                        <tr>
+                            <td><span class="time-pill" contenteditable="true" data-edit-key="SCRIPT-OPT-1-r4-time">00:32 - 00:40</span></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-1-r4-vis">مشهد تاجر مبتسم في متجره، طابور زبائن يحملون هواتفهم موثقين فواتيرهم، شارة معتمدة «شريك رسمي SAWYAN» مضيئة على واجهة المحل.</td>
+                            <td><div class="vo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-1-r4-vo">«وَلِلتُّجَّارِ: لَا مُجَازَفَةَ بِإِعْلَانَاتٍ مَجْهُولَةِ العَائِدِ بَعْدَ الآنَ.. آلَافُ العُمَلَاءِ فِي انْتِظَارِكَ، وَادْفَعْ فَقَطْ مُقَابِلَ النَّتَائِجِ.. لَا الوُعُودِ! صِفْرُ مُخَاطَرَةٍ.. صِفْرُ رَأْسِ مَالٍ.. صِفْرُ مُؤَهِّلَاتٍ!»</div></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-1-r4-sfx">وتيرة حماسية قوية تشير للنمو والنجاح التجاري المستمر.</td>
+                            <td class="typo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-1-r4-typo">للتجار: ادفع مقابل النتائج فقط • صفر مخاطرة • صفر رأس مال</td>
+                        </tr>
+                        <tr>
+                            <td><span class="time-pill" contenteditable="true" data-edit-key="SCRIPT-OPT-1-r5-time">00:40 - 00:45</span></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-1-r5-vis">لقطة سينمائية ختامية: شعار SAWYAN بارز وأنيق، يليه الرابط www.sawyan.net وزر انضم الآن مجاناً.</td>
+                            <td><div class="vo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-1-r5-vo">«الحُرِّيَّةُ المَالِيَّةُ لَيْسَتْ وَهْماً.. بَلْ حَقِيقَةٌ يَفْصِلُكَ عَنْهَا خَطْوَةٌ وَاحِدَةٌ.. SAWYAN.»</div></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-1-r5-sfx">نغمة ختامية هادئة وفاخرة مع صوت ضغطة تأكيد التسجيل (Success Chime).</td>
+                            <td class="typo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-1-r5-typo">SAWYAN • خطوتك نحو الحرية المالية • sawyan.net</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="script-master-block" data-searchable="true">
+            <div class="script-block-header">
+                <span class="script-badge" contenteditable="true" data-edit-key="SCRIPT-OPT-2-badge">🎬 الخيار 2: سيناريو موشن جرافيك 3D فاخر (45 ثانية)</span>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-emerald" onclick="addSceneRow('table-SCRIPT-OPT-2')">+ إضافة مشهد جديد للجدول</button>
+                    <button type="button" class="btn btn-blue" onclick="copyScriptWithTable('SCRIPT-OPT-2')">📋 نسخ السكربت مع جدول المشاهد</button>
+                </div>
+            </div>
+            <div class="script-body-area">
+                <div class="script-title-heading" contenteditable="true" data-edit-key="SCRIPT-OPT-2-title">رحلة الـ 3 خطوات والمكعب البلوري (Buy and Make Money)</div>
+                <div class="vocalized-script-box" id="text-SCRIPT-OPT-2" contenteditable="true" data-edit-key="SCRIPT-OPT-2-fulltext">«طَوَالَ عُقُودٍ.. كَانَ المُسْتَهْلِكُ هُوَ الحَلْقَةَ الأَضْعَفَ: تَدْفَعُ المَالَ، تَسْتَهْلِكُ السِّلْعَةَ، وَتَعُودُ لِنُقْطَةِ الصِّفْرِ!»
+«نِظَامُ SAWYAN جَاءَ لِيُعِيدَ كِتَابَةَ القَوَاعِدِ: الِاسْتِهْلَاكُ الِاسْتِثْمَارِيُّ (Buy and Make Money).. مَشْتَرَيَاتُكَ المُعْتَادَةُ أَصْبَحَتْ أَصْلَكَ الِاسْتِثْمَارِيَّ الأَوَّلَ.»
+«فِي ثَلَاثِ خُطُوَاتٍ مَجَّانِيَّةٍ فَقَطْ:
+١. غَيِّرْ وِجْهَتَكَ لِلْمَتَاجِرِ الشَّرِيكَةِ المُعْتَمَدَةِ.
+٢. وَثِّقْ فَاتُورَتَكَ بِكُودِ هُوِيَّتِكَ فِي ثَوَانٍ.
+٣. ابْنِ مُجْتَمَعَكَ وَاشْهَدْ نُمُوَّ عَائِدَاتِكَ شَهْراً بَعْدَ شَهْرٍ.»
+«نِظَامٌ عَادِلٌ، حَلَالٌ مِائَةً بِالمِائَةِ، بِدُونِ بَضَائِعَ مُخَزَّنَةٍ وَلَا وُعُودٍ سَرَابِيَّةٍ.. رِبْحٌ حَقِيقِيٌّ قَائِمٌ عَلَى فَوَاتِيرَ حَقِيقِيَّةٍ. انْضَمَّ إِلَيْنَا اليَوْمَ عَلَى sawyan.net.»</div>
+                <div style="margin-top:10px; color:#475569; font-size:0.9rem; font-weight:600;" contenteditable="true" data-edit-key="SCRIPT-OPT-2-notes">📌 موشن جرافيك ثلاثي الأبعاد يركز على البساطة والخطوات الثلاث وآلية العمل.</div>
+            </div>
+            <div class="storyboard-sub-header">
+                <h4>🎥 جدول المشاهد والإخراج الفني التفصيلي (ثانية بثانية) — رحلة الـ 3 خطوات والمكعب البلوري (Buy and Make Money)</h4>
+            </div>
+            <div class="table-responsive">
+                <table class="storyboard-table" id="table-SCRIPT-OPT-2">
+                    <thead>
+                        <tr>
+                            <th style="width:130px;">التوقيت</th>
+                            <th style="width:26%;">المشهد البصري والإخراج (Camera & Visuals)</th>
+                            <th style="width:32%;">التعليق الصوتي المشكول (Voiceover)</th>
+                            <th style="width:17%;">المؤثرات الصوتية والموسيقى (SFX & Music)</th>
+                            <th style="width:15%;">النصوص على الشاشة (On-Screen Typography)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="time-pill" contenteditable="true" data-edit-key="SCRIPT-OPT-2-r0-time">00:00 - 00:07</span></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-2-r0-vis">مجسم ثلاثي الأبعاد لمحفظة تفرغ منها النقود وتتحول إلى فواتير ورقية تتطاير وتختفي في الهواء.</td>
+                            <td><div class="vo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-2-r0-vo">«طَوَالَ عُقُودٍ.. كَانَ المُسْتَهْلِكُ هُوَ الحَلْقَةَ الأَضْعَفَ: تَدْفَعُ المَالَ، تَسْتَهْلِكُ السِّلْعَةَ، وَتَعُودُ لِنُقْطَةِ الصِّفْرِ!»</div></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-2-r0-sfx">صوت رياح خفيفة مع دقات ساعة متسارعة توحي بهدر المال.</td>
+                            <td class="typo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-2-r0-typo">استهلاك بلا عائد = نقطة الصفر</td>
+                        </tr>
+                        <tr>
+                            <td><span class="time-pill" contenteditable="true" data-edit-key="SCRIPT-OPT-2-r1-time">00:07 - 00:15</span></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-2-r1-vis">يتحول المشهد إلى مكعب بلوري مضيء يحمل شعار SAWYAN يعيد تجميع الفواتير ويحولها إلى مسارات ذهبية وخضراء.</td>
+                            <td><div class="vo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-2-r1-vo">«نِظَامُ SAWYAN جَاءَ لِيُعِيدَ كِتَابَةَ القَوَاعِدِ: الِاسْتِهْلَاكُ الِاسْتِثْمَارِيُّ (Buy and Make Money).. مَشْتَرَيَاتُكَ المُعْتَادَةُ أَصْبَحَتْ أَصْلَكَ الِاسْتِثْمَارِيَّ الأَوَّلَ.»</div></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-2-r1-sfx">نغمة تحول تقني حديثة (Futuristic Whoosh & Chord).</td>
+                            <td class="typo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-2-r1-typo">SAWYAN • Buy and Make Money</td>
+                        </tr>
+                        <tr>
+                            <td><span class="time-pill" contenteditable="true" data-edit-key="SCRIPT-OPT-2-r2-time">00:15 - 00:23</span></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-2-r2-vis">تظهر أيقونة الخطوة (1) ثلاثية الأبعاد: خريطة مدينة تضيء فيها دبابيس المتاجر والمطاعم والصيدليات الشريكة.</td>
+                            <td><div class="vo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-2-r2-vo">«فِي ثَلَاثِ خُطُوَاتٍ مَجَّانِيَّةٍ فَقَطْ: أَوَّلاً: غَيِّرْ وِجْهَتَكَ لِلْمَتَاجِرِ الشَّرِيكَةِ المُعْتَمَدَةِ.»</div></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-2-r2-sfx">موسيقى إيقاعية حديثة مع صوت نبضات ضوئية على الخريطة.</td>
+                            <td class="typo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-2-r2-typo">1. غيّر وجهتك (استهلك بذكاء)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="time-pill" contenteditable="true" data-edit-key="SCRIPT-OPT-2-r3-time">00:23 - 00:31</span></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-2-r3-vis">تظهر أيقونة الخطوة (2): هاتف ذكي يمسح كود هوية العضو في ثانية واحدة، وتظهر علامة صح خضراء فورية.</td>
+                            <td><div class="vo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-2-r3-vo">«ثَانِياً: وَثِّقْ فَاتُورَتَكَ بِكُودِ هُوِيَّتِكَ فِي ثَوَانٍ. ثَالِثاً: ابْنِ مُجْتَمَعَكَ وَاشْهَدْ نُمُوَّ عَائِدَاتِكَ شَهْراً بَعْدَ شَهْرٍ.»</div></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-2-r3-sfx">صوت مسح ضوئي (Digital Scan) يليه تصاعد موسيقي ملهم.</td>
+                            <td class="typo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-2-r3-typo">2. وثّق فاتورتك • 3. ابنِ مجتمعك وضاعف دخلك</td>
+                        </tr>
+                        <tr>
+                            <td><span class="time-pill" contenteditable="true" data-edit-key="SCRIPT-OPT-2-r4-time">00:31 - 00:39</span></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-2-r4-vis">ميزان عدالة ذهبي ثلاثي الأبعاد محاط بشارة (حلال 100%) وفواتير حقيقية موثقة.</td>
+                            <td><div class="vo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-2-r4-vo">«نِظَامٌ عَادِلٌ، حَلَالٌ مِائَةً بِالمِائَةِ، بِدُونِ بَضَائِعَ مُخَزَّنَةٍ وَلَا وُعُودٍ سَرَابِيَّةٍ.. رِبْحٌ حَقِيقِيٌّ قَائِمٌ عَلَى فَوَاتِيرَ حَقِيقِيَّةٍ.»</div></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-2-r4-sfx">موسيقى أوركسترالية واثقة تعزز المصداقية والأمان.</td>
+                            <td class="typo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-2-r4-typo">حلال 100% • فواتير حقيقية • صفر مخاطرة</td>
+                        </tr>
+                        <tr>
+                            <td><span class="time-pill" contenteditable="true" data-edit-key="SCRIPT-OPT-2-r5-time">00:39 - 00:45</span></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-2-r5-vis">شاشة ختامية ناصعة البياض يظهر فيها شعار SAWYAN الرسمي مع عنوان الموقع sawyan.net.</td>
+                            <td><div class="vo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-2-r5-vo">«انْضَمَّ إِلَيْنَا اليَوْمَ مَجَّاناً عَلَى sawyan.net.»</div></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-2-r5-sfx">نغمة إغلاق رسمية أنيقة.</td>
+                            <td class="typo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-2-r5-typo">انضم مجاناً الآن • www.sawyan.net</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="script-master-block" data-searchable="true">
+            <div class="script-block-header">
+                <span class="script-badge" contenteditable="true" data-edit-key="SCRIPT-OPT-3-badge">🎥 الخيار 3: سيناريو الدراما الوثائقية الملهمة (60 ثانية)</span>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-emerald" onclick="addSceneRow('table-SCRIPT-OPT-3')">+ إضافة مشهد جديد للجدول</button>
+                    <button type="button" class="btn btn-blue" onclick="copyScriptWithTable('SCRIPT-OPT-3')">📋 نسخ السكربت مع جدول المشاهد</button>
+                </div>
+            </div>
+            <div class="script-body-area">
+                <div class="script-title-heading" contenteditable="true" data-edit-key="SCRIPT-OPT-3-title">حكاية أسرة وتاجر: كلنا SAWYAN</div>
+                <div class="vocalized-script-box" id="text-SCRIPT-OPT-3" contenteditable="true" data-edit-key="SCRIPT-OPT-3-fulltext">«كُلَّ صَبَاحٍ.. نَخْرُجُ لِنَعْمَلَ، لِنُلَبِّيَ احْتِيَاجَاتِ مَنْ نُحِبُّ.. نَشْتَرِي، نَسْتَهْلِكُ، وَنَبْذُلُ مَا نَمْلِكُ لِتَأْمِينِ مُسْتَقْبَلِ عَائِلَاتِنَا.»
+«لَكِنْ مَاذَا لَوْ كَانَتْ كُلُّ فَاتُورَةٍ تَدْفَعُهَا لَمْ تَعُدِ اسْتِنْزَافاً لِرَاتِبِكَ.. بَلْ خَطْوَةً جَدِيدَةً نَحْوَ حُرِّيَّتِكَ المَالِيَّةِ وَاسْتِقْرَارِكَ؟»
+«هُنَا وُلِدَتْ فِكْرَةُ SAWYAN.. أَنْ نَكُونَ مَعاً! أَنْتَ لَسْتَ زَبُوناً عَادِيّاً، بَلْ شَرِيكٌ فِي الأَرْبَاحِ.. تَسَوَّقْ بِالسِّعْرِ الطَّبِيعِيِّ، وَدُلَّ مَنْ تُحِبُّ عَلَى نَفْسِ الطَّرِيقِ.»
+«وَلِأَنَّ التِّجَارَةَ شَرَاكَةٌ وَأَمَانٌ: تُجَّارُنَا لَا يَدْفَعُونَ مِيزَانِيَّاتِ تَسْوِيقٍ ضَائِعَةً، بَلْ يَسْتَقْبِلُونَ مُجْتَمَعاً مِنْ آلَافِ الأُسَرِ المُوَجَّهَةِ لِمَتْجَرِهِمْ بِوَلَاءٍ دَائِمٍ.»
+«سَوَاءٌ كُنْتَ مُتَسَوِّقاً، أَوْ تَاجِراً، أَوْ تَبْحَثُ عَنْ دَخْلٍ يَحْمِي غَدَكَ.. مَكَانُكَ بَيْنَنَا. كُلُّنَا SAWYAN — مَنَصَّةُ الِاسْتِهْلَاكِ الِاسْتِثْمَارِيِّ العَالَمِيَّةُ.»</div>
+                <div style="margin-top:10px; color:#475569; font-size:0.9rem; font-weight:600;" contenteditable="true" data-edit-key="SCRIPT-OPT-3-notes">📌 فيديو وثائقي دافئ للمؤتمرات، العروض التقديمية الكبرى، وبناء الولاء المجتمعي.</div>
+            </div>
+            <div class="storyboard-sub-header">
+                <h4>🎥 جدول المشاهد والإخراج الفني التفصيلي (ثانية بثانية) — حكاية أسرة وتاجر: كلنا SAWYAN</h4>
+            </div>
+            <div class="table-responsive">
+                <table class="storyboard-table" id="table-SCRIPT-OPT-3">
+                    <thead>
+                        <tr>
+                            <th style="width:130px;">التوقيت</th>
+                            <th style="width:26%;">المشهد البصري والإخراج (Camera & Visuals)</th>
+                            <th style="width:32%;">التعليق الصوتي المشكول (Voiceover)</th>
+                            <th style="width:17%;">المؤثرات الصوتية والموسيقى (SFX & Music)</th>
+                            <th style="width:15%;">النصوص على الشاشة (On-Screen Typography)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="time-pill" contenteditable="true" data-edit-key="SCRIPT-OPT-3-r0-time">00:00 - 00:10</span></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-3-r0-vis">لقطات سينمائية دافئة مع شروق الشمس: أب يخرج لعمله، أم تشتري مستلزمات الأسرة، تاجر يفتح أبواب متجره في الصباح.</td>
+                            <td><div class="vo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-3-r0-vo">«كُلَّ صَبَاحٍ.. نَخْرُجُ لِنَعْمَلَ، لِنُلَبِّيَ احْتِيَاجَاتِ مَنْ نُحِبُّ.. نَشْتَرِي، نَسْتَهْلِكُ، وَنَبْذُلُ مَا نَمْلِكُ لِتَأْمِينِ مُسْتَقْبَلِ عَائِلَاتِنَا.»</div></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-3-r0-sfx">عزف بيانو هادئ ودافئ يلامس المشاعر مع أصوات صباحية طبيعية.</td>
+                            <td class="typo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-3-r0-typo">كل يوم.. نسعى من أجل من نحب</td>
+                        </tr>
+                        <tr>
+                            <td><span class="time-pill" contenteditable="true" data-edit-key="SCRIPT-OPT-3-r1-time">00:10 - 00:20</span></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-3-r1-vis">الأب ينظر إلى فواتير المشتريات الشهرية، ثم يبتسم وهو يفتح تطبيق SAWYAN ليرى نمو صندوق الهدف الشهري وعائداته.</td>
+                            <td><div class="vo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-3-r1-vo">«لَكِنْ مَاذَا لَوْ كَانَتْ كُلُّ فَاتُورَةٍ تَدْفَعُهَا لَمْ تَعُدِ اسْتِنْزَافاً لِرَاتِبِكَ.. بَلْ خَطْوَةً جَدِيدَةً نَحْوَ حُرِّيَّتِكَ المَالِيَّةِ وَاسْتِقْرَارِكَ؟»</div></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-3-r1-sfx">تدخل الآلات الوترية تدريجياً لتعطي شعوراً بالأمل والانفراج.</td>
+                            <td class="typo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-3-r1-typo">من استنزاف الراتب.. إلى صناعة المستقبل</td>
+                        </tr>
+                        <tr>
+                            <td><span class="time-pill" contenteditable="true" data-edit-key="SCRIPT-OPT-3-r2-time">00:20 - 00:32</span></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-3-r2-vis">مشهد يجمع الأب مع أصدقائه وأقاربه في جلسة ودية يشاركهم فكرة المنصة عبر هاتفه وسط تفاعل وسعادة.</td>
+                            <td><div class="vo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-3-r2-vo">«هُنَا وُلِدَتْ فِكْرَةُ SAWYAN.. أَنْ نَكُونَ مَعاً! أَنْتَ لَسْتَ زَبُوناً عَادِيّاً، بَلْ شَرِيكٌ فِي الأَرْبَاحِ.. تَسَوَّقْ بِالسِّعْرِ الطَّبِيعِيِّ، وَدُلَّ مَنْ تُحِبُّ عَلَى نَفْسِ الطَّرِيقِ.»</div></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-3-r2-sfx">موسيقى ملهمة متصاعدة تعكس روح التعاون والنجاح المشترك.</td>
+                            <td class="typo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-3-r2-typo">لست مجرد مستهلك.. أنت شريك في النجاح</td>
+                        </tr>
+                        <tr>
+                            <td><span class="time-pill" contenteditable="true" data-edit-key="SCRIPT-OPT-3-r3-time">00:32 - 00:45</span></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-3-r3-vis">صاحب المتجر يستقبل عائلات أعضاء SAWYAN بابتسامة، ويوثق فواتيرهم وسط حركة بيع نشطة ومستمرة.</td>
+                            <td><div class="vo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-3-r3-vo">«وَلِأَنَّ التِّجَارَةَ شَرَاكَةٌ وَأَمَانٌ: تُجَّارُنَا لَا يَدْفَعُونَ مِيزَانِيَّاتِ تَسْوِيقٍ ضَائِعَةً، بَلْ يَسْتَقْبِلُونَ مُجْتَمَعاً مِنْ آلَافِ الأُسَرِ المُوَجَّهَةِ لِمَتْجَرِهِمْ بِوَلَاءٍ دَائِمٍ.»</div></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-3-r3-sfx">إيقاع أوركسترالي غني يعبر عن الازدهار التجاري.</td>
+                            <td class="typo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-3-r3-typo">شراكة رابحة للمتسوق والتاجر</td>
+                        </tr>
+                        <tr>
+                            <td><span class="time-pill" contenteditable="true" data-edit-key="SCRIPT-OPT-3-r4-time">00:45 - 00:54</span></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-3-r4-vis">لقطات سريعة مبهجة لمتسوقين وتجار وشباب من مختلف الأعمار ينظرون للكاميرا بثقة وفخر.</td>
+                            <td><div class="vo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-3-r4-vo">«سَوَاءٌ كُنْتَ مُتَسَوِّقاً، أَوْ تَاجِراً، أَوْ تَبْحَثُ عَنْ دَخْلٍ يَحْمِي غَدَكَ.. مَكَانُكَ بَيْنَنَا.»</div></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-3-r4-sfx">ذروة موسيقية ملهمة (Cinematic Climax).</td>
+                            <td class="typo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-3-r4-typo">متسوق • تاجر • صانع مشروع</td>
+                        </tr>
+                        <tr>
+                            <td><span class="time-pill" contenteditable="true" data-edit-key="SCRIPT-OPT-3-r5-time">00:54 - 01:00</span></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-3-r5-vis">شعار SAWYAN يتوسط الشاشة مع عبارة «كلنا SAWYAN» والرابط الرسمي sawyan.net.</td>
+                            <td><div class="vo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-3-r5-vo">«كُلُّنَا SAWYAN — مَنَصَّةُ الِاسْتِهْلَاكِ الِاسْتِثْمَارِيِّ العَالَمِيَّةُ.»</div></td>
+                            <td contenteditable="true" data-edit-key="SCRIPT-OPT-3-r5-sfx">نغمة ختامية دافئة وراسخة.</td>
+                            <td class="typo-cell-box" contenteditable="true" data-edit-key="SCRIPT-OPT-3-r5-typo">كلنا SAWYAN • www.sawyan.net</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- SECTION 2: OFFICIAL APPROVED PHRASES FROM MANAGEMENT                      -->
+    <!-- ========================================================================= -->
+    <div id="sec-official" class="vault-section">
+        <div class="section-banner">
+            <div>
+                <h2>🏛️ ثانياً: العبارات المعتمدة رسمياً من الإدارة العليا (المصدر الدستوري)</h2>
+                <p>النصوص الرسمية المعتمدة حرفياً لتغذية الموقع الرئيسي sawyan.net وجميع المطبوعات والحملات التعريفية — اضغط على أي نص للتعديل المباشر.</p>
+            </div>
+            <button type="button" class="btn btn-emerald" onclick="addNewCardToGrid('officialGrid', 'official')">+ إضافة عبارة معتمدة</button>
+        </div>
+        <div class="cards-grid" id="officialGrid">
+            <div class="phrase-card official-card" data-searchable="true">
+                <div>
+                    <div class="card-meta-top">
+                        <span class="tag-official">🏛️ معتمد رسمياً من الإدارة</span>
+                        <span class="card-id-code">OFFICIAL-001</span>
+                    </div>
+                    <div class="phrase-title" contenteditable="true" data-edit-key="OFFICIAL-001-title">التعريف الأساسي لمنصة SAWYAN</div>
+                    <div class="phrase-body" contenteditable="true" data-edit-key="OFFICIAL-001-body">SAWYAN — منصة الاستهلاك الاستثماري العالمية (Buy and Make Money)</div>
+                    <div class="phrase-notes" contenteditable="true" data-edit-key="OFFICIAL-001-notes">📌 الجملة الرسمية الأولى المعتمدة من الإدارة للتعريف بالمنصة عالمياً ومحلياً.</div>
+                </div>
+                <div class="card-footer-actions">
+                    <span style="font-size:0.78rem; color:#64748b;">✏️ قابل للتعديل المباشر</span>
+                    <button type="button" class="btn btn-blue" onclick="copyCardText(this)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="phrase-card official-card" data-searchable="true">
+                <div>
+                    <div class="card-meta-top">
+                        <span class="tag-official">🏛️ معتمد رسمياً من الإدارة</span>
+                        <span class="card-id-code">OFFICIAL-002</span>
+                    </div>
+                    <div class="phrase-title" contenteditable="true" data-edit-key="OFFICIAL-002-title">دعوة الانضمام لآلاف الأسر</div>
+                    <div class="phrase-body" contenteditable="true" data-edit-key="OFFICIAL-002-body">«اكتشف نظام SAWYAN للاستهلاك الاستثماري (Buy and Make Money). انضم إلى آلاف الأسر الذين حولوا مشترياتهم اليومية من السوبر ماركت، الصيدليات، والمطاعم إلخ إلى أرباح حقيقية تنمو كل يوم.»</div>
+                    <div class="phrase-notes" contenteditable="true" data-edit-key="OFFICIAL-002-notes">📌 الرسالة الافتتاحية المعتمدة لصفحة الهبوط ومقدمة العروض التقديمية.</div>
+                </div>
+                <div class="card-footer-actions">
+                    <span style="font-size:0.78rem; color:#64748b;">✏️ قابل للتعديل المباشر</span>
+                    <button type="button" class="btn btn-blue" onclick="copyCardText(this)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="phrase-card official-card" data-searchable="true">
+                <div>
+                    <div class="card-meta-top">
+                        <span class="tag-official">🏛️ معتمد رسمياً من الإدارة</span>
+                        <span class="card-id-code">OFFICIAL-003</span>
+                    </div>
+                    <div class="phrase-title" contenteditable="true" data-edit-key="OFFICIAL-003-title">الحرية المالية خطوة واحدة</div>
+                    <div class="phrase-body" contenteditable="true" data-edit-key="OFFICIAL-003-body">«الحرية المالية ليست وهما — بل حقيقة يفصلك عنها خطوة واحدة»</div>
+                    <div class="phrase-notes" contenteditable="true" data-edit-key="OFFICIAL-003-notes">📌 جملة الختام والأثر المعتمدة في كافة تصاميم السوشيال ميديا والفيديوهات.</div>
+                </div>
+                <div class="card-footer-actions">
+                    <span style="font-size:0.78rem; color:#64748b;">✏️ قابل للتعديل المباشر</span>
+                    <button type="button" class="btn btn-blue" onclick="copyCardText(this)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="phrase-card official-card" data-searchable="true">
+                <div>
+                    <div class="card-meta-top">
+                        <span class="tag-official">🏛️ معتمد رسمياً من الإدارة</span>
+                        <span class="card-id-code">OFFICIAL-004</span>
+                    </div>
+                    <div class="phrase-title" contenteditable="true" data-edit-key="OFFICIAL-004-title">شعار كلنا SAWYAN</div>
+                    <div class="phrase-body" contenteditable="true" data-edit-key="OFFICIAL-004-body">«كلنا SAWYAN — سواء كنت متسوقاً أو تاجراً أو تبحث عن دخل إضافي، لدينا ما يناسبك»</div>
+                    <div class="phrase-notes" contenteditable="true" data-edit-key="OFFICIAL-004-notes">📌 المانترا الرسمية الموحدة للمجتمع بكافة شرائحه.</div>
+                </div>
+                <div class="card-footer-actions">
+                    <span style="font-size:0.78rem; color:#64748b;">✏️ قابل للتعديل المباشر</span>
+                    <button type="button" class="btn btn-blue" onclick="copyCardText(this)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="phrase-card official-card" data-searchable="true">
+                <div>
+                    <div class="card-meta-top">
+                        <span class="tag-official">🏛️ معتمد رسمياً من الإدارة</span>
+                        <span class="card-id-code">OFFICIAL-005</span>
+                    </div>
+                    <div class="phrase-title" contenteditable="true" data-edit-key="OFFICIAL-005-title">قسم «أنا متسوق»</div>
+                    <div class="phrase-body" contenteditable="true" data-edit-key="OFFICIAL-005-body">«أنا متسوق»
+• لا تدفع دون مقابل بعد الآن!
+• تسوّق بالسعر الطبيعي من السوبر ماركت والصيدليات والمطاعم.
+• وثّق فاتورتك بكود هويتك في ثوانٍ.
+• عضوية مجانية 100% بلا رسوم اشتراك.</div>
+                    <div class="phrase-notes" contenteditable="true" data-edit-key="OFFICIAL-005-notes">📌 البطاقة الرسمية للمتسوقين في الصفحة الرئيسية ومطبوعات التعريف.</div>
+                </div>
+                <div class="card-footer-actions">
+                    <span style="font-size:0.78rem; color:#64748b;">✏️ قابل للتعديل المباشر</span>
+                    <button type="button" class="btn btn-blue" onclick="copyCardText(this)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="phrase-card official-card" data-searchable="true">
+                <div>
+                    <div class="card-meta-top">
+                        <span class="tag-official">🏛️ معتمد رسمياً من الإدارة</span>
+                        <span class="card-id-code">OFFICIAL-006</span>
+                    </div>
+                    <div class="phrase-title" contenteditable="true" data-edit-key="OFFICIAL-006-title">قسم «أنا تاجر»</div>
+                    <div class="phrase-body" contenteditable="true" data-edit-key="OFFICIAL-006-body">«أنا تاجر»
+• ضاعف مبيعاتك دون المجازفة بمبالغ تنفق على حملات تسويقية مجهولة المردود.
+• ادفع مقابل النتائج فقط.
+• آلاف العملاء في انتظارك.
+• نحن جيشك التسويقي القادم.
+• تفرغ لتطوير منتجك وخدماتك.</div>
+                    <div class="phrase-notes" contenteditable="true" data-edit-key="OFFICIAL-006-notes">📌 العرض المعتمد لأصحاب المتاجر والمطاعم والخدمات.</div>
+                </div>
+                <div class="card-footer-actions">
+                    <span style="font-size:0.78rem; color:#64748b;">✏️ قابل للتعديل المباشر</span>
+                    <button type="button" class="btn btn-blue" onclick="copyCardText(this)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="phrase-card official-card" data-searchable="true">
+                <div>
+                    <div class="card-meta-top">
+                        <span class="tag-official">🏛️ معتمد رسمياً من الإدارة</span>
+                        <span class="card-id-code">OFFICIAL-007</span>
+                    </div>
+                    <div class="phrase-title" contenteditable="true" data-edit-key="OFFICIAL-007-title">لماذا يجب أن نكون SAWYAN؟</div>
+                    <div class="phrase-body" contenteditable="true" data-edit-key="OFFICIAL-007-body">«لماذا يجب أن نكون SAWYAN؟»
+• صفر مخاطرة، صفر رأس مال.
+• أيا كانت خبرتك أهلا بك.
+• حلال 100%.
+• دخل متنامي.
+• حرية كاملة في اختيار مواعيد العمل.</div>
+                    <div class="phrase-notes" contenteditable="true" data-edit-key="OFFICIAL-007-notes">📌 النقاط الخمس المعتمدة لكسر التردد عند الزوار الجدد.</div>
+                </div>
+                <div class="card-footer-actions">
+                    <span style="font-size:0.78rem; color:#64748b;">✏️ قابل للتعديل المباشر</span>
+                    <button type="button" class="btn btn-blue" onclick="copyCardText(this)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="phrase-card official-card" data-searchable="true">
+                <div>
+                    <div class="card-meta-top">
+                        <span class="tag-official">🏛️ معتمد رسمياً من الإدارة</span>
+                        <span class="card-id-code">OFFICIAL-008</span>
+                    </div>
+                    <div class="phrase-title" contenteditable="true" data-edit-key="OFFICIAL-008-title">آلية العمل: تحول من مستهلك لصاحب مشروع في 3 خطوات مجانية</div>
+                    <div class="phrase-body" contenteditable="true" data-edit-key="OFFICIAL-008-body">«آلية العمل — في 3 خطوات مجانية تحول من مستهلك لصاحب مشروع»
+1. غيّر وجهتك (استهلك بذكاء): لا تدفع دون مقابل بعد الآن! حوّل مشترياتك الاعتيادية إلى المحلات والمواقع الشريكة لمنصة سويّاً.
+2. ابنِ مجتمعك وابدأ بجني الأرباح: إبدأ بدعوة معارفك.. أنت تقدم لهم خدمة عظيمة.
+3. ضاعف دخلك: قم بدعوة فريقك لتكرار الخطوتين السابقتين، وكلما اتسع فريقك زاد دخلك ودخلهم.</div>
+                    <div class="phrase-notes" contenteditable="true" data-edit-key="OFFICIAL-008-notes">📌 الشرح الرسمي المعتمد لرحلة العضو في الموقع.</div>
+                </div>
+                <div class="card-footer-actions">
+                    <span style="font-size:0.78rem; color:#64748b;">✏️ قابل للتعديل المباشر</span>
+                    <button type="button" class="btn btn-blue" onclick="copyCardText(this)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="phrase-card official-card" data-searchable="true">
+                <div>
+                    <div class="card-meta-top">
+                        <span class="tag-official">🏛️ معتمد رسمياً من الإدارة</span>
+                        <span class="card-id-code">OFFICIAL-009</span>
+                    </div>
+                    <div class="phrase-title" contenteditable="true" data-edit-key="OFFICIAL-009-title">للتجار: في 3 خطوات اقفز بمبيعات مشروعك لأبعد مدى</div>
+                    <div class="phrase-body" contenteditable="true" data-edit-key="OFFICIAL-009-body">«للتجار: في 3 خطوات اقفز بمبيعات مشروعك لأبعد مدى»
+1. أنشئ حساب متجرك مجاناً.
+2. حدد نسبة عمولات متوازنة تستطيع أن تردها لجيش عملاء سويا إذا حولوا مشترياتهم لك.
+3. وثق لكل عميل فاتورته بتطبيق سويا.</div>
+                    <div class="phrase-notes" contenteditable="true" data-edit-key="OFFICIAL-009-notes">📌 الدليل الإرشادي السريع المعتمد للتعاقد مع التجار.</div>
+                </div>
+                <div class="card-footer-actions">
+                    <span style="font-size:0.78rem; color:#64748b;">✏️ قابل للتعديل المباشر</span>
+                    <button type="button" class="btn btn-blue" onclick="copyCardText(this)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="phrase-card official-card" data-searchable="true">
+                <div>
+                    <div class="card-meta-top">
+                        <span class="tag-official">🏛️ معتمد رسمياً من الإدارة</span>
+                        <span class="card-id-code">OFFICIAL-010</span>
+                    </div>
+                    <div class="phrase-title" contenteditable="true" data-edit-key="OFFICIAL-010-title">تجار مميزون حول العالم</div>
+                    <div class="phrase-body" contenteditable="true" data-edit-key="OFFICIAL-010-body">«تجار مميزون — تعرف على آلاف التجار المعتمدين من سويا حول العالم بأغلب المجالات»</div>
+                    <div class="phrase-notes" contenteditable="true" data-edit-key="OFFICIAL-010-notes">📌 عنوان دليل المتاجر والشركاء في الموقع والتطبيق.</div>
+                </div>
+                <div class="card-footer-actions">
+                    <span style="font-size:0.78rem; color:#64748b;">✏️ قابل للتعديل المباشر</span>
+                    <button type="button" class="btn btn-blue" onclick="copyCardText(this)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="phrase-card official-card" data-searchable="true">
+                <div>
+                    <div class="card-meta-top">
+                        <span class="tag-official">🏛️ معتمد رسمياً من الإدارة</span>
+                        <span class="card-id-code">OFFICIAL-011</span>
+                    </div>
+                    <div class="phrase-title" contenteditable="true" data-edit-key="OFFICIAL-011-title">أهلاً بك في عالم الاستهلاك الاستثماري</div>
+                    <div class="phrase-body" contenteditable="true" data-edit-key="OFFICIAL-011-body">«أهلا بك في عالم الاستهلاك الاستثماري (Buy and Make Money) — حيث تصنع مشروعك ببساطة ليس فقط من مشترياتك اليومية بل من مشتريات آلاف الأعضاء بفريقك»</div>
+                    <div class="phrase-notes" contenteditable="true" data-edit-key="OFFICIAL-011-notes">📌 البيان التأسيسي المعتمد للمنصة.</div>
+                </div>
+                <div class="card-footer-actions">
+                    <span style="font-size:0.78rem; color:#64748b;">✏️ قابل للتعديل المباشر</span>
+                    <button type="button" class="btn btn-blue" onclick="copyCardText(this)">📋 نسخ النص</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- SECTION 3: CANDIDATE MARKETING PHRASES & HOOKS                            -->
+    <!-- ========================================================================= -->
+    <div id="sec-candidate" class="vault-section">
+        <div class="section-banner" style="border-right-color: var(--amber-border);">
+            <div>
+                <h2>💡 ثالثاً: بنك العبارات والرسائل التسويقية المرشحة (من الفيديوهات والشروحات)</h2>
+                <p>خطافات الريلز، رسائل استقطاب المتسوقين والتجار، رسائل شحن همم الأعضاء، وقوالب الواتساب — قابلة للتعديل والتطوير المباشر.</p>
+            </div>
+            <button type="button" class="btn btn-emerald" onclick="addNewCardToGrid('candidateGrid', 'candidate')">+ إضافة فكرة / عبارة مرشحة</button>
+        </div>
+        <div class="cards-grid" id="candidateGrid">
+            <div class="phrase-card candidate-card" data-searchable="true">
+                <div>
+                    <div class="card-meta-top">
+                        <span class="tag-candidate">💡 خطاف ريلز وتيك توك</span>
+                        <span class="card-id-code">HOOK-001</span>
+                    </div>
+                    <div class="phrase-title" contenteditable="true" data-edit-key="HOOK-001-title">سؤال العشرين سنة ومحل الملابس</div>
+                    <div class="phrase-body" contenteditable="true" data-edit-key="HOOK-001-body">لو بتشتري أنت وعيلتك من نفس المحل بقالكم 20 سنة.. هل تقدر تقله اديني شهر واحد مجاناً لأنني عميل وفي؟ مستحيل! في SAWYAN وفاءك لمشترياتك هو أساس دخلك.</div>
+                    <div class="phrase-notes" contenteditable="true" data-edit-key="HOOK-001-notes">📌 أول 3 ثوانٍ في الفيديوهات القصيرة، نسبة استبقاء المشاهدين تتجاوز 80%.</div>
+                </div>
+                <div class="card-footer-actions">
+                    <span style="font-size:0.78rem; color:#64748b;">✏️ قابل للتعديل المباشر</span>
+                    <button type="button" class="btn btn-blue" onclick="copyCardText(this)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="phrase-card candidate-card" data-searchable="true">
+                <div>
+                    <div class="card-meta-top">
+                        <span class="tag-candidate">💡 خطاف فضول مالي</span>
+                        <span class="card-id-code">HOOK-002</span>
+                    </div>
+                    <div class="phrase-title" contenteditable="true" data-edit-key="HOOK-002-title">أين ذهبت ملايين فواتير السوبر ماركت؟</div>
+                    <div class="phrase-body" contenteditable="true" data-edit-key="HOOK-002-body">كم أنفقت طوال حياتك على السوبر ماركت والصيدلية والمطاعم؟ ماذا لو عاد كل هذا الاستهلاك كأرباح شهرية تتنامى كل يوم؟</div>
+                    <div class="phrase-notes" contenteditable="true" data-edit-key="HOOK-002-notes">📌 يصلح كمنشور تفاعلي على فيسبوك وتويتر وبداية محتوى مرئي.</div>
+                </div>
+                <div class="card-footer-actions">
+                    <span style="font-size:0.78rem; color:#64748b;">✏️ قابل للتعديل المباشر</span>
+                    <button type="button" class="btn btn-blue" onclick="copyCardText(this)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="phrase-card candidate-card" data-searchable="true">
+                <div>
+                    <div class="card-meta-top">
+                        <span class="tag-candidate">💡 خطاف استقطاب التجار</span>
+                        <span class="card-id-code">HOOK-003</span>
+                    </div>
+                    <div class="phrase-title" contenteditable="true" data-edit-key="HOOK-003-title">ألم الإعلانات الممولة مجهولة العائد</div>
+                    <div class="phrase-body" contenteditable="true" data-edit-key="HOOK-003-body">كم تاجر تعرفه خسر آلاف الدولارات في حملات تسويقية مجهولة المردود؟ في SAWYAN: ادفع مقابل النتائج والمبيعات الحقيقية فقط!</div>
+                    <div class="phrase-notes" contenteditable="true" data-edit-key="HOOK-003-notes">📌 موجه لأصحاب المتاجر والمطاعم على لينكد إن وإنستغرام.</div>
+                </div>
+                <div class="card-footer-actions">
+                    <span style="font-size:0.78rem; color:#64748b;">✏️ قابل للتعديل المباشر</span>
+                    <button type="button" class="btn btn-blue" onclick="copyCardText(this)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="phrase-card candidate-card" data-searchable="true">
+                <div>
+                    <div class="card-meta-top">
+                        <span class="tag-candidate">💡 صدمة إيجابية</span>
+                        <span class="card-id-code">HOOK-004</span>
+                    </div>
+                    <div class="phrase-title" contenteditable="true" data-edit-key="HOOK-004-title">أكثر ما تكرهه.. أكبر استثمار في حياتك</div>
+                    <div class="phrase-body" contenteditable="true" data-edit-key="HOOK-004-body">أكثر ما نفعله كل يوم.. هو أكثر ما نكرهه: الدفع! من اليوم، كل فاتورة تدفعها لم تعد استنزافاً لجيبك، بل بذرة لمشروعك المالي المستقل.</div>
+                    <div class="phrase-notes" contenteditable="true" data-edit-key="HOOK-004-notes">📌 مقدمة قوية جداً للمنشورات والفيديوهات الطويلة.</div>
+                </div>
+                <div class="card-footer-actions">
+                    <span style="font-size:0.78rem; color:#64748b;">✏️ قابل للتعديل المباشر</span>
+                    <button type="button" class="btn btn-blue" onclick="copyCardText(this)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="phrase-card candidate-card" data-searchable="true">
+                <div>
+                    <div class="card-meta-top">
+                        <span class="tag-candidate">💡 تعزيز ولاء وثقة</span>
+                        <span class="card-id-code">CAND-MBR-001</span>
+                    </div>
+                    <div class="phrase-title" contenteditable="true" data-edit-key="CAND-MBR-001-title">أنت لا تبيع منتجات.. أنت تحمي ميزانية الأسر</div>
+                    <div class="phrase-body" contenteditable="true" data-edit-key="CAND-MBR-001-body">عندما تشارك SAWYAN مع أصدقائك، أنت لا تطلب منهم شراء سلع لا يحتاجونها.. أنت تهديهم مفتاحاً لتحويل فواتيرهم الإلزامية إلى أرباح تعينهم على غلاء المعيشة.</div>
+                    <div class="phrase-notes" contenteditable="true" data-edit-key="CAND-MBR-001-notes">📌 لجروبات تدريب الأعضاء وقنوات التلغرام لرفع الروح المعنوية.</div>
+                </div>
+                <div class="card-footer-actions">
+                    <span style="font-size:0.78rem; color:#64748b;">✏️ قابل للتعديل المباشر</span>
+                    <button type="button" class="btn btn-blue" onclick="copyCardText(this)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="phrase-card candidate-card" data-searchable="true">
+                <div>
+                    <div class="card-meta-top">
+                        <span class="tag-candidate">💡 تأكيد الحرية والاستقلالية</span>
+                        <span class="card-id-code">CAND-MBR-002</span>
+                    </div>
+                    <div class="phrase-title" contenteditable="true" data-edit-key="CAND-MBR-002-title">مشروعك ينمو مع كل فاتورة يومية</div>
+                    <div class="phrase-body" contenteditable="true" data-edit-key="CAND-MBR-002-body">في SAWYAN: أنت لا تبني مشروعاً ينتهي بانتهاء ساعات عملك، بل تبني شبكة استهلاك استثماري تعمل في كل دقيقة تشتري فيها أسرة حليباً أو خبزاً أو دواءً حول العالم.</div>
+                    <div class="phrase-notes" contenteditable="true" data-edit-key="CAND-MBR-002-notes">📌 لرسائل التحفيز الأسبوعية وتكريم القادة.</div>
+                </div>
+                <div class="card-footer-actions">
+                    <span style="font-size:0.78rem; color:#64748b;">✏️ قابل للتعديل المباشر</span>
+                    <button type="button" class="btn btn-blue" onclick="copyCardText(this)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="phrase-card candidate-card" data-searchable="true">
+                <div>
+                    <div class="card-meta-top">
+                        <span class="tag-candidate">💡 عرض قيمة للتاجر</span>
+                        <span class="card-id-code">CAND-MCH-001</span>
+                    </div>
+                    <div class="phrase-title" contenteditable="true" data-edit-key="CAND-MCH-001-title">زبائن يبحثون عنك بالاسم</div>
+                    <div class="phrase-body" contenteditable="true" data-edit-key="CAND-MCH-001-body">في كل منصات التسويق أنت تطارد العميل.. في SAWYAN أعضاء المنصة هم من يبحثون عن متجرك على الخريطة ليوجهوا كل مشترياتهم إليك!</div>
+                    <div class="phrase-notes" contenteditable="true" data-edit-key="CAND-MCH-001-notes">📌 لبروشورات استقطاب التجار والمقابلات المباشرة مع أصحاب الأعمال.</div>
+                </div>
+                <div class="card-footer-actions">
+                    <span style="font-size:0.78rem; color:#64748b;">✏️ قابل للتعديل المباشر</span>
+                    <button type="button" class="btn btn-blue" onclick="copyCardText(this)">📋 نسخ النص</button>
+                </div>
+            </div>
+            <div class="phrase-card candidate-card" data-searchable="true">
+                <div>
+                    <div class="card-meta-top">
+                        <span class="tag-candidate">💡 رسالة واتساب مباشرة</span>
+                        <span class="card-id-code">MSG-WA-001</span>
+                    </div>
+                    <div class="phrase-title" contenteditable="true" data-edit-key="MSG-WA-001-title">قالب دعوة الأهل والأصدقاء عبر واتساب</div>
+                    <div class="phrase-body" contenteditable="true" data-edit-key="MSG-WA-001-body">السلام عليكم ورحمة الله.. كلنا شهرياً بنصرف مصاريف البيت من سوبر ماركت وصيدليات ومطاعم وما بيرجع لنا منها ولا قرش. حابب أشاركك منصة عالمية راقية اسمها SAWYAN (الاستهلاك الاستثماري: Buy and Make Money).. فكرتها إننا بنشتري بنفس أسعارنا العادية من المحلات الشريكة، وفواتيرنا بتتحول لأرباح حقيقية بتنزل بحسابنا كل شهر. التسجيل مجاني تماماً 100% وبدون أي شروط. شوف التفاصيل وسجل من هنا: sawyan.net بكود عضويتي: [كود_عضويتك]</div>
+                    <div class="phrase-notes" contenteditable="true" data-edit-key="MSG-WA-001-notes">📌 قالب واتساب جاهز للإرسال السريع للأقارب والمعارف.</div>
+                </div>
+                <div class="card-footer-actions">
+                    <span style="font-size:0.78rem; color:#64748b;">✏️ قابل للتعديل المباشر</span>
+                    <button type="button" class="btn btn-blue" onclick="copyCardText(this)">📋 نسخ النص</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Version History Archive (لا يضيع أي نص سابق) -->
+<div class="modal-backdrop" id="historyModal">
+    <div class="modal-box">
+        <div class="modal-head">
+            <h3>🕓 الأرشيف التاريخي للتعديلات (محفوظ مدى الحياة)</h3>
+            <button type="button" class="btn" onclick="closeHistoryModal()">✖ إغلاق</button>
+        </div>
+        <p style="color:#475569; font-size:0.9rem; margin-bottom:14px;">كل تعديل تجريه يُحفظ النص السابق منه هنا تلقائياً مع تاريخ ووقت التعديل، ويمكنك استعادته بضغطة زر:</p>
+        <div id="historyListContainer"></div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toastMsg">تم الحفظ والنسخ بنجاح ✓</div>
+
+<script src="../../shared/components/logo.js"></script>
+<script>
+const STORAGE_VALUES_KEY = 'SAWYAN_VAULT_V3_VALUES';
+const STORAGE_HISTORY_KEY = 'SAWYAN_VAULT_V3_HISTORY';
+const STORAGE_CUSTOM_ITEMS_KEY = 'SAWYAN_VAULT_V3_CUSTOM_ITEMS';
+
+let savedValues = {};
+let editHistory = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Mount stable logo on white background
+    const mount = document.getElementById('stableBrandLogoMount');
+    if (mount && window.SAWYAN && window.SAWYAN.Logo) {
+        mount.innerHTML = window.SAWYAN.Logo.svg('default');
+    }
+
+    // Load saved edits & history from localStorage
+    try {
+        savedValues = JSON.parse(localStorage.getItem(STORAGE_VALUES_KEY) || '{}');
+        editHistory = JSON.parse(localStorage.getItem(STORAGE_HISTORY_KEY) || '[]');
+    } catch (e) {
+        savedValues = {};
+        editHistory = [];
+    }
+
+    // Apply saved edits to DOM
+    document.querySelectorAll('[data-edit-key]').forEach(el => {
+        const key = el.getAttribute('data-edit-key');
+        el.dataset.originalText = el.innerText;
+        if (savedValues[key] !== undefined) {
+            el.innerText = savedValues[key];
         }
+        el.dataset.lastCommitted = el.innerText;
 
-        function saveToBrowserStorage() {
-            const paper = getEditableEl();
-            if (!paper) return;
-            const statusEl = document.getElementById('save-status');
-            try {
-                const contentHtml = paper.innerHTML;
-                localStorage.setItem(STORAGE_KEY, contentHtml);
-                localStorage.setItem(STORAGE_KEY + '_time', new Date().toLocaleTimeString('ar-EG'));
-                if (statusEl) {
-                    statusEl.textContent = '✓ تم الحفظ في المتصفح (' + new Date().toLocaleTimeString('ar-EG') + ')';
-                    statusEl.style.color = '#059669';
-                }
-            } catch (e) {
-                if (statusEl) {
-                    statusEl.textContent = '⚠️ خطأ في مساحة التخزين';
-                    statusEl.style.color = '#dc2626';
-                }
-            }
-        }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            const paper = getEditableEl();
-            if (!paper) return;
-            const saved = localStorage.getItem(STORAGE_KEY);
-            const savedTime = localStorage.getItem(STORAGE_KEY + '_time');
-            if (saved) {
-                paper.innerHTML = saved;
-                const statusEl = document.getElementById('save-status');
-                if (statusEl) {
-                    statusEl.textContent = '✓ تم استرجاع آخر تعديلاتك المحفوظة (' + (savedTime || '') + ')';
-                    statusEl.style.color = '#059669';
-                }
-            }
-
-            let timeout = null;
-            paper.addEventListener('input', () => {
-                const statusEl = document.getElementById('save-status');
-                if (statusEl) statusEl.textContent = '⏳ جاري الحفظ التلقائي...';
-                clearTimeout(timeout);
-                timeout = setTimeout(saveToBrowserStorage, 1000);
-            });
+        // Listen for direct edits
+        el.addEventListener('blur', () => handleDirectEdit(el));
+        el.addEventListener('input', () => {
+            const ind = document.getElementById('saveIndicator');
+            if (ind) ind.innerText = '⏳ جاري الحفظ التلقائي...';
         });
+    });
 
-        function downloadUpdatedHtml() {
-            saveToBrowserStorage();
-            const clone = document.documentElement.cloneNode(true);
-            const fullHtml = '<!DOCTYPE html>\n' + clone.outerHTML;
-            const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = "بنك_المحتوى_والتسويق_الاستراتيجي.html";
-            a.click();
-            URL.revokeObjectURL(url);
-        }
+    updateHistoryBadge();
+});
 
-        function copyToDocs() {
-            const paper = getEditableEl();
-            if (!paper) return;
-            const range = document.createRange();
-            range.selectNode(paper);
-            window.getSelection().removeAllRanges();
-            window.getSelection().addRange(range);
-            try {
-                document.execCommand('copy');
-                alert('✅ تم نسخ محتوى الوثيقة كاملاً بكافة التنسيقات والألوان!\nيمكنك الآن لصقه مباشرة في Google Docs بالضغط على Ctrl + V');
-            } catch (e) {
-                alert('يرجى تحديد النص والضغط على Ctrl + C');
-            }
-            window.getSelection().removeAllRanges();
-        }
+function handleDirectEdit(el) {
+    const key = el.getAttribute('data-edit-key');
+    const newText = el.innerText.trim();
+    const prevText = (el.dataset.lastCommitted || '').trim();
 
-        function resetToOriginal() {
-            if (confirm('هل أنت متأكد من رغبتك في حذف التعديلات واستعادة النسخة الأصلية المعتمدة؟')) {
-                localStorage.removeItem(STORAGE_KEY);
-                localStorage.removeItem(STORAGE_KEY + '_time');
-                location.reload();
-            }
-        }
-
-        document.addEventListener('keydown', function(e) {
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-                e.preventDefault();
-                saveToBrowserStorage();
-            }
+    if (newText !== prevText) {
+        // Archive previous version so nothing is ever lost
+        editHistory.unshift({
+            key: key,
+            previous_text: prevText,
+            new_text: newText,
+            timestamp: new Date().toLocaleString('ar-EG')
         });
-    </script>
+        localStorage.setItem(STORAGE_HISTORY_KEY, JSON.stringify(editHistory.slice(0, 300)));
+
+        // Save current value
+        savedValues[key] = newText;
+        localStorage.setItem(STORAGE_VALUES_KEY, JSON.stringify(savedValues));
+        el.dataset.lastCommitted = newText;
+
+        updateHistoryBadge();
+        const ind = document.getElementById('saveIndicator');
+        if (ind) ind.innerText = '✓ تم الحفظ التلقائي وتوثيق النسخة السابقة';
+        showToast('تم حفظ تعديلك تلقائياً والاحتفاظ بالنص السابق في الأرشيف ✓');
+    } else {
+        const ind = document.getElementById('saveIndicator');
+        if (ind) ind.innerText = '✓ محفوظ تلقائياً';
+    }
+}
+
+function updateHistoryBadge() {
+    const b = document.getElementById('historyCountBadge');
+    if (b) b.innerText = editHistory.length;
+}
+
+function openHistoryModal() {
+    const container = document.getElementById('historyListContainer');
+    if (!editHistory.length) {
+        container.innerHTML = '<div style="padding:24px; text-align:center; color:#64748b; font-weight:700;">لا توجد تعديلات سابقة حتى الآن. عند تعديل أي نص في الصفحة سيتم الاحتفاظ بنسخته السابقة هنا تلقائياً.</div>';
+    } else {
+        container.innerHTML = editHistory.map((h, idx) => `
+            <div class="history-item">
+                <div style="display:flex; justify-content:space-between; font-size:0.82rem; color:#64748b; margin-bottom:6px; font-weight:700;">
+                    <span>البند: ${h.key}</span>
+                    <span>🕒 ${h.timestamp}</span>
+                </div>
+                <div style="font-size:0.9rem; color:#991b1b; background:#fef2f2; padding:8px 12px; border-radius:6px; margin-bottom:6px; white-space:pre-wrap;"><strong>النص السابق المحفوظ:</strong>\n${h.previous_text}</div>
+                <div style="font-size:0.9rem; color:#065f46; background:#ecfdf5; padding:8px 12px; border-radius:6px; margin-bottom:8px; white-space:pre-wrap;"><strong>النص المعدل:</strong>\n${h.new_text}</div>
+                <button type="button" class="btn" onclick="restoreHistoryEntry(${idx})">↩️ استعادة هذا النص السابق</button>
+            </div>
+        `).join('');
+    }
+    document.getElementById('historyModal').classList.add('open');
+}
+
+function closeHistoryModal() {
+    document.getElementById('historyModal').classList.remove('open');
+}
+
+function restoreHistoryEntry(idx) {
+    const h = editHistory[idx];
+    if (!h) return;
+    const el = document.querySelector(`[data-edit-key="${h.key}"]`);
+    if (el) {
+        el.innerText = h.previous_text;
+        handleDirectEdit(el);
+        closeHistoryModal();
+        showToast('تمت استعادة النص السابق بنجاح ✓');
+    }
+}
+
+function filterSection(secId, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+
+    document.querySelectorAll('.vault-section').forEach(sec => {
+        if (secId === 'all' || sec.id === secId) {
+            sec.style.display = 'block';
+        } else {
+            sec.style.display = 'none';
+        }
+    });
+}
+
+function runSearch() {
+    const q = document.getElementById('liveSearchInput').value.trim().toLowerCase();
+    document.querySelectorAll('[data-searchable="true"]').forEach(card => {
+        const txt = card.innerText.toLowerCase();
+        card.style.display = (!q || txt.includes(q)) ? '' : 'none';
+    });
+}
+
+function addSceneRow(tableId) {
+    const tbody = document.querySelector(`#${tableId} tbody`);
+    if (!tbody) return;
+    const rowCount = tbody.querySelectorAll('tr').length + 1;
+    const rkey = `${tableId}-custom-${Date.now()}`;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td><span class="time-pill" contenteditable="true" data-edit-key="${rkey}-time">00:00 - 00:05</span></td>
+        <td contenteditable="true" data-edit-key="${rkey}-vis">اكتب وصف المشهد البصري وحركة الكاميرا هنا...</td>
+        <td><div class="vo-cell-box" contenteditable="true" data-edit-key="${rkey}-vo">«اكتب التعليق الصوتي المشكول هنا...»</div></td>
+        <td contenteditable="true" data-edit-key="${rkey}-sfx">اكتب المؤثرات الصوتية والموسيقى...</td>
+        <td class="typo-cell-box" contenteditable="true" data-edit-key="${rkey}-typo">النص الظاهر على الشاشة</td>
+    `;
+    tbody.appendChild(tr);
+    tr.querySelectorAll('[data-edit-key]').forEach(el => {
+        el.dataset.lastCommitted = el.innerText;
+        el.addEventListener('blur', () => handleDirectEdit(el));
+    });
+    showToast('تمت إضافة مشهد جديد للجدول — اضغط على خلاياه لتعديلها مباشرة ✓');
+}
+
+function addNewCardToGrid(gridId, type) {
+    const grid = document.getElementById(gridId);
+    if (!grid) return;
+    const cid = (type === 'official' ? 'OFFICIAL-NEW-' : 'CAND-NEW-') + Math.floor(100 + Math.random() * 900);
+    const card = document.createElement('div');
+    card.className = `phrase-card ${type === 'official' ? 'official-card' : 'candidate-card'}`;
+    card.setAttribute('data-searchable', 'true');
+    card.innerHTML = `
+        <div>
+            <div class="card-meta-top">
+                <span class="${type === 'official' ? 'tag-official' : 'tag-candidate'}">${type === 'official' ? '🏛️ معتمد رسمياً من الإدارة' : '💡 عبارة تسويقية مضافة'}</span>
+                <span class="card-id-code">${cid}</span>
+            </div>
+            <div class="phrase-title" contenteditable="true" data-edit-key="${cid}-title">عنوان العبارة الجديدة (اضغط للتعديل)</div>
+            <div class="phrase-body" contenteditable="true" data-edit-key="${cid}-body">اكتب نص العبارة التسويقية أو الرسالة المعتمدة هنا مباشرة...</div>
+            <div class="phrase-notes" contenteditable="true" data-edit-key="${cid}-notes">📌 ملاحظات ومواضع الاستخدام...</div>
+        </div>
+        <div class="card-footer-actions">
+            <span style="font-size:0.78rem; color:#64748b;">✏️ قابل للتعديل المباشر</span>
+            <button type="button" class="btn btn-blue" onclick="copyCardText(this)">📋 نسخ النص</button>
+        </div>
+    `;
+    grid.prepend(card);
+    card.querySelectorAll('[data-edit-key]').forEach(el => {
+        el.dataset.lastCommitted = el.innerText;
+        el.addEventListener('blur', () => handleDirectEdit(el));
+    });
+    showToast('تمت إضافة بطاقة عبارة جديدة — اضغط على النص لتعديله فوراً ✓');
+}
+
+function addNewPhrasePrompt() {
+    addNewCardToGrid('candidateGrid', 'candidate');
+    document.getElementById('sec-candidate').scrollIntoView({ behavior: 'smooth' });
+}
+
+function copyCardText(btn) {
+    const card = btn.closest('.phrase-card');
+    const title = card.querySelector('.phrase-title').innerText;
+    const body = card.querySelector('.phrase-body').innerText;
+    copyToClipboard(`${title}\n${body}`);
+}
+
+function copyScriptWithTable(sid) {
+    const block = document.getElementById('text-' + sid).closest('.script-master-block');
+    const title = block.querySelector('.script-title-heading').innerText;
+    const fullText = document.getElementById('text-' + sid).innerText;
+    let out = `${title}\n\n=== النص الكامل المشكول ===\n${fullText}\n\n=== جدول المشاهد والإخراج (ثانية بثانية) ===\n`;
+    block.querySelectorAll('tbody tr').forEach(tr => {
+        const tds = tr.querySelectorAll('td');
+        out += `[${tds[0].innerText}]\n- المشهد: ${tds[1].innerText}\n- التعليق الصوتي: ${tds[2].innerText}\n- المؤثرات: ${tds[3].innerText}\n- على الشاشة: ${tds[4].innerText}\n-------------------\n`;
+    });
+    copyToClipboard(out);
+}
+
+function copyAllForGoogleDocs() {
+    const clone = document.querySelector('.container').cloneNode(true);
+    clone.querySelectorAll('.live-edit-bar, .nav-bar, .search-wrap, button').forEach(e => e.remove());
+    copyToClipboard(clone.innerText);
+}
+
+function downloadUpdatedHTML() {
+    const htmlContent = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'بنك_محتوى_SAWYAN.html';
+    a.click();
+    showToast('تم تحميل ملف HTML المحدث بكافة تعديلاتك ✓');
+}
+
+function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => showToast('تم النسخ إلى الحافظة بنجاح ✓'));
+    } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('تم النسخ إلى الحافظة بنجاح ✓');
+    }
+}
+
+function showToast(msg) {
+    const t = document.getElementById('toastMsg');
+    t.innerText = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2600);
+}
+</script>
 </body>
 </html>

@@ -5,7 +5,7 @@ from playwright.async_api import async_playwright
 async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch()
-        page = await browser.new_page(viewport={'width': 1400, 'height': 900})
+        page = await browser.new_page(viewport={'width': 1400, 'height': 950})
         
         file_path = os.path.abspath('tools/content-vault/index.html').replace('\\', '/')
         await page.goto(f'file:///{file_path}')
@@ -13,27 +13,21 @@ async def main():
         
         out_dir = 'C:/Users/hp/.gemini/antigravity/brain/6bd22884-e1de-44d0-b133-9ca578f882d6'
         
-        # Tab 1: Storyboard
-        await page.screenshot(path=os.path.join(out_dir, 'content_vault_tab1_storyboard.png'))
-        print('Captured Tab 1')
+        # 1. Top view: White background + Live Edit Toolbar + Script 1 with its Storyboard Table
+        await page.screenshot(path=os.path.join(out_dir, 'white_vault_1_scripts_and_tables.png'))
+        print('Captured white_vault_1_scripts_and_tables.png')
         
-        # Tab 2: Official Approved
-        await page.evaluate("switchTab('official')")
+        # 2. Scroll to Script 2 & Script 3 with their Storyboard Tables
+        await page.evaluate("document.getElementById('table-SCRIPT-OPT-2').scrollIntoView({block: 'center'})")
         await page.wait_for_timeout(400)
-        await page.screenshot(path=os.path.join(out_dir, 'content_vault_tab2_official.png'))
-        print('Captured Tab 2')
+        await page.screenshot(path=os.path.join(out_dir, 'white_vault_2_script2_table.png'))
+        print('Captured white_vault_2_script2_table.png')
         
-        # Tab 3: Candidate Marketing Phrases
-        await page.evaluate("switchTab('candidate')")
+        # 3. Scroll to Official Approved Phrases
+        await page.evaluate("document.getElementById('sec-official').scrollIntoView({block: 'start'})")
         await page.wait_for_timeout(400)
-        await page.screenshot(path=os.path.join(out_dir, 'content_vault_tab3_candidate.png'))
-        print('Captured Tab 3')
-        
-        # Tab 4: Scripts
-        await page.evaluate("switchTab('scripts')")
-        await page.wait_for_timeout(400)
-        await page.screenshot(path=os.path.join(out_dir, 'content_vault_tab4_scripts.png'))
-        print('Captured Tab 4')
+        await page.screenshot(path=os.path.join(out_dir, 'white_vault_3_official_phrases.png'))
+        print('Captured white_vault_3_official_phrases.png')
         
         await browser.close()
 
