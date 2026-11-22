@@ -28,10 +28,10 @@ vault = {
                 },
                 {
                     "timing": "00:05 - 00:12",
-                    "visuals": "انتقال سريع (Whip Pan): يد تسحب الفاتورة، تظهر بطاقة/شاشة عليها شعار SAWYAN، يوجه الكاميرا لكود الفاتورة مع وميض أخضر.",
+                    "visuals": "انتقال سريع (Whip Pan): يد تسحب الفاتورة، تظهر بطاقة/شاشة عليها لوجو SAWYAN البرمجي المعتمد (حروف SAW+AN بالأزرق المؤسسي #1d5c8f وحرف Y مع الشدة والفتحة فوق الطرف الأيمن بلون مميز)، يوجه الكاميرا لكود الفاتورة مع وميض تأكيد.",
                     "voiceover": "«مِنَ اليَوْمِ.. تَغَيَّرَ الوَضْعُ! أَهْلاً بِكَ فِي SAWYAN: مَنَصَّةِ الِاسْتِهْلَاكِ الِاسْتِثْمَارِيِّ العَالَمِيَّةِ.»",
                     "sfx_music": "يتلاشى الإيقاع السريع إلى دقة صوتية واثقة عميقة ترج المكان (Cinematic Bass Drop).",
-                    "typography": "منصة الاستهلاك الاستثماري العالمية (شعار SAWYAN الرسمي)"
+                    "typography": "منصة الاستهلاك الاستثماري العالمية (شعار SAWYAN المتجهي المعتمد)"
                 },
                 {
                     "timing": "00:12 - 00:22",
@@ -56,7 +56,7 @@ vault = {
                 },
                 {
                     "timing": "00:40 - 00:45",
-                    "visuals": "لقطة سينمائية ختامية: شعار SAWYAN بارز وأنيق، يليه الرابط www.sawyan.net وزر انضم الآن مجاناً.",
+                    "visuals": "لقطة سينمائية ختامية: لوجو SAWYAN البرمجي المعتمد بدقة 4K/8K (ميل للأزرق المؤسسي #1d5c8f / #38bdf8 مع تمييز لون الـ Y والشدة والفتحة فوق الطرف الأيمن)، يليه الرابط www.sawyan.net وزر انضم الآن مجاناً.",
                     "voiceover": "«الحُرِّيَّةُ المَالِيَّةُ لَيْسَتْ وَهْماً.. بَلْ حَقِيقَةٌ يَفْصِلُكَ عَنْهَا خَطْوَةٌ وَاحِدَةٌ.. SAWYAN.»",
                     "sfx_music": "نغمة ختامية هادئة وفاخرة مع صوت ضغطة تأكيد التسجيل (Success Chime).",
                     "typography": "SAWYAN • خطوتك نحو الحرية المالية • sawyan.net"
@@ -1040,10 +1040,34 @@ html = '''<!DOCTYPE html>
     <div id="sec-scripts" class="vault-section">
         <div class="section-banner">
             <div>
-                <h2>🎬 أولاً: السكربتات الإعلانية مع جدول المشاهد والإخراج الفني (ثانية بثانية)</h2>
-                <p>كل سكربت مدمج معه مباشرة جدول المشاهد البصرية، التوقيت، التعليق الصوتي المشكول، المؤثرات الصوتية، والنصوص على الشاشة — قابلة للتعديل المباشر.</p>
+                <h2>🎬 أولاً: الفيديو الرسمي المعتمد + السكربتات وجداول المشاهد والإخراج الفني (ثانية بثانية)</h2>
+                <p>شاهد وحمّل الفيديو الرسمي المعتمد (Full HD 1080p بالصوت والصورة)، مع كافة السكربتات وجداول المشاهد، واستوديو ألوان اللوجو البرمجي الـ 6 المعتمدة.</p>
+            </div>
+            <a href="../../shared/assets/sawyan-promo-official.mp4" download="SAWYAN_Official_Promo_1080p.mp4" class="btn btn-emerald">📥 تحميل الفيديو المعتمد (Full HD 1080p MP4)</a>
+        </div>
+
+        <!-- Embedded Official Full HD 1080p Video Player + 6 Vector Logo Switcher -->
+        <div class="script-master-block" style="border-color: var(--emerald-border);">
+            <div class="script-block-header" style="background: var(--emerald-light);">
+                <span class="script-badge">🎥 الفيديو الرسمي المعتمد جاهز بالصوت والصورة (Full HD 1080p • 1920×1080)</span>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <a href="../../shared/assets/sawyan-promo-official.mp4" download="SAWYAN_Official_Promo_1080p.mp4" class="btn btn-emerald">📥 تحميل ملف الفيديو (MP4)</a>
+                </div>
+            </div>
+            <div style="padding: 22px; background: #0b132b; display: flex; flex-direction: column; align-items: center;">
+                <video controls playsinline preload="metadata" poster="../../shared/assets/promo-poster.jpg" style="width: 100%; max-width: 1020px; border-radius: 14px; border: 2px solid #38bdf8; box-shadow: 0 15px 45px rgba(0,0,0,0.45); background: #000;">
+                    <source src="../../shared/assets/sawyan-promo-official.mp4" type="video/mp4">
+                </video>
+            </div>
+            <div style="padding: 18px 24px; background: #ffffff; border-top: 1px solid var(--border-color);">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
+                    <strong style="font-size:1.08rem; color:#0f172a;">🎨 خيارات اللوجو البرمجي الستة المعتمدة للفيديوهات والميديا (100% Vector SVG — اضغط للتبديل الفوري):</strong>
+                    <span style="background:#eff6ff; color:#1d4ed8; border:1px solid #93c5fd; padding:3px 12px; border-radius:999px; font-size:0.84rem; font-weight:800;">الافتراضي الحالي: ميل للأزرق المؤسسي (#1d5c8f / #38bdf8)</span>
+                </div>
+                <div id="vaultLogoPalettesGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px;"></div>
             </div>
         </div>
+
 '''
 
 for s_idx, script in enumerate(vault['scripts_with_storyboards']):
@@ -1198,6 +1222,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const mount = document.getElementById('stableBrandLogoMount');
     if (mount && window.SAWYAN && window.SAWYAN.Logo) {
         mount.innerHTML = window.SAWYAN.Logo.svg('default');
+        renderLogoPalettesStudio();
     }
 
     // Load saved edits & history from localStorage
@@ -1262,6 +1287,40 @@ function handleDirectEdit(el) {
 function updateHistoryBadge() {
     const b = document.getElementById('historyCountBadge');
     if (b) b.innerText = editHistory.length;
+}
+
+function renderLogoPalettesStudio() {
+    const grid = document.getElementById('vaultLogoPalettesGrid');
+    if (!grid || !window.SAWYAN || !window.SAWYAN.Logo || !window.SAWYAN.Logo.PALETTES) return;
+    const pals = Object.values(window.SAWYAN.Logo.PALETTES);
+    grid.innerHTML = pals.map(pal => {
+        const isDark = pal.mode === 'dark';
+        const bg = isDark ? '#0b132b' : '#ffffff';
+        const border = isDark ? '#334155' : '#cbd5e1';
+        const txtCol = isDark ? '#f8fafc' : '#0f172a';
+        const svgHtml = window.SAWYAN.Logo.wordmarkSvg(pal.id, { wordHeight: '58px' });
+        return `
+            <div style="background:${bg}; border:2px solid ${border}; border-radius:12px; padding:14px; display:flex; flex-direction:column; align-items:center; gap:10px;">
+                <div style="font-size:0.8rem; font-weight:800; color:${txtCol}; text-align:center;">${pal.label}</div>
+                <div dir="ltr" style="padding:8px 0;">${svgHtml}</div>
+                <button type="button" class="btn btn-blue" style="font-size:0.78rem; padding:5px 12px;" onclick="switchActiveBrandPalette('${pal.id}', '${pal.mode}')">🔄 تفعيل هذا اللون</button>
+            </div>
+        `;
+    }).join('');
+}
+
+function switchActiveBrandPalette(palId, mode) {
+    if (!window.SAWYAN || !window.SAWYAN.Logo) return;
+    if (mode === 'dark') {
+        window.SAWYAN.Logo.setActivePalette(null, palId);
+    } else {
+        window.SAWYAN.Logo.setActivePalette(palId, null);
+    }
+    const mount = document.getElementById('stableBrandLogoMount');
+    if (mount) {
+        mount.innerHTML = window.SAWYAN.Logo.svg(palId);
+    }
+    showToast('تم تبديل لون اللوجو البرمجي بنجاح ✓');
 }
 
 function openHistoryModal() {

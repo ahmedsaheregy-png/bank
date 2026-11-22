@@ -1,40 +1,135 @@
-// SAWYAN Programmatic SVG Brand Logo (D24 Compliant — SAWYAN default, BANK gated per country)
+// SAWYAN Programmatic Vector SVG Brand Logo (D24 Compliant — 100% Pure Vector Geometry, 6 Approved Palettes, Blue-Leaning Default)
 (function () {
     const BRAND_CONFIG = window.SAWYAN_BRAND_CONFIG || { showBank: false, countryTitle: 'SAWYAN' };
     let gradSeq = 0;
 
+    // Exact 1:1 Vector Geometry Paths (0 external font dependency, infinite 4K/8K resolution)
+    const VECTOR_PATHS = {"viewBox": "35 65 915 295", "s_path": "M 100.2 211.9 Q 99.3 211.9 98.5 212.0 Q 97.7 212.1 96.9 212.2 Q 96.0 212.3 95.0 212.4 Q 94.0 212.4 93.0 212.5 Q 92.0 212.6 91.1 212.7 Q 90.2 212.7 89.4 212.9 Q 88.6 213.1 87.8 213.2 Q 86.9 213.4 86.1 213.5 Q 85.2 213.7 84.4 213.9 Q 83.6 214.1 82.8 214.2 Q 82.0 214.4 81.1 214.6 Q 80.3 214.8 79.6 215.0 Q 78.8 215.3 78.0 215.5 Q 77.3 215.8 76.5 216.0 Q 75.8 216.3 75.1 216.6 Q 74.4 216.9 73.7 217.2 Q 73.0 217.5 72.3 217.8 Q 71.6 218.1 71.0 218.4 Q 70.3 218.8 69.6 219.1 Q 69.0 219.4 68.3 219.8 Q 67.6 220.1 67.0 220.5 Q 66.4 220.9 65.8 221.3 Q 65.2 221.7 64.5 222.1 Q 63.9 222.5 63.3 222.9 Q 62.8 223.2 62.2 223.7 Q 61.6 224.1 61.0 224.5 Q 60.5 225.0 60.0 225.5 Q 59.5 226.0 59.0 226.5 Q 58.5 227.0 58.0 227.5 Q 57.5 228.0 57.0 228.5 Q 56.5 229.0 56.0 229.5 Q 55.5 230.0 55.1 230.6 Q 54.6 231.2 54.2 231.7 Q 53.9 232.3 53.5 232.9 Q 53.1 233.5 52.7 234.2 Q 52.3 234.8 52.0 235.5 Q 51.6 236.1 51.3 236.8 Q 50.9 237.4 50.6 238.1 Q 50.3 238.8 50.0 239.5 Q 49.7 240.2 49.4 240.9 Q 49.1 241.7 48.9 242.4 Q 48.7 243.2 48.4 244.0 Q 48.2 244.8 48.0 245.5 Q 47.8 246.3 47.7 247.2 Q 47.5 248.1 47.5 249.0 Q 47.4 250.0 47.3 251.0 Q 47.3 252.0 47.3 253.0 Q 47.2 254.0 47.2 255.0 Q 47.3 256.0 47.3 257.0 Q 47.4 258.0 47.4 259.0 Q 47.5 260.0 47.6 260.9 Q 47.7 261.8 47.9 262.6 Q 48.0 263.4 48.2 264.2 Q 48.5 265.0 48.7 265.8 Q 48.9 266.6 49.2 267.3 Q 49.5 268.0 49.8 268.7 Q 50.0 269.4 50.4 270.1 Q 50.7 270.8 51.0 271.5 Q 51.4 272.1 51.8 272.7 Q 52.2 273.3 52.6 273.9 Q 53.0 274.5 53.5 275.1 Q 53.9 275.6 54.4 276.1 Q 54.9 276.6 55.4 277.1 Q 55.9 277.6 56.4 278.1 Q 56.9 278.6 57.4 279.1 Q 57.9 279.6 58.4 280.1 Q 58.9 280.5 59.5 281.0 Q 60.0 281.5 60.6 281.9 Q 61.2 282.3 61.8 282.7 Q 62.4 283.1 63.0 283.5 Q 63.6 283.9 64.3 284.2 Q 64.9 284.6 65.5 285.0 Q 66.2 285.4 66.8 285.7 Q 67.5 286.0 68.2 286.3 Q 68.9 286.7 69.6 287.0 Q 70.2 287.3 71.0 287.6 Q 71.7 287.8 72.4 288.1 Q 73.2 288.4 73.9 288.6 Q 74.7 288.9 75.4 289.1 Q 76.2 289.4 76.9 289.6 Q 77.7 289.8 78.4 290.1 Q 79.2 290.3 80.0 290.5 Q 80.8 290.7 81.5 291.0 Q 82.3 291.2 83.1 291.4 Q 83.9 291.6 84.7 291.8 Q 85.5 292.0 86.3 292.2 Q 87.1 292.4 87.9 292.6 Q 88.8 292.8 89.5 293.0 Q 90.3 293.2 91.2 293.4 Q 92.0 293.6 92.8 293.7 Q 93.7 293.9 94.4 294.1 Q 95.2 294.2 96.1 294.4 Q 96.9 294.6 97.7 294.8 Q 98.5 295.0 99.3 295.2 Q 100.1 295.4 100.9 295.6 Q 101.7 295.8 102.5 296.0 Q 103.3 296.2 104.1 296.4 Q 104.9 296.6 105.7 296.9 Q 106.5 297.1 107.2 297.3 Q 108.0 297.5 108.8 297.8 Q 109.5 298.0 110.3 298.2 Q 111.0 298.5 111.7 298.8 Q 112.5 299.0 113.2 299.3 Q 113.9 299.6 114.6 299.9 Q 115.2 300.3 115.9 300.6 Q 116.5 301.0 117.1 301.4 Q 117.7 301.8 118.2 302.3 Q 118.7 302.8 119.1 303.4 Q 119.5 304.0 119.8 304.7 Q 120.1 305.4 120.3 306.2 Q 120.5 307.1 120.5 308.0 Q 120.5 309.0 120.3 309.9 Q 120.2 310.7 119.9 311.4 Q 119.7 312.1 119.3 312.8 Q 118.9 313.4 118.3 313.9 Q 117.8 314.4 117.3 314.8 Q 116.7 315.2 116.0 315.5 Q 115.4 315.9 114.7 316.2 Q 114.0 316.5 113.3 316.8 Q 112.5 317.0 111.7 317.2 Q 110.9 317.4 110.0 317.6 Q 109.2 317.7 108.4 317.9 Q 107.6 318.0 106.8 318.2 Q 105.9 318.3 105.0 318.3 Q 104.0 318.4 103.0 318.4 Q 102.0 318.4 101.0 318.5 Q 100.0 318.5 99.0 318.5 Q 98.0 318.4 97.0 318.4 Q 96.0 318.4 95.0 318.4 Q 94.0 318.3 93.2 318.2 Q 92.3 318.1 91.5 318.0 Q 90.7 317.9 89.8 317.7 Q 89.0 317.6 88.0 317.5 Q 87.1 317.3 86.3 317.2 Q 85.4 317.0 84.6 316.8 Q 83.8 316.7 83.0 316.5 Q 82.2 316.3 81.4 316.1 Q 80.6 315.9 79.8 315.7 Q 79.0 315.5 78.3 315.2 Q 77.5 315.0 76.7 314.8 Q 76.0 314.5 75.3 314.2 Q 74.5 314.0 73.8 313.7 Q 73.0 313.4 72.3 313.2 Q 71.6 312.9 70.9 312.6 Q 70.2 312.3 69.5 312.0 Q 68.8 311.7 68.1 311.4 Q 67.4 311.1 66.7 310.8 Q 66.0 310.5 65.3 310.2 Q 64.6 309.9 63.9 309.5 Q 63.3 309.2 62.6 308.9 Q 62.0 308.5 61.4 308.1 Q 60.7 307.8 60.1 307.4 Q 59.5 307.0 58.8 306.7 Q 58.1 306.4 57.6 306.2 Q 57.0 306.0 56.7 306.5 Q 56.4 307.0 56.1 307.6 Q 55.7 308.2 55.4 308.9 Q 55.1 309.6 54.8 310.3 Q 54.5 311.0 54.2 311.7 Q 53.9 312.4 53.6 313.1 Q 53.3 313.8 53.0 314.5 Q 52.7 315.2 52.4 315.9 Q 52.0 316.6 51.8 317.3 Q 51.5 318.0 51.2 318.7 Q 50.9 319.4 50.6 320.1 Q 50.3 320.8 49.9 321.4 Q 49.6 322.1 49.3 322.8 Q 49.0 323.5 48.7 324.2 Q 48.4 324.9 48.0 325.6 Q 47.7 326.3 47.4 327.0 Q 47.1 327.7 46.8 328.4 Q 46.5 329.0 46.2 329.7 Q 45.9 330.4 45.8 331.2 Q 45.6 332.0 45.8 332.7 Q 46.0 333.4 46.5 333.9 Q 47.0 334.5 47.6 334.9 Q 48.2 335.2 48.8 335.6 Q 49.5 336.0 50.1 336.3 Q 50.8 336.7 51.5 337.0 Q 52.1 337.4 52.8 337.7 Q 53.5 338.0 54.2 338.4 Q 54.9 338.7 55.5 339.0 Q 56.2 339.3 57.0 339.5 Q 57.7 339.8 58.4 340.1 Q 59.1 340.4 59.8 340.7 Q 60.6 341.0 61.3 341.2 Q 62.1 341.5 62.8 341.7 Q 63.6 341.9 64.3 342.2 Q 65.1 342.4 65.9 342.7 Q 66.6 342.9 67.4 343.1 Q 68.2 343.3 69.0 343.5 Q 69.8 343.8 70.5 344.0 Q 71.3 344.2 72.2 344.3 Q 73.0 344.5 73.8 344.7 Q 74.7 344.9 75.4 345.1 Q 76.2 345.2 77.1 345.4 Q 78.0 345.5 78.9 345.6 Q 79.8 345.7 80.6 345.9 Q 81.4 346.1 82.3 346.2 Q 83.1 346.4 84.0 346.5 Q 85.0 346.5 86.0 346.6 Q 87.0 346.7 87.9 346.8 Q 88.8 346.9 89.5 347.0 Q 90.3 347.1 91.2 347.3 Q 92.1 347.4 93.0 347.4 Q 94.0 347.5 95.0 347.5 Q 96.0 347.5 97.0 347.5 Q 98.0 347.5 99.0 347.5 Q 100.0 347.5 101.0 347.5 Q 102.0 347.5 103.0 347.4 Q 104.0 347.4 104.9 347.3 Q 105.9 347.2 106.7 347.1 Q 107.5 347.0 108.3 346.9 Q 109.1 346.8 110.1 346.7 Q 111.0 346.6 112.0 346.6 Q 113.0 346.5 113.9 346.4 Q 114.8 346.3 115.6 346.1 Q 116.4 345.9 117.3 345.8 Q 118.1 345.6 119.0 345.5 Q 119.8 345.4 120.6 345.1 Q 121.4 344.9 122.2 344.7 Q 123.0 344.5 123.8 344.4 Q 124.7 344.2 125.4 343.9 Q 126.2 343.7 126.9 343.4 Q 127.6 343.1 128.3 342.9 Q 129.1 342.6 129.8 342.3 Q 130.5 342.1 131.2 341.7 Q 131.9 341.4 132.6 341.1 Q 133.3 340.8 133.9 340.4 Q 134.6 340.1 135.3 339.8 Q 135.9 339.4 136.6 339.1 Q 137.2 338.7 137.9 338.4 Q 138.5 338.0 139.1 337.6 Q 139.7 337.2 140.3 336.8 Q 140.9 336.4 141.5 336.0 Q 142.1 335.6 142.6 335.1 Q 143.2 334.7 143.7 334.2 Q 144.3 333.8 144.8 333.4 Q 145.4 332.9 145.9 332.4 Q 146.4 331.9 146.9 331.4 Q 147.4 330.9 147.9 330.4 Q 148.4 329.8 148.8 329.3 Q 149.2 328.7 149.6 328.1 Q 150.1 327.6 150.5 327.0 Q 151.0 326.5 151.4 325.9 Q 151.8 325.2 152.1 324.6 Q 152.5 324.0 152.9 323.4 Q 153.3 322.8 153.6 322.1 Q 153.9 321.4 154.2 320.7 Q 154.6 320.0 154.8 319.3 Q 155.1 318.6 155.4 317.9 Q 155.7 317.1 155.9 316.4 Q 156.1 315.6 156.3 314.8 Q 156.5 314.0 156.7 313.1 Q 156.8 312.3 157.0 311.5 Q 157.2 310.7 157.3 309.8 Q 157.4 309.0 157.5 308.0 Q 157.5 307.0 157.5 306.0 Q 157.5 305.0 157.5 304.0 Q 157.5 303.0 157.5 302.0 Q 157.4 301.0 157.3 300.2 Q 157.2 299.3 157.0 298.5 Q 156.8 297.7 156.7 296.9 Q 156.5 296.0 156.3 295.2 Q 156.1 294.4 155.9 293.6 Q 155.6 292.9 155.3 292.2 Q 155.1 291.4 154.7 290.8 Q 154.4 290.1 154.1 289.4 Q 153.8 288.7 153.4 288.1 Q 153.0 287.5 152.7 286.8 Q 152.3 286.2 151.9 285.6 Q 151.4 285.1 151.0 284.5 Q 150.5 284.0 150.0 283.5 Q 149.5 283.0 149.0 282.5 Q 148.6 281.9 148.1 281.4 Q 147.6 280.9 147.0 280.5 Q 146.5 280.0 146.0 279.5 Q 145.4 279.0 144.9 278.6 Q 144.3 278.2 143.7 277.8 Q 143.2 277.4 142.6 277.0 Q 141.9 276.5 141.3 276.1 Q 140.7 275.8 140.1 275.4 Q 139.5 275.0 138.8 274.7 Q 138.2 274.3 137.5 274.0 Q 136.8 273.6 136.2 273.3 Q 135.5 273.0 134.8 272.7 Q 134.0 272.4 133.3 272.2 Q 132.6 271.9 131.9 271.6 Q 131.1 271.4 130.4 271.1 Q 129.7 270.8 128.9 270.6 Q 128.1 270.4 127.4 270.1 Q 126.6 269.9 125.8 269.7 Q 125.1 269.5 124.3 269.2 Q 123.5 269.0 122.7 268.8 Q 121.9 268.6 121.1 268.4 Q 120.3 268.2 119.5 268.0 Q 118.8 267.7 117.9 267.5 Q 117.1 267.3 116.3 267.1 Q 115.6 266.9 114.8 266.7 Q 114.0 266.5 113.1 266.3 Q 112.3 266.1 111.5 265.9 Q 110.8 265.8 109.9 265.6 Q 109.1 265.4 108.2 265.2 Q 107.4 265.0 106.6 264.9 Q 105.8 264.7 105.0 264.5 Q 104.1 264.3 103.3 264.2 Q 102.5 264.0 101.7 263.8 Q 100.9 263.6 100.1 263.4 Q 99.3 263.2 98.5 263.0 Q 97.8 262.8 97.0 262.5 Q 96.2 262.3 95.4 262.1 Q 94.7 261.8 93.9 261.6 Q 93.1 261.4 92.4 261.1 Q 91.6 260.9 90.9 260.6 Q 90.2 260.3 89.6 259.9 Q 88.9 259.6 88.3 259.2 Q 87.7 258.8 87.1 258.4 Q 86.6 257.9 86.1 257.4 Q 85.6 256.9 85.2 256.3 Q 84.8 255.7 84.5 255.0 Q 84.2 254.3 84.0 253.6 Q 83.8 252.8 83.8 252.0 Q 83.9 251.2 84.0 250.5 Q 84.2 249.7 84.5 249.0 Q 84.8 248.3 85.2 247.7 Q 85.6 247.1 86.1 246.6 Q 86.5 246.1 87.1 245.6 Q 87.6 245.1 88.1 244.6 Q 88.7 244.2 89.3 243.8 Q 89.9 243.4 90.6 243.1 Q 91.3 242.8 92.1 242.6 Q 92.9 242.4 93.7 242.2 Q 94.4 241.9 95.3 241.8 Q 96.1 241.6 97.0 241.5 Q 98.0 241.4 98.9 241.3 Q 99.8 241.2 100.6 241.1 Q 101.4 241.0 102.2 240.9 Q 103.1 240.9 104.0 240.9 Q 105.0 240.9 105.9 240.9 Q 106.8 240.9 107.5 241.0 Q 108.3 241.1 109.2 241.2 Q 110.1 241.2 111.0 241.3 Q 112.0 241.4 113.0 241.5 Q 113.9 241.6 114.8 241.7 Q 115.7 241.8 116.5 242.0 Q 117.2 242.2 118.1 242.4 Q 119.0 242.6 119.8 242.7 Q 120.6 242.9 121.4 243.1 Q 122.1 243.4 122.9 243.6 Q 123.7 243.8 124.5 244.0 Q 125.2 244.3 126.0 244.5 Q 126.8 244.8 127.5 245.0 Q 128.2 245.3 128.9 245.6 Q 129.7 245.8 130.4 246.1 Q 131.1 246.4 131.8 246.7 Q 132.5 247.0 133.2 247.3 Q 133.9 247.7 134.6 248.0 Q 135.2 248.3 135.9 248.6 Q 136.6 248.9 137.2 249.2 Q 137.9 249.6 138.6 249.8 Q 139.3 250.1 139.9 250.0 Q 140.6 249.9 141.0 249.4 Q 141.5 248.9 141.8 248.3 Q 142.1 247.6 142.4 246.9 Q 142.7 246.2 143.0 245.5 Q 143.3 244.8 143.6 244.1 Q 143.9 243.4 144.2 242.7 Q 144.5 242.0 144.8 241.3 Q 145.1 240.6 145.4 239.9 Q 145.7 239.2 146.0 238.4 Q 146.2 237.7 146.5 237.0 Q 146.8 236.3 147.1 235.6 Q 147.4 234.9 147.7 234.2 Q 148.0 233.5 148.3 232.8 Q 148.6 232.1 148.9 231.3 Q 149.1 230.6 149.4 229.9 Q 149.7 229.2 150.0 228.5 Q 150.3 227.8 150.6 227.1 Q 150.9 226.4 151.1 225.6 Q 151.3 224.9 151.2 224.1 Q 151.1 223.4 150.7 222.8 Q 150.2 222.3 149.6 221.9 Q 148.9 221.6 148.3 221.2 Q 147.6 220.9 146.9 220.6 Q 146.2 220.3 145.5 220.0 Q 144.8 219.7 144.1 219.4 Q 143.4 219.1 142.7 218.8 Q 142.0 218.5 141.3 218.2 Q 140.5 218.0 139.8 217.7 Q 139.0 217.4 138.3 217.2 Q 137.6 216.9 136.8 216.7 Q 136.0 216.4 135.3 216.2 Q 134.5 216.0 133.7 215.8 Q 132.9 215.5 132.1 215.3 Q 131.3 215.1 130.6 214.9 Q 129.8 214.7 129.0 214.5 Q 128.1 214.3 127.3 214.1 Q 126.6 213.9 125.7 213.8 Q 124.9 213.6 124.0 213.5 Q 123.1 213.3 122.3 213.2 Q 121.5 213.0 120.7 212.9 Q 119.9 212.7 118.9 212.6 Q 118.0 212.5 117.0 212.5 Q 116.0 212.5 115.0 212.4 Q 114.0 212.4 113.2 212.3 Q 112.3 212.1 111.5 212.0 Q 110.7 211.9 109.9 211.8 Q 109.0 211.7 108.0 211.7 Q 107.0 211.6 106.0 211.6 Q 105.0 211.6 104.0 211.6 Q 103.0 211.7 102.0 211.7 Q 101.0 211.8 100.2 211.9 Z", "a1_path": "M 216 215 L 252.5 215 L 309.5 344 L 272 344 L 260.5 316.5 L 208 316.5 L 196.5 344 L 159 344 Z M 234.25 251 L 217 292 L 251.5 292 Z", "w_path": "M 311 215 L 348.5 215 L 374 296 L 401.5 215 L 435.5 215 L 462 296 L 488.5 215 L 524 215 L 482.5 344 L 442 344 L 418 267 L 392.5 344 L 352 344 Z", "y_path": "M 524.5 215 L 563.5 215 L 593 266 L 623 215 L 659.5 215 L 609.5 298 L 609.5 344 L 573 344 L 573 298 Z", "a2_path": "M 710.5 215 L 747 215 L 804 344 L 766.5 344 L 755 316.5 L 702.5 316.5 L 691 344 L 653.5 344 Z M 728.75 251 L 711.5 292 L 746 292 Z", "n_path": "M 815 215 L 845 215 L 903 285 L 903 215 L 938.5 215 L 938.5 344 L 908.5 344 L 850.5 274 L 850.5 344 L 815 344 Z", "shaddah_path": "M 634.1 124.8 Q 633.2 124.8 631.6 124.9 Q 630.0 125.1 629.1 125.4 Q 628.1 125.6 627.3 125.8 Q 626.6 126.1 625.8 126.3 Q 625.0 126.5 624.3 126.8 Q 623.5 127.0 622.8 127.3 Q 622.1 127.6 621.6 128.0 Q 621.1 128.4 621.1 129.0 Q 621.0 129.7 621.2 130.4 Q 621.4 131.1 621.7 131.8 Q 622.0 132.5 622.2 133.3 Q 622.5 134.0 622.7 134.8 Q 623.0 135.5 623.2 136.3 Q 623.4 137.1 623.6 137.9 Q 623.8 138.7 624.0 139.4 Q 624.2 140.2 624.4 141.1 Q 624.6 141.9 624.7 142.8 Q 624.9 143.6 625.1 144.4 Q 625.2 145.2 625.3 146.1 Q 625.4 147.0 625.5 148.0 Q 625.5 149.0 625.5 150.0 Q 625.5 151.0 625.6 152.0 Q 625.6 153.0 625.6 154.0 Q 625.5 155.0 625.5 156.0 Q 625.4 157.0 625.3 157.9 Q 625.2 158.8 625.0 159.5 Q 624.8 160.3 624.5 161.0 Q 624.2 161.7 623.8 162.3 Q 623.5 163.0 623.1 163.6 Q 622.6 164.1 622.1 164.6 Q 621.6 165.1 621.0 165.5 Q 620.4 165.8 619.6 166.1 Q 618.9 166.3 617.9 166.4 Q 617.0 166.5 616.0 166.6 Q 615.0 166.6 614.0 166.5 Q 613.0 166.5 612.1 166.4 Q 611.2 166.2 610.5 166.0 Q 609.8 165.7 609.2 165.3 Q 608.6 164.9 608.1 164.4 Q 607.6 163.9 607.2 163.3 Q 606.8 162.7 606.5 162.0 Q 606.2 161.3 606.0 160.6 Q 605.7 159.8 605.6 158.9 Q 605.5 158.0 605.4 157.0 Q 605.3 156.0 605.2 155.0 Q 605.1 154.0 605.1 153.0 Q 605.1 152.0 605.1 151.0 Q 605.1 150.0 605.1 149.0 Q 605.1 148.0 605.1 147.0 Q 605.1 146.0 605.1 145.0 Q 605.1 144.0 605.1 143.0 Q 605.1 142.0 605.1 141.0 Q 605.1 140.0 605.1 139.0 Q 605.1 138.0 605.1 137.0 Q 605.0 136.0 605.0 135.2 Q 604.9 134.3 604.7 133.8 Q 604.4 133.2 603.8 133.1 Q 603.2 133.0 602.5 133.2 Q 601.8 133.3 601.1 133.6 Q 600.4 133.9 599.6 134.1 Q 598.9 134.4 598.2 134.7 Q 597.4 134.9 596.7 135.2 Q 596.0 135.5 595.2 135.8 Q 594.5 136.0 593.8 136.3 Q 593.1 136.6 592.4 136.9 Q 591.6 137.1 590.9 137.4 Q 590.2 137.7 589.5 138.0 Q 588.8 138.3 588.3 138.9 Q 587.8 139.4 587.6 140.2 Q 587.4 141.1 587.3 142.0 Q 587.3 143.0 587.3 144.0 Q 587.3 145.0 587.3 146.0 Q 587.3 147.0 587.3 148.0 Q 587.2 149.0 587.2 150.0 Q 587.2 150.9 587.1 151.7 Q 587.0 152.6 586.9 153.4 Q 586.8 154.2 586.7 155.1 Q 586.6 156.0 586.6 157.0 Q 586.5 158.0 586.5 159.0 Q 586.4 160.0 586.4 160.9 Q 586.3 161.9 586.1 162.7 Q 586.0 163.5 585.8 164.3 Q 585.6 165.1 585.4 166.0 Q 585.3 166.8 585.1 167.6 Q 584.9 168.4 584.6 169.1 Q 584.3 169.8 584.0 170.5 Q 583.7 171.2 583.3 171.8 Q 582.9 172.4 582.5 173.0 Q 582.0 173.6 581.6 174.1 Q 581.1 174.6 580.6 175.1 Q 580.1 175.6 579.5 176.0 Q 578.9 176.4 578.2 176.7 Q 577.6 177.1 576.8 177.2 Q 575.9 177.4 575.0 177.5 Q 574.0 177.5 573.1 177.4 Q 572.2 177.3 571.4 177.1 Q 570.7 176.8 570.0 176.4 Q 569.4 176.0 568.9 175.6 Q 568.4 175.1 568.0 174.5 Q 567.6 173.9 567.2 173.3 Q 566.9 172.6 566.6 171.9 Q 566.4 171.2 566.1 170.4 Q 565.9 169.7 565.8 168.8 Q 565.6 167.9 565.6 167.0 Q 565.5 166.0 565.5 165.0 Q 565.5 164.0 565.5 163.0 Q 565.5 162.0 565.5 161.0 Q 565.6 160.0 565.6 159.0 Q 565.7 158.0 565.8 157.1 Q 565.9 156.2 566.0 155.4 Q 566.1 154.7 566.3 153.8 Q 566.4 152.9 566.5 152.0 Q 566.6 151.0 566.7 150.2 Q 566.8 149.3 567.0 148.5 Q 567.2 147.7 567.3 146.9 Q 567.3 146.1 567.2 145.4 Q 567.1 144.7 566.7 144.4 Q 566.3 144.2 565.6 144.3 Q 565.0 144.5 564.2 144.7 Q 563.4 144.9 562.7 145.1 Q 561.9 145.4 561.1 145.6 Q 560.3 145.8 559.6 146.0 Q 558.8 146.3 558.0 146.5 Q 557.2 146.7 556.4 146.9 Q 555.6 147.1 554.8 147.3 Q 554.1 147.6 553.3 147.8 Q 552.5 148.0 551.8 148.2 Q 551.0 148.5 550.4 148.9 Q 549.8 149.3 549.4 149.9 Q 549.0 150.5 548.8 151.3 Q 548.6 152.1 548.5 153.0 Q 548.4 154.0 548.3 154.8 Q 548.1 155.7 548.0 156.5 Q 547.8 157.3 547.7 158.2 Q 547.5 159.0 547.5 160.0 Q 547.4 161.0 547.3 162.0 Q 547.3 163.0 547.2 164.0 Q 547.1 164.9 547.1 165.8 Q 547.0 166.6 547.0 167.3 Q 547.0 167.9 547.1 168.6 Q 547.1 169.3 547.2 170.2 Q 547.2 171.0 547.3 172.0 Q 547.4 173.0 547.4 174.0 Q 547.5 175.0 547.7 175.8 Q 547.8 176.7 548.0 177.5 Q 548.2 178.2 548.4 179.1 Q 548.6 179.9 548.8 180.7 Q 549.0 181.5 549.2 182.2 Q 549.5 183.0 549.7 183.8 Q 550.0 184.5 550.3 185.2 Q 550.6 186.0 550.9 186.7 Q 551.1 187.3 551.5 188.0 Q 551.8 188.7 552.2 189.3 Q 552.5 189.9 553.0 190.5 Q 553.4 191.1 553.9 191.6 Q 554.4 192.1 554.9 192.6 Q 555.4 193.1 555.9 193.6 Q 556.5 194.0 557.0 194.5 Q 557.6 194.9 558.2 195.3 Q 558.9 195.7 559.6 196.0 Q 560.2 196.3 561.0 196.6 Q 561.7 196.9 562.4 197.1 Q 563.2 197.3 564.1 197.5 Q 565.0 197.6 565.9 197.7 Q 566.8 197.8 567.6 198.0 Q 568.4 198.1 569.2 198.1 Q 570.1 198.2 571.0 198.2 Q 571.9 198.2 572.8 198.1 Q 573.6 198.1 574.4 197.9 Q 575.2 197.8 576.1 197.7 Q 577.0 197.6 577.9 197.4 Q 578.8 197.3 579.5 197.1 Q 580.3 196.8 581.1 196.6 Q 581.9 196.4 582.6 196.1 Q 583.3 195.8 584.0 195.5 Q 584.6 195.2 585.3 194.8 Q 585.9 194.5 586.6 194.1 Q 587.2 193.7 587.8 193.3 Q 588.5 192.9 589.0 192.5 Q 589.6 192.1 590.2 191.6 Q 590.7 191.2 591.3 190.8 Q 591.8 190.3 592.3 189.8 Q 592.8 189.3 593.3 188.8 Q 593.7 188.2 594.2 187.7 Q 594.6 187.1 595.1 186.6 Q 595.5 186.0 595.9 185.4 Q 596.4 184.8 596.7 184.2 Q 597.1 183.6 597.5 182.9 Q 597.8 182.3 598.2 181.6 Q 598.6 180.9 599.2 180.8 Q 599.8 180.6 600.4 181.0 Q 601.1 181.4 601.7 181.8 Q 602.4 182.2 603.0 182.5 Q 603.6 182.9 604.3 183.2 Q 605.0 183.6 605.7 183.9 Q 606.4 184.2 607.1 184.4 Q 607.8 184.7 608.6 184.9 Q 609.3 185.2 610.2 185.3 Q 611.0 185.5 612.0 185.6 Q 612.9 185.7 613.8 185.8 Q 614.6 185.9 615.4 186.0 Q 616.2 186.2 617.1 186.2 Q 618.0 186.3 618.9 186.2 Q 619.8 186.2 620.6 186.1 Q 621.4 185.9 622.2 185.8 Q 623.1 185.7 624.0 185.6 Q 624.9 185.4 625.8 185.3 Q 626.6 185.1 627.3 184.8 Q 628.1 184.6 628.8 184.3 Q 629.5 184.0 630.2 183.7 Q 630.9 183.4 631.5 183.0 Q 632.2 182.7 632.8 182.3 Q 633.4 181.9 634.0 181.5 Q 634.5 181.0 635.0 180.5 Q 635.6 180.1 636.1 179.6 Q 636.6 179.1 637.1 178.6 Q 637.6 178.1 638.0 177.5 Q 638.5 177.0 638.9 176.4 Q 639.3 175.8 639.7 175.2 Q 640.0 174.5 640.4 173.9 Q 640.8 173.3 641.1 172.6 Q 641.5 172.0 641.8 171.3 Q 642.1 170.6 642.4 169.9 Q 642.7 169.2 643.0 168.5 Q 643.2 167.7 643.5 167.0 Q 643.8 166.2 644.0 165.5 Q 644.2 164.7 644.4 163.9 Q 644.6 163.1 644.8 162.3 Q 645.0 161.5 645.1 160.7 Q 645.3 159.8 645.4 158.9 Q 645.5 158.0 645.5 157.0 Q 645.5 156.0 645.5 155.0 Q 645.5 154.0 645.5 153.0 Q 645.5 152.0 645.4 151.0 Q 645.4 150.1 645.3 149.2 Q 645.1 148.3 645.0 147.5 Q 644.8 146.7 644.7 145.9 Q 644.5 145.0 644.3 144.2 Q 644.2 143.3 644.0 142.6 Q 643.8 141.8 643.6 140.9 Q 643.4 140.1 643.2 139.3 Q 643.0 138.5 642.7 137.8 Q 642.5 137.0 642.3 136.2 Q 642.0 135.5 641.8 134.7 Q 641.5 134.0 641.3 133.2 Q 641.1 132.4 640.8 131.7 Q 640.5 130.9 640.3 130.2 Q 640.0 129.5 639.7 128.8 Q 639.4 128.1 639.1 127.4 Q 638.8 126.7 638.3 126.1 Q 637.7 125.4 636.4 125.1 Q 635.1 124.8 634.1 124.8 Z", "fathah_path": "M 550 102 L 630.5 78.5 L 630.5 98.5 L 550 121.5 Z"};
+
+    // 6 Approved UI/UX Palettes (Y + Shaddah + Fathah always distinct from SAW + AN, Blue-leaning default)
+    const PALETTES = {
+        'opt2_blue_obsidian': {
+            id: 'opt2_blue_obsidian',
+            label: 'الخيار (2) — أزرق سويان الأصيل + كحلي ملكي فاحم للـ (Y والشدة والفتحة)',
+            mode: 'light',
+            baseColor: '#1d5c8f',
+            accentColor: '#0f172a',
+            subColor: '#475569',
+            iconGrad: ['#1d5c8f', '#0f2744']
+        },
+        'opt1_blue_emerald': {
+            id: 'opt1_blue_emerald',
+            label: 'الخيار (1) — أزرق سويان الأصيل + أخضر زمردي للـ (Y والشدة والفتحة)',
+            mode: 'light',
+            baseColor: '#1d5c8f',
+            accentColor: '#059669',
+            subColor: '#475569',
+            iconGrad: ['#059669', '#1d5c8f']
+        },
+        'opt3_navy_gold': {
+            id: 'opt3_navy_gold',
+            label: 'الخيار (3) — كحلي ملكي عميق + ذهبي استثماري للـ (Y والشدة والفتحة)',
+            mode: 'light',
+            baseColor: '#0f2744',
+            accentColor: '#d97706',
+            subColor: '#475569',
+            iconGrad: ['#1d5c8f', '#d97706']
+        },
+        'opt5_dark_skyblue': {
+            id: 'opt5_dark_skyblue',
+            label: 'الخيار (5) — أبيض ناصع + أزرق سماوي مضيء للـ (Y والشدة والفتحة)',
+            mode: 'dark',
+            baseColor: '#ffffff',
+            accentColor: '#38bdf8',
+            subColor: '#cbd5e1',
+            iconGrad: ['#38bdf8', '#1d4ed8']
+        },
+        'opt4_dark_emerald': {
+            id: 'opt4_dark_emerald',
+            label: 'الخيار (4) — أبيض ناصع + أخضر زمردي مضيء للـ (Y والشدة والفتحة)',
+            mode: 'dark',
+            baseColor: '#ffffff',
+            accentColor: '#10b981',
+            subColor: '#cbd5e1',
+            iconGrad: ['#10b981', '#1d4ed8']
+        },
+        'opt6_dark_gold': {
+            id: 'opt6_dark_gold',
+            label: 'الخيار (6) — أبيض ناصع + ذهبي ملكي مضيء للـ (Y والشدة والفتحة)',
+            mode: 'dark',
+            baseColor: '#ffffff',
+            accentColor: '#fbbf24',
+            subColor: '#cbd5e1',
+            iconGrad: ['#fbbf24', '#1d4ed8']
+        }
+    };
+
+    // Active default palettes (Blue-leaning temporary default per management directive)
+    let activeLightPalette = 'opt2_blue_obsidian';
+    let activeDarkPalette = 'opt5_dark_skyblue';
+
     function resolveHomeHref() {
         const p = String((typeof window !== 'undefined' && window.location && window.location.pathname) || '').toLowerCase();
+        if (/\/tools\/[a-z0-9_-]+\//.test(p)) return '../../index.html';
         const isSubdir = /\/(member-dashboard|merchant-dashboard|admin-dashboard|public|landing-page)\//.test(p);
         return isSubdir ? '../index.html' : 'index.html';
     }
 
+    function resolvePalette(variant = 'default', opts = {}) {
+        if (opts && opts.palette && PALETTES[opts.palette]) {
+            return PALETTES[opts.palette];
+        }
+        if (PALETTES[variant]) {
+            return PALETTES[variant];
+        }
+        const isDarkBg = variant === 'light-on-dark' || variant === 'dark';
+        return PALETTES[isDarkBg ? activeDarkPalette : activeLightPalette] || PALETTES.opt2_blue_obsidian;
+    }
+
+    function renderWordmarkOnlySvg(variant = 'default', opts = {}) {
+        const pal = resolvePalette(variant, opts);
+        const baseCol = (opts && opts.baseColor) || pal.baseColor;
+        const accentCol = (opts && opts.accentColor) || pal.accentColor;
+        const heightCss = (opts && opts.wordHeight) || (opts && opts.compact ? '25px' : '31px');
+        return `<svg viewBox="${VECTOR_PATHS.viewBox}" style="height:${heightCss};width:auto;display:block;overflow:visible;" shape-rendering="geometricPrecision" aria-hidden="true" focusable="false">` +
+            `<g fill="${baseCol}" fill-rule="evenodd">` +
+                `<path d="${VECTOR_PATHS.s_path}"/>` +
+                `<path d="${VECTOR_PATHS.a1_path}"/>` +
+                `<path d="${VECTOR_PATHS.w_path}"/>` +
+                `<path d="${VECTOR_PATHS.a2_path}"/>` +
+                `<path d="${VECTOR_PATHS.n_path}"/>` +
+            `</g>` +
+            `<g fill="${accentCol}" fill-rule="evenodd">` +
+                `<path d="${VECTOR_PATHS.y_path}"/>` +
+                `<path d="${VECTOR_PATHS.shaddah_path}"/>` +
+                `<path d="${VECTOR_PATHS.fathah_path}"/>` +
+            `</g>` +
+        `</svg>`;
+    }
+
     function renderBrandSvg(variant = 'default', opts = {}) {
-        const isDarkBg = variant === 'light-on-dark';
         const isCompact = Boolean(opts && opts.compact);
-        const primaryFill = isDarkBg ? '#ffffff' : '#0f2744';
-        const accentFill = '#10b981';
-        const subColor = isDarkBg ? '#cbd5e1' : '#475569';
-        const gradId = `swGrad_${variant}_${++gradSeq}`;
+        const pal = resolvePalette(variant, opts);
+        const subColor = pal.subColor;
+        const gradId = `swGrad_${pal.id}_${++gradSeq}`;
         const iconSize = isCompact ? 28 : 34;
-        const wordFontSize = isCompact ? '1.12rem' : '1.38rem';
-        const wordPadTop = isCompact ? '4px' : '6px';
-        const diacriticTop = isCompact ? '-9px' : '-11px';
-        const diacriticSize = isCompact ? '0.98rem' : '1.15rem';
+        const wordHeight = (opts && opts.wordHeight) || (isCompact ? '25px' : '31px');
         const bankBadge = BRAND_CONFIG.showBank
-            ? '<span style="font-size:0.78rem;font-weight:800;background:#1d4ed8;color:#fff;padding:2px 7px;border-radius:6px;margin-right:6px;">BANK</span>'
+            ? '<span style="font-size:0.78rem;font-weight:800;background:#1d4ed8;color:#fff;padding:2px 7px;border-radius:6px;margin-left:6px;">BANK</span>'
             : '';
-        const subtitleHtml = isCompact
+        const subtitleHtml = (isCompact || (opts && opts.hideSubtitle))
             ? ''
-            : `<span style="font-family:'Tajawal',sans-serif;font-size:0.68rem;font-weight:700;color:${subColor};letter-spacing:0;text-align:right;" dir="rtl">منصة الاستهلاك الاستثماري العالمية</span>`;
+            : `<span style="font-family:'Tajawal','Cairo',sans-serif;font-size:0.68rem;font-weight:700;color:${subColor};letter-spacing:0;text-align:right;margin-top:2px;" dir="rtl">منصة الاستهلاك الاستثماري العالمية</span>`;
+
+        const wordmarkSvg = renderWordmarkOnlySvg(variant, { ...opts, compact: isCompact, wordHeight });
 
         return `
-        <span class="sawyan-brand-mark" dir="ltr" style="display:inline-flex;align-items:center;gap:${isCompact ? '6px' : '8px'};vertical-align:middle;">
+        <span class="sawyan-brand-mark" dir="ltr" data-palette-id="${pal.id}" style="display:inline-flex;align-items:center;gap:${isCompact ? '6px' : '8px'};vertical-align:middle;">
             <svg width="${iconSize}" height="${iconSize}" viewBox="0 0 40 40" aria-hidden="true" style="flex-shrink:0;">
                 <defs>
                     <linearGradient id="${gradId}" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#10b981"/>
-                        <stop offset="100%" stop-color="#1d4ed8"/>
+                        <stop offset="0%" stop-color="${pal.iconGrad[0]}"/>
+                        <stop offset="100%" stop-color="${pal.iconGrad[1]}"/>
                     </linearGradient>
                 </defs>
                 <rect x="2" y="2" width="36" height="36" rx="10" fill="url(#${gradId})"/>
@@ -42,8 +137,9 @@
                 <circle cx="20" cy="14" r="3.2" fill="#ffffff"/>
             </svg>
             <span style="display:inline-flex;flex-direction:column;line-height:1.05;">
-                <span style="position:relative;font-family:'Poppins',sans-serif;font-weight:800;font-size:${wordFontSize};letter-spacing:0.6px;color:${primaryFill};display:inline-block;padding-top:${wordPadTop};">
-                    SAW<span style="position:relative;display:inline-block;color:${accentFill};">Y<span aria-hidden="true" style="position:absolute;top:${diacriticTop};left:50%;transform:translateX(-50%);font-family:'Tajawal',sans-serif;font-size:${diacriticSize};line-height:1;color:${accentFill};font-weight:800;">&#x0651;&#x064E;</span></span>AN${bankBadge}
+                <span style="position:relative;display:inline-flex;align-items:center;">
+                    ${wordmarkSvg}${bankBadge}
+                    <span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;">SAWYAN</span>
                 </span>
                 ${subtitleHtml}
             </span>
@@ -59,20 +155,29 @@
     }
 
     const SawyanLogo = {
+        PALETTES,
+        VECTOR_PATHS,
         homeHref: resolveHomeHref,
+        wordmarkSvg: (variant = 'default', opts = {}) => renderWordmarkOnlySvg(variant, opts),
         svg: (variant = 'default', opts = {}) => renderBrandSvg(variant, opts),
+        setActivePalette: function (lightPaletteKey, darkPaletteKey) {
+            if (lightPaletteKey && PALETTES[lightPaletteKey]) activeLightPalette = lightPaletteKey;
+            if (darkPaletteKey && PALETTES[darkPaletteKey]) activeDarkPalette = darkPaletteKey;
+            this.hydrateAll(true);
+        },
         link: (variant = 'default', opts = {}) => {
             const href = (opts && opts.href) || resolveHomeHref();
             return `<a href="${href}" class="logo-link sawyan-home-logo" aria-label="SAWYAN — الصفحة الرئيسية" title="العودة للصفحة الرئيسية">${renderBrandSvg(variant, opts)}</a>`;
         },
         full: (variant = 'default', opts = {}) => SawyanLogo.link(variant, opts),
         icon: (variant = 'default', opts = {}) => SawyanLogo.link(variant, opts),
-        hydrateAll: function () {
+        hydrateAll: function (forceRehydrate = false) {
             if (typeof document === 'undefined') return;
             const homeHref = resolveHomeHref();
 
             document.querySelectorAll('[data-sawyan-logo]').forEach((el) => {
                 const variant = resolveAutoVariant(el.getAttribute('data-sawyan-logo'));
+                const palette = el.getAttribute('data-sawyan-palette') || undefined;
                 const compact = el.getAttribute('data-sawyan-compact') === '1';
                 if (el.tagName === 'A') {
                     const curHref = el.getAttribute('href');
@@ -80,20 +185,20 @@
                     el.classList.add('logo-link', 'sawyan-home-logo');
                     if (!el.getAttribute('aria-label')) el.setAttribute('aria-label', 'SAWYAN — الصفحة الرئيسية');
                     if (!el.getAttribute('title')) el.setAttribute('title', 'العودة للصفحة الرئيسية');
-                    el.innerHTML = renderBrandSvg(variant, { compact });
+                    el.innerHTML = renderBrandSvg(variant, { compact, palette });
                 } else {
-                    el.innerHTML = SawyanLogo.link(variant, { compact, href: homeHref });
+                    el.innerHTML = SawyanLogo.link(variant, { compact, palette, href: homeHref });
                 }
             });
 
             const logoContainer = document.getElementById('logoContainer');
-            if (logoContainer && !logoContainer.querySelector('.sawyan-brand-mark')) {
+            if (logoContainer && (forceRehydrate || !logoContainer.querySelector('.sawyan-brand-mark'))) {
                 const inSidebar = Boolean(logoContainer.closest('.sidebar'));
                 logoContainer.innerHTML = SawyanLogo.link(inSidebar ? 'light-on-dark' : 'default', { href: homeHref });
             }
 
             const navLogo = document.getElementById('navBrandLogo');
-            if (navLogo && !navLogo.querySelector('.sawyan-brand-mark')) {
+            if (navLogo && (forceRehydrate || !navLogo.querySelector('.sawyan-brand-mark'))) {
                 const variant = resolveAutoVariant('auto');
                 if (navLogo.tagName === 'A') {
                     if (!navLogo.getAttribute('href')) navLogo.setAttribute('href', homeHref);
@@ -104,7 +209,7 @@
             }
 
             const footerLogo = document.getElementById('footerBrandLogo');
-            if (footerLogo && !footerLogo.querySelector('a .sawyan-brand-mark')) {
+            if (footerLogo && (forceRehydrate || !footerLogo.querySelector('a .sawyan-brand-mark'))) {
                 footerLogo.innerHTML = SawyanLogo.link('light-on-dark', { href: homeHref });
             }
         }

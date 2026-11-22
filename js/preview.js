@@ -751,100 +751,155 @@
         const card = byId('promoTheatreCard');
         if (!card) return;
 
-        // Allow drop-in filmed MP4 / YouTube video later via window.SAWYAN_PROMO_VIDEO_URL
-        if (window.SAWYAN_PROMO_VIDEO_URL) {
-            const stage = byId('promoMediaStage');
-            const url = String(window.SAWYAN_PROMO_VIDEO_URL);
-            if (stage && /^https:\/\/.+\.(mp4|webm)(\?.*)?$/i.test(url)) {
-                stage.innerHTML = `<video controls playsinline poster="shared/assets/promo-poster.jpg" style="width:100%;height:100%;object-fit:cover;background:#000;"><source src="${escapeHtml(url)}" type="video/mp4"></video>`;
-                return;
-            }
-        }
+        const vid = byId('promoOfficialVideo');
+        const centerBtn = byId('promoCenterPlayBtn');
+        const toggleBtn = byId('promoToggleBtn');
 
         const scenes = [
             {
+                start: 0.0,
+                end: 5.71,
                 img: 'shared/assets/card-shopper.jpg',
-                badge: 'المشهد 1 من 4 • التسوق اليومي',
-                title: '1. غيّر وجهتك — لا تدفع دون مقابل بعد الآن!',
-                body: 'تسوّق بالسعر الطبيعي من السوبر ماركت والصيدليات والمطاعم المعتمدة واحصل على عائدات حقيقية تنمو كل يوم.',
-                pct: 25
+                badge: 'المشهد 1 من 6 • الصدمة الإيجابية',
+                title: '1. «أَكْثَرُ مَا نَفْعَلُهُ كُلَّ يَوْمٍ.. هُوَ أَكْثَرُ مَا نَكْرَهُهُ.. الدَّفْعُ!»',
+                body: 'فواتير السوبر ماركت والصيدلية والمطعم تتكرر يومياً دون أن يعود إليك منها شيء في التسوق التقليدي.',
+                pct: 16
             },
             {
+                start: 5.71,
+                end: 14.11,
                 img: 'shared/assets/promo-poster.jpg',
-                badge: 'المشهد 2 من 4 • التوثيق والعائد',
-                title: '2. وثّق فاتورتك بكود هويتك في ثوانٍ',
-                body: 'ينعكس عائد الاستهلاك الاستثماري مباشرة في صندوق الهدف الشهري داخل محفظتك بعملتك المحلية.',
+                badge: 'المشهد 2 من 6 • نقطة التحول',
+                title: '2. «مِنَ اليَوْمِ.. تَغَيَّرَ الوَضْعُ! أَهْلاً بِكَ فِي SAWYAN»',
+                body: 'منصة الاستهلاك الاستثماري العالمية (Buy and Make Money) — عضوية مجانية 100% وتوثيق فوري بكود هويتك.',
+                pct: 33
+            },
+            {
+                start: 14.11,
+                end: 26.74,
+                img: 'shared/assets/card-shopper.jpg',
+                badge: 'المشهد 3 من 6 • التسوق والعائد الشهري',
+                title: '3. «تَسَوَّقْ بِنَفْسِ أَسْعَارِكَ الطَّبِيعِيَّةِ.. مَدْفُوعَاتُكَ لَنْ تَضِيعَ»',
+                body: 'مشترياتك من السوبر ماركت والصيدلية والمطعم تتحول إلى عائدات حقيقية تنمو كل شهر في صندوق الهدف الشهري.',
                 pct: 50
             },
             {
-                img: 'shared/assets/card-merchant.jpg',
-                badge: 'المشهد 3 من 4 • للتجار المعتمدين',
-                title: '3. أنا تاجر: ادفع مقابل النتائج فقط',
-                body: 'ضاعف مبيعاتك دون المجازفة بمبالغ تُنفق على حملات تسويقية مجهولة المردود واستقبل آلاف العملاء.',
-                pct: 75
+                start: 26.74,
+                end: 40.09,
+                img: 'shared/assets/card-why-sawyan.jpg',
+                badge: 'المشهد 4 من 6 • آلية العمل ومضاعفة الدخل',
+                title: '4. «فَقَطْ غَيِّرْ مَتْجَرَكَ.. وَشَارِكِ الفِكْرَةَ مَعَ مَعَارِفِكَ لِيَتَضَاعَفَ دَخْلُكَ وَدَخْلُهُمْ!»',
+                body: 'تسوق مع المتاجر الشريكة، أخبر المتجر أنك عضو بـ SAWYAN، وشارك الفكرة مع معارفك.',
+                pct: 68
             },
             {
-                img: 'shared/assets/card-why-sawyan.jpg',
-                badge: 'المشهد 4 من 4 • ضاعف دخلك',
-                title: '4. فرصة حقيقية لبناء دخل إضافي مستدام',
-                body: 'صفر مخاطرة، صفر رأس مال، حلال 100% — كلما اتسع فريقك زاد دخلك ودخلهم.',
+                start: 40.09,
+                end: 55.56,
+                img: 'shared/assets/card-merchant.jpg',
+                badge: 'المشهد 5 من 6 • للتجار والأركان الثلاثة',
+                title: '5. «وَلِلتُّجَّارِ: ادْفَعْ فَقَطْ مُقَابِلَ النَّتَائِجِ.. صِفْرُ مُخَاطَرَةٍ • صِفْرُ رَأْسِ مَالٍ • صِفْرُ مُؤَهِّلَاتٍ»',
+                body: 'لا مجازفة بإعلانات مجهولة العائد بعد الآن — آلاف العملاء في انتظارك.',
+                pct: 86
+            },
+            {
+                start: 55.56,
+                end: 63.5,
+                img: 'shared/assets/promo-poster.jpg',
+                badge: 'المشهد 6 من 6 • الحرية المالية',
+                title: '6. «الحُرِّيَّةُ المَالِيَّةُ لَيْسَتْ وَهْماً.. بَلْ حَقِيقَةٌ يَفْصِلُكَ عَنْهَا خَطْوَةٌ وَاحِدَةٌ.. SAWYAN»',
+                body: 'انضم الآن مجاناً وابدأ رحلتك في عالم الاستهلاك الاستثماري على www.sawyan.net.',
                 pct: 100
             }
         ];
 
         let idx = 0;
-        let playing = false;
-        let timerId = null;
 
-        function setScene(nextIdx, keepPlaying) {
-            idx = ((nextIdx % scenes.length) + scenes.length) % scenes.length;
+        function updateUiForScene(sceneIdx, customPct) {
+            idx = ((sceneIdx % scenes.length) + scenes.length) % scenes.length;
             const sc = scenes[idx];
             if (byId('promoSlideImg')) byId('promoSlideImg').src = sc.img;
             if (byId('promoSceneCounter')) byId('promoSceneCounter').textContent = sc.badge;
             if (byId('promoCaptionTitle')) byId('promoCaptionTitle').textContent = sc.title;
             if (byId('promoCaptionBody')) byId('promoCaptionBody').textContent = sc.body;
-            if (byId('promoProgressFill')) byId('promoProgressFill').style.width = `${sc.pct}%`;
+            if (byId('promoProgressFill')) {
+                byId('promoProgressFill').style.width = `${customPct !== undefined ? customPct : sc.pct}%`;
+            }
             document.querySelectorAll('.promo-chapter-btn').forEach(function (btn) {
                 btn.classList.toggle('active', Number(btn.getAttribute('data-scene')) === idx);
             });
-            if (!keepPlaying && playing) {
-                clearInterval(timerId);
-                startLoop();
+        }
+
+        function playVideo() {
+            if (!vid) return;
+            card.classList.add('is-playing');
+            vid.controls = true;
+            if (centerBtn) centerBtn.style.display = 'none';
+            if (toggleBtn) toggleBtn.textContent = '⏸ إيقاف مؤقت';
+            const p = vid.play();
+            if (p && typeof p.catch === 'function') {
+                p.catch(function () {});
             }
         }
 
-        function startLoop() {
-            playing = true;
-            card.classList.add('is-playing');
-            if (byId('promoToggleBtn')) byId('promoToggleBtn').textContent = '⏸ إيقاف مؤقت';
-            clearInterval(timerId);
-            timerId = setInterval(function () { setScene(idx + 1, true); }, 4200);
-        }
-
-        function stopLoop() {
-            playing = false;
+        function pauseVideo() {
+            if (!vid) return;
+            vid.pause();
             card.classList.remove('is-playing');
-            if (byId('promoToggleBtn')) byId('promoToggleBtn').textContent = '▶ تشغيل الجولة';
-            clearInterval(timerId);
+            if (centerBtn) centerBtn.style.display = '';
+            if (toggleBtn) toggleBtn.textContent = '▶ تشغيل الفيديو';
         }
 
-        if (byId('promoCenterPlayBtn')) byId('promoCenterPlayBtn').addEventListener('click', startLoop);
-        if (byId('promoToggleBtn')) {
-            byId('promoToggleBtn').addEventListener('click', function () {
-                if (playing) stopLoop(); else startLoop();
+        if (vid) {
+            vid.addEventListener('timeupdate', function () {
+                const ct = vid.currentTime || 0;
+                const dur = vid.duration || 63.03;
+                const pct = Math.min(100, Math.round((ct / dur) * 100));
+                let foundIdx = 0;
+                for (let i = 0; i < scenes.length; i++) {
+                    if (ct >= scenes[i].start) foundIdx = i;
+                }
+                updateUiForScene(foundIdx, pct);
+            });
+            vid.addEventListener('play', function () {
+                card.classList.add('is-playing');
+                vid.controls = true;
+                if (centerBtn) centerBtn.style.display = 'none';
+                if (toggleBtn) toggleBtn.textContent = '⏸ إيقاف مؤقت';
+            });
+            vid.addEventListener('pause', function () {
+                card.classList.remove('is-playing');
+                if (toggleBtn) toggleBtn.textContent = '▶ تشغيل الفيديو';
+            });
+            vid.addEventListener('ended', function () {
+                card.classList.remove('is-playing');
+                if (centerBtn) centerBtn.style.display = '';
+                if (toggleBtn) toggleBtn.textContent = '▶ إعادة تشغيل الفيديو';
+            });
+        }
+
+        if (centerBtn) centerBtn.addEventListener('click', playVideo);
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', function () {
+                if (vid && !vid.paused) pauseVideo(); else playVideo();
             });
         }
         if (byId('heroWatchPromoBtn')) {
             byId('heroWatchPromoBtn').addEventListener('click', function () {
                 const sec = byId('promo-explainer');
                 if (sec) sec.scrollIntoView({ behavior: 'smooth' });
-                setScene(0, false);
-                startLoop();
+                if (vid) vid.currentTime = 0;
+                updateUiForScene(0, 0);
+                playVideo();
             });
         }
         document.querySelectorAll('.promo-chapter-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
-                setScene(Number(btn.getAttribute('data-scene') || 0), false);
+                const targetIdx = Number(btn.getAttribute('data-scene') || 0);
+                updateUiForScene(targetIdx);
+                if (vid && scenes[targetIdx]) {
+                    vid.currentTime = scenes[targetIdx].start;
+                    playVideo();
+                }
             });
         });
     }

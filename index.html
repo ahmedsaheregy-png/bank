@@ -291,34 +291,37 @@
         </div>
     </header>
 
-    <!-- 4. Interactive 45s Promo Video Storyteller Section -->
+    <!-- 4. Interactive Official Promo Video Storyteller Section (Full HD 1080p with Arabic Voiceover & Approved Vector Logo) -->
     <section class="section promo-section" id="promo-explainer">
         <div class="container">
             <div class="section-header text-center">
-                <h2>كيف تحول مشترياتك إلى <span class="text-gradient">مشروع حقيقي؟</span></h2>
-                <p>جولة مرئية هادئة من 4 مشاهد تشرح دورة SAWYAN للعميل والتاجر في 45 ثانية</p>
+                <h2>كيف تحول مشترياتك اليومية إلى <span class="text-gradient">عائدات حقيقية تنمو كل شهر؟</span></h2>
+                <p>شاهد الفيديو الرسمي المعتمد لمنصة SAWYAN بالصوت والصورة (Full HD 1080p)</p>
             </div>
 
             <div class="promo-theatre-card" id="promoTheatreCard">
                 <div style="position:relative;">
-                    <div class="promo-stage" id="promoMediaStage">
-                        <img src="shared/assets/promo-poster.jpg" alt="قصة SAWYAN التوضيحية" class="promo-slide-img" id="promoSlideImg">
-                        <div class="promo-stage-vignette"></div>
+                    <div class="promo-stage" id="promoMediaStage" style="background:#0b132b;">
+                        <video id="promoOfficialVideo" playsinline preload="metadata" poster="shared/assets/promo-poster.jpg" style="width:100%; height:100%; object-fit:contain; display:block; background:#0b132b;">
+                            <source src="shared/assets/sawyan-promo-official.mp4" type="video/mp4">
+                        </video>
+                        <img src="shared/assets/promo-poster.jpg" alt="قصة SAWYAN التوضيحية" class="promo-slide-img" id="promoSlideImg" style="display:none;">
+                        <div class="promo-stage-vignette" style="pointer-events:none;"></div>
 
-                        <div class="promo-top-bar">
-                            <span class="promo-pill-badge" id="promoSceneCounter">المشهد 1 من 4 • التسوق اليومي</span>
-                            <span class="promo-pill-badge">🎬 جولة 45 ثانية</span>
+                        <div class="promo-top-bar" style="pointer-events:none;">
+                            <span class="promo-pill-badge" id="promoSceneCounter">المشهد 1 من 6 • الصدمة الإيجابية</span>
+                            <span class="promo-pill-badge">🎬 الفيديو الرسمي المعتمد (صوت وصورة HD)</span>
                         </div>
 
-                        <button type="button" class="promo-play-center" id="promoCenterPlayBtn" aria-label="تشغيل الجولة التوضيحية">
+                        <button type="button" class="promo-play-center" id="promoCenterPlayBtn" aria-label="تشغيل الفيديو الرسمي المعتمد">
                             <span class="promo-play-circle">▶</span>
-                            <span style="font-weight:800; font-size:0.88rem; background:rgba(15,23,42,0.72); padding:4px 14px; border-radius:999px;">شاهد كيف تعمل SAWYAN</span>
+                            <span style="font-weight:800; font-size:0.92rem; background:rgba(15,23,42,0.85); padding:6px 18px; border-radius:999px; border:1px solid rgba(56,189,248,0.5);">تشغيل الفيديو الرسمي بالصوت والصورة</span>
                         </button>
                     </div>
 
                     <div class="promo-caption-box">
-                        <h3 id="promoCaptionTitle">1. غيّر وجهتك — لا تدفع دون مقابل بعد الآن!</h3>
-                        <p id="promoCaptionBody">تسوّق بالسعر الطبيعي من السوبر ماركت والصيدليات والمطاعم المعتمدة واحصل على عائدات حقيقية تنمو كل يوم.</p>
+                        <h3 id="promoCaptionTitle">1. أكثر ما نفعله كل يوم.. هو أكثر ما نكرهه.. الدفع!</h3>
+                        <p id="promoCaptionBody">من اليوم تغير الوضع.. أهلاً بك في SAWYAN منصة الاستهلاك الاستثماري العالمية (Buy and Make Money).</p>
                     </div>
                 </div>
 
@@ -327,14 +330,17 @@
                 </div>
 
                 <div class="promo-controls-bar">
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <button type="button" class="btn btn-primary btn-sm" id="promoToggleBtn">▶ تشغيل الجولة</button>
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-primary btn-sm" id="promoToggleBtn">▶ تشغيل الفيديو</button>
+                        <a href="shared/assets/sawyan-promo-official.mp4" download="SAWYAN_Official_Promo_1080p.mp4" class="btn btn-secondary btn-sm" style="text-decoration:none;">📥 تحميل الفيديو (HD)</a>
                     </div>
                     <div class="promo-chapters-row" id="promoChaptersRow">
-                        <button type="button" class="promo-chapter-btn active" data-scene="0">1. التسوق اليومي</button>
-                        <button type="button" class="promo-chapter-btn" data-scene="1">2. التوثيق والعائد</button>
-                        <button type="button" class="promo-chapter-btn" data-scene="2">3. للتجار المعتمدين</button>
-                        <button type="button" class="promo-chapter-btn" data-scene="3">4. ضاعف دخلك</button>
+                        <button type="button" class="promo-chapter-btn active" data-scene="0">1. واقع الدفع</button>
+                        <button type="button" class="promo-chapter-btn" data-scene="1">2. نقطة التحول</button>
+                        <button type="button" class="promo-chapter-btn" data-scene="2">3. التسوق والعائد</button>
+                        <button type="button" class="promo-chapter-btn" data-scene="3">4. الـ 3 خطوات</button>
+                        <button type="button" class="promo-chapter-btn" data-scene="4">5. للتجار والأمان</button>
+                        <button type="button" class="promo-chapter-btn" data-scene="5">6. الحرية المالية</button>
                     </div>
                 </div>
             </div>
