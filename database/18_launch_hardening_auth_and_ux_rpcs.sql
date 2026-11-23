@@ -5,7 +5,8 @@
 -- ZERO bare lowercase schema names inside string literals.
 -- ============================================================================
 
--- 1. جدول وخوارزمية الحماية من تخمين كلمات المرور (Brute-Force Lockout: 5 محاولات / 15 دقيقة)
+-- 1. تعطيل القفل المؤقت لتسجيل الدخول (15 دقيقة) بناءً على قرار المؤسس (2026-11-23)
+-- يبقى جدول auth_rate_limits والدالة المحجوزة auth_rate_limit_guard بتمرير غير قافل للحفاظ على توافق العقود وRLS
 CREATE TABLE IF NOT EXISTS sawyan.auth_rate_limits (
     bucket_key      TEXT PRIMARY KEY,
     failed_attempts INT NOT NULL DEFAULT 0,
@@ -26,85 +27,19 @@ VOLATILE
 SECURITY DEFINER
 SET search_path = ''
 AS $$
-DECLARE
-    v_key   TEXT;
-    v_op    TEXT;
-    v_rec   sawyan.auth_rate_limits%ROWTYPE;
-    v_cur   INT := 0;
-    v_next  INT := 0;
-    v_lock  TIMESTAMPTZ;
 BEGIN
-    v_key := left(lower(trim(COALESCE(p_bucket, ''))), 240);
-    v_op  := lower(trim(COALESCE(p_op, 'check')));
-
-    IF v_key = '' THEN
-        RETURN jsonb_build_object('locked', false, 'failed_attempts', 0, 'attempts_remaining', 5, 'locked_until', NULL);
-    END IF;
-
-    IF v_op = 'reset' THEN
-        DELETE FROM sawyan.auth_rate_limits WHERE bucket_key = v_key;
-        RETURN jsonb_build_object('locked', false, 'failed_attempts', 0, 'attempts_remaining', 5, 'locked_until', NULL);
-    END IF;
-
-    SELECT * INTO v_rec FROM sawyan.auth_rate_limits WHERE bucket_key = v_key FOR UPDATE;
-
-    IF v_op = 'check' THEN
-        IF FOUND AND v_rec.locked_until IS NOT NULL AND v_rec.locked_until > now() THEN
-            RETURN jsonb_build_object(
-                'locked', true,
-                'failed_attempts', v_rec.failed_attempts,
-                'attempts_remaining', 0,
-                'locked_until', v_rec.locked_until
-            );
-        END IF;
-        v_cur := CASE
-            WHEN NOT FOUND THEN 0
-            WHEN v_rec.locked_until IS NOT NULL AND v_rec.locked_until <= now() THEN 0
-            ELSE COALESCE(v_rec.failed_attempts, 0)
-        END;
-        RETURN jsonb_build_object(
-            'locked', false,
-            'failed_attempts', v_cur,
-            'attempts_remaining', GREATEST(0, 5 - v_cur),
-            'locked_until', NULL
-        );
-    END IF;
-
-    -- 'fail'
-    IF FOUND AND v_rec.locked_until IS NOT NULL AND v_rec.locked_until > now() THEN
-        RETURN jsonb_build_object(
-            'locked', true,
-            'failed_attempts', v_rec.failed_attempts,
-            'attempts_remaining', 0,
-            'locked_until', v_rec.locked_until
-        );
-    END IF;
-
-    v_cur := CASE
-        WHEN NOT FOUND THEN 0
-        WHEN v_rec.locked_until IS NOT NULL AND v_rec.locked_until <= now() THEN 0
-        ELSE COALESCE(v_rec.failed_attempts, 0)
-    END;
-    v_next := v_cur + 1;
-    v_lock := CASE WHEN v_next >= 5 THEN now() + interval '15 minutes' ELSE NULL END;
-
-    INSERT INTO sawyan.auth_rate_limits (bucket_key, failed_attempts, locked_until, updated_at)
-    VALUES (v_key, v_next, v_lock, now())
-    ON CONFLICT (bucket_key) DO UPDATE
-        SET failed_attempts = EXCLUDED.failed_attempts,
-            locked_until    = EXCLUDED.locked_until,
-            updated_at      = now();
-
+    -- خاصية منع الدخول لمدة 15 دقيقة ملغاة نهائياً بقرار المؤسس؛ لا قفل ولا عداد محاولات
     RETURN jsonb_build_object(
-        'locked', (v_next >= 5),
-        'failed_attempts', v_next,
-        'attempts_remaining', GREATEST(0, 5 - v_next),
-        'locked_until', v_lock
+        'locked', false,
+        'disabled', true,
+        'failed_attempts', 0,
+        'attempts_remaining', NULL,
+        'locked_until', NULL
     );
 END;
 $$;
 
--- 2. تسجيل دخول العضو مع قفل Brute-Force (5 محاولات / 15 دقيقة) وإرجاع JSONB منظم عند الفشل
+-- 2. تسجيل دخول العضو (بدون قفل 15 دقيقة عند إدخال كلمة مرور خاطئة) وإرجاع JSONB منظم عند الفشل
 CREATE OR REPLACE FUNCTION sawyan.authenticate_member_login(
     p_identifier TEXT,
     p_password   TEXT
@@ -116,8 +51,6 @@ SET search_path = ''
 AS $$
 DECLARE
     v_ident         TEXT;
-    v_rl_bucket     TEXT;
-    v_rl            JSONB;
     v_code_try      TEXT;
     v_phone_clean   TEXT;
     v_digits        TEXT;
@@ -137,17 +70,6 @@ BEGIN
 
     IF trim(p_password) = '123456' THEN
         RAISE EXCEPTION 'WEAK_OR_DEFAULT_PASSWORD_REJECTED';
-    END IF;
-
-    v_rl_bucket := 'member:' || lower(v_ident);
-    v_rl := sawyan.auth_rate_limit_guard(v_rl_bucket, 'check');
-    IF COALESCE((v_rl->>'locked')::boolean, false) THEN
-        RETURN jsonb_build_object(
-            'success', false,
-            'error_code', 'AUTH_RATE_LIMITED_15M',
-            'attempts_remaining', 0,
-            'locked_until', v_rl->'locked_until'
-        );
     END IF;
 
     v_code_try := regexp_replace(upper(v_ident), '^(#|SWY-?|MEM-?)', '');
@@ -182,12 +104,9 @@ BEGIN
     END IF;
 
     IF NOT FOUND THEN
-        v_rl := sawyan.auth_rate_limit_guard(v_rl_bucket, 'fail');
         RETURN jsonb_build_object(
             'success', false,
-            'error_code', CASE WHEN COALESCE((v_rl->>'locked')::boolean, false) THEN 'AUTH_RATE_LIMITED_15M' ELSE 'INVALID_CREDENTIALS' END,
-            'attempts_remaining', COALESCE((v_rl->>'attempts_remaining')::int, 0),
-            'locked_until', v_rl->'locked_until'
+            'error_code', 'INVALID_CREDENTIALS'
         );
     END IF;
 
@@ -201,27 +120,19 @@ BEGIN
     v_pwd_hash := v_member.metadata->>'pwd_bcrypt';
     IF v_pwd_hash IS NOT NULL THEN
         IF extensions.crypt(p_password, v_pwd_hash) <> v_pwd_hash THEN
-            v_rl := sawyan.auth_rate_limit_guard(v_rl_bucket, 'fail');
             RETURN jsonb_build_object(
                 'success', false,
-                'error_code', CASE WHEN COALESCE((v_rl->>'locked')::boolean, false) THEN 'AUTH_RATE_LIMITED_15M' ELSE 'INVALID_CREDENTIALS' END,
-                'attempts_remaining', COALESCE((v_rl->>'attempts_remaining')::int, 0),
-                'locked_until', v_rl->'locked_until'
+                'error_code', 'INVALID_CREDENTIALS'
             );
         END IF;
     ELSE
         IF NOT (v_member.email LIKE '%.demo' AND p_password = 'Demo@Sawyan2026') THEN
-            v_rl := sawyan.auth_rate_limit_guard(v_rl_bucket, 'fail');
             RETURN jsonb_build_object(
                 'success', false,
-                'error_code', CASE WHEN COALESCE((v_rl->>'locked')::boolean, false) THEN 'AUTH_RATE_LIMITED_15M' ELSE 'INVALID_CREDENTIALS' END,
-                'attempts_remaining', COALESCE((v_rl->>'attempts_remaining')::int, 0),
-                'locked_until', v_rl->'locked_until'
+                'error_code', 'INVALID_CREDENTIALS'
             );
         END IF;
     END IF;
-
-    PERFORM sawyan.auth_rate_limit_guard(v_rl_bucket, 'reset');
 
     v_session_token := encode(extensions.gen_random_bytes(24), 'hex');
     UPDATE sawyan.members
@@ -261,7 +172,7 @@ BEGIN
 END;
 $$;
 
--- 3. تسجيل دخول التاجر مع قفل Brute-Force (5 محاولات / 15 دقيقة) والحفاظ الكامل على حقول المحاور الثلاثة
+-- 3. تسجيل دخول التاجر (بدون قفل 15 دقيقة عند إدخال كلمة مرور خاطئة) والحفاظ الكامل على حقول المحاور الثلاثة
 CREATE OR REPLACE FUNCTION sawyan.authenticate_merchant_login(
     p_identifier TEXT,
     p_password   TEXT
@@ -273,8 +184,6 @@ SET search_path = pg_catalog, pg_temp
 AS $$
 DECLARE
     v_ident        TEXT;
-    v_rl_bucket    TEXT;
-    v_rl           JSONB;
     v_phone_clean  TEXT;
     v_digits       TEXT;
     v_local_suffix TEXT;
@@ -291,17 +200,6 @@ BEGIN
 
     IF trim(p_password) = '123456' THEN
         RAISE EXCEPTION 'WEAK_OR_DEFAULT_PASSWORD_REJECTED';
-    END IF;
-
-    v_rl_bucket := 'merchant:' || lower(v_ident);
-    v_rl := sawyan.auth_rate_limit_guard(v_rl_bucket, 'check');
-    IF COALESCE((v_rl->>'locked')::boolean, false) THEN
-        RETURN jsonb_build_object(
-            'success', false,
-            'error_code', 'AUTH_RATE_LIMITED_15M',
-            'attempts_remaining', 0,
-            'locked_until', v_rl->'locked_until'
-        );
     END IF;
 
     v_phone_clean := regexp_replace(v_ident, '[\s\-\(\)]+', '', 'g');
@@ -331,12 +229,9 @@ BEGIN
     END IF;
 
     IF NOT FOUND THEN
-        v_rl := sawyan.auth_rate_limit_guard(v_rl_bucket, 'fail');
         RETURN jsonb_build_object(
             'success', false,
-            'error_code', CASE WHEN COALESCE((v_rl->>'locked')::boolean, false) THEN 'AUTH_RATE_LIMITED_15M' ELSE 'INVALID_MERCHANT_CREDENTIALS' END,
-            'attempts_remaining', COALESCE((v_rl->>'attempts_remaining')::int, 0),
-            'locked_until', v_rl->'locked_until'
+            'error_code', 'INVALID_MERCHANT_CREDENTIALS'
         );
     END IF;
     IF v_merch.onboarding_status = 'rejected' THEN
@@ -346,16 +241,11 @@ BEGIN
         RAISE EXCEPTION 'MERCHANT_ACCOUNT_BANNED';
     END IF;
     IF v_merch.password_hash IS NULL OR v_merch.password_hash <> extensions.crypt(p_password, v_merch.password_hash) THEN
-        v_rl := sawyan.auth_rate_limit_guard(v_rl_bucket, 'fail');
         RETURN jsonb_build_object(
             'success', false,
-            'error_code', CASE WHEN COALESCE((v_rl->>'locked')::boolean, false) THEN 'AUTH_RATE_LIMITED_15M' ELSE 'INVALID_MERCHANT_CREDENTIALS' END,
-            'attempts_remaining', COALESCE((v_rl->>'attempts_remaining')::int, 0),
-            'locked_until', v_rl->'locked_until'
+            'error_code', 'INVALID_MERCHANT_CREDENTIALS'
         );
     END IF;
-
-    PERFORM sawyan.auth_rate_limit_guard(v_rl_bucket, 'reset');
 
     SELECT * INTO v_country FROM sawyan.countries WHERE id = v_merch.country_id;
     v_token := encode(extensions.gen_random_bytes(32), 'hex');
@@ -391,7 +281,7 @@ BEGIN
 END;
 $$;
 
--- 4. تسجيل دخول الإدارة السيادية مع قفل Brute-Force (5 محاولات / 15 دقيقة)
+-- 4. تسجيل دخول الإدارة السيادية (بدون قفل 15 دقيقة عند إدخال كلمة مرور خاطئة)
 CREATE OR REPLACE FUNCTION sawyan.authenticate_admin_login(
     p_email     TEXT,
     p_password  TEXT,
@@ -405,8 +295,6 @@ AS $$
 DECLARE
     v_admin      sawyan.admins%ROWTYPE;
     v_norm_email TEXT;
-    v_rl_bucket  TEXT;
-    v_rl         JSONB;
     v_raw_token  TEXT;
     v_token_hash TEXT;
     v_expires_at TIMESTAMPTZ;
@@ -420,29 +308,15 @@ BEGIN
         RAISE EXCEPTION 'CONSTITUTIONAL_SECURITY_VIOLATION: Weak default password [123456] is permanently prohibited (D10).';
     END IF;
 
-    v_rl_bucket := 'admin:' || v_norm_email;
-    v_rl := sawyan.auth_rate_limit_guard(v_rl_bucket, 'check');
-    IF COALESCE((v_rl->>'locked')::boolean, false) THEN
-        RETURN jsonb_build_object(
-            'success', false,
-            'error_code', 'AUTH_RATE_LIMITED_15M',
-            'attempts_remaining', 0,
-            'locked_until', v_rl->'locked_until'
-        );
-    END IF;
-
     SELECT * INTO v_admin
       FROM sawyan.admins
      WHERE lower(email) = v_norm_email
      FOR UPDATE;
 
     IF NOT FOUND THEN
-        v_rl := sawyan.auth_rate_limit_guard(v_rl_bucket, 'fail');
         RETURN jsonb_build_object(
             'success', false,
-            'error_code', CASE WHEN COALESCE((v_rl->>'locked')::boolean, false) THEN 'AUTH_RATE_LIMITED_15M' ELSE 'ADMIN_INVALID_CREDENTIALS' END,
-            'attempts_remaining', COALESCE((v_rl->>'attempts_remaining')::int, 0),
-            'locked_until', v_rl->'locked_until'
+            'error_code', 'ADMIN_INVALID_CREDENTIALS'
         );
     END IF;
 
@@ -451,16 +325,11 @@ BEGIN
     END IF;
 
     IF v_admin.password_hash IS NULL OR v_admin.password_hash <> extensions.crypt(p_password, v_admin.password_hash) THEN
-        v_rl := sawyan.auth_rate_limit_guard(v_rl_bucket, 'fail');
         RETURN jsonb_build_object(
             'success', false,
-            'error_code', CASE WHEN COALESCE((v_rl->>'locked')::boolean, false) THEN 'AUTH_RATE_LIMITED_15M' ELSE 'ADMIN_INVALID_CREDENTIALS' END,
-            'attempts_remaining', COALESCE((v_rl->>'attempts_remaining')::int, 0),
-            'locked_until', v_rl->'locked_until'
+            'error_code', 'ADMIN_INVALID_CREDENTIALS'
         );
     END IF;
-
-    PERFORM sawyan.auth_rate_limit_guard(v_rl_bucket, 'reset');
 
     v_raw_token  := encode(extensions.gen_random_bytes(32), 'hex');
     v_token_hash := encode(extensions.digest(v_raw_token, 'sha256'), 'hex');
@@ -1214,4 +1083,6 @@ BEGIN
        SET two_factor_enabled = true
      WHERE is_active = true
        AND COALESCE(two_factor_enabled, false) = false;
+
+    DELETE FROM sawyan.auth_rate_limits;
 END $$;

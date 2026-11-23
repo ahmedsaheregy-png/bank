@@ -11,19 +11,25 @@
     let _geoPicker = null;
     let _layoutState = {};
     let _onboarderTimer = null;
+    let _progressTracker = null;
+    let _draftHelper = null;
 
     function getEngine() {
         return window.SAWYAN && window.SAWYAN.RegEngine;
     }
 
-    function showError(msg) {
+    function showError(msg, focusEl) {
         const el = document.getElementById('errorMessage');
         const okEl = document.getElementById('successMessage');
         if (okEl) okEl.style.display = 'none';
         if (el) {
             el.innerHTML = '⛔ ' + (getEngine() ? getEngine().escapeHtml(msg) : msg);
             el.style.display = 'block';
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (focusEl && getEngine() && typeof getEngine().focusFirstInvalidField === 'function') {
+                getEngine().focusFirstInvalidField(focusEl);
+            } else {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         }
     }
 
@@ -153,6 +159,18 @@
             updateDialBadge(ccSel.value);
             if (phoneInp && phoneInp.value.trim()) checkPhone();
         });
+
+        if (eng && typeof eng.attachEmailUXHelpers === 'function') {
+            eng.attachEmailUXHelpers(emailInp, emailMsg);
+        }
+        if (eng && typeof eng.attachPhoneUXHelpers === 'function') {
+            eng.attachPhoneUXHelpers(phoneInp, ccSel, phoneMsg, updateDialBadge);
+        }
+        if (window.SAWYAN && window.SAWYAN.SmartSearch) {
+            ['onboardedByCode', 'deductionPercent', 'initialCashierPin', 'whatsapp'].forEach(id => {
+                window.SAWYAN.SmartSearch.attachAutoDigitNormalization(document.getElementById(id));
+            });
+        }
     }
 
     function wireOnboarderLookup() {
@@ -276,6 +294,11 @@
         }
 
         // 4. Unified World Geo Cascade (Country -> City -> District) + Categories
+        const params = new URLSearchParams(window.location.search);
+        const rawUrlCountry = (params.get('country') || '').trim().toUpperCase();
+        const urlCountry = rawUrlCountry || 'EG';
+        const urlCity = (params.get('city') || '').trim();
+
         _geoCascade = eng.mountWorldGeoCascade({
             countrySelect: document.getElementById('countryCode'),
             citySelect: document.getElementById('cityGeonameId'),
@@ -283,37 +306,60 @@
             districtSelect: document.getElementById('districtSelect'),
             districtManualInput: document.getElementById('districtManualInput'),
             activeOnly: true,
-            defaultCountry: 'EG',
+            defaultCountry: urlCountry,
+            explicitCountryFromUrl: Boolean(rawUrlCountry),
+            initialCityQuery: urlCity,
+            autoDetectCountry: !rawUrlCountry,
             onCountryChange: function (cc) {
                 updateDialBadge(cc);
                 if (_geoPicker) _geoPicker.setCountryCenter(cc);
+                if (_progressTracker) _progressTracker.update();
             },
             onCityChange: function (cityInfo) {
                 if (cityInfo && cityInfo.lat && cityInfo.lng && _geoPicker) {
                     _geoPicker.setCenterView(cityInfo.lat, cityInfo.lng, 12);
                 }
+                if (_progressTracker) _progressTracker.update();
             },
             onDistrictChange: function (distInfo) {
                 if (distInfo && distInfo.lat && distInfo.lng && _geoPicker) {
                     _geoPicker.setCenterView(distInfo.lat, distInfo.lng, 14);
                 }
+                if (_progressTracker) _progressTracker.update();
             }
         });
         await _geoCascade.init();
 
-        // Sync category dropdown from DB active categories if available
+        // Sync category dropdown from DB active categories & sort strictly alphabetically + SmartSearch
         const dbCats = _geoCascade.getCategories();
         const catSel = document.getElementById('category');
+        const ls = window.SAWYAN && window.SAWYAN.LocaleSort;
         if (catSel && Array.isArray(dbCats) && dbCats.length > 0) {
             const cur = catSel.value;
+            const docLang = ls ? ls.getDocLang() : 'ar';
+            const sortedCats = ls
+                ? ls.sortItems(dbCats, c => (c.name_i18n && (docLang === 'en' ? (c.name_i18n.en || c.name_i18n.ar) : (c.name_i18n.ar || c.name_i18n.en))) || c.slug, docLang)
+                : dbCats;
             catSel.innerHTML = '<option value="">اختر فئة النشاط...</option>';
-            dbCats.forEach(c => {
+            sortedCats.forEach(c => {
                 const opt = document.createElement('option');
                 opt.value = c.slug;
-                opt.textContent = (c.name_i18n && (c.name_i18n.ar || c.name_i18n.en)) || c.slug;
+                const ar = (c.name_i18n && (c.name_i18n.ar || c.name_i18n.en)) || c.slug;
+                const en = (c.name_i18n && (c.name_i18n.en || c.name_i18n.ar)) || c.slug;
+                opt.textContent = docLang === 'en' ? en : ar;
+                opt.dataset.nameAr = ar;
+                opt.dataset.nameEn = en;
                 catSel.appendChild(opt);
             });
             if (cur) catSel.value = cur;
+        }
+        if (catSel && window.SAWYAN && window.SAWYAN.SmartSearch) {
+            window.SAWYAN.SmartSearch.attachToSelect(catSel, {
+                kind: 'generic',
+                placeholder: 'ابحث عن فئة النشاط بالعربية أو الإنجليزية...',
+                showLetterHeaders: false,
+                skipEmptyPlaceholder: true
+            });
         }
 
         wireMerchantTypeSync();
@@ -332,6 +378,40 @@
         }
 
         updateDialBadge(document.getElementById('countryCode')?.value || 'EG');
+
+        const formEl = document.getElementById('registerForm');
+        if (formEl && eng && typeof eng.mountDraftAutoSave === 'function') {
+            _draftHelper = eng.mountDraftAutoSave(formEl, {
+                storageKey: 'sawyan_merchant_reg_draft_v1',
+                fieldIds: ['businessName', 'ownerName', 'email', 'phone', 'onboardedByCode', 'address', 'description', 'websiteUrl', 'whatsapp']
+            });
+            _draftHelper.restore();
+        }
+
+        if (formEl && eng && typeof eng.mountRegistrationProgress === 'function') {
+            const st = key => _layoutState[key] || { isVisible: true, isRequired: false };
+            _progressTracker = eng.mountRegistrationProgress(formEl, {
+                insertBeforeEl: document.getElementById('merchantRequiredFields'),
+                getRequiredCheckers: function () {
+                    const list = [
+                        () => (document.getElementById('businessName')?.value || '').trim().length >= 2,
+                        () => Boolean(document.getElementById('countryCode')?.value),
+                        () => eng.validatePhoneByCountry(document.getElementById('phone')?.value || '', document.getElementById('countryCode')?.value || 'EG', true).valid,
+                        () => eng.validatePasswordStrong(document.getElementById('password')?.value || '', document.getElementById('confirmPassword')?.value || '').valid
+                    ];
+                    if (st('owner_name').isRequired) list.push(() => (document.getElementById('ownerName')?.value || '').trim().length >= 2);
+                    if (st('email').isRequired) list.push(() => eng.validateEmailStrict(document.getElementById('email')?.value || '', true).valid);
+                    if (st('business_category').isRequired) list.push(() => Boolean(document.getElementById('category')?.value));
+                    if (st('city').isRequired) list.push(() => Boolean(_geoCascade && _geoCascade.getCityId()));
+                    if (st('district').isRequired && (document.getElementById('merchantType')?.value || 'physical') !== 'online') {
+                        list.push(() => Boolean(_geoCascade && _geoCascade.getDistrict()));
+                    }
+                    if (st('onboarded_by_code').isRequired) list.push(() => (document.getElementById('onboardedByCode')?.value || '').trim() !== '');
+                    if (st('terms_consent').isRequired) list.push(() => Boolean(document.getElementById('termsConsent')?.checked));
+                    return list;
+                }
+            });
+        }
     }
 
     async function handleSubmit(e) {
@@ -356,46 +436,46 @@
         const termsChecked = Boolean(document.getElementById('termsConsent')?.checked);
 
         if (!businessName || businessName.length < 2) {
-            return showError('يرجى إدخال اسم النشاط التجاري بشكل صحيح.');
+            return showError('يرجى إدخال اسم النشاط التجاري بشكل صحيح.', document.getElementById('businessName'));
         }
         if (st('owner_name').isRequired && (!ownerName || ownerName.length < 2)) {
-            return showError('يرجى إدخال اسم المالك الكامل.');
+            return showError('يرجى إدخال اسم المالك الكامل.', document.getElementById('ownerName'));
         }
 
         const emCheck = eng.validateEmailStrict(rawEmail, st('email').isRequired);
-        if (!emCheck.valid) return showError(emCheck.error);
+        if (!emCheck.valid) return showError(emCheck.error, document.getElementById('email'));
 
         if (!category && st('business_category').isRequired) {
-            return showError('يرجى اختيار فئة النشاط التجاري.');
+            return showError('يرجى اختيار فئة النشاط التجاري.', document.getElementById('category'));
         }
         if (st('city').isRequired && !cityGeonameId) {
-            return showError('يرجى اختيار المحافظة / المدينة أولاً قبل رقم الهاتف.');
+            return showError('يرجى اختيار المحافظة / المدينة أولاً قبل رقم الهاتف.', document.getElementById('cityGeonameId'));
         }
         if (st('district').isRequired && merchantType !== 'online' && !district) {
-            return showError('يرجى اختيار أو كتابة الحي / المنطقة.');
+            return showError('يرجى اختيار أو كتابة الحي / المنطقة.', document.getElementById('districtSelect'));
         }
 
         const phCheck = eng.validatePhoneByCountry(rawPhone, countryCode, true);
-        if (!phCheck.valid) return showError(phCheck.error);
+        if (!phCheck.valid) return showError(phCheck.error, document.getElementById('phone'));
 
         let onboardedByCode = null;
         if (rawOnboarder === '') {
             if (st('onboarded_by_code').isRequired) {
-                return showError('يرجى إدخال كود العضو المرشّح للمتجر أو كتابة 0 للتسجيل عن طريق الشركة.');
+                return showError('يرجى إدخال كود العضو المرشّح للمتجر أو كتابة 0 للتسجيل عن طريق الشركة.', document.getElementById('onboardedByCode'));
             }
         } else {
             const parsedCode = Number(rawOnboarder);
             if (!Number.isInteger(parsedCode) || parsedCode < 0) {
-                return showError('كود العضو المرشّح يجب أن يكون رقماً صحيحاً (أو 0 للشركة).');
+                return showError('كود العضو المرشّح يجب أن يكون رقماً صحيحاً (أو 0 للشركة).', document.getElementById('onboardedByCode'));
             }
             onboardedByCode = parsedCode;
         }
 
         const pwCheck = eng.validatePasswordStrong(pwd, confirmPwd);
-        if (!pwCheck.valid) return showError(pwCheck.error);
+        if (!pwCheck.valid) return showError(pwCheck.error, document.getElementById('password'));
 
         if (st('terms_consent').isRequired && !termsChecked) {
-            return showError('يجب الموافقة على الشروط والأحكام وسياسة الخصوصية لإتمام التسجيل.');
+            return showError('يجب الموافقة على الشروط والأحكام وسياسة الخصوصية لإتمام التسجيل.', document.getElementById('termsConsent'));
         }
 
         const rawComm = (document.getElementById('deductionPercent')?.value || '').trim();
@@ -469,6 +549,7 @@
 
             const mObj = (res && res.merchant) ? res.merchant : res;
             if (mObj && mObj.id) {
+                if (_draftHelper) _draftHelper.clear();
                 window.SAWYAN.API.saveMerchantSession(
                     {
                         id: mObj.id,

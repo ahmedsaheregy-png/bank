@@ -163,43 +163,21 @@ def check_live_database(token):
     must(st == 200 and isinstance(sp, dict) and sp.get("found") is True, "lookup_sponsor_by_code(1) resolves active sponsor", f"{st} {sp}")
     must("***" in str(sp.get("masked_name", "")) and "***" in str(sp.get("full_name", "")), "lookup_sponsor_by_code masks surname with '***'", sp)
 
-    # 2. Auth brute-force 5-attempt lockout + 15m lock (sawyan_demo)
+    # 2. Verify 15-minute login lockout is DISABLED per founder directive (2026-11-23)
     test_ident = "brute_qa_nonexistent_999999"
     clean_sql = f"DELETE FROM sawyan_demo.auth_rate_limits WHERE bucket_key = 'member:{test_ident}';"
     run_sql(clean_sql, token)
     try:
-        for attempt in range(1, 5):
+        for attempt in range(1, 7):
             st_a, res_a = rpc("authenticate_member_login", {"p_identifier": test_ident, "p_password": "WrongPass!99"}, schema="sawyan_demo")
             must(
                 st_a == 200 and isinstance(res_a, dict)
                 and res_a.get("success") is False
                 and res_a.get("error_code") == "INVALID_CREDENTIALS"
-                and res_a.get("attempts_remaining") == (5 - attempt),
-                f"Brute-force attempt #{attempt}/5 decrements remaining attempts ({5 - attempt})",
+                and res_a.get("locked_until") is None,
+                f"Login failed attempt #{attempt}/6 returns INVALID_CREDENTIALS without 15m lockout",
                 f"{st_a} {res_a}",
             )
-
-        st_5, res_5 = rpc("authenticate_member_login", {"p_identifier": test_ident, "p_password": "WrongPass!99"}, schema="sawyan_demo")
-        must(
-            st_5 == 200 and isinstance(res_5, dict)
-            and res_5.get("success") is False
-            and res_5.get("error_code") == "AUTH_RATE_LIMITED_15M"
-            and res_5.get("attempts_remaining") == 0
-            and bool(res_5.get("locked_until")),
-            "Brute-force 5th failure activates AUTH_RATE_LIMITED_15M lock",
-            f"{st_5} {res_5}",
-        )
-
-        st_6, res_6 = rpc("authenticate_member_login", {"p_identifier": test_ident, "p_password": "WrongPass!99"}, schema="sawyan_demo")
-        must(
-            st_6 == 200 and isinstance(res_6, dict)
-            and res_6.get("success") is False
-            and res_6.get("error_code") == "AUTH_RATE_LIMITED_15M"
-            and res_6.get("attempts_remaining") == 0
-            and bool(res_6.get("locked_until")),
-            "Brute-force 6th attempt immediately short-circuits with AUTH_RATE_LIMITED_15M",
-            f"{st_6} {res_6}",
-        )
     finally:
         run_sql(clean_sql, token)
 

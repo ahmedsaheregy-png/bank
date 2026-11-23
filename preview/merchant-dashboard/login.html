@@ -80,13 +80,8 @@
                 const box = document.getElementById('loginErrorBox');
                 const m = String(raw || (extraPayload && extraPayload.error_code) || '');
                 let msg = m || 'بيانات دخول التاجر غير صحيحة';
-                if (m.includes('AUTH_RATE_LIMITED_15M')) {
-                    msg = '🔒 تم تعليق محاولات الدخول مؤقتاً لمدة 15 دقيقة بعد 5 محاولات غير صحيحة حفاظاً على أمان حساب المتجر.';
-                } else if (m.includes('INVALID_MERCHANT_CREDENTIALS')) {
-                    const rem = (extraPayload && extraPayload.attempts_remaining !== undefined)
-                        ? ` (المحاولات المتبقية قبل القفل المؤقت: ${extraPayload.attempts_remaining})`
-                        : '';
-                    msg = 'بيانات دخول التاجر غير صحيحة — تأكد من كود التاجر أو البريد أو الهاتف وكلمة المرور' + rem + '.';
+                if (m.includes('INVALID_MERCHANT_CREDENTIALS')) {
+                    msg = 'بيانات دخول التاجر غير صحيحة — تأكد من كود التاجر أو البريد أو الهاتف وكلمة المرور.';
                 }
                 else if (m.includes('MERCHANT_ACCOUNT_INACTIVE') || m.includes('MERCHANT_ACCOUNT_REJECTED') || m.includes('MERCHANT_ACCOUNT_BANNED')) msg = 'حساب التاجر موقوف أو غير نشط حالياً — تواصل مع علاقات التجار عبر واتساب 905376744337+.';
                 else if (m.includes('WEAK_OR_DEFAULT_PASSWORD_REJECTED')) msg = 'كلمة المرور الافتراضية 123456 مرفوضة أمنياً.';

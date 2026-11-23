@@ -82,11 +82,35 @@
         const pillsBox = byId('categories-pills');
 
         if (countrySel && window.SAWYAN_GEO_CONFIG) {
-            countrySel.innerHTML = Object.keys(window.SAWYAN_GEO_CONFIG).map(function (code) {
+            const ls = window.SAWYAN && window.SAWYAN.LocaleSort;
+            const docLang = ls ? ls.getDocLang() : 'ar';
+            const allCodes = Object.keys(window.SAWYAN_GEO_CONFIG);
+            const topCodes = allCodes.filter(c => c === 'ALL');
+            const botCodes = allCodes.filter(c => c === 'PIONEER');
+            const midCodes = allCodes.filter(c => c !== 'ALL' && c !== 'PIONEER').sort(function (a, b) {
+                const ca = window.SAWYAN_GEO_CONFIG[a];
+                const cb = window.SAWYAN_GEO_CONFIG[b];
+                const ma = window.SAWYAN && window.SAWYAN.getCountryByCode ? window.SAWYAN.getCountryByCode(a) : null;
+                const mb = window.SAWYAN && window.SAWYAN.getCountryByCode ? window.SAWYAN.getCountryByCode(b) : null;
+                const na = docLang === 'en' ? ((ma && ma.nameEn) || ca.name) : ca.name;
+                const nb = docLang === 'en' ? ((mb && mb.nameEn) || cb.name) : cb.name;
+                return ls ? ls.compareStrings(na, nb, docLang) : na.localeCompare(nb, docLang);
+            });
+            countrySel.innerHTML = topCodes.concat(midCodes, botCodes).map(function (code) {
                 const cfg = window.SAWYAN_GEO_CONFIG[code];
-                return `<option value="${escapeHtml(code)}">${cfg.flag} ${escapeHtml(cfg.name)}</option>`;
+                const m = window.SAWYAN && window.SAWYAN.getCountryByCode ? window.SAWYAN.getCountryByCode(code) : null;
+                return `<option value="${escapeHtml(code)}" data-name-ar="${escapeHtml(cfg.name)}" data-name-en="${escapeHtml((m && m.nameEn) || cfg.name)}" data-flag="${escapeHtml(cfg.flag || '')}">${cfg.flag} ${escapeHtml(cfg.name)}</option>`;
             }).join('');
             countrySel.value = state.country;
+            if (window.SAWYAN && window.SAWYAN.SmartSearch) {
+                window.SAWYAN.SmartSearch.attachToSelect(countrySel, {
+                    kind: 'country',
+                    compact: true,
+                    placeholder: 'ابحث عن الدولة (عربي / English)...',
+                    showLetterHeaders: false,
+                    skipEmptyPlaceholder: false
+                });
+            }
         }
 
         populateCityFilter();
@@ -120,13 +144,31 @@
     function populateCityFilter() {
         const citySel = byId('city-filter');
         if (!citySel || !window.SAWYAN_GEO) return;
+        const ls = window.SAWYAN && window.SAWYAN.LocaleSort;
+        const docLang = ls ? ls.getDocLang() : 'ar';
         const cfg = window.SAWYAN_GEO.getCountryConfig(state.country);
         const cities = cfg.cities || { all: 'جميع المدن' };
-        citySel.innerHTML = Object.keys(cities).map(function (cKey) {
-            return `<option value="${escapeHtml(cKey)}">📍 ${escapeHtml(cities[cKey])}</option>`;
+        const keys = Object.keys(cities);
+        const top = keys.filter(k => k === 'all');
+        const rest = keys.filter(k => k !== 'all').sort(function (a, b) {
+            const na = docLang === 'en' ? a : cities[a];
+            const nb = docLang === 'en' ? b : cities[b];
+            return ls ? ls.compareStrings(na, nb, docLang) : na.localeCompare(nb, docLang);
+        });
+        citySel.innerHTML = top.concat(rest).map(function (cKey) {
+            return `<option value="${escapeHtml(cKey)}" data-name-ar="${escapeHtml(cities[cKey])}" data-name-en="${escapeHtml(cKey)}">📍 ${escapeHtml(cities[cKey])}</option>`;
         }).join('');
         if (!cities[state.city]) state.city = 'all';
         citySel.value = state.city;
+        if (window.SAWYAN && window.SAWYAN.SmartSearch) {
+            window.SAWYAN.SmartSearch.attachToSelect(citySel, {
+                kind: 'city',
+                compact: true,
+                placeholder: 'ابحث عن المدينة...',
+                showLetterHeaders: false,
+                skipEmptyPlaceholder: false
+            });
+        }
     }
 
     function syncGeoLinksAndBanner() {
@@ -158,9 +200,14 @@
             if (state.type !== 'all' && m.merchantType !== state.type && m.merchantType !== 'both') return false;
             if (state.category !== 'all' && m.categorySlug !== state.category) return false;
             if (state.search) {
-                const q = state.search.toLowerCase();
-                const blob = [m.businessName, m.category, m.countryName, m.city, m.district, m.code, m.description].join(' ').toLowerCase();
-                if (!blob.includes(q)) return false;
+                const cMeta = window.SAWYAN && typeof window.SAWYAN.getCountryByCode === 'function'
+                    ? window.SAWYAN.getCountryByCode(m.country) : null;
+                const blob = [m.businessName, m.category, m.countryName, cMeta ? cMeta.nameAr : '', cMeta ? cMeta.nameEn : '', m.country, m.city, m.district, m.code, m.description].join(' ');
+                if (window.SAWYAN && window.SAWYAN.SmartSearch && typeof window.SAWYAN.SmartSearch.matchesBilingualQuery === 'function') {
+                    if (!window.SAWYAN.SmartSearch.matchesBilingualQuery(blob, state.search)) return false;
+                } else if (!blob.toLowerCase().includes(state.search.toLowerCase())) {
+                    return false;
+                }
             }
             return true;
         });

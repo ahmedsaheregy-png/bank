@@ -28,6 +28,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/preview.css?v=20261121_launch_ui2">
     <link rel="stylesheet" href="shared/css/logo.css?v=20261121_launch_ui2">
+    <link rel="stylesheet" href="shared/css/smart-search.css?v=20261121_launch_geo">
 </head>
 <body>
 
@@ -117,6 +118,11 @@
             <p style="margin:0 0 12px; color:#475569; font-size:0.92rem; line-height:1.6;">
                 تتكيّف العملة وصندوق الهدف الشهري وتجار مدينتك تلقائياً مع اختيارك — كما يمكنك تصفح كل التجار حول العالم بحرية تامة.
             </p>
+            <div style="margin-bottom:10px;">
+                <input type="search" id="geoModalSearchInput" autocomplete="off"
+                    placeholder="🔍 ابحث عن الدولة أو المدينة بالعربية أو الإنجليزية (مثال: مصر / Egypt / القاهرة)..."
+                    style="width:100%;padding:10px 14px;border:1.5px solid #cbd5e1;border-radius:10px;font-family:inherit;font-size:0.92rem;font-weight:600;outline:none;">
+            </div>
             <div style="font-weight:800; font-size:0.9rem; margin-bottom:4px;">1. اختر النطاق / الدولة:</div>
             <div class="geo-countries-grid" id="geoModalCountries"></div>
 
@@ -628,7 +634,9 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="shared/config/supabase.js?v=20261121_launch_ui2"></script>
     <script src="shared/api/sawyan-api.js?v=20261121_launch_ui2"></script>
+    <script src="shared/data/countries.js?v=20261121_launch_geo"></script>
+    <script src="shared/components/smart-search.js?v=20261121_launch_geo"></script>
     <script src="js/demo-data.js?v=20261121_launch_ui2"></script>
-    <script src="js/preview.js?v=20261121_launch_ui2"></script>
+    <script src="js/preview.js?v=20261121_launch_geo"></script>
 </body>
 </html>

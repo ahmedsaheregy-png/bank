@@ -171,26 +171,50 @@
                     '<option value="all">كل الحالات</option><option value="pending_kyc">بانتظار KYC</option><option value="hold">محجوب الصرف (Hold)</option><option value="inactive">معطّل</option>' +
                 '</select>' +
                 '<select id="memCountrySel" style="padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px;font-family:Tajawal,sans-serif;">' +
-                    '<option value="all">كل الدول</option><option value="EG">🇪🇬 مصر</option><option value="TR">🇹🇷 تركيا</option>' +
+                    '<option value="all">🌍 كل الدول</option>' +
+                    ((window.SAWYAN && typeof window.SAWYAN.getCountriesSorted === 'function')
+                        ? window.SAWYAN.getCountriesSorted().map(function (c) {
+                            return '<option value="' + esc(c.code) + '" data-name-ar="' + esc(c.nameAr) + '" data-name-en="' + esc(c.nameEn || c.nameAr) + '" data-flag="' + esc(c.flag || '') + '">' + esc((c.flag || '') + ' ' + c.nameAr + ' (' + c.code + ')') + '</option>';
+                        }).join('')
+                        : '<option value="EG">🇪🇬 مصر</option><option value="TR">🇹🇷 تركيا</option>') +
                 '</select>' +
             '</div>';
         var tbl = page.querySelector('.table-container');
         page.insertBefore(div, tbl);
         document.getElementById('memSearchInput').oninput = function () { memFilter.q = this.value; renderMembersTable(); };
         document.getElementById('memStatusSel').onchange = function () { memFilter.status = this.value; renderMembersTable(); };
-        document.getElementById('memCountrySel').onchange = function () { memFilter.country = this.value; renderMembersTable(); };
+        document.getElementById('memCountrySel').onchange = function () { memFilter.country = this.value || 'all'; renderMembersTable(); };
+        if (window.SAWYAN && window.SAWYAN.SmartSearch) {
+            var mcs = document.getElementById('memCountrySel');
+            if (mcs) {
+                window.SAWYAN.SmartSearch.attachToSelect(mcs, {
+                    kind: 'country',
+                    compact: true,
+                    placeholder: 'ابحث عن الدولة (عربي / English)...',
+                    showLetterHeaders: true,
+                    skipEmptyPlaceholder: false
+                });
+            }
+        }
     }
     function renderMembersTable() {
         ensureMembersToolbar();
         var tbody = document.getElementById('membersTableBody');
         if (!tbody) return;
-        var q = (memFilter.q || '').trim().toLowerCase();
+        var q = (memFilter.q || '').trim();
         var list = OPS.members.filter(function (m) {
             if (memFilter.country !== 'all' && m.country !== memFilter.country) return false;
             if (memFilter.status === 'pending_kyc' && m.kyc !== 'pending') return false;
             if (memFilter.status === 'hold' && !m.hold) return false;
             if (memFilter.status === 'inactive' && m.active) return false;
-            if (q && (m.name + ' ' + m.code + ' ' + m.phone + ' ' + m.email).toLowerCase().indexOf(q) === -1) return false;
+            if (q) {
+                var hay = m.name + ' ' + m.code + ' ' + m.phone + ' ' + m.email + ' ' + m.country;
+                if (window.SAWYAN && window.SAWYAN.SmartSearch && typeof window.SAWYAN.SmartSearch.matchesBilingualQuery === 'function') {
+                    if (!window.SAWYAN.SmartSearch.matchesBilingualQuery(hay, q)) return false;
+                } else if (hay.toLowerCase().indexOf(q.toLowerCase()) === -1) {
+                    return false;
+                }
+            }
             return true;
         });
         tbody.innerHTML = list.length ? list.map(function (m) {

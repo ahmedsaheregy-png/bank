@@ -21,6 +21,9 @@ AS $$
 DECLARE
     v_cc          CHAR(2);
     v_q           TEXT;
+    v_q_norm_ar   TEXT;
+    v_q_no_al     TEXT;
+    v_q_is_latin  BOOLEAN := false;
     v_adm         TEXT;
     v_kind        VARCHAR(20);
     v_lim         INT;
@@ -31,6 +34,15 @@ DECLARE
 BEGIN
     v_cc   := upper(trim(COALESCE(p_country_code, 'EG')));
     v_q    := trim(COALESCE(p_query, ''));
+    v_q_is_latin := (v_q <> '' AND v_q ~ '[A-Za-z]' AND v_q !~ '[ء-ي]');
+    v_q_norm_ar := lower(
+        translate(
+            regexp_replace(v_q, '[\u064B-\u065F\u0670\u0640]', '', 'g'),
+            'أإآٱةىؤئ',
+            'ااااهيوي'
+        )
+    );
+    v_q_no_al := regexp_replace(v_q_norm_ar, '^ال(?=.{2,})', '');
     v_adm  := NULLIF(trim(COALESCE(p_admin1_filter, '')), '');
     v_kind := lower(trim(COALESCE(p_kind, 'all')));
     IF v_kind NOT IN ('all', 'cities', 'districts') THEN
@@ -100,13 +112,20 @@ BEGIN
                  OR g.search_vector ILIKE '%' || v_q || '%'
                  OR g.city_name ILIKE '%' || v_q || '%'
                  OR g.asciiname ILIKE '%' || v_q || '%'
+                 OR (
+                     NOT v_q_is_latin AND v_q_no_al <> '' AND (
+                         lower(translate(regexp_replace(g.city_name, '[\u064B-\u065F\u0670\u0640]', '', 'g'), 'أإآٱةىؤئ', 'ااااهيوي')) LIKE '%' || v_q_no_al || '%'
+                     )
+                 )
              )
            ORDER BY
              CASE WHEN COALESCE(g.alternate_names, '') LIKE '%__CURATED_AR__%' THEN 0 ELSE 1 END,
              CASE WHEN COALESCE(g.alternate_names, '') LIKE '%__GEO_DISTRICT__%' AND v_kind = 'districts' THEN 0
                   WHEN COALESCE(g.alternate_names, '') NOT LIKE '%__GEO_BULK__%' AND v_kind = 'cities' THEN 0
                   ELSE 1 END,
-             g.city_name ASC
+             CASE WHEN v_q_is_latin THEN lower(COALESCE(g.asciiname, g.city_name))
+                  ELSE lower(regexp_replace(translate(regexp_replace(g.city_name, '[\u064B-\u065F\u0670\u0640]', '', 'g'), 'أإآٱةىؤئ', 'ااااهيوي'), '^ال(?=.{2,})', ''))
+             END ASC
            LIMIT v_lim
       ) res;
 

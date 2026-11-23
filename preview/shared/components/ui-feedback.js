@@ -52,9 +52,6 @@
             : String(errOrMsg?.error_code || errOrMsg?.message || errOrMsg || '');
         const m = raw.trim();
         if (!m) return 'حدث خطأ غير متوقع، يرجى المحاولة مرة أخرى.';
-        if (m.includes('AUTH_RATE_LIMITED_15M')) {
-            return 'تم تعليق محاولات الدخول مؤقتاً لمدة 15 دقيقة بعد استنفاد 5 محاولات غير صحيحة حفاظاً على أمان الحساب.';
-        }
         if (m.includes('INVALID_CREDENTIALS') || m.includes('INVALID_MERCHANT_CREDENTIALS') || m.includes('ADMIN_INVALID_CREDENTIALS')) {
             return 'بيانات الدخول غير صحيحة — تأكد من المعرف وكلمة المرور وحاول مجدداً.';
         }

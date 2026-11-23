@@ -178,7 +178,20 @@
                     '<h4 style="margin:0 0 6px 0;color:#92400e;">✈️ ٢. طلب نقل دولة الإقامة (يسري مطلع الشهر المحاسبي الجديد دون تقسيم شهرك الحالي)</h4>' +
                     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:8px;">' +
                         '<select id="svMemMoveCountry" class="form-control">' +
-                            countries.map(function (c) { return '<option value="' + esc(c.country_code) + '">' + esc((c.country_name_i18n && c.country_name_i18n.ar) || c.country_code) + '</option>'; }).join('') +
+                            (function () {
+                                const ls = window.SAWYAN && window.SAWYAN.LocaleSort;
+                                const sorted = countries.slice().sort(function (a, b) {
+                                    const na = (a.country_name_i18n && a.country_name_i18n.ar) || a.country_code || '';
+                                    const nb = (b.country_name_i18n && b.country_name_i18n.ar) || b.country_code || '';
+                                    return ls ? ls.compareStrings(na, nb, ls.getDocLang()) : na.localeCompare(nb, 'ar');
+                                });
+                                return sorted.map(function (c) {
+                                    const m = window.SAWYAN && typeof window.SAWYAN.getCountryByCode === 'function' ? window.SAWYAN.getCountryByCode(c.country_code) : null;
+                                    const ar = (c.country_name_i18n && c.country_name_i18n.ar) || (m && m.nameAr) || c.country_code;
+                                    const en = (c.country_name_i18n && c.country_name_i18n.en) || (m && m.nameEn) || ar;
+                                    return '<option value="' + esc(c.country_code) + '" data-name-ar="' + esc(ar) + '" data-name-en="' + esc(en) + '" data-flag="' + esc((m && m.flag) || '') + '">' + esc(((m && m.flag) ? m.flag + ' ' : '') + ar) + '</option>';
+                                }).join('');
+                            })() +
                         '</select>' +
                         '<input id="svMemMoveDocNum" type="text" placeholder="رقم تأشيرة العمل / الإقامة الجديدة" class="form-control">' +
                         '<div id="svMemMoveFileUploader"></div>' +
@@ -186,6 +199,18 @@
                     '</div>' +
                 '</div>' +
             '</div>';
+        if (window.SAWYAN && window.SAWYAN.SmartSearch) {
+            const mvSel = document.getElementById('svMemMoveCountry');
+            if (mvSel) {
+                window.SAWYAN.SmartSearch.attachToSelect(mvSel, {
+                    kind: 'country',
+                    compact: true,
+                    placeholder: 'ابحث عن دولة الإقامة الجديدة (عربي / English)...',
+                    showLetterHeaders: true,
+                    skipEmptyPlaceholder: true
+                });
+            }
+        }
         if (window.SAWYAN && window.SAWYAN.ImageUpload) {
             window._svMemKycUploaders = {
                 kyc: window.SAWYAN.ImageUpload.mountUploader(document.getElementById('svMemKycFileUploader'), {

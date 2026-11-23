@@ -205,17 +205,25 @@
                 return false;
             }
             if (explorerState.searchQuery) {
-                const q = explorerState.searchQuery.toLowerCase();
+                const cMeta = window.SAWYAN && typeof window.SAWYAN.getCountryByCode === 'function'
+                    ? window.SAWYAN.getCountryByCode(m.country) : null;
                 const haystack = [
                     m.businessName,
                     m.category,
                     m.countryName,
+                    cMeta ? cMeta.nameAr : '',
+                    cMeta ? cMeta.nameEn : '',
+                    m.country,
                     m.city,
                     m.district,
                     m.description,
                     m.code
-                ].join(' ').toLowerCase();
-                if (!haystack.includes(q)) return false;
+                ].join(' ');
+                if (window.SAWYAN && window.SAWYAN.SmartSearch && typeof window.SAWYAN.SmartSearch.matchesBilingualQuery === 'function') {
+                    if (!window.SAWYAN.SmartSearch.matchesBilingualQuery(haystack, explorerState.searchQuery)) return false;
+                } else if (!haystack.toLowerCase().includes(explorerState.searchQuery.toLowerCase())) {
+                    return false;
+                }
             }
             return true;
         });
@@ -552,20 +560,66 @@
     function renderGeoModalContent() {
         const countriesEl = byId('geoModalCountries');
         const citiesEl = byId('geoModalCities');
+        const searchInp = byId('geoModalSearchInput');
         if (!countriesEl || !citiesEl) return;
 
-        let cHtml = '';
-        Object.keys(window.SAWYAN_GEO_CONFIG).forEach(function (code) {
+        const ls = window.SAWYAN && window.SAWYAN.LocaleSort;
+        const ss = window.SAWYAN && window.SAWYAN.SmartSearch;
+        const q = searchInp ? String(searchInp.value || '').trim() : '';
+        const qLang = ls ? ls.detectQueryLang(q, ls.getDocLang()) : 'ar';
+
+        const rawCodes = Object.keys(window.SAWYAN_GEO_CONFIG);
+        const specialTop = rawCodes.filter(c => c === 'ALL');
+        const specialBottom = rawCodes.filter(c => c === 'PIONEER');
+        let countryCodes = rawCodes.filter(c => c !== 'ALL' && c !== 'PIONEER');
+
+        const enrichCountry = (code) => {
             const item = window.SAWYAN_GEO_CONFIG[code];
+            const meta = (window.SAWYAN && typeof window.SAWYAN.getCountryByCode === 'function')
+                ? window.SAWYAN.getCountryByCode(code) : null;
+            return {
+                code,
+                item,
+                nameAr: item.name || (meta ? meta.nameAr : code),
+                nameEn: (meta && meta.nameEn) || item.name || code,
+                aliases: (meta && meta.aliases) || [],
+                dialCode: (meta && meta.dialCode) || ''
+            };
+        };
+
+        let enriched = countryCodes.map(enrichCountry);
+        if (q) {
+            enriched = enriched.filter(e => {
+                const blob = [e.nameAr, e.nameEn, e.code, e.dialCode, ...e.aliases, ...Object.values(e.item.cities || {})].join(' ');
+                return ss ? ss.matchesBilingualQuery(blob, q) : blob.toLowerCase().includes(q.toLowerCase());
+            });
+        }
+        enriched.sort((a, b) => {
+            const na = qLang === 'en' ? a.nameEn : a.nameAr;
+            const nb = qLang === 'en' ? b.nameEn : b.nameAr;
+            return ls ? ls.compareStrings(na, nb, qLang) : na.localeCompare(nb, qLang);
+        });
+
+        const ordered = (q ? [] : specialTop.map(enrichCountry))
+            .concat(enriched)
+            .concat(q ? [] : specialBottom.map(enrichCountry));
+
+        let cHtml = '';
+        ordered.forEach(function (entry) {
+            const code = entry.code;
+            const item = entry.item;
             const active = modalDraftGeo.country === code ? 'active' : '';
+            const primaryName = (code === 'ALL' || code === 'PIONEER')
+                ? item.name
+                : (qLang === 'en' ? `${entry.nameEn} (${entry.nameAr})` : entry.nameAr);
             cHtml += `
                 <button type="button" class="geo-country-opt ${active}" data-modal-country="${escapeHtml(code)}">
-                    <div style="font-size:1.25rem; margin-bottom:2px;">${item.flag} <strong>${escapeHtml(item.name)}</strong></div>
+                    <div style="font-size:1.15rem; margin-bottom:2px;">${item.flag} <strong>${escapeHtml(primaryName)}</strong></div>
                     <div style="font-size:0.78rem; color:#475569;">${escapeHtml(item.currencyCode)} • هدف: ${window.formatCurrency(item.monthlyTargetLocal, item.code)}</div>
                 </button>
             `;
         });
-        countriesEl.innerHTML = cHtml;
+        countriesEl.innerHTML = cHtml || '<div style="grid-column:1/-1;text-align:center;color:#64748b;padding:12px;font-weight:700;">لا توجد دولة مطابقة للبحث.</div>';
 
         countriesEl.querySelectorAll('[data-modal-country]').forEach(function (btn) {
             btn.addEventListener('click', function () {
@@ -577,8 +631,24 @@
 
         const draftCfg = window.SAWYAN_GEO.getCountryConfig(modalDraftGeo.country);
         const citiesMap = draftCfg.cities || { all: 'جميع المدن' };
+        const cityKeys = Object.keys(citiesMap);
+        const topCity = cityKeys.filter(k => k === 'all');
+        let otherCities = cityKeys.filter(k => k !== 'all');
+        if (q) {
+            const matchedCities = otherCities.filter(k => {
+                const blob = `${citiesMap[k]} ${k}`;
+                return ss ? ss.matchesBilingualQuery(blob, q) : blob.toLowerCase().includes(q.toLowerCase());
+            });
+            if (matchedCities.length > 0) otherCities = matchedCities;
+        }
+        otherCities.sort((a, b) => {
+            const na = qLang === 'en' ? a : citiesMap[a];
+            const nb = qLang === 'en' ? b : citiesMap[b];
+            return ls ? ls.compareStrings(na, nb, qLang) : na.localeCompare(nb, qLang);
+        });
+
         let cityHtml = '';
-        Object.keys(citiesMap).forEach(function (cKey) {
+        topCity.concat(otherCities).forEach(function (cKey) {
             const active = modalDraftGeo.city === cKey ? 'active' : '';
             cityHtml += `<button type="button" class="geo-city-chip ${active}" data-modal-city="${escapeHtml(cKey)}">${escapeHtml(citiesMap[cKey])}</button>`;
         });
@@ -595,8 +665,24 @@
     function initGeoModal() {
         const openTriggers = [byId('openGeoBarBtn'), byId('navGeoPill')];
         openTriggers.forEach(function (el) {
-            if (el) el.addEventListener('click', openGeoModal);
+            if (el) el.addEventListener('click', function () {
+                const inp = byId('geoModalSearchInput');
+                if (inp) inp.value = '';
+                openGeoModal();
+                if (inp) setTimeout(() => inp.focus(), 80);
+            });
         });
+        const modalSearch = byId('geoModalSearchInput');
+        if (modalSearch) {
+            modalSearch.addEventListener('input', renderGeoModalContent);
+            modalSearch.addEventListener('keydown', function (ev) {
+                if (ev.key === 'Enter') {
+                    ev.preventDefault();
+                    const first = document.querySelector('#geoModalCountries [data-modal-country]');
+                    if (first) first.click();
+                }
+            });
+        }
         if (byId('closeGeoModalBtn')) byId('closeGeoModalBtn').addEventListener('click', closeGeoModal);
         if (byId('geoModal')) {
             byId('geoModal').addEventListener('click', function (e) {

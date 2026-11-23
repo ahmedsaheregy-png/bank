@@ -68,10 +68,20 @@
         return { valid: true, clean, error: null };
     }
 
+    function normalizeDigitsLocal(str) {
+        if (global.SAWYAN && global.SAWYAN.LocaleSort && typeof global.SAWYAN.LocaleSort.normalizeDigits === 'function') {
+            return global.SAWYAN.LocaleSort.normalizeDigits(str);
+        }
+        return String(str || '')
+            .replace(/[\u0660-\u0669]/g, ch => String(ch.charCodeAt(0) - 0x0660))
+            .replace(/[\u06F0-\u06F9]/g, ch => String(ch.charCodeAt(0) - 0x06F0));
+    }
+
     /**
      * التحقق القياسي من رقم الهاتف بعد كود الدولة وفق عدد الأرقام (Digits) لكل دولة:
+     * - يحوّل الأرقام العربية/الهندية (٠١٢٣٤٥٦٧٨٩) إلى (0-9) تلقائياً
+     * - يدعم لصق الأرقام الدولية بصيغة + أو 00 ويكتشف اختلاف كود الدولة ليقترح التبديل
      * - يزيل صفر البداية المحلي تلقائياً في الدول التي تستخدمه (مثل 01012345678 -> 1012345678 بعد +20)
-     * - يرفض تكرار كود الدولة أو اختلافه
      * - يفحص الحد الأدنى والأقصى وبداية الجوال للدولة
      */
     function validatePhoneByCountry(rawValue, countryCode, isRequired) {
@@ -80,27 +90,36 @@
             ? global.SAWYAN.getPhoneRule(cc)
             : { countryCode: cc, dialCode: '+20', dialDigits: '20', minNsn: 7, maxNsn: 15, stripZero: true, mobileStart: null, example: '1012345678' };
 
-        const raw = String(rawValue || '').trim();
+        const raw = normalizeDigitsLocal(String(rawValue || '').trim());
         if (!raw) {
             return isRequired
-                ? { valid: false, e164: '', nsn: '', rule, strippedZero: false, error: `يرجى إدخال رقم الهاتف بدون كود الدولة (${rule.dialCode}).` }
-                : { valid: true, e164: '', nsn: '', rule, strippedZero: false, error: null };
+                ? { valid: false, e164: '', nsn: '', rule, strippedZero: false, suggestedCountry: null, error: `يرجى إدخال رقم الهاتف بدون كود الدولة (${rule.dialCode}).` }
+                : { valid: true, e164: '', nsn: '', rule, strippedZero: false, suggestedCountry: null, error: null };
         }
 
-        const compact = raw.replace(/[\s\-().]+/g, '');
+        let compact = raw.replace(/[\s\-().\u200E\u200F]+/g, '');
+        if (compact.startsWith('00') && compact.length >= 10) {
+            compact = '+' + compact.slice(2);
+        }
         if (!/^\+?[0-9]+$/.test(compact)) {
-            return { valid: false, e164: '', nsn: '', rule, strippedZero: false, error: 'رقم الهاتف يجب أن يحتوي على أرقام إنجليزية فقط (0-9).' };
+            return { valid: false, e164: '', nsn: '', rule, strippedZero: false, suggestedCountry: null, error: 'رقم الهاتف يجب أن يحتوي على أرقام فقط (0-9).' };
         }
 
         let nsn = compact.replace(/\D+/g, '');
         if (compact.startsWith('+')) {
             if (!nsn.startsWith(rule.dialDigits)) {
+                let suggestedCountry = null;
+                if (global.SAWYAN && typeof global.SAWYAN.findCountriesByDialDigits === 'function') {
+                    const matchedCountries = global.SAWYAN.findCountriesByDialDigits(nsn);
+                    if (matchedCountries.length > 0) suggestedCountry = matchedCountries[0];
+                }
                 return {
                     valid: false,
                     e164: '',
                     nsn: '',
                     rule,
                     strippedZero: false,
+                    suggestedCountry,
                     error: `كود الدولة الثابت هو (${rule.dialCode})؛ أدخل بقية الرقم فقط دون كود دولة مختلف.`
                 };
             }
@@ -125,6 +144,7 @@
                 nsn,
                 rule,
                 strippedZero,
+                suggestedCountry: null,
                 error: `رقم الهاتف لدولة ${rule.nameAr} بعد (${rule.dialCode}) يجب أن يتكون من ${lenText} (المدخل الآن ${nsn.length}). مثال: ${rule.example}`
             };
         }
@@ -136,6 +156,7 @@
                 nsn,
                 rule,
                 strippedZero,
+                suggestedCountry: null,
                 error: `رقم الجوال لدولة ${rule.nameAr} بعد (${rule.dialCode}) يجب أن يبدأ بالرقم (${rule.mobileStart.join(' أو ')})، مثال: ${rule.example}`
             };
         }
@@ -146,8 +167,322 @@
             nsn,
             rule,
             strippedZero,
+            suggestedCountry: null,
             error: null
         };
+    }
+
+    function generateStrongPassword() {
+        const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+        const lower = 'abcdefghijkmnopqrstuvwxyz';
+        const digits = '23456789';
+        const symbols = '@#$%&*!';
+        const all = upper + lower + digits + symbols;
+        const pick = s => s[Math.floor(Math.random() * s.length)];
+        const chars = [pick(upper), pick(upper), pick(lower), pick(lower), pick(digits), pick(digits), pick(symbols)];
+        while (chars.length < 12) chars.push(pick(all));
+        for (let i = chars.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [chars[i], chars[j]] = [chars[j], chars[i]];
+        }
+        return chars.join('');
+    }
+
+    const COMMON_EMAIL_DOMAIN_TYPOS = {
+        'gmial.com': 'gmail.com',
+        'gmal.com': 'gmail.com',
+        'gamil.com': 'gmail.com',
+        'gnail.com': 'gmail.com',
+        'gmail.con': 'gmail.com',
+        'gmail.co': 'gmail.com',
+        'gmail.cm': 'gmail.com',
+        'gmail.om': 'gmail.com',
+        'hotmial.com': 'hotmail.com',
+        'hotmal.com': 'hotmail.com',
+        'hotmail.con': 'hotmail.com',
+        'outlok.com': 'outlook.com',
+        'outllok.com': 'outlook.com',
+        'outlook.con': 'outlook.com',
+        'yaho.com': 'yahoo.com',
+        'yahooo.com': 'yahoo.com',
+        'yahoo.con': 'yahoo.com',
+        'iclod.com': 'icloud.com',
+        'icoud.com': 'icloud.com',
+        'icloud.con': 'icloud.com',
+        'live.con': 'live.com'
+    };
+
+    const QUICK_EMAIL_DOMAINS = ['gmail.com', 'outlook.com', 'icloud.com', 'yahoo.com'];
+
+    function suggestEmailFixOrDomains(rawEmail) {
+        const clean = normalizeDigitsLocal(String(rawEmail || '').trim().toLowerCase());
+        if (!clean || !clean.includes('@')) return { fix: null, domains: [] };
+        const parts = clean.split('@');
+        if (parts.length !== 2 || !parts[0]) return { fix: null, domains: [] };
+        const [localPart, domainPart] = parts;
+        if (COMMON_EMAIL_DOMAIN_TYPOS[domainPart]) {
+            return { fix: `${localPart}@${COMMON_EMAIL_DOMAIN_TYPOS[domainPart]}`, domains: [] };
+        }
+        if (!domainPart.includes('.')) {
+            const matches = QUICK_EMAIL_DOMAINS
+                .filter(d => !domainPart || d.startsWith(domainPart))
+                .map(d => `${localPart}@${d}`);
+            return { fix: null, domains: matches };
+        }
+        return { fix: null, domains: [] };
+    }
+
+    function attachEmailUXHelpers(emailInput, msgEl) {
+        if (!emailInput || emailInput.dataset.emailUxAttached === '1') return;
+        emailInput.dataset.emailUxAttached = '1';
+
+        const box = document.createElement('div');
+        box.className = 'reg-inline-suggest-box';
+        const anchor = msgEl || emailInput;
+        anchor.insertAdjacentElement('afterend', box);
+
+        function refreshSuggestions() {
+            const raw = emailInput.value || '';
+            const noSpace = normalizeDigitsLocal(raw).replace(/\s+/g, '');
+            if (noSpace !== raw) {
+                emailInput.value = noSpace;
+            }
+            const res = suggestEmailFixOrDomains(emailInput.value);
+            if (res.fix) {
+                box.className = 'reg-inline-suggest-box visible';
+                box.innerHTML = `<span style="color:#92400e;font-weight:700;">💡 هل تقصد:</span><button type="button" class="reg-suggest-pill is-fix" data-email-fill="${escapeHtml(res.fix)}">${escapeHtml(res.fix)} — تصحيح تلقائي ✓</button>`;
+            } else if (res.domains.length > 0) {
+                box.className = 'reg-inline-suggest-box visible';
+                box.innerHTML = `<span style="color:#475569;font-weight:700;">⚡ إكمال سريع:</span>` +
+                    res.domains.map(d => `<button type="button" class="reg-suggest-pill" dir="ltr" data-email-fill="${escapeHtml(d)}">${escapeHtml(d)}</button>`).join('');
+            } else {
+                box.className = 'reg-inline-suggest-box';
+                box.innerHTML = '';
+            }
+        }
+
+        function applyEmailFill(ev) {
+            const btn = ev.target.closest('[data-email-fill]');
+            if (!btn) return;
+            ev.preventDefault();
+            emailInput.value = btn.dataset.emailFill;
+            emailInput.dispatchEvent(new Event('input', { bubbles: true }));
+            emailInput.focus();
+        }
+        box.addEventListener('mousedown', applyEmailFill);
+        box.addEventListener('click', applyEmailFill);
+
+        emailInput.addEventListener('input', refreshSuggestions);
+        emailInput.addEventListener('blur', refreshSuggestions);
+    }
+
+    function attachPhoneUXHelpers(phoneInput, countrySelect, msgEl, onCountrySwitch) {
+        if (!phoneInput || phoneInput.dataset.phoneUxAttached === '1') return;
+        phoneInput.dataset.phoneUxAttached = '1';
+
+        if (global.SAWYAN && global.SAWYAN.SmartSearch && typeof global.SAWYAN.SmartSearch.attachAutoDigitNormalization === 'function') {
+            global.SAWYAN.SmartSearch.attachAutoDigitNormalization(phoneInput);
+        }
+
+        const box = document.createElement('div');
+        box.className = 'reg-inline-suggest-box';
+        const anchor = msgEl || phoneInput.closest('.dial-phone-group') || phoneInput;
+        anchor.insertAdjacentElement('afterend', box);
+
+        function refreshCountryHint() {
+            const cc = countrySelect ? countrySelect.value : 'EG';
+            const res = validatePhoneByCountry(phoneInput.value, cc, false);
+            if (!res.valid && res.suggestedCountry && res.suggestedCountry.code !== cc) {
+                const sc = res.suggestedCountry;
+                box.className = 'reg-inline-suggest-box visible';
+                box.innerHTML = `<button type="button" class="reg-suggest-pill is-fix" data-switch-cc="${escapeHtml(sc.code)}">🌍 هذا الرقم يبدأ بمفتاح ${escapeHtml(sc.flag)} ${escapeHtml(sc.nameAr)} (${escapeHtml(sc.dialCode)}) — تغيير الدولة تلقائياً؟</button>`;
+            } else {
+                box.className = 'reg-inline-suggest-box';
+                box.innerHTML = '';
+            }
+        }
+
+        function applySwitchCountry(ev) {
+            const btn = ev.target.closest('[data-switch-cc]');
+            if (!btn || !countrySelect) return;
+            ev.preventDefault();
+            const targetCc = btn.dataset.switchCc;
+            if ([...countrySelect.options].some(o => o.value === targetCc)) {
+                countrySelect.value = targetCc;
+                countrySelect.dispatchEvent(new Event('change', { bubbles: true }));
+                if (typeof onCountrySwitch === 'function') onCountrySwitch(targetCc);
+                setTimeout(() => phoneInput.dispatchEvent(new Event('input', { bubbles: true })), 80);
+            }
+        }
+        box.addEventListener('mousedown', applySwitchCountry);
+        box.addEventListener('click', applySwitchCountry);
+
+        phoneInput.addEventListener('input', refreshCountryHint);
+        if (countrySelect) countrySelect.addEventListener('change', refreshCountryHint);
+    }
+
+    function focusFirstInvalidField(el) {
+        if (!el) return;
+        const target = (el._swSmartSearch && el._swSmartSearch.inputEl) ? el._swSmartSearch.inputEl : el;
+        try {
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => { try { target.focus(); } catch (_e) {} }, 250);
+        } catch (_e) {}
+    }
+
+    /**
+     * شريط تقدم ذكي مباشر يحسب عدد الحقول الإلزامية المكتملة والوقت المتبقي المتوقع
+     */
+    function mountRegistrationProgress(formEl, opts) {
+        if (!formEl) return null;
+        const cfg = Object.assign({
+            insertBeforeEl: formEl.firstElementChild,
+            getRequiredCheckers: () => []
+        }, opts || {});
+
+        let card = formEl.querySelector('.reg-progress-card');
+        if (!card) {
+            card = document.createElement('div');
+            card.className = 'reg-progress-card';
+            card.setAttribute('aria-live', 'polite');
+            card.innerHTML = `
+                <div class="reg-progress-top">
+                    <span class="reg-progress-text">⏳ جاري تجهيز نموذج التسجيل...</span>
+                    <span class="reg-progress-eta"></span>
+                </div>
+                <div class="reg-progress-track"><div class="reg-progress-fill"></div></div>
+            `;
+            if (cfg.insertBeforeEl && cfg.insertBeforeEl.parentNode === formEl) {
+                formEl.insertBefore(card, cfg.insertBeforeEl);
+            } else {
+                formEl.insertBefore(card, formEl.firstChild);
+            }
+        }
+
+        const txtEl = card.querySelector('.reg-progress-text');
+        const etaEl = card.querySelector('.reg-progress-eta');
+        const fillEl = card.querySelector('.reg-progress-fill');
+
+        function update() {
+            const checks = cfg.getRequiredCheckers() || [];
+            const total = checks.length;
+            if (!total) {
+                card.style.display = 'none';
+                return;
+            }
+            card.style.display = 'block';
+            let done = 0;
+            checks.forEach(fn => { try { if (fn()) done++; } catch (_e) {} });
+            const pct = Math.round((done / total) * 100);
+            const left = total - done;
+            fillEl.style.width = `${pct}%`;
+            if (pct >= 100) {
+                txtEl.textContent = `✅ اكتملت جميع الحقول الإلزامية (${done}/${total}) — 100%`;
+                etaEl.textContent = 'جاهز للتسجيل الآن 🚀';
+                card.style.borderColor = '#10b981';
+            } else {
+                txtEl.textContent = `📋 التقدم: ${done} من ${total} حقول إلزامية (${pct}%)`;
+                etaEl.textContent = left <= 2 ? '⚡ تبقّى أقل من 20 ثانية' : `⏱️ متبقي ${left} حقول (~دقيقة واحدة)`;
+                card.style.borderColor = '#a7f3d0';
+            }
+        }
+
+        formEl.addEventListener('input', update);
+        formEl.addEventListener('change', update);
+        setTimeout(update, 120);
+        return { update, card };
+    }
+
+    /**
+     * حفظ تلقائي آمن لمسودة البيانات غير الحساسة في sessionStorage (لا يحفظ كلمة المرور أبداً)
+     */
+    function mountDraftAutoSave(formEl, opts) {
+        if (!formEl || typeof sessionStorage === 'undefined') return { clear: () => {}, restore: () => false };
+        const cfg = Object.assign({
+            storageKey: 'sawyan_reg_draft',
+            fieldIds: [],
+            onAfterRestore: null
+        }, opts || {});
+
+        const banner = document.createElement('div');
+        banner.className = 'reg-draft-banner';
+        banner.innerHTML = `
+            <span>✨ تم استعادة بياناتك المؤقتة تلقائياً حتى لا تعيد الكتابة.</span>
+            <button type="button" class="reg-draft-clear-btn">🗑️ مسح والبدء من جديد</button>
+        `;
+        formEl.insertBefore(banner, formEl.firstChild);
+
+        function clear() {
+            try { sessionStorage.removeItem(cfg.storageKey); } catch (_e) {}
+            banner.style.display = 'none';
+        }
+
+        function save() {
+            const data = {};
+            let hasAny = false;
+            cfg.fieldIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el || el.type === 'password' || el.readOnly) return;
+                const val = el.type === 'checkbox' ? el.checked : String(el.value || '');
+                if (val && val !== '') {
+                    data[id] = val;
+                    hasAny = true;
+                }
+            });
+            try {
+                if (hasAny) sessionStorage.setItem(cfg.storageKey, JSON.stringify(data));
+                else sessionStorage.removeItem(cfg.storageKey);
+            } catch (_e) {}
+        }
+
+        function restore() {
+            let raw = null;
+            try { raw = sessionStorage.getItem(cfg.storageKey); } catch (_e) {}
+            if (!raw) return false;
+            try {
+                const data = JSON.parse(raw);
+                if (!data || typeof data !== 'object') return false;
+                let restoredCount = 0;
+                cfg.fieldIds.forEach(id => {
+                    if (!(id in data)) return;
+                    const el = document.getElementById(id);
+                    if (!el || el.type === 'password' || el.readOnly) return;
+                    if (el.type === 'checkbox') {
+                        el.checked = Boolean(data[id]);
+                    } else if (!el.value || el.tagName === 'SELECT') {
+                        el.value = String(data[id]);
+                        restoredCount++;
+                    }
+                });
+                if (restoredCount > 0) {
+                    banner.style.display = 'flex';
+                    if (typeof cfg.onAfterRestore === 'function') cfg.onAfterRestore(data);
+                    return true;
+                }
+            } catch (_e) {}
+            return false;
+        }
+
+        banner.querySelector('.reg-draft-clear-btn').addEventListener('click', function () {
+            clear();
+            cfg.fieldIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el || el.readOnly || el.tagName === 'SELECT') return;
+                if (el.type === 'checkbox') el.checked = false;
+                else el.value = '';
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+        });
+
+        let saveTimer = null;
+        const scheduleSave = () => {
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(save, 280);
+        };
+        formEl.addEventListener('input', scheduleSave);
+        formEl.addEventListener('change', scheduleSave);
+
+        return { clear, save, restore };
     }
 
     function validatePasswordStrong(pwd, confirmPwd) {
@@ -205,11 +540,67 @@
         if (confirmEl) wrapEye(confirmEl);
 
         let meterEl = null;
+        let checklistEl = null;
+        let capsWarnEl = null;
         if (primaryWrap) {
             meterEl = document.createElement('div');
             meterEl.className = 'pwd-strength-meter';
             meterEl.innerHTML = '<div class="pwd-strength-bar"><span></span></div><small class="pwd-strength-label"></small>';
             primaryWrap.insertAdjacentElement('afterend', meterEl);
+
+            checklistEl = document.createElement('div');
+            checklistEl.className = 'pwd-checklist';
+            checklistEl.innerHTML = `
+                <span class="pwd-checklist-item" data-chk="len">○ 8 خانات على الأقل</span>
+                <span class="pwd-checklist-item" data-chk="letter">○ تحتوي على حروف</span>
+                <span class="pwd-checklist-item" data-chk="digit">○ تحتوي على أرقام</span>
+                <span class="pwd-checklist-item" data-chk="bonus">○ حرف كبير أو رمز (موصى به)</span>
+            `;
+            meterEl.insertAdjacentElement('afterend', checklistEl);
+
+            const toolsRow = document.createElement('div');
+            toolsRow.className = 'pwd-tools-row';
+            toolsRow.innerHTML = `
+                <button type="button" class="pwd-gen-btn">🎲 اقتراح كلمة مرور قوية</button>
+                <span class="pwd-capslock-warn">⚠️ زر الحروف الكبيرة (Caps Lock) مفعّل</span>
+            `;
+            checklistEl.insertAdjacentElement('afterend', toolsRow);
+
+            capsWarnEl = toolsRow.querySelector('.pwd-capslock-warn');
+            const genBtn = toolsRow.querySelector('.pwd-gen-btn');
+            genBtn.addEventListener('click', function () {
+                const pwd = generateStrongPassword();
+                inputEl.value = pwd;
+                inputEl.type = 'text';
+                const eye1 = primaryWrap.querySelector('.pwd-toggle-btn');
+                if (eye1) eye1.textContent = '🙈';
+                if (confirmEl) {
+                    confirmEl.value = pwd;
+                    confirmEl.type = 'text';
+                    const eye2 = confirmEl.parentElement && confirmEl.parentElement.querySelector('.pwd-toggle-btn');
+                    if (eye2) eye2.textContent = '🙈';
+                }
+                refreshState();
+                inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+                if (confirmEl) confirmEl.dispatchEvent(new Event('input', { bubbles: true }));
+                if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                    navigator.clipboard.writeText(pwd).catch(() => {});
+                    genBtn.textContent = '✅ تم الاقتراح والنسخ';
+                    setTimeout(() => { genBtn.textContent = '🎲 اقتراح كلمة مرور قوية'; }, 2400);
+                }
+            });
+
+            const onKeyCaps = function (ev) {
+                if (capsWarnEl && typeof ev.getModifierState === 'function') {
+                    capsWarnEl.classList.toggle('visible', Boolean(ev.getModifierState('CapsLock')));
+                }
+            };
+            inputEl.addEventListener('keydown', onKeyCaps);
+            inputEl.addEventListener('keyup', onKeyCaps);
+            if (confirmEl) {
+                confirmEl.addEventListener('keydown', onKeyCaps);
+                confirmEl.addEventListener('keyup', onKeyCaps);
+            }
         }
 
         let matchEl = null;
@@ -221,6 +612,23 @@
 
         function refreshState() {
             const p = inputEl.value || '';
+            if (checklistEl) {
+                const okLen = p.length >= 8;
+                const okLet = /[A-Za-z\u0600-\u06FF]/.test(p);
+                const okDig = /[0-9]/.test(p);
+                const okBon = /[A-Z]/.test(p) || /[^A-Za-z0-9]/.test(p);
+                const setChk = (k, ok, txt) => {
+                    const el = checklistEl.querySelector(`[data-chk="${k}"]`);
+                    if (el) {
+                        el.classList.toggle('ok', ok);
+                        el.textContent = (ok ? '✓ ' : '○ ') + txt;
+                    }
+                };
+                setChk('len', okLen, '8 خانات على الأقل');
+                setChk('letter', okLet, 'تحتوي على حروف');
+                setChk('digit', okDig, 'تحتوي على أرقام');
+                setChk('bonus', okBon, 'حرف كبير أو رمز (موصى به)');
+            }
             if (meterEl) {
                 const span = meterEl.querySelector('.pwd-strength-bar span');
                 const lbl = meterEl.querySelector('.pwd-strength-label');
@@ -505,7 +913,9 @@
 
     /**
      * نظام التدرج الجغرافي العالمي: الدولة -> المدينة/المحافظة -> الحي/المنطقة
-     * يغذي كافة مدن وأحياء العالم من قاعدة البيانات مع البحث الفوري وخيار الإدخال اليدوي
+     * - ترتيب أبجدي صارم حسب لغة العرض والبحث (أ ب ت ث ج للعربية، A B C D للإنجليزية ولكل لغة)
+     * - تكملة تلقائية فورية بمجرد كتابة أول حرف بالعربية أو الإنجليزية
+     * - تغذية فورية لجميع مدن وأحياء العالم من GeoNames مع خيار الإدخال اليدوي بضغطة واحدة
      */
     function mountWorldGeoCascade(opts) {
         const cfg = Object.assign({
@@ -517,15 +927,38 @@
             activeOnly: true,
             includeAllCountries: false,
             defaultCountry: 'EG',
+            explicitCountryFromUrl: false,
+            initialCityQuery: '',
+            autoDetectCountry: false,
             onCountryChange: null,
             onCityChange: null,
             onDistrictChange: null
         }, opts || {});
 
+        const ls = global.SAWYAN && global.SAWYAN.LocaleSort;
+        const ss = global.SAWYAN && global.SAWYAN.SmartSearch;
+
         let citiesCache = [];
+        let districtsCache = [];
         let activeCountriesMeta = [];
         let categoriesCache = [];
         let searchTimer = null;
+        let countryCombo = null;
+        let cityCombo = null;
+        let districtCombo = null;
+        let pendingUrlCity = String(cfg.initialCityQuery || '').trim();
+
+        function getDocLang() {
+            return ls ? ls.getDocLang() : ((document.documentElement.lang || 'ar').toLowerCase().split(/[-_]/)[0] || 'ar');
+        }
+
+        function sortByLocale(arr, textFn, lang) {
+            const targetLang = lang || getDocLang();
+            if (ls && typeof ls.sortItems === 'function') {
+                return ls.sortItems(arr, textFn, targetLang);
+            }
+            return arr.slice().sort((a, b) => String(textFn(a)).localeCompare(String(textFn(b)), targetLang));
+        }
 
         function resolveCountryDisplayName(row, fallbackMeta) {
             const i18n = row && row.country_name_i18n;
@@ -533,6 +966,60 @@
                 return i18n.ar || i18n.en || (fallbackMeta && fallbackMeta.nameAr) || row.country_code;
             }
             return (row && (row.name_ar || row.name_en)) || (fallbackMeta && fallbackMeta.nameAr) || (row && row.country_code) || '';
+        }
+
+        function mapCitiesToComboItems(cities) {
+            const docLang = getDocLang();
+            const sorted = sortByLocale(cities, c => {
+                const ar = String(c.city_name || c.asciiname || '').trim();
+                const en = String(c.asciiname || c.city_name || '').trim();
+                return docLang === 'en' ? en : ar;
+            }, docLang);
+            return sorted.map(c => {
+                const ar = String(c.city_name || c.asciiname || '').trim();
+                const en = String(c.asciiname || c.city_name || '').trim();
+                const adm1 = String(c.admin1_name || '').trim();
+                const cleanAdm = (adm1 && !adm1.startsWith('__GEO_') && adm1 !== ar) ? adm1 : '';
+                return {
+                    value: String(c.geoname_id),
+                    labelAr: ar,
+                    labelEn: en,
+                    flag: '🏙️',
+                    subAr: cleanAdm,
+                    subEn: cleanAdm,
+                    lat: c.latitude || '',
+                    lng: c.longitude || '',
+                    meta: { name: ar, admin1: adm1, lat: c.latitude || '', lng: c.longitude || '' }
+                };
+            });
+        }
+
+        function mapDistrictsToComboItems(districts, cityName) {
+            const docLang = getDocLang();
+            const sorted = sortByLocale(districts, d => (docLang === 'en' ? (d.nameEn || d.name) : d.name), docLang);
+            const list = [];
+            if (cityName) {
+                list.push({
+                    value: `وسط ${cityName}`,
+                    labelAr: `وسط / مركز ${cityName}`,
+                    labelEn: `Central ${cityName}`,
+                    flag: '📍',
+                    pinnedTop: true,
+                    meta: { name: `وسط ${cityName}` }
+                });
+            }
+            sorted.forEach(d => {
+                list.push({
+                    value: d.name,
+                    labelAr: d.name,
+                    labelEn: d.nameEn || d.name,
+                    flag: '📍',
+                    lat: d.lat || '',
+                    lng: d.lng || '',
+                    meta: { name: d.name, lat: d.lat || '', lng: d.lng || '' }
+                });
+            });
+            return list;
         }
 
         async function loadCountriesAndInitialCities() {
@@ -554,8 +1041,11 @@
                 allRows = [];
             }
 
-            const prevVal = countrySel.value || cfg.defaultCountry;
-            const list = [];
+            const detectedTzCountry = (ls && typeof ls.detectCountryFromTimezone === 'function') ? ls.detectCountryFromTimezone() : null;
+            const autoPicked = Boolean(cfg.autoDetectCountry && !cfg.explicitCountryFromUrl && detectedTzCountry);
+            const prevVal = autoPicked ? detectedTzCountry : (countrySel.value || cfg.defaultCountry);
+
+            let list = [];
             const dbSource = cfg.includeAllCountries && allRows.length > 0 ? allRows : rows;
 
             if (cfg.includeAllCountries && global.SAWYAN && Array.isArray(global.SAWYAN.Countries)) {
@@ -569,6 +1059,8 @@
                         name_ar: c.nameAr,
                         name_en: c.nameEn,
                         flag: c.flag || '',
+                        dialCode: c.dialCode || '',
+                        aliases: c.aliases || [],
                         is_active: isAct
                     });
                 });
@@ -583,29 +1075,129 @@
                         name_ar: resolveCountryDisplayName(r, meta),
                         name_en: (r.country_name_i18n && r.country_name_i18n.en) || (meta ? meta.nameEn : code),
                         flag: (meta && meta.flag) ? meta.flag : '',
+                        dialCode: (meta && meta.dialCode) ? meta.dialCode : '',
+                        aliases: (meta && meta.aliases) ? meta.aliases : [],
                         is_active: r.is_active !== false
                     });
                 });
             } else if (global.SAWYAN && Array.isArray(global.SAWYAN.Countries)) {
                 ['EG', 'SA', 'TR', 'US', 'AE', 'KW', 'QA', 'JO', 'MA', 'GB', 'DE', 'FR'].forEach(cc => {
                     const c = global.SAWYAN.getCountryByCode(cc);
-                    if (c) list.push({ code: c.code, name_ar: c.nameAr, name_en: c.nameEn, flag: c.flag, is_active: true });
+                    if (c) list.push({ code: c.code, name_ar: c.nameAr, name_en: c.nameEn, flag: c.flag, dialCode: c.dialCode || '', aliases: c.aliases || [], is_active: true });
                 });
             }
+
+            // الترتيب الأبجدي الأصلي الصارم حسب لغة العرض (أ ب ت ث ج للعربية، A B C D للإنجليزية)
+            const docLang = getDocLang();
+            list = sortByLocale(list, item => {
+                if (ls && typeof ls.getLocalizedCountryName === 'function') {
+                    return ls.getLocalizedCountryName({ code: item.code, nameAr: item.name_ar, nameEn: item.name_en }, docLang);
+                }
+                return docLang === 'en' ? item.name_en : item.name_ar;
+            }, docLang);
 
             countrySel.innerHTML = '';
             list.forEach(item => {
                 const opt = document.createElement('option');
                 opt.value = item.code;
                 const badge = cfg.includeAllCountries && item.is_active ? ' ✓ (مفعّلة)' : '';
-                opt.textContent = `${item.flag ? item.flag + ' ' : ''}${item.name_ar} (${item.code})${badge}`;
+                const disp = docLang === 'en' ? item.name_en : item.name_ar;
+                opt.textContent = `${item.flag ? item.flag + ' ' : ''}${disp} (${item.code})${badge}`;
+                opt.dataset.nameAr = item.name_ar;
+                opt.dataset.nameEn = item.name_en;
+                opt.dataset.flag = item.flag || '';
+                opt.dataset.dialCode = item.dialCode || '';
+                opt.dataset.code = item.code;
+                opt.dataset.active = item.is_active ? '1' : '0';
                 countrySel.appendChild(opt);
             });
 
-            if ([...countrySel.options].some(o => o.value === prevVal)) {
+            const matchedInitial = [...countrySel.options].some(o => o.value === prevVal);
+            if (matchedInitial) {
                 countrySel.value = prevVal;
+            } else if ([...countrySel.options].some(o => o.value === cfg.defaultCountry)) {
+                countrySel.value = cfg.defaultCountry;
             } else if (countrySel.options.length > 0) {
                 countrySel.selectedIndex = 0;
+            }
+
+            // Upgrade countrySelect into Smart Multilingual Autocomplete Combobox (unless hidden)
+            if (ss && countrySel.style.display !== 'none') {
+                const activeCodes = list.filter(x => x.is_active).map(x => x.code).slice(0, 6);
+                countryCombo = ss.attachToSelect(countrySel, {
+                    kind: 'country',
+                    placeholder: 'اكتب أول أحرف الدولة بالعربية أو الإنجليزية (مثال: مصر / Egypt)...',
+                    emptyText: 'لم يتم العثور على دولة مطابقة — جرّب بالعربية أو الإنجليزية أو مفتاح الهاتف (+20).',
+                    showLetterHeaders: list.length >= 14,
+                    showQuickPicks: list.length >= 10,
+                    suggestedCode: detectedTzCountry,
+                    quickPickCodes: activeCodes,
+                    skipEmptyPlaceholder: true
+                });
+                countryCombo.setItems(list.map(item => ({
+                    value: item.code,
+                    labelAr: item.name_ar,
+                    labelEn: item.name_en,
+                    flag: item.flag || '🌍',
+                    code: item.code,
+                    dialCode: item.dialCode || '',
+                    badge: cfg.includeAllCountries && item.is_active ? 'مفعّلة' : '',
+                    aliases: item.aliases || [],
+                    isActive: item.is_active
+                })));
+                countryCombo.setValue(countrySel.value, true);
+
+                // Auto-detected timezone visual hint
+                if (autoPicked && matchedInitial && countryCombo.wrap) {
+                    let hintEl = countryCombo.wrap.parentElement && countryCombo.wrap.parentElement.querySelector('.geo-auto-hint');
+                    if (!hintEl) {
+                        hintEl = document.createElement('div');
+                        hintEl.className = 'geo-auto-hint visible';
+                        countryCombo.wrap.insertAdjacentElement('afterend', hintEl);
+                    }
+                    const selObj = list.find(x => x.code === countrySel.value);
+                    hintEl.textContent = `📍 تم اختيار (${selObj ? selObj.name_ar : countrySel.value}) تلقائياً حسب منطقتك الزمنية — يمكنك الكتابة لتغييرها فوراً.`;
+                    hintEl.classList.add('visible');
+                }
+            }
+
+            // Hide redundant separate citySearchInput when unified smart city combobox is active
+            if (ss && cfg.citySelect) {
+                if (cfg.citySearchInput) {
+                    cfg.citySearchInput.style.display = 'none';
+                }
+                cityCombo = ss.attachToSelect(cfg.citySelect, {
+                    kind: 'city',
+                    placeholder: 'اكتب أول أحرف المدينة أو المحافظة (عربي أو English)...',
+                    emptyText: 'لا توجد مدينة مطابقة — جرّب كتابة الاسم بالعربية أو الإنجليزية.',
+                    showLetterHeaders: true,
+                    skipEmptyPlaceholder: true,
+                    onRemoteSearch: async (q) => {
+                        const ccNow = cfg.countrySelect ? cfg.countrySelect.value : 'EG';
+                        const resCities = await fetchCitiesList(ccNow, q);
+                        return mapCitiesToComboItems(resCities);
+                    }
+                });
+            }
+
+            if (ss && cfg.districtSelect) {
+                districtCombo = ss.attachToSelect(cfg.districtSelect, {
+                    kind: 'district',
+                    placeholder: 'ابحث عن الحي / المنطقة أو أدخله يدوياً...',
+                    emptyText: 'لم نجد هذا الحي في القائمة — اضغط بالأسفل لإضافته يدوياً فوراً.',
+                    showLetterHeaders: true,
+                    allowManual: true,
+                    manualValue: '__MANUAL__',
+                    manualActionLabel: (q) => `✍️ استخدام «${q}» كاسم الحي / المنطقة`,
+                    onManualPick: (typedText) => {
+                        if (cfg.districtManualInput) {
+                            cfg.districtManualInput.value = typedText || cfg.districtManualInput.value || '';
+                            toggleManualDistrictInput(true);
+                            cfg.districtManualInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                    },
+                    skipEmptyPlaceholder: true
+                });
             }
 
             await loadCitiesForCountry(countrySel.value, '');
@@ -614,11 +1206,7 @@
             }
         }
 
-        async function loadCitiesForCountry(cc, searchQuery) {
-            const citySel = cfg.citySelect;
-            if (!citySel) return;
-            citySel.innerHTML = '<option value="">⏳ جاري تحميل المدن والمحافظات...</option>';
-
+        async function fetchCitiesList(cc, searchQuery) {
             let cities = [];
             try {
                 if (global.SAWYAN && global.SAWYAN.API && typeof global.SAWYAN.API.searchGeonamesLocations === 'function') {
@@ -626,13 +1214,29 @@
                         countryCode: cc,
                         query: searchQuery || '',
                         kind: 'cities',
-                        limit: 120
+                        limit: 150
                     });
                     cities = (res && Array.isArray(res.results)) ? res.results : [];
                 }
             } catch (_e) {
                 cities = [];
             }
+            return cities;
+        }
+
+        async function loadCitiesForCountry(cc, searchQuery) {
+            const citySel = cfg.citySelect;
+            if (!citySel) return;
+            citySel.innerHTML = '<option value="">⏳ جاري تحميل المدن والمحافظات...</option>';
+            if (cityCombo) cityCombo.setLoading(true);
+
+            const rawCities = await fetchCitiesList(cc, searchQuery);
+            const docLang = getDocLang();
+            const cities = sortByLocale(rawCities, c => {
+                const ar = String(c.city_name || c.asciiname || '').trim();
+                const en = String(c.asciiname || c.city_name || '').trim();
+                return docLang === 'en' ? en : ar;
+            }, docLang);
 
             citiesCache = cities;
             const prevCityId = citySel.dataset.pendingCityId || '';
@@ -642,35 +1246,86 @@
             placeholderOpt.value = '';
             placeholderOpt.textContent = cities.length > 0
                 ? '— اختر المدينة / المحافظة —'
-                : '— لم يتم العثور على مدينة (جرّب كتابة الاسم بالبحث أعلى القائمة) —';
+                : '— لم يتم العثور على مدينة —';
             citySel.appendChild(placeholderOpt);
 
             cities.forEach(c => {
                 const opt = document.createElement('option');
                 const dispName = String(c.city_name || c.asciiname || '').trim();
+                const asciiName = String(c.asciiname || c.city_name || '').trim();
                 const adm1 = String(c.admin1_name || '').trim();
                 opt.value = String(c.geoname_id);
                 const stateLabel = (adm1 && !adm1.startsWith('__GEO_') && adm1 !== dispName) ? ` — ${adm1}` : '';
                 opt.textContent = `${dispName}${stateLabel}`;
                 opt.dataset.name = dispName;
+                opt.dataset.nameAr = dispName;
+                opt.dataset.nameEn = asciiName;
+                opt.dataset.asciiname = asciiName;
                 opt.dataset.admin1 = adm1;
                 opt.dataset.lat = c.latitude || '';
                 opt.dataset.lng = c.longitude || '';
                 citySel.appendChild(opt);
             });
 
+            if (cityCombo) {
+                cityCombo.setLoading(false);
+                cityCombo.setItems(mapCitiesToComboItems(cities));
+            }
+
             if (prevCityId && [...citySel.options].some(o => o.value === String(prevCityId))) {
                 citySel.value = String(prevCityId);
                 delete citySel.dataset.pendingCityId;
+                if (cityCombo) cityCombo.setValue(String(prevCityId), true);
                 await loadDistrictsForSelectedCity();
+            } else if (pendingUrlCity && pendingUrlCity.toLowerCase() !== 'all' && cities.length > 0) {
+                // دعم معامل ?city=cairo أو اسم عربي/إنجليزي من الرابط تلقائياً
+                const qLow = pendingUrlCity.toLowerCase();
+                const qAr = ls ? ls.normalizeArabic(pendingUrlCity) : qLow;
+                const cityAliases = {
+                    cairo: ['cairo', 'القاهرة'],
+                    giza: ['giza', 'الجيزة'],
+                    alex: ['alexandria', 'الإسكندرية', 'الاسكندرية'],
+                    mansoura: ['mansoura', 'المنصورة'],
+                    riyadh: ['riyadh', 'الرياض'],
+                    jeddah: ['jeddah', 'جدة'],
+                    dammam: ['dammam', 'الدمام'],
+                    makkah: ['mecca', 'makkah', 'مكة'],
+                    istanbul: ['istanbul', 'إسطنبول', 'اسطنبول'],
+                    ankara: ['ankara', 'أنقرة', 'انقرة'],
+                    bursa: ['bursa', 'بورصة'],
+                    dubai: ['dubai', 'دبي'],
+                    abudhabi: ['abu dhabi', 'أبوظبي', 'ابوظبي'],
+                    sharjah: ['sharjah', 'الشارقة']
+                };
+                const needles = cityAliases[qLow] || [qLow, qAr];
+                const foundCity = cities.find(c => {
+                    const cnAr = ls ? ls.normalizeArabic(c.city_name || '') : String(c.city_name || '').toLowerCase();
+                    const cnEn = String(c.asciiname || '').toLowerCase();
+                    return needles.some(n => cnEn === n || cnEn.includes(n) || cnAr === (ls ? ls.normalizeArabic(n) : n) || cnAr.includes(ls ? ls.normalizeArabic(n) : n));
+                });
+                pendingUrlCity = '';
+                if (foundCity) {
+                    citySel.value = String(foundCity.geoname_id);
+                    if (cityCombo) cityCombo.setValue(String(foundCity.geoname_id), true);
+                    await loadDistrictsForSelectedCity();
+                } else {
+                    if (cityCombo) cityCombo.setValue('', true);
+                    resetDistrictSelect();
+                }
             } else {
+                if (cityCombo) cityCombo.setValue('', true);
                 resetDistrictSelect();
             }
         }
 
         function resetDistrictSelect() {
             if (!cfg.districtSelect) return;
+            districtsCache = [];
             cfg.districtSelect.innerHTML = '<option value="">— اختر الحي / المنطقة (بعد اختيار المدينة) —</option><option value="__MANUAL__">✍️ إدخال اسم الحي يدوياً...</option>';
+            if (districtCombo) {
+                districtCombo.setItems([]);
+                districtCombo.setValue('', true);
+            }
             toggleManualDistrictInput(false);
         }
 
@@ -709,6 +1364,7 @@
             }
 
             distSel.innerHTML = '<option value="">⏳ جاري جلب الأحياء والمناطق...</option>';
+            if (districtCombo) districtCombo.setLoading(true);
             let districts = [];
             try {
                 if (global.SAWYAN && global.SAWYAN.API && typeof global.SAWYAN.API.searchGeonamesLocations === 'function') {
@@ -718,7 +1374,7 @@
                         query: '',
                         admin1Filter: primaryFilter || null,
                         kind: 'districts',
-                        limit: 120
+                        limit: 150
                     });
                     let rows = (res && Array.isArray(res.results)) ? res.results : [];
                     if (rows.length === 0 && cityName) {
@@ -726,7 +1382,7 @@
                             countryCode: cc,
                             query: cityName.split('—')[0].trim(),
                             kind: 'districts',
-                            limit: 60
+                            limit: 80
                         });
                         rows = (res && Array.isArray(res.results)) ? res.results : [];
                     }
@@ -734,10 +1390,12 @@
                     rows.forEach(r => {
                         if (Number(r.geoname_id) === cityId) return;
                         const cleanName = String(r.city_name || r.asciiname || '').trim();
+                        const asciiName = String(r.asciiname || r.city_name || '').trim();
                         if (cleanName && !seen.has(cleanName.toLowerCase())) {
                             seen.add(cleanName.toLowerCase());
                             districts.push({
                                 name: cleanName,
+                                nameEn: asciiName,
                                 lat: r.latitude,
                                 lng: r.longitude
                             });
@@ -747,6 +1405,11 @@
             } catch (_e) {
                 districts = [];
             }
+
+            // الترتيب الأبجدي الأصلي للأحياء حسب اللغة (أ ب ت ث ج للعربية، A B C D للإنجليزية)
+            const docLang = getDocLang();
+            districts = sortByLocale(districts, d => (docLang === 'en' ? (d.nameEn || d.name) : d.name), docLang);
+            districtsCache = districts;
 
             distSel.innerHTML = '';
             const defOpt = document.createElement('option');
@@ -760,6 +1423,8 @@
                 const centerOpt = document.createElement('option');
                 centerOpt.value = `وسط ${cityName}`;
                 centerOpt.textContent = `وسط / مركز ${cityName}`;
+                centerOpt.dataset.nameAr = `وسط / مركز ${cityName}`;
+                centerOpt.dataset.nameEn = `Central ${cityName}`;
                 distSel.appendChild(centerOpt);
             }
 
@@ -767,6 +1432,8 @@
                 const opt = document.createElement('option');
                 opt.value = d.name;
                 opt.textContent = d.name;
+                opt.dataset.nameAr = d.name;
+                opt.dataset.nameEn = d.nameEn || d.name;
                 if (d.lat) opt.dataset.lat = d.lat;
                 if (d.lng) opt.dataset.lng = d.lng;
                 distSel.appendChild(opt);
@@ -777,11 +1444,17 @@
             manualOpt.textContent = '✍️ حي / منطقة أخرى (إدخال يدوي)...';
             distSel.appendChild(manualOpt);
 
+            if (districtCombo) {
+                districtCombo.setLoading(false);
+                districtCombo.setItems(mapDistrictsToComboItems(districts, cityName));
+            }
+
             const pendingDist = distSel.dataset.pendingDistrict || '';
             if (pendingDist) {
                 delete distSel.dataset.pendingDistrict;
                 setDistrictValue(pendingDist);
             } else {
+                if (districtCombo) districtCombo.setValue('', true);
                 toggleManualDistrictInput(false);
             }
         }
@@ -791,16 +1464,19 @@
             if (!cfg.districtSelect) return;
             if (!clean) {
                 cfg.districtSelect.value = '';
+                if (districtCombo) districtCombo.setValue('', true);
                 toggleManualDistrictInput(false);
                 return;
             }
             const match = [...cfg.districtSelect.options].find(o => o.value === clean);
             if (match) {
                 cfg.districtSelect.value = clean;
+                if (districtCombo) districtCombo.setValue(clean, true);
                 toggleManualDistrictInput(false);
             } else {
                 cfg.districtSelect.value = '__MANUAL__';
                 if (cfg.districtManualInput) cfg.districtManualInput.value = clean;
+                if (districtCombo) districtCombo.setValue('__MANUAL__', true);
                 toggleManualDistrictInput(true);
             }
         }
@@ -820,6 +1496,8 @@
         if (cfg.countrySelect) {
             cfg.countrySelect.addEventListener('change', async function () {
                 if (cfg.citySearchInput) cfg.citySearchInput.value = '';
+                const hintEl = countryCombo && countryCombo.wrap && countryCombo.wrap.parentElement && countryCombo.wrap.parentElement.querySelector('.geo-auto-hint');
+                if (hintEl) hintEl.classList.remove('visible');
                 await loadCitiesForCountry(cfg.countrySelect.value, '');
                 if (typeof cfg.onCountryChange === 'function') {
                     cfg.onCountryChange(cfg.countrySelect.value);
@@ -877,7 +1555,8 @@
             },
             getDistrict: getDistrictValue,
             getActiveCountriesMeta: function () { return activeCountriesMeta; },
-            getCategories: function () { return categoriesCache; }
+            getCategories: function () { return categoriesCache; },
+            getCombos: function () { return { country: countryCombo, city: cityCombo, district: districtCombo }; }
         };
     }
 
@@ -1049,10 +1728,18 @@
 
     global.SAWYAN.RegEngine = {
         escapeHtml,
+        normalizeDigits: normalizeDigitsLocal,
         validateEmailStrict,
         validatePhoneByCountry,
         validatePasswordStrong,
+        generateStrongPassword,
+        suggestEmailFixOrDomains,
+        attachEmailUXHelpers,
+        attachPhoneUXHelpers,
         attachPasswordEnhancements,
+        focusFirstInvalidField,
+        mountRegistrationProgress,
+        mountDraftAutoSave,
         extractCoordsFromGoogleMapsUrl,
         normalizeCoords,
         mountGeoPicker,

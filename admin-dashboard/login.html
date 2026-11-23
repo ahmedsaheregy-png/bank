@@ -168,12 +168,8 @@
             if (!box) return;
             const m = String(raw || (extraPayload && extraPayload.error_code) || '');
             let msg = m || 'تعذر التحقق من بيانات الدخول الإدارية';
-            if (m.includes('AUTH_RATE_LIMITED_15M')) msg = 'تم تعليق محاولات الدخول مؤقتاً لمدة 15 دقيقة بعد استنفاد 5 محاولات خاطئة.';
-            else if (m.includes('ADMIN_INVALID_CREDENTIALS')) {
-                const rem = (extraPayload && extraPayload.attempts_remaining !== undefined)
-                    ? ` (المحاولات المتبقية: ${extraPayload.attempts_remaining})`
-                    : '';
-                msg = 'البريد المؤسسي أو كلمة المرور غير صحيحة' + rem + '.';
+            if (m.includes('ADMIN_INVALID_CREDENTIALS')) {
+                msg = 'البريد المؤسسي أو كلمة المرور غير صحيحة.';
             }
             else if (m.includes('ADMIN_ACCOUNT_DEACTIVATED')) msg = 'تم إيقاف هذا الحساب الإداري — راجع المؤسس السيادي.';
             else if (m.includes('ADMIN_LOGIN_MISSING_CREDENTIALS')) msg = 'يرجى إدخال البريد المؤسسي وكلمة المرور.';

@@ -509,9 +509,11 @@
         }
         ov.style.display = 'flex';
 
-        const countriesList = (window.SAWYAN && Array.isArray(window.SAWYAN.Countries))
-            ? window.SAWYAN.Countries
-            : [{ code: 'EG', nameAr: 'مصر' }, { code: 'SA', nameAr: 'السعودية' }, { code: 'TR', nameAr: 'تركيا' }];
+        const countriesList = (window.SAWYAN && typeof window.SAWYAN.getCountriesSorted === 'function')
+            ? window.SAWYAN.getCountriesSorted()
+            : ((window.SAWYAN && Array.isArray(window.SAWYAN.Countries))
+                ? window.SAWYAN.Countries
+                : [{ code: 'EG', nameAr: 'مصر', nameEn: 'Egypt', flag: '🇪🇬' }, { code: 'SA', nameAr: 'السعودية', nameEn: 'Saudi Arabia', flag: '🇸🇦' }, { code: 'TR', nameAr: 'تركيا', nameEn: 'Turkey', flag: '🇹🇷' }]);
 
         ov.innerHTML = `
             <div class="sv-pitch-modal-box">
@@ -570,6 +572,19 @@
                 _pitchMap = null;
             }
         });
+
+        if (window.SAWYAN && window.SAWYAN.SmartSearch) {
+            const pitchCtry = document.getElementById('svPitchCountry');
+            if (pitchCtry) {
+                window.SAWYAN.SmartSearch.attachToSelect(pitchCtry, {
+                    kind: 'country',
+                    compact: true,
+                    placeholder: 'ابحث عن الدولة (عربي / English)...',
+                    showLetterHeaders: true,
+                    skipEmptyPlaceholder: false
+                });
+            }
+        }
 
         if (typeof window.L !== 'undefined') {
             const lat0 = Number(document.getElementById('svPitchLat').value);

@@ -2263,13 +2263,22 @@ async function loadNearbyMerchants() {
         if (merchantFilterState.country !== 'ALL' && String(m.country_code || '').toUpperCase() !== merchantFilterState.country) return false;
         if (merchantFilterState.category !== 'all' && String(m.category || m.category_code || '') !== merchantFilterState.category) return false;
         if (merchantFilterState.q) {
-            const hay = `${m.business_name || ''} ${m.branch_name || ''} ${m.address || ''} ${m.merchant_code || ''}`.toLowerCase();
-            if (!hay.includes(merchantFilterState.q.toLowerCase())) return false;
+            const cMeta = window.SAWYAN && typeof window.SAWYAN.getCountryByCode === 'function'
+                ? window.SAWYAN.getCountryByCode(m.country_code) : null;
+            const hay = `${m.business_name || ''} ${m.branch_name || ''} ${m.address || ''} ${m.merchant_code || ''} ${m.country_code || ''} ${cMeta ? cMeta.nameAr : ''} ${cMeta ? cMeta.nameEn : ''}`;
+            if (window.SAWYAN && window.SAWYAN.SmartSearch && typeof window.SAWYAN.SmartSearch.matchesBilingualQuery === 'function') {
+                if (!window.SAWYAN.SmartSearch.matchesBilingualQuery(hay, merchantFilterState.q)) return false;
+            } else if (!hay.toLowerCase().includes(merchantFilterState.q.toLowerCase())) {
+                return false;
+            }
         }
         return true;
     }).sort((a, b) => {
         if (merchantFilterState.sort === 'cashback_desc') return Number(b.plan_cashback_pct || 0) - Number(a.plan_cashback_pct || 0);
-        if (merchantFilterState.sort === 'name') return String(a.business_name || '').localeCompare(String(b.business_name || ''), 'ar');
+        if (merchantFilterState.sort === 'name') {
+            const ls = window.SAWYAN && window.SAWYAN.LocaleSort;
+            return ls ? ls.compareStrings(a.business_name || '', b.business_name || '', ls.getDocLang()) : String(a.business_name || '').localeCompare(String(b.business_name || ''), 'ar');
+        }
         const da = a._distanceKm !== null ? a._distanceKm : 999999;
         const db = b._distanceKm !== null ? b._distanceKm : 999999;
         return da - db;
@@ -2301,10 +2310,7 @@ async function loadNearbyMerchants() {
             <input type="search" id="memberMerchSearch" class="form-control" placeholder="ابحث باسم المتجر أو العنوان..." value="${esc(merchantFilterState.q)}">
             <select id="memberMerchCountry" class="form-control">
                 <option value="ALL" ${merchantFilterState.country === 'ALL' ? 'selected' : ''}>🌍 كل الدول</option>
-                <option value="EG" ${merchantFilterState.country === 'EG' ? 'selected' : ''}>🇪🇬 مصر</option>
-                <option value="TR" ${merchantFilterState.country === 'TR' ? 'selected' : ''}>🇹🇷 تركيا</option>
-                <option value="SA" ${merchantFilterState.country === 'SA' ? 'selected' : ''}>🇸🇦 السعودية</option>
-                <option value="AE" ${merchantFilterState.country === 'AE' ? 'selected' : ''}>🇦🇪 الإمارات</option>
+                ${buildWorldCountryOptions({ selectedCode: merchantFilterState.country === 'ALL' ? '' : merchantFilterState.country, includeAutoOption: false })}
             </select>
             <select id="memberMerchCategory" class="form-control">
                 <option value="all" ${merchantFilterState.category === 'all' ? 'selected' : ''}>📂 كل الفئات</option>
@@ -2368,9 +2374,22 @@ async function loadNearbyMerchants() {
     `;
 
     document.getElementById('memberMerchSearch')?.addEventListener('input', (e) => { merchantFilterState.q = e.target.value; loadNearbyMerchants(); });
-    document.getElementById('memberMerchCountry')?.addEventListener('change', (e) => { merchantFilterState.country = e.target.value; loadNearbyMerchants(); });
+    document.getElementById('memberMerchCountry')?.addEventListener('change', (e) => { merchantFilterState.country = e.target.value || 'ALL'; loadNearbyMerchants(); });
     document.getElementById('memberMerchCategory')?.addEventListener('change', (e) => { merchantFilterState.category = e.target.value; loadNearbyMerchants(); });
     document.getElementById('memberMerchSort')?.addEventListener('change', (e) => { merchantFilterState.sort = e.target.value; loadNearbyMerchants(); });
+
+    if (window.SAWYAN && window.SAWYAN.SmartSearch) {
+        const mcSel = document.getElementById('memberMerchCountry');
+        if (mcSel) {
+            window.SAWYAN.SmartSearch.attachToSelect(mcSel, {
+                kind: 'country',
+                compact: true,
+                placeholder: 'ابحث عن الدولة (عربي / English)...',
+                showLetterHeaders: true,
+                skipEmptyPlaceholder: false
+            });
+        }
+    }
 
     renderMemberMerchantsLeafletMap(myCoords, filtered);
 }
@@ -2915,25 +2934,28 @@ function buildWorldCountryOptions({ selectedCode = '', includeAutoOption = false
         });
     });
 
-    const all = Array.from(mergedMap.values());
-    const activeList = all.filter(c => c.is_active).sort((a, b) => a.nameAr.localeCompare(b.nameAr, 'ar'));
-    const globalList = all.filter(c => !c.is_active).sort((a, b) => a.nameAr.localeCompare(b.nameAr, 'ar'));
+    const ls = window.SAWYAN && window.SAWYAN.LocaleSort;
+    const docLang = ls ? ls.getDocLang() : 'ar';
+    const cmp = (a, b) => {
+        const na = docLang === 'en' ? (a.nameEn || a.nameAr) : a.nameAr;
+        const nb = docLang === 'en' ? (b.nameEn || b.nameAr) : b.nameAr;
+        return ls ? ls.compareStrings(na, nb, docLang) : na.localeCompare(nb, docLang);
+    };
+
+    const all = Array.from(mergedMap.values()).map(item => {
+        const w = worldList.find(x => String(x.code || '').toUpperCase() === item.code);
+        return { ...item, nameEn: (w && w.nameEn) || item.nameAr, dialCode: (w && w.dialCode) || '' };
+    });
+    const sortedAll = all.slice().sort(cmp);
     const selUpper = String(selectedCode || '').toUpperCase();
 
     let html = includeAutoOption
         ? `<option value="" ${!selUpper ? 'selected' : ''}>🌍 تلقائي (يختاره المدعو عند التسجيل)</option>`
         : '';
 
-    if (activeList.length) {
-        html += `<optgroup label="🟢 الدول النشطة حالياً">` +
-            activeList.map(c => `<option value="${esc(c.code)}" ${selUpper === c.code ? 'selected' : ''}>${c.flag} ${esc(c.nameAr)} (${esc(c.code)}) — نشطة</option>`).join('') +
-            `</optgroup>`;
-    }
-    if (globalList.length) {
-        html += `<optgroup label="🌍 باقي دول العالم">` +
-            globalList.map(c => `<option value="${esc(c.code)}" ${selUpper === c.code ? 'selected' : ''}>${c.flag} ${esc(c.nameAr)} (${esc(c.code)})</option>`).join('') +
-            `</optgroup>`;
-    }
+    html += sortedAll.map(c =>
+        `<option value="${esc(c.code)}" data-name-ar="${esc(c.nameAr)}" data-name-en="${esc(c.nameEn)}" data-flag="${esc(c.flag)}" data-dial-code="${esc(c.dialCode)}" data-active="${c.is_active ? '1' : '0'}" ${selUpper === c.code ? 'selected' : ''}>${c.flag} ${esc(docLang === 'en' ? c.nameEn : c.nameAr)} (${esc(c.code)})${c.is_active ? ' ✓ (نشطة)' : ''}</option>`
+    ).join('');
     return html;
 }
 
@@ -3028,6 +3050,30 @@ function loadReferrals() {
     `;
 
     updateReferralTargetCountry(selectedCountry);
+
+    if (window.SAWYAN && window.SAWYAN.SmartSearch) {
+        const refSel = document.getElementById('referralTargetCountrySelect');
+        if (refSel) {
+            window.SAWYAN.SmartSearch.attachToSelect(refSel, {
+                kind: 'country',
+                compact: true,
+                placeholder: 'ابحث عن الدولة المستهدفة بالعربية أو الإنجليزية...',
+                showLetterHeaders: true,
+                skipEmptyPlaceholder: false
+            });
+        }
+        const qRefSel = document.getElementById('qRefCountry');
+        if (qRefSel) {
+            window.SAWYAN.SmartSearch.attachToSelect(qRefSel, {
+                kind: 'country',
+                compact: true,
+                placeholder: 'ابحث عن الدولة (عربي / English)...',
+                showLetterHeaders: true,
+                skipEmptyPlaceholder: true
+            });
+        }
+        window.SAWYAN.SmartSearch.attachAutoDigitNormalization(document.getElementById('qRefPhone'));
+    }
 
     document.getElementById('quickAddReferralForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -3256,6 +3302,19 @@ async function loadSettings() {
                 onChange: (v) => { const el = document.getElementById('setAvatarUrl'); if (el) el.value = v || ''; }
             })
         };
+    }
+
+    if (window.SAWYAN && window.SAWYAN.SmartSearch) {
+        const moveSel = document.getElementById('setMoveTargetCountry');
+        if (moveSel) {
+            window.SAWYAN.SmartSearch.attachToSelect(moveSel, {
+                kind: 'country',
+                compact: true,
+                placeholder: 'ابحث عن دولة الإقامة الجديدة بالعربية أو الإنجليزية...',
+                showLetterHeaders: true,
+                skipEmptyPlaceholder: true
+            });
+        }
     }
 
     if (window.SAWYAN && window.SAWYAN.RegEngine) {

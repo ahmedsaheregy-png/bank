@@ -430,9 +430,12 @@
             return txt ? '<small style="display:block;color:#64748B;font-size:0.76rem;margin-top:3px;">' + esc(txt) + '</small>' : '';
         };
 
-        const countriesOpts = ((window.SAWYAN && Array.isArray(window.SAWYAN.Countries)) ? window.SAWYAN.Countries : [])
+        const sortedCountries = (window.SAWYAN && typeof window.SAWYAN.getCountriesSorted === 'function')
+            ? window.SAWYAN.getCountriesSorted()
+            : ((window.SAWYAN && Array.isArray(window.SAWYAN.Countries)) ? window.SAWYAN.Countries : []);
+        const countriesOpts = sortedCountries
             .map(function (c) {
-                return '<option value="' + esc(c.code) + '">' + esc((c.flag || '') + ' ' + c.nameAr + ' (' + c.code + ')') + '</option>';
+                return '<option value="' + esc(c.code) + '" data-name-ar="' + esc(c.nameAr) + '" data-name-en="' + esc(c.nameEn || c.nameAr) + '" data-flag="' + esc(c.flag || '') + '">' + esc((c.flag || '') + ' ' + c.nameAr + ' (' + c.code + ')') + '</option>';
             }).join('');
 
         sub.innerHTML =
@@ -515,6 +518,19 @@
                 }).join('') +
                 '</tbody></table></div>' +
             '</div>';
+
+        if (window.SAWYAN && window.SAWYAN.SmartSearch) {
+            const stfScopeSel = document.getElementById('svStfScope');
+            if (stfScopeSel) {
+                window.SAWYAN.SmartSearch.attachToSelect(stfScopeSel, {
+                    kind: 'country',
+                    compact: true,
+                    placeholder: 'ابحث عن نطاق الدولة (عربي / English)...',
+                    showLetterHeaders: true,
+                    skipEmptyPlaceholder: false
+                });
+            }
+        }
     }
 
     window.svCreateStaff = async function () {

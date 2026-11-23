@@ -418,11 +418,17 @@ def main():
                     rk,
                 )
 
-                # Switch country -> TR (active in sawyan_demo) & test dial badge + E.164 feedback
-                page.select_option("#countryCode", "TR")
+                # Switch country -> TR (active in sawyan_demo) via SmartSearch autocomplete combobox & test dial badge
+                ctry_inp = page.locator("#swss_countryCode_input")
+                if ctry_inp.count() > 0:
+                    ctry_inp.click()
+                    ctry_inp.fill("ترك")
+                    ctry_inp.press("Enter")
+                else:
+                    page.select_option("#countryCode", "TR")
                 page.wait_for_timeout(400)
                 badge_tr = page.locator("#phoneDialBadge").inner_text()
-                must("+90" in badge_tr, "7d. Phone dial badge updates dynamically to Turkey +90", badge_tr)
+                must("+90" in badge_tr, "7d. Phone dial badge updates dynamically to Turkey +90 via SmartSearch", badge_tr)
 
                 # Live invalid vs valid email check
                 page.fill("#email", "bad_email_without_at.com")

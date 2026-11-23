@@ -79,13 +79,8 @@
                 const box = document.getElementById('loginErrorBox');
                 const m = String(raw || (extraPayload && extraPayload.error_code) || '');
                 let msg = m || 'بيانات الدخول غير صحيحة';
-                if (m.includes('AUTH_RATE_LIMITED_15M')) {
-                    msg = '🔒 تم تعليق محاولات الدخول مؤقتاً لمدة 15 دقيقة بعد 5 محاولات غير صحيحة حفاظاً على أمان الحساب.';
-                } else if (m.includes('INVALID_CREDENTIALS')) {
-                    const rem = (extraPayload && extraPayload.attempts_remaining !== undefined)
-                        ? ` (المحاولات المتبقية قبل القفل المؤقت: ${extraPayload.attempts_remaining})`
-                        : '';
-                    msg = 'بيانات الدخول غير صحيحة — تأكد من كود العضوية أو الهاتف أو البريد وكلمة المرور' + rem + '.';
+                if (m.includes('INVALID_CREDENTIALS')) {
+                    msg = 'بيانات الدخول غير صحيحة — تأكد من كود العضوية أو الهاتف أو البريد وكلمة المرور.';
                 }
                 else if (m.includes('ROOT_PORTAL_ACCESS_FORBIDDEN')) msg = 'حساب الجذر #0 مخصص للإدارة العليا ولا يُفتح من بوابة الأعضاء.';
                 else if (m.includes('MEMBER_ACCOUNT_INACTIVE')) msg = 'الحساب غير نشط أو مجمّد حالياً — تواصل مع الدعم الفني عبر واتساب 905376744337+.';
