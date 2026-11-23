@@ -362,9 +362,9 @@ vault = {
     ]
 }
 
-# Save updated JSON
-with open('specs/marketing_content_vault.json', 'w', encoding='utf-8') as f:
-    json.dump(vault, f, ensure_ascii=False, indent=2)
+# Load canonical Single Source of Truth JSON (never overwrite specs/marketing_content_vault.json)
+with open('specs/marketing_content_vault.json', 'r', encoding='utf-8') as f:
+    vault = json.load(f)
 
 # Build HTML with White Background + Direct Live Editing + Version Archive + Merged Scripts & Storyboards
 html = '''<!DOCTYPE html>
@@ -1026,6 +1026,10 @@ html = '''<!DOCTYPE html>
             💡 العبارات والرسائل التسويقية المرشحة
             <span class="tab-count">8 أفكار وقوالب</span>
         </button>
+        <button class="tab-btn" onclick="filterSection('sec-audio', this)">
+            🎧 مسموعات
+            <span class="tab-count">المقاطع الصوتية الرسمية</span>
+        </button>
     </div>
 
     <!-- Instant Search -->
@@ -1049,7 +1053,7 @@ html = '''<!DOCTYPE html>
         <!-- Embedded Official Full HD 1080p Video Player + 6 Vector Logo Switcher -->
         <div class="script-master-block" style="border-color: var(--emerald-border);">
             <div class="script-block-header" style="background: var(--emerald-light);">
-                <span class="script-badge">🎥 الفيديو السينمائي الرسمي المعتمد — إنتاج Google Flow + تعليق صوتي عربي مشكول + اللوجو المتجهي المعتمد • Full HD 1080p</span>
+                <span class="script-badge">🎥 الفيديو السينمائي الرسمي المعتمد — إنتاج Google Flow + الصوت المعتمد المدمج + خاتمة مؤثرات سينمائية • 10 مشاهد (01:08 دقيقة • 1080p)</span>
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
                     <a href="../../shared/assets/sawyan-promo-official.mp4" download="SAWYAN_Official_Promo_1080p.mp4" class="btn btn-emerald">📥 تحميل ملف الفيديو (MP4)</a>
                 </div>
@@ -1185,6 +1189,49 @@ for item in vault['candidate_marketing_phrases']:
                 <div class="card-footer-actions">
                     <span style="font-size:0.78rem; color:#64748b;">✏️ قابل للتعديل المباشر</span>
                     <button type="button" class="btn btn-blue" onclick="copyCardText(this)">📋 نسخ النص</button>
+                </div>
+            </div>'''
+
+html += '''
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- SECTION 4: MASMOOAT (مسموعات — مكتبة التعليقات الصوتية الرسمية)            -->
+    <!-- ========================================================================= -->
+    <div id="sec-audio" class="vault-section">
+        <div class="section-banner" style="border-right-color: var(--blue);">
+            <div>
+                <h2>🎧 رابعاً: مسموعات (التعليقات الصوتية والملفات السمعية الرسمية لـ SAWYAN)</h2>
+                <p>المقاطع الصوتية المعتمدة والمدمجة بدقة استوديو — استمع مباشرة، حمّل ملف MP3 الأصلي، أو راجع استوديو الأصوات البديلة.</p>
+            </div>
+            <a href="../content-vault/voice-audition.html" class="btn btn-blue">🎙️ استوديو الأصوات العربية البديلة (8 أصوات)</a>
+        </div>
+        <div class="cards-grid" id="audioGrid">'''
+
+for aitem in vault.get('audio_library', []):
+    aid = aitem['id']
+    html += f'''
+            <div class="phrase-card" data-searchable="true" style="grid-column: 1 / -1; border-color: #93c5fd;">
+                <div>
+                    <div class="card-meta-top">
+                        <span class="tag-official">{aitem['badge']}</span>
+                        <span class="card-id-code">{aid} • {aitem['duration']}</span>
+                    </div>
+                    <div class="phrase-title" contenteditable="true" data-edit-key="{aid}-title">{aitem['title']}</div>
+                    <div style="margin: 14px 0; padding: 14px; background: #f8fafc; border: 1px solid var(--border-color); border-radius: 12px;">
+                        <audio controls preload="metadata" style="width:100%; height:44px; display:block;">
+                            <source src="{aitem['audio_url']}" type="audio/mpeg">
+                            متصفحك لا يدعم مشغل الصوت المدمج.
+                        </audio>
+                        <div style="margin-top:8px; font-size:0.82rem; color:#475569; font-weight:700;" dir="ltr">{aitem['specs']}</div>
+                    </div>
+                    <div class="phrase-body" contenteditable="true" data-edit-key="{aid}-body">{aitem['transcript']}</div>
+                    <div class="phrase-notes" contenteditable="true" data-edit-key="{aid}-notes">📌 {aitem['usage_notes']}</div>
+                </div>
+                <div class="card-footer-actions">
+                    <a href="{aitem['audio_url']}" download="{aitem['download_name']}" class="btn btn-emerald">📥 تحميل المقطع الصوتي (MP3)</a>
+                    <button type="button" class="btn btn-blue" onclick="copyCardText(this)">📋 نسخ النص المسموع</button>
                 </div>
             </div>'''
 

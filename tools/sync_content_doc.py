@@ -52,6 +52,17 @@ for item in vault['candidate_marketing_phrases']:
     md += f"> **النص:**\n> {safe_lines}\n\n"
     md += f"* **ملاحظات الاستخدام:** {item['usage_notes']}\n\n---\n\n"
 
+md += '''## 🎧 5. مسموعات (المكتبة الصوتية الرسمية)
+
+'''
+
+for aitem in vault.get('audio_library', []):
+    safe_lines = aitem['transcript'].replace('\n', '\n> ')
+    md += f"### [{aitem['id']}] {aitem['title']} ({aitem['duration']})\n"
+    md += f"* **المسار في المستودع:** `{aitem['audio_url']}` (`{aitem['specs']}`)\n\n"
+    md += f"> **النص المسموع الكامل:**\n> {safe_lines}\n\n"
+    md += f"* **ملاحظات الاستخدام:** {aitem['usage_notes']}\n\n---\n\n"
+
 with open('docs/بنك_المحتوى_والتسويق_الاستراتيجي.md', 'w', encoding='utf-8') as f:
     f.write(md)
 
