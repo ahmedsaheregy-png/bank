@@ -1923,6 +1923,21 @@
             } catch (_e) {}
         },
 
+        async markActorNotificationsRead({ actorType, actorId, sessionToken = null, notificationId = null }) {
+            const type = String(actorType || '').toLowerCase().trim();
+            const tok = sessionToken || (
+                type === 'admin' ? SawyanAPI.getAdminSessionToken() :
+                type === 'merchant' ? SawyanAPI.getMerchantSessionToken() :
+                SawyanAPI.getMemberSessionToken()
+            );
+            return await callRpc('mark_actor_notifications_read', {
+                p_actor_type: type,
+                p_actor_id: actorId,
+                p_session_token: tok,
+                p_notification_id: notificationId || null
+            });
+        },
+
         mountEnvironmentSwitchBar() {
             if (typeof document === 'undefined' || document.getElementById('sawyanEnvRibbon')) return;
             SawyanAPI.rewriteProductionDemoLinks();
@@ -2036,7 +2051,18 @@
                     if (mer && mer.merchant_code) sessionSuffix = ` • حساب تاجر ${mer.merchant_code}`;
                 } else if (isAdminPortal) {
                     const adm = SawyanAPI.getSavedAdmin();
-                    if (adm && adm.role) sessionSuffix = ` • بوابة الإدارة (${adm.role})`;
+                    if (adm && adm.role) {
+                        const roleMapAr = {
+                            approver: adm.is_sovereign_founder ? 'المؤسس السيادي' : 'سلطة اعتماد',
+                            finance: 'إدارة مالية',
+                            auditor: 'مدقّق',
+                            reviewer: 'مراجع رقابي',
+                            data_entry: 'مُدخل بيانات',
+                            support: 'دعم فني',
+                            kyc_officer: 'مسؤول KYC'
+                        };
+                        sessionSuffix = ` • بوابة الإدارة (${roleMapAr[adm.role] || adm.role})`;
+                    }
                 }
 
                 const left = document.createElement('span');

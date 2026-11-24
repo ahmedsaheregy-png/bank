@@ -2586,10 +2586,14 @@ html:not([data-theme="dark"]) body {
     justify-content: space-between;
     gap: 12px;
 }
+section[id] {
+    scroll-margin-top: 96px;
+}
 .portal-nav .nav-links a {
     color: #334155 !important;
     font-weight: 700;
-    font-size: 0.95rem;
+    font-size: 0.92rem;
+    white-space: nowrap;
 }
 .portal-nav .nav-links a:hover,
 .portal-nav .nav-links a.active {

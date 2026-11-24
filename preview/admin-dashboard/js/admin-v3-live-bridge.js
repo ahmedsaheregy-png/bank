@@ -122,6 +122,15 @@
 
         window.currentAdmin = adm;
         updateHeaderIdentity(adm);
+        if (adm.id && window.SAWYAN && window.SAWYAN.Notifications) {
+            window.SAWYAN.Notifications.init('admin', adm.id);
+        }
+        if (!window._svAdminNotifPollTimer) {
+            window._svAdminNotifPollTimer = setInterval(function () {
+                if (typeof document !== 'undefined' && document.hidden) return;
+                refreshSovereignBundle(false);
+            }, 45000);
+        }
     };
 
     window.loadRecentActivity = async function () {
@@ -215,6 +224,14 @@
             if (LIVE_BUNDLE && LIVE_BUNDLE.admin) {
                 window.currentAdmin = LIVE_BUNDLE.admin;
                 updateHeaderIdentity(LIVE_BUNDLE.admin);
+            }
+            if (window.SAWYAN && window.SAWYAN.Notifications) {
+                if (!window.SAWYAN.Notifications.userId && LIVE_BUNDLE?.admin?.id) {
+                    window.SAWYAN.Notifications.init('admin', LIVE_BUNDLE.admin.id);
+                }
+                if (Array.isArray(LIVE_BUNDLE?.admin_notifications)) {
+                    window.SAWYAN.Notifications.hydrateFromBundle(LIVE_BUNDLE.admin_notifications);
+                }
             }
             mountSovereignNavAndPage();
             renderLiveSummaryBannerOnHome();

@@ -16,6 +16,8 @@ window.SAWYAN.Notifications = {
         this.userType = userType;
         this.userId = userId;
         this.renderBell();
+        this.updateBadge();
+        this.renderList();
         this.subscribeToRealtime();
     },
 
@@ -23,6 +25,9 @@ window.SAWYAN.Notifications = {
         if (!Array.isArray(items)) return;
         this.notifications = items;
         this.unreadCount = items.filter(n => !n.is_read).length;
+        if (!document.getElementById('notificationBell')) {
+            this.renderBell();
+        }
         this.updateBadge();
         this.renderList();
     },
@@ -30,18 +35,22 @@ window.SAWYAN.Notifications = {
     subscribeToRealtime: function () {
         if (!window.SAWYAN.supabase || !this.userId || this.subscription) return;
         const activeSchema = window.SAWYAN.schema || 'sawyan';
+        const filterStr = this.userType === 'admin'
+            ? 'recipient_type=eq.admin'
+            : ('recipient_id=eq.' + this.userId);
 
         try {
             this.subscription = window.SAWYAN.supabase
-                .channel('notifications-' + activeSchema + '-' + this.userId)
+                .channel('notifications-' + activeSchema + '-' + this.userType + '-' + this.userId)
                 .on('postgres_changes',
                     {
                         event: 'INSERT',
                         schema: activeSchema,
                         table: 'notifications',
-                        filter: 'recipient_id=eq.' + this.userId
+                        filter: filterStr
                     },
                     (payload) => {
+                        if (this.userType === 'admin' && payload.new && payload.new.recipient_type !== 'admin') return;
                         this.handleNewNotification(payload.new);
                     }
                 )
@@ -52,12 +61,53 @@ window.SAWYAN.Notifications = {
     },
 
     _formatTitleAndBody: function (n) {
+        const p = n.payload || {};
         if (n.title && n.message) {
             return { title: n.title, message: n.message };
         }
+        if (p.title && p.message) {
+            return { title: p.title, message: p.message };
+        }
         const ev = n.event_name || 'Notification';
-        const p = n.payload || {};
         const map = {
+            NewMerchantRegistered: {
+                title: '🏪 تاجر جديد مسجّل بانتظار المراجعة',
+                message: `${p.business_name || 'متجر جديد'} (${p.merchant_code || '-'} • ${p.country_code || ''}) — عمولة ${p.deduction_percent ?? 0}%`
+            },
+            MerchantOnboardingApproved: {
+                title: '✅ تم اعتماد متجرك بياناتياً في SAWYAN',
+                message: p.needs_topup
+                    ? `مبروك! تم قبول متجرك (${p.merchant_code || ''}). اضغط هنا لشحن رصيدك الافتتاحي والظهور فوراً في الدليل.`
+                    : `مبروك! تم اعتماد متجرك (${p.merchant_code || ''}) وأصبح جاهزاً للعمل.`
+            },
+            MerchantOnboardingUpdated: {
+                title: '✏️ تحديث حالة تأهيل متجرك',
+                message: p.onboarding_notes || p.reason || 'يرجى مراجعة بيانات متجرك من شاشة الإعدادات.'
+            },
+            MerchantContractUpdated: {
+                title: '⚙️ تحديث تعاقد وحالة متجرك',
+                message: p.reason || `نسبة العمولة ${p.deduction_percent ?? ''}% • الحد الائتماني ${p.credit_limit ?? 0}`
+            },
+            MerchantTopupApproved: {
+                title: '💳 تم شحن رصيد متجرك بنجاح',
+                message: `تمت إضافة ${p.amount_local ?? ''} ${p.currency_code || ''} (مرجع ${p.payment_ref || ''}) لحساب متجرك.`
+            },
+            MerchantBankTopupProofPending: {
+                title: '🏦 إشعار تحويل بنكي لشحن متجر بانتظار المطابقة',
+                message: `${p.business_name || 'متجر'} (${p.merchant_code || ''}) — مبلغ ${p.amount_local ?? ''} • مرجع ${p.bank_ref || ''}`
+            },
+            MerchantBankTopupSubmitted: {
+                title: '🏦 إشعار تحويل بنكي لشحن متجر بانتظار المطابقة',
+                message: `${p.business_name || 'متجر'} (${p.merchant_code || ''}) — مبلغ ${p.amount_local ?? ''} • مرجع ${p.bank_ref || ''}`
+            },
+            MerchantBankTopupProofProcessed: {
+                title: '✅ تمت مطابقة وشحن رصيد متجر',
+                message: `${p.business_name || 'متجر'} (${p.merchant_code || ''}) — ${p.amount_local ?? ''}`
+            },
+            MerchantFlashOfferPending: {
+                title: '🔥 عرض ترويجي خاطف بانتظار الاعتماد',
+                message: `${p.business_name || ''}: ${p.title || ''}`
+            },
             OnMemberRegistered: {
                 title: 'عضو جديد في شجرتك 🌟',
                 message: `انضم ${p.full_name || 'عضو جديد'} بكود #${p.new_member_code || '-'}`
@@ -65,6 +115,14 @@ window.SAWYAN.Notifications = {
             PendingPurchaseRequested: {
                 title: 'طلب توثيق شراء معلق ⏳',
                 message: `فاتورة ${p.sw_short_code || ''} بقيمة ${p.amount || ''}`
+            },
+            TransactionCompleted: {
+                title: '✅ تم توثيق فاتورتك بنجاح',
+                message: `فاتورة ${p.sw_short_code || ''} لدى ${p.merchant_name || ''} — أُضيف ${p.reward_added_local ?? ''} ${p.currency_code || ''} لصندوق الهدف.`
+            },
+            PendingInvoiceRejected: {
+                title: '❌ تم رفض فاتورة معلقة',
+                message: `فاتورة ${p.sw_short_code || ''}${p.reason ? ' — ' + p.reason : ''}`
             },
             DisputeTicketOpened: {
                 title: 'تذكرة نزاع جديدة ⚠️',
@@ -142,6 +200,8 @@ window.SAWYAN.Notifications = {
             bellContainer.className = 'notification-container';
             bellContainer.innerHTML = bellHTML;
             header.appendChild(bellContainer);
+            this.updateBadge();
+            this.renderList();
         }
     },
 
@@ -190,20 +250,46 @@ window.SAWYAN.Notifications = {
     },
 
     handleNotificationClick: function (notificationId, eventName) {
+        const notifObj = (this.notifications || []).find(n => n.id === notificationId) || null;
         this.markAsRead(notificationId);
         const dropdown = document.getElementById('notificationDropdown');
         if (dropdown) dropdown.style.display = 'none';
         const ev = String(eventName || '');
-        if (this.userType === 'merchant') {
-            if (ev === 'PendingPurchaseRequested') {
+        if (this.userType === 'admin') {
+            if (ev === 'NewMerchantRegistered' || ev.startsWith('MerchantBankTopup') || ev === 'MerchantComplianceAutoEscalated') {
+                const nav = document.querySelector('.sidebar-nav .nav-item[data-page="merchants"]');
+                if (nav) nav.click();
+                else if (typeof window.showPage === 'function') window.showPage('merchants');
+            } else if (ev === 'MerchantFlashOfferPending') {
+                const nav = document.querySelector('.sidebar-nav .nav-item[data-page="sovereignLive"]');
+                if (nav) nav.click();
+                else if (typeof window.showPage === 'function') window.showPage('sovereignLive');
+            } else if (ev === 'MerchantComplaintFiled' || ev === 'DisputeTicketOpened') {
+                const nav = document.querySelector('.sidebar-nav .nav-item[data-page="disputes"]');
+                if (nav) nav.click();
+                else if (typeof window.showPage === 'function') window.showPage('disputes');
+            } else {
+                const nav = document.querySelector('.sidebar-nav .nav-item[data-page="merchants"]');
+                if (nav) nav.click();
+            }
+        } else if (this.userType === 'merchant') {
+            if (ev === 'MerchantOnboardingApproved') {
+                if (notifObj && notifObj.payload && notifObj.payload.needs_topup && typeof window.openMerchantTopupModal === 'function') {
+                    window.openMerchantTopupModal();
+                } else if (typeof window.showPage === 'function') {
+                    window.showPage('home');
+                }
+            } else if (ev === 'MerchantOnboardingUpdated') {
+                if (typeof window.showPage === 'function') window.showPage('settings');
+            } else if (ev === 'PendingPurchaseRequested') {
                 if (typeof window.showPage === 'function') window.showPage('pending');
-            } else if (ev.startsWith('MerchantBalance') || ev.includes('Topup')) {
+            } else if (ev === 'MerchantTopupApproved' || ev === 'MerchantContractUpdated' || ev.startsWith('MerchantBalance') || ev.includes('Topup')) {
                 if (typeof window.showPage === 'function') window.showPage('financial');
             } else if (ev === 'DisputeTicketOpened' || ev.startsWith('MerchantComplaint')) {
                 if (typeof window.openMerchantStage7Modal === 'function') window.openMerchantStage7Modal('support');
             }
         } else if (this.userType === 'member') {
-            if (ev === 'PendingPurchaseRequested' || ev.includes('Transaction')) {
+            if (ev === 'PendingPurchaseRequested' || ev.includes('Transaction') || ev === 'PendingInvoiceRejected') {
                 if (typeof window.goToPage === 'function') window.goToPage('myPending');
             } else if (ev === 'OnMemberRegistered') {
                 if (typeof window.goToPage === 'function') window.goToPage('tree');
@@ -213,8 +299,19 @@ window.SAWYAN.Notifications = {
 
     getIcon: function (type) {
         const icons = {
+            NewMerchantRegistered: '🏪',
+            MerchantOnboardingApproved: '🎉',
+            MerchantOnboardingUpdated: '✏️',
+            MerchantContractUpdated: '⚙️',
+            MerchantTopupApproved: '💳',
+            MerchantBankTopupProofPending: '🏦',
+            MerchantBankTopupSubmitted: '🏦',
+            MerchantBankTopupProofProcessed: '✅',
+            MerchantFlashOfferPending: '🔥',
             OnMemberRegistered: '🌟',
             PendingPurchaseRequested: '⏳',
+            TransactionCompleted: '✅',
+            PendingInvoiceRejected: '❌',
             DisputeTicketOpened: '⚠️',
             CashierSelfPinBlocked: '🛡️',
             MerchantBalanceWarning30: '🟡',
@@ -254,6 +351,13 @@ window.SAWYAN.Notifications = {
         this.unreadCount = this.notifications.filter(n => !n.is_read).length;
         this.updateBadge();
         this.renderList();
+        if (this.userType && this.userId && window.SAWYAN && window.SAWYAN.API && typeof window.SAWYAN.API.markActorNotificationsRead === 'function') {
+            window.SAWYAN.API.markActorNotificationsRead({
+                actorType: this.userType,
+                actorId: this.userId,
+                notificationId: notificationId
+            }).catch(() => {});
+        }
     },
 
     markAllRead: function () {
@@ -261,6 +365,13 @@ window.SAWYAN.Notifications = {
         this.unreadCount = 0;
         this.updateBadge();
         this.renderList();
+        if (this.userType && this.userId && window.SAWYAN && window.SAWYAN.API && typeof window.SAWYAN.API.markActorNotificationsRead === 'function') {
+            window.SAWYAN.API.markActorNotificationsRead({
+                actorType: this.userType,
+                actorId: this.userId,
+                notificationId: null
+            }).catch(() => {});
+        }
     }
 };
 

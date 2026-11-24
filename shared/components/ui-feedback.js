@@ -136,6 +136,9 @@
         if (m.includes('CASHIER_TX_LIMIT_EXCEEDED')) {
             return 'قيمة الفاتورة تتجاوز السقف الأقصى المسموح لك كمموظف — يرجى تحويل الاعتماد لمالك المتجر.';
         }
+        if (m.includes('MERCHANT_OWNER_SELF_PURCHASE_FORBIDDEN')) {
+            return 'لا يمكن لمالك المتجر تسجيل مشتريات لنفسه من متجره الشخصي (منع الشراء الذاتي).';
+        }
         if (m.includes('SELF_PURCHASE_PIN_FORBIDDEN') || m.includes('CASHIER_COLLUSION') || m.includes('CASHIER_SELF_APPROVAL_FORBIDDEN')) {
             return 'لا يمكن للموظف اعتماد فاتورة لحسابه الشخصي (حظر التواطؤ الذاتي D25).';
         }

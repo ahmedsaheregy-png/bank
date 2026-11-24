@@ -258,6 +258,9 @@ async function refreshMerchantBundle(shiftFilter = 'today', branchId = null) {
             if (mc) mc.textContent = `كود التاجر: ${merchantData.merchant_code} • ${merchantData.country_code || ''}`;
         }
         if (window.SAWYAN && window.SAWYAN.Notifications && Array.isArray(merchantBundle?.notifications)) {
+            if (!window.SAWYAN.Notifications.userId && currentMerchant?.id) {
+                window.SAWYAN.Notifications.init('merchant', currentMerchant.id);
+            }
             window.SAWYAN.Notifications.hydrateFromBundle(merchantBundle.notifications);
         }
         renderLiveHomeStats();
@@ -294,10 +297,24 @@ function getMerchantFifoBannerHtml(p, pendingList) {
     const posLocked = effAcc.can_accept_pos === false;
     if (fifoItems.length === 0 && !p?.is_isolated && freeBal > 0 && !posLocked) return '';
     if (fifoItems.length === 0 && posLocked && p?.pos_lock_reason_ar && p?.financial_status !== 'locked_queue_full') {
+        const needsProfile = p?.onboarding_status && p.onboarding_status !== 'approved';
+        const needsFunding = !needsProfile && (p?.financial_status === 'unfunded' || freeBal <= 0);
+        const actionBtns = needsProfile
+            ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+                    <button type="button" onclick="showPage('settings')" style="background:#d97706;color:#fff;border:none;padding:8px 15px;border-radius:9px;font-weight:800;font-size:0.84rem;cursor:pointer;font-family:'Tajawal',sans-serif;">⚙️ استكمال بيانات المتجر الآن</button>
+                    <button type="button" onclick="openMerchantTopupModal()" style="background:#059669;color:#fff;border:none;padding:8px 15px;border-radius:9px;font-weight:800;font-size:0.84rem;cursor:pointer;font-family:'Tajawal',sans-serif;">💳 شحن الرصيد الافتتاحي</button>
+               </div>`
+            : (needsFunding
+                ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+                        <button type="button" onclick="openMerchantTopupModal()" style="background:#059669;color:#fff;border:none;padding:9px 18px;border-radius:9px;font-weight:900;font-size:0.86rem;cursor:pointer;font-family:'Tajawal',sans-serif;box-shadow:0 3px 10px rgba(5,150,105,0.28);">💳 اشحن رصيدك الآن لتفعيل المتجر</button>
+                        <button type="button" onclick="showPage('financial')" style="background:#ffffff;color:#065f46;border:1.5px solid #10b981;padding:8px 14px;border-radius:9px;font-weight:800;font-size:0.82rem;cursor:pointer;font-family:'Tajawal',sans-serif;">📊 الموقف المالي وطلبات الشحن</button>
+                   </div>`
+                : '');
         return `
-            <div style="background:#fef2f2;border:2px solid #f87171;border-radius:14px;padding:12px 16px;margin-bottom:14px;color:#7f1d1d;">
-                <div style="font-weight:900;font-size:0.94rem;margin-bottom:4px;">🔒 توثيق الفواتير مغلق حالياً</div>
-                <div style="font-size:0.83rem;line-height:1.6;">${escM(p.pos_lock_reason_ar)}</div>
+            <div style="background:#fef2f2;border:2px solid #f87171;border-radius:14px;padding:13px 16px;margin-bottom:14px;color:#7f1d1d;">
+                <div style="font-weight:900;font-size:0.95rem;margin-bottom:4px;">🔒 توثيق الفواتير مغلق مؤقتاً</div>
+                <div style="font-size:0.84rem;line-height:1.65;">${escM(p.pos_lock_reason_ar)}</div>
+                ${actionBtns}
             </div>
         `;
     }
@@ -410,14 +427,17 @@ function renderMerchantLifecycleAndD4Cards() {
         banned_permanent: '🚫 حظر نهائي (D3)'
     };
 
-    const canSelfPause = ['good_standing', 'probation_warning', 'paused_by_merchant'].includes(p.governance_status || 'good_standing');
+    const isApprovedOnb = (p.onboarding_status || 'approved') === 'approved';
+    const isUnfunded = p.financial_status === 'unfunded';
+    const canSelfPause = isApprovedOnb && !isUnfunded && ['good_standing', 'probation_warning', 'paused_by_merchant'].includes(p.governance_status || 'good_standing');
     const isSelfPaused = p.governance_status === 'paused_by_merchant';
+    const pendTopups = Array.isArray(merchantBundle?.pending_topups) ? merchantBundle.pending_topups : [];
     const accessModeAr = {
-        full: 'صلاحيات كاملة',
-        complete_profile_only: 'استكمال البيانات فقط',
-        topup_only: 'وضع الشحن والسداد فقط',
-        appeal_and_repay_only: 'وضع السداد ومراجعة الامتثال فقط',
-        blocked: 'الحساب محظور'
+        full: 'نشط ومفعّل',
+        complete_profile_only: 'استكمال البيانات',
+        topup_only: 'وضع الشحن والسداد',
+        appeal_and_repay_only: 'مراجعة وسداد',
+        blocked: 'الحساب موقوف'
     }[acc.portal_access_mode || 'full'] || (acc.portal_access_mode || 'full');
 
     const anchor = homePage.querySelector('.stats-grid') || homePage.firstChild;
@@ -429,33 +449,81 @@ function renderMerchantLifecycleAndD4Cards() {
     }
 
     const reasonText = p.hide_reason_ar || p.pos_lock_reason_ar || (p.onboarding_status === 'needs_correction' ? p.onboarding_notes : '') || '';
-    lcBox.innerHTML = `
-        <div style="background:#ffffff;border:1.5px solid ${acc.is_visible_on_radar ? '#10b981' : (acc.can_accept_pos ? '#f59e0b' : '#ef4444')};border-radius:14px;padding:14px 16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(15,23,42,0.04);">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:8px;">
-                <div style="font-weight:900;font-size:0.95rem;color:#0f172a;">🧭 الموقف التشغيلي ثلاثي المحاور (${escM(accessModeAr)})</div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-                    <span style="padding:3px 9px;border-radius:999px;font-size:0.75rem;font-weight:800;background:${acc.is_visible_on_radar ? '#d1fae5' : '#fee2e2'};color:${acc.is_visible_on_radar ? '#065f46' : '#991b1b'};">${acc.is_visible_on_radar ? '🟢 ظاهر بالدليل والرادار' : '🔴 مخفي عن الدليل'}</span>
-                    <span style="padding:3px 9px;border-radius:999px;font-size:0.75rem;font-weight:800;background:${acc.can_accept_pos ? '#d1fae5' : '#fee2e2'};color:${acc.can_accept_pos ? '#065f46' : '#991b1b'};">${acc.can_accept_pos ? '🟢 الكاشير مفتوح' : '🔒 الكاشير مغلق'}</span>
-                    ${canSelfPause ? `<button type="button" onclick="toggleMerchantSelfPause()" class="btn btn-sm" style="background:${isSelfPaused ? '#059669' : '#f1f5f9'};color:${isSelfPaused ? '#fff' : '#334155'};border:1px solid #cbd5e1;padding:4px 10px;font-size:0.76rem;font-weight:800;border-radius:8px;cursor:pointer;">${isSelfPaused ? '▶️ إنهاء الإجازة وتفعيل المتجر' : '⏸️ وضع إجازة / إغلاق مؤقت'}</button>` : ''}
+    if (!isApprovedOnb || isUnfunded) {
+        const step1Done = isApprovedOnb;
+        const step2PendingReview = pendTopups.length > 0;
+        const step2Html = step2PendingReview
+            ? `<div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:10px;padding:10px 12px;">
+                    <div style="font-weight:900;color:#92400e;font-size:0.86rem;">⏳ 2. طلب الشحن قيد المراجعة لدى المالية (${pendTopups.length})</div>
+                    <div style="font-size:0.79rem;color:#78350f;margin-top:3px;">تم استلام إشعار تحويلك — بمجرد تأكيد المالية يُفعّل متجرك ويظهر في الدليل تلقائياً.</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+                        <button type="button" onclick="showPage('financial')" class="btn btn-sm" style="background:#fff;border:1.5px solid #d97706;color:#92400e;font-weight:800;">📊 متابعة حالة الطلب</button>
+                        <button type="button" onclick="openMerchantTopupModal()" class="btn btn-sm" style="background:#059669;color:#fff;border:none;font-weight:800;">➕ إرسال تحويل جديد</button>
+                    </div>
+               </div>`
+            : `<div style="background:${step1Done ? '#ecfdf5' : '#f8fafc'};border:2px solid ${step1Done ? '#10b981' : '#cbd5e1'};border-radius:10px;padding:12px;">
+                    <div style="font-weight:900;color:${step1Done ? '#065f46' : '#334155'};font-size:0.88rem;">${step1Done ? '👉 2. الخطوة المطلوبة الآن: اشحن رصيدك الافتتاحي' : '2. شحن الرصيد الافتتاحي'}</div>
+                    <div style="font-size:0.8rem;color:#334155;margin-top:4px;line-height:1.55;">حوّل مبلغ الشحن لحساب SAWYAN البنكي وأرفق الإيصال (أو اطلب بيانات الحساب بضغطة واتساب) — يفتح الكاشير ويظهر متجرك للأعضاء فور المطابقة.</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+                        <button type="button" onclick="openMerchantTopupModal()" class="btn btn-primary" style="background:#059669;border-color:#047857;font-weight:900;font-size:0.88rem;padding:9px 18px;">💳 اشحن رصيدك الآن</button>
+                        <button type="button" onclick="showPage('financial')" class="btn btn-outline btn-sm" style="font-weight:800;">📊 صفحة المالية</button>
+                    </div>
+               </div>`;
+
+        lcBox.innerHTML = `
+            <div style="background:#ffffff;border:2px solid ${step1Done ? '#10b981' : '#f59e0b'};border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 4px 14px rgba(15,23,42,0.06);">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+                    <div style="font-weight:900;font-size:1rem;color:#0f172a;">🚀 خطوات تفعيل متجرك للظهور للأعضاء</div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <span style="padding:3px 9px;border-radius:999px;font-size:0.74rem;font-weight:800;background:#fee2e2;color:#991b1b;">🔴 مخفي عن الدليل مؤقتاً</span>
+                        <span style="padding:3px 9px;border-radius:999px;font-size:0.74rem;font-weight:800;background:#fee2e2;color:#991b1b;">🔒 الكاشير بانتظار التفعيل</span>
+                    </div>
+                </div>
+                <div style="display:grid;gap:10px;">
+                    <div style="background:${step1Done ? '#f0fdf4' : '#fffbeb'};border:1.5px solid ${step1Done ? '#86efac' : '#f59e0b'};border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <div>
+                            <div style="font-weight:900;color:${step1Done ? '#166534' : '#92400e'};font-size:0.86rem;">${step1Done ? '✅ 1. تم اعتماد بيانات متجرك بنجاح' : '⚠️ 1. استكمال ومراجعة بيانات المتجر'}</div>
+                            <div style="font-size:0.78rem;color:#475569;margin-top:2px;">${step1Done ? 'بياناتك ونسبة العمولة (' + Number(p.deduction_percent || 0) + '%) معتمدة وجاهزة.' : escM(p.onboarding_notes || 'يرجى استكمال البيانات الناقصة من الإعدادات ليتم اعتماد المتجر.')}</div>
+                        </div>
+                        ${!step1Done ? `<button type="button" onclick="showPage('settings')" class="btn btn-sm" style="background:#d97706;color:#fff;border:none;font-weight:800;">⚙️ استكمال البيانات</button>` : ''}
+                    </div>
+                    ${step2Html}
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:9px 12px;font-size:0.8rem;color:#475569;">
+                        <strong>🔓 3. الظهور في دليل الأعضاء وفتح الكاشير:</strong> يُفتح تلقائياً فور تأكيد المالية لطلب الشحن دون أي خطوات إضافية.
+                    </div>
                 </div>
             </div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,185px),1fr));gap:8px;font-size:0.8rem;">
-                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;">
-                    <div style="color:#64748b;font-weight:700;font-size:0.72rem;">المحور 1 — التأهيل والملف</div>
-                    <div style="font-weight:800;color:#0f172a;margin-top:2px;">${escM(onbLabels[p.onboarding_status] || p.onboarding_status || 'approved')}</div>
+        `;
+    } else {
+        lcBox.innerHTML = `
+            <div style="background:#ffffff;border:1.5px solid ${acc.is_visible_on_radar ? '#10b981' : (acc.can_accept_pos ? '#f59e0b' : '#ef4444')};border-radius:14px;padding:14px 16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(15,23,42,0.04);">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:8px;">
+                    <div style="font-weight:900;font-size:0.95rem;color:#0f172a;">🧭 حالة المتجر والتشغيل (${escM(accessModeAr)})</div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                        <span style="padding:3px 9px;border-radius:999px;font-size:0.75rem;font-weight:800;background:${acc.is_visible_on_radar ? '#d1fae5' : '#fee2e2'};color:${acc.is_visible_on_radar ? '#065f46' : '#991b1b'};">${acc.is_visible_on_radar ? '🟢 ظاهر بالدليل والرادار' : '🔴 مخفي عن الدليل'}</span>
+                        <span style="padding:3px 9px;border-radius:999px;font-size:0.75rem;font-weight:800;background:${acc.can_accept_pos ? '#d1fae5' : '#fee2e2'};color:${acc.can_accept_pos ? '#065f46' : '#991b1b'};">${acc.can_accept_pos ? '🟢 الكاشير مفتوح' : '🔒 الكاشير مغلق'}</span>
+                        <button type="button" onclick="openMerchantTopupModal()" class="btn btn-sm" style="background:#059669;color:#fff;border:none;padding:4px 10px;font-size:0.76rem;font-weight:800;border-radius:8px;cursor:pointer;">💳 شحن الرصيد</button>
+                        ${canSelfPause ? `<button type="button" onclick="toggleMerchantSelfPause()" class="btn btn-sm" style="background:${isSelfPaused ? '#059669' : '#f1f5f9'};color:${isSelfPaused ? '#fff' : '#334155'};border:1px solid #cbd5e1;padding:4px 10px;font-size:0.76rem;font-weight:800;border-radius:8px;cursor:pointer;">${isSelfPaused ? '▶️ إنهاء الإجازة وتفعيل المتجر' : '⏸️ وضع إجازة / إغلاق مؤقت'}</button>` : ''}
+                    </div>
                 </div>
-                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;">
-                    <div style="color:#64748b;font-weight:700;font-size:0.72rem;">المحور 2 — الملاءة والرصيد</div>
-                    <div style="font-weight:800;color:#0f172a;margin-top:2px;">${escM(finLabels[p.financial_status] || p.financial_status || 'healthy_green')}</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,185px),1fr));gap:8px;font-size:0.8rem;">
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;">
+                        <div style="color:#64748b;font-weight:700;font-size:0.72rem;">تأهيل الحساب والبيانات</div>
+                        <div style="font-weight:800;color:#0f172a;margin-top:2px;">${escM(onbLabels[p.onboarding_status] || p.onboarding_status || 'approved')}</div>
+                    </div>
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;">
+                        <div style="color:#64748b;font-weight:700;font-size:0.72rem;">الرصيد والتغطية</div>
+                        <div style="font-weight:800;color:#0f172a;margin-top:2px;">${escM(finLabels[p.financial_status] || p.financial_status || 'healthy_green')}</div>
+                    </div>
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;">
+                        <div style="color:#64748b;font-weight:700;font-size:0.72rem;">حالة الحساب والالتزام</div>
+                        <div style="font-weight:800;color:#0f172a;margin-top:2px;">${escM(govLabels[p.governance_status] || p.governance_status || 'good_standing')}</div>
+                    </div>
                 </div>
-                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;">
-                    <div style="color:#64748b;font-weight:700;font-size:0.72rem;">المحور 3 — الحوكمة والامتثال</div>
-                    <div style="font-weight:800;color:#0f172a;margin-top:2px;">${escM(govLabels[p.governance_status] || p.governance_status || 'good_standing')}</div>
-                </div>
+                ${reasonText ? `<div style="margin-top:8px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:7px 10px;font-size:0.79rem;font-weight:700;color:#92400e;">ℹ️ ${escM(reasonText)}</div>` : ''}
             </div>
-            ${reasonText ? `<div style="margin-top:8px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:7px 10px;font-size:0.79rem;font-weight:700;color:#92400e;">ℹ️ ${escM(reasonText)}</div>` : ''}
-        </div>
-    `;
+        `;
+    }
 
     let d4Box = document.getElementById('merchantD4SettlementCard');
     const credLim = Number(p.credit_limit || 0);
@@ -616,6 +684,7 @@ async function renderMerchantCompletionBanner() {
         district: p.district,
         phone: p.phone,
         commission_percent: p.commission_pending ? '' : p.deduction_percent,
+        onboarded_by_code: p.onboarded_by_member_code ? String(p.onboarded_by_member_code) : (p.onboarded_by_member_id ? '1' : ''),
         business_description: p.description,
         address: p.address,
         geo_location: (p.latitude && p.longitude) ? `${p.latitude},${p.longitude}` : '',
@@ -636,7 +705,10 @@ async function renderMerchantCompletionBanner() {
 
     const st = eng.computeCompletionStatus(cfg, 'merchant', valuesMap);
     let banner = document.getElementById('merchantProfileCompletionBanner');
-    if (st.percent >= 100 && !p.commission_pending && st.missingRequired.length === 0) {
+    if (
+        (p.onboarding_status === 'approved' && !p.commission_pending && (p.profile_complete === true || st.missingRequired.length === 0))
+        || (st.percent >= 100 && !p.commission_pending && st.missingRequired.length === 0)
+    ) {
         if (banner) banner.remove();
         return;
     }
