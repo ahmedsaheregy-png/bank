@@ -41,6 +41,11 @@
             .replace(/"/g, '&quot;');
     }
 
+    function resolvePublicImg(src) {
+        const s = String(src || '').trim();
+        return s && !/^(https?:|data:image\/|\/|\.\.\/)/i.test(s) ? ('../' + s) : s;
+    }
+
     function hydrateLogosAndTheme() {
         if (window.SAWYAN && window.SAWYAN.Logo && typeof window.SAWYAN.Logo.svg === 'function') {
             const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -263,7 +268,7 @@
                 ? '🌐 أونلاين'
                 : (m.merchantType === 'both' ? '🏪🌐 محلي وأونلاين' : '🏪 فرع محلي');
             const rawImg = m.image || m.coverImageUrl || m.logoUrl || '';
-            const resolvedImg = rawImg && !/^(https?:|data:image\/|\/|\.\.\/)/i.test(rawImg) ? ('../' + rawImg) : rawImg;
+            const resolvedImg = resolvePublicImg(rawImg);
             const safeImg = resolvedImg && (
                 (window.SAWYAN && window.SAWYAN.ImageUpload && window.SAWYAN.ImageUpload.isSafeMediaUrl(resolvedImg))
                 || /^(\.\.\/)?assets\/[A-Za-z0-9_.\-/]+\.(png|jpe?g|webp)$/i.test(resolvedImg)
@@ -402,17 +407,21 @@
 
         if (byId('modal-merchant-icon')) {
             const iconBox = byId('modal-merchant-icon');
-            const logoSafe = m.logoUrl && window.SAWYAN?.ImageUpload?.isSafeMediaUrl(m.logoUrl);
+            const logoUrl = resolvePublicImg(m.logoUrl);
+            const logoSafe = logoUrl && window.SAWYAN?.ImageUpload?.isSafeMediaUrl(logoUrl);
             if (logoSafe) {
-                iconBox.innerHTML = `<img src="${escapeHtml(m.logoUrl)}" alt="${escapeHtml(m.businessName)}" style="width:56px;height:56px;border-radius:14px;object-fit:cover;border:2px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.22);">`;
+                iconBox.innerHTML = `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(m.businessName)}" style="width:56px;height:56px;border-radius:14px;object-fit:cover;border:2px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.22);">`;
             } else {
                 iconBox.textContent = icon;
             }
         }
         const headerBg = byId('modal-header-bg');
         if (headerBg) {
-            const coverSrc = m.coverImageUrl || m.image || '';
-            const coverSafe = coverSrc && window.SAWYAN?.ImageUpload?.isSafeMediaUrl(coverSrc);
+            const coverSrc = resolvePublicImg(m.coverImageUrl || m.image || '');
+            const coverSafe = coverSrc && (
+                window.SAWYAN?.ImageUpload?.isSafeMediaUrl(coverSrc)
+                || /^(\.\.\/)?assets\/[A-Za-z0-9_.\-/]+\.(png|jpe?g|webp)$/i.test(coverSrc)
+            );
             if (coverSafe) {
                 headerBg.style.backgroundImage = `linear-gradient(180deg, rgba(15,23,42,.35), rgba(15,23,42,.65)), url("${coverSrc.replace(/"/g, '')}")`;
                 headerBg.style.backgroundSize = 'cover';
@@ -424,10 +433,13 @@
         const galleryEl = byId('modal-merchant-gallery');
         if (galleryEl) {
             const pics = []
-                .concat(m.coverImageUrl ? [m.coverImageUrl] : [])
-                .concat(m.logoUrl && m.logoUrl !== m.coverImageUrl ? [m.logoUrl] : [])
-                .concat(Array.isArray(m.images) ? m.images : [])
-                .filter((u, idx, arr) => u && arr.indexOf(u) === idx && window.SAWYAN?.ImageUpload?.isSafeMediaUrl(u));
+                .concat(m.coverImageUrl ? [resolvePublicImg(m.coverImageUrl)] : [])
+                .concat(m.logoUrl && m.logoUrl !== m.coverImageUrl ? [resolvePublicImg(m.logoUrl)] : [])
+                .concat(Array.isArray(m.images) ? m.images.map(resolvePublicImg) : [])
+                .filter((u, idx, arr) => u && arr.indexOf(u) === idx && (
+                    window.SAWYAN?.ImageUpload?.isSafeMediaUrl(u)
+                    || /^(\.\.\/)?assets\/[A-Za-z0-9_.\-/]+\.(png|jpe?g|webp)$/i.test(u)
+                ));
             if (pics.length) {
                 galleryEl.style.display = 'grid';
                 galleryEl.innerHTML = pics.map((u, idx) => window.SAWYAN.ImageUpload.renderThumbHtml(u, `${m.businessName} (${idx + 1})`, { label: `صورة #${idx + 1}` })).join('');

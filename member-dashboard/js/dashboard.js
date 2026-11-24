@@ -390,6 +390,47 @@ window.copyMemberStaticBarcode = function () {
     swMemToast(`تم نسخ رمز الهوية الثابت للكاشير: ${txt}`, 'success');
 };
 
+window.openQuickMemberQrModal = function () {
+    const profile = memberBundle?.profile || currentMember || {};
+    const code = profile.member_code || '';
+    const fullName = profile.full_name || 'عضو SAWYAN';
+    const barcodePayload = (window.SAWYAN && window.SAWYAN.PaymentService)
+        ? window.SAWYAN.PaymentService.generateOfflineQR(profile.id, code)
+        : `SAWYAN:MEMBER:${code}`;
+
+    let ov = document.getElementById('sawyanQuickMemberQrOverlay');
+    if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'sawyanQuickMemberQrOverlay';
+        ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.78);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10060;';
+        ov.onclick = (e) => { if (e.target === ov) ov.style.display = 'none'; };
+        document.body.appendChild(ov);
+    }
+    ov.style.display = 'flex';
+    ov.innerHTML = `
+        <div style="background:#ffffff;border-radius:20px;max-width:360px;width:100%;padding:20px;text-align:center;border:2.5px solid #10b981;box-shadow:0 24px 60px rgba(0,0,0,0.45);direction:rtl;font-family:Tajawal,sans-serif;" onclick="event.stopPropagation()">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <strong style="font-size:1.02rem;color:#065f46;">📲 كود هويتك للكاشير</strong>
+                <button type="button" onclick="document.getElementById('sawyanQuickMemberQrOverlay').style.display='none'" style="border:none;background:#f1f5f9;border-radius:8px;width:30px;height:30px;cursor:pointer;font-weight:800;">✕</button>
+            </div>
+            <div style="font-weight:800;color:#0f172a;font-size:0.95rem;">${esc(fullName)}</div>
+            <div style="font-weight:900;color:#047857;font-size:1.15rem;margin:2px 0 12px;" dir="ltr">#${esc(code)}</div>
+            <div id="quickMemberQrCanvas" style="display:inline-flex;align-items:center;justify-content:center;padding:12px;background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;min-width:210px;min-height:210px;"></div>
+            <div style="font-size:0.78rem;color:#475569;margin:10px 0 14px;">أظهر هذا الرمز الثابت للكاشير لمسح الفاتورة فوراً</div>
+            <div style="display:grid;gap:8px;">
+                <button type="button" class="btn btn-primary btn-sm" onclick="copyMemberStaticBarcode()">📋 نسخ كود العضوية</button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="downloadMemberQrCardPng()">💾 حفظ بطاقة العضوية كصورة</button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('sawyanQuickMemberQrOverlay').style.display='none'">إغلاق</button>
+            </div>
+        </div>
+    `;
+    const box = document.getElementById('quickMemberQrCanvas');
+    if (box && window.QRCode) {
+        box.innerHTML = '';
+        new window.QRCode(box, { text: barcodePayload, width: 204, height: 204, colorDark: '#047857', colorLight: '#ffffff' });
+    }
+};
+
 window.downloadMemberQrCardPng = function () {
     const profile = memberBundle?.profile || currentMember || {};
     const code = profile.member_code || '';
@@ -772,17 +813,38 @@ function renderHomePage() {
             list.innerHTML = txs.slice(0, 5).map(t => {
                 const stBadge = fmtMemberTxStatusBadge(t);
                 return `
-                <div class="transaction-item">
+                <div class="transaction-item" style="flex-wrap:wrap;gap:8px;">
                     <div class="transaction-info">
                         <div class="transaction-merchant">${esc(t.merchant_name)} — <small>${esc(t.sw_short_code)}</small></div>
                         <div class="transaction-date">${new Date(t.created_at).toLocaleDateString('ar-EG')} • <span style="padding:1px 7px;border-radius:999px;font-size:0.74rem;font-weight:800;background:${stBadge.bg};color:${stBadge.color};">${stBadge.label}</span></div>
                     </div>
-                    <div class="transaction-amount">${Number(t.total_amount).toFixed(2)} ${esc(t.currency_code)}</div>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <div class="transaction-amount">${Number(t.total_amount).toFixed(2)} ${esc(t.currency_code)}</div>
+                        ${t.merchant_id ? `<button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px;font-size:0.74rem;white-space:nowrap;" onclick="openQuickRepeatPurchase('${esc(t.merchant_id)}', '${esc(t.merchant_name || '')}', '${esc(t.currency_code || '')}')">🧾 توثيق جديد</button>` : ''}
+                    </div>
                 </div>
             `; }).join('');
         }
     }
 }
+
+window.openQuickRepeatPurchase = async function (merchantId, merchantName = '', currencyCode = '') {
+    if (!merchantId) {
+        openMemberPurchaseModal();
+        return;
+    }
+    if (!Array.isArray(liveCatalog) || liveCatalog.length === 0) {
+        await loadPublicMerchantsCatalogSafe();
+    }
+    const match = (Array.isArray(liveCatalog) ? liveCatalog : []).find(m => String(m.merchant_id) === String(merchantId));
+    openMemberPurchaseModal(
+        merchantId,
+        match ? (match.branch_id || null) : null,
+        (match && match.business_name) || merchantName || '',
+        (match && match.currency_code) || currencyCode || '',
+        match ? Number(match.plan_cashback_pct || 7.5) : null
+    );
+};
 
 // ---------------------------------------------------------------------------
 // Screen 2: My Pending & Awaiting Top-Up (Path B + FIFO + Cancel Pending)
@@ -1369,14 +1431,14 @@ function loadTree() {
         <div data-spec-id="member-tree-kpis" style="background:linear-gradient(135deg, #064e3b 0%, #0f172a 100%);color:#ffffff;border-radius:16px;padding:16px 18px;margin-bottom:14px;box-shadow:0 8px 24px rgba(6,78,59,0.22);border:1px solid rgba(16,185,129,0.35);">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
                 <div>
-                    <h2 style="margin:0;font-size:1.12rem;font-weight:900;color:#34d399;">🌐 الشجرة الدولية التفاعلية (${lensPlan.s01} جيلاً • S01)</h2>
+                    <h2 style="margin:0;font-size:1.12rem;font-weight:900;color:#34d399;">🌐 الشجرة الدولية التفاعلية (سقف ${lensPlan.s01} جيلاً مؤهلاً)</h2>
                     <div style="font-size:0.79rem;color:#cbd5e1;margin-top:2px;">
                         أنت: <strong style="color:#ffffff;">${esc((memberBundle.profile && memberBundle.profile.full_name) || '')} (#${esc((memberBundle.profile && memberBundle.profile.member_code) || '')})</strong>
                         • حصتك عن كل مؤهل في فريقك: <strong style="color:#fde047;">${esc(fmtCountryLocal(lensPlan.unitShareUsd, lensPlan))}</strong>
                     </div>
                 </div>
-                <div style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.22);padding:5px 12px;border-radius:10px;font-family:monospace;font-weight:900;font-size:0.86rem;color:#fef08a;direction:ltr;">
-                    ${treeTotalIncludingSelf}M (You + ${leftArmCnt}L / ${rightArmCnt}R)
+                <div style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.22);padding:5px 12px;border-radius:10px;font-weight:900;font-size:0.84rem;color:#fef08a;">
+                    الإجمالي: ${treeTotalIncludingSelf} (يمين ${rightArmCnt} • يسار ${leftArmCnt})
                 </div>
             </div>
 
@@ -1393,7 +1455,7 @@ function loadTree() {
                     <div style="font-size:0.72rem;color:#cbd5e1;">${selfIsQualified ? `أنت (1/${lensPlan.s01}) + ${teamCommCount} من فريقك` : `${teamCommCount} من فريقك • أنت غير مؤهل بعد`}</div>
                 </div>
                 <div style="background:rgba(148,163,184,0.14);padding:10px;border-radius:12px;border:1px solid rgba(148,163,184,0.38);">
-                    <div style="font-size:0.78rem;color:#cbd5e1;font-weight:800;">3️⃣ الفريق الرديف (D26 مجمّع)</div>
+                    <div style="font-size:0.78rem;color:#cbd5e1;font-weight:800;">3️⃣ الفريق الرديف المجمّع</div>
                     <strong style="display:block;font-size:1.3rem;color:#f1f5f9;margin:3px 0;">+${tree.reserve_team_aggregated_count || 0}</strong>
                     <div style="font-size:0.72rem;color:#94a3b8;">بعد امتلاء ${lensPlan.s01}/${lensPlan.s01}</div>
                 </div>
@@ -1910,7 +1972,7 @@ function loadWalletDetails() {
                     <small style="color:#64748b;">مرجع الدفتر: ${fmtUsd(grossNetworkUsd)}</small>
                 </div>
                 <div style="background:#ecfdf5;border:1.5px solid #10b981;border-radius:14px;padding:14px;">
-                    <div style="font-size:0.8rem;color:#065f46;">2️⃣ صافي المحفظة القابل للصرف (حساب 2302)</div>
+                    <div style="font-size:0.8rem;color:#065f46;">2️⃣ صافي المحفظة القابل للصرف</div>
                     <strong style="font-size:1.15rem;color:#047857;display:block;margin-top:4px;">${esc(fmtLocalFromUsd(availableUsd))}</strong>
                     <small style="color:#065f46;">الصافي الدولاري: ${fmtUsd(availableUsd)}</small>
                 </div>
@@ -1918,7 +1980,7 @@ function loadWalletDetails() {
 
             <div data-spec-id="member-wallet-s03-meter" style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:14px;padding:14px;margin-bottom:14px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
-                    <strong style="color:#92400e;">⚖️ مقياس سقف S03 وتسوية حساب المعلق Pro-Rata (2303)</strong>
+                    <strong style="color:#92400e;">⚖️ مقياس السقف الشهري للأرباح والفائض المعلق</strong>
                     <span style="font-weight:800;color:#b45309;">${fmtUsd(suspenseUsd)} معلق • السقف: ${fmtUsd(hp.stopperUsd)} (${esc(fmtLocalFromUsd(hp.stopperUsd))})</span>
                 </div>
                 <div style="height:8px;background:#fde68a;border-radius:999px;overflow:hidden;">
@@ -1927,7 +1989,7 @@ function loadWalletDetails() {
             </div>
 
             <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:12px;margin:14px 0;font-size:0.85rem;color:#334155;">
-                🛡️ <strong>ضوابط الأمان المالية (D24 / W07 / D7):</strong> يُحظر تماماً التحويل المباشر بين الأعضاء (<code>No P2P</code>)، وتخضع كل وسيلة استلام مضافة لفترة تهدئة إجبارية <code>72 ساعة</code> مع اشتراط توثيق الهوية <code>KYC = verified</code> قبل السحب.
+                🛡️ <strong>ضوابط الأمان المالية:</strong> لحماية حسابك، يُصرف الرصيد لوسيلتك المسجّلة فقط (دون تحويل بين الأعضاء)، وتخضع كل وسيلة استلام جديدة لفترة أمان <code>72 ساعة</code> مع اشتراط توثيق الهوية قبل أول سحب.
             </div>
 
             <div data-spec-id="member-wallet-methods-section">
@@ -2290,7 +2352,7 @@ async function loadNearbyMerchants() {
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
             <div>
                 <h2 style="margin:0;">🏪 التجار المعتمدون والخريطة الجغرافية (${filtered.length})</h2>
-                <small style="color:#64748b;">يعرض صافي نسبة عائدات خطة الدخل فقط (F01 / S01) • إحداثياتك المرجعية: ${myCoords.lat.toFixed(4)}, ${myCoords.lng.toFixed(4)}</small>
+                <small style="color:#64748b;">تعرض البطاقات صافي عائدات فريقك من كل متجر • موقعك المرجعي: ${myCoords.lat.toFixed(4)}, ${myCoords.lng.toFixed(4)}</small>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <button type="button" class="btn btn-primary btn-sm" onclick="openMemberPurchaseModal()">🧾 توثيق فاتورة شراء</button>
@@ -2491,8 +2553,9 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
     let mpReceiptUp = null;
 
     openMemberModal(`🧾 توثيق فاتورة مشتريات — ${preMerchantId ? esc(initialRow.business_name) : 'أرسل الفاتورة بسهولة'}`, `
-        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:9px 12px;font-size:0.8rem;color:#065f46;font-weight:700;line-height:1.55;">
-            ✨ 3 خطوات فقط: ١. اختر المتجر ← ٢. اكتب قيمة الفاتورة وارفع صورة الإيصال ← ٣. تُرسل للتاجر ويُضاف عائدك فور الاعتماد.
+        <input type="hidden" id="mpModeInput" value="unified_pending">
+        <div id="mpModeExplainer" style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:8px 12px;font-size:0.8rem;color:#065f46;font-weight:700;line-height:1.5;">
+            🧾 اختر المتجر وأدخل قيمة الفاتورة (صورة الإيصال اختيارية) — يصل الإشعار فوراً للمتجر للاعتماد.
         </div>
 
         <div id="mpMerchantSelectorWrap" style="${preMerchantId ? 'display:none;' : ''}">
@@ -2501,11 +2564,6 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
             <select id="mpMerchantSelect" class="form-control" required>
                 ${catalog.map(m => `<option value="${esc(m.merchant_id)}::${esc(m.branch_id || '')}" data-pct="${Number(m.plan_cashback_pct || 7.5)}" data-curr="${esc(m.currency_code || plan.currencyCode)}" ${(String(m.merchant_id) === String(initialRow.merchant_id) && String(m.branch_id || '') === String(initialRow.branch_id || '')) ? 'selected' : ''}>${esc(m.business_name)} (${esc(m.branch_name || 'الفرع الرئيسي')}) — عائد ${Number(m.plan_cashback_pct || 7.5).toFixed(2)}% (${esc(m.currency_code || '')})</option>`).join('')}
             </select>
-        </div>
-
-        <input type="hidden" id="mpModeInput" value="unified_pending">
-        <div id="mpModeExplainer" style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:10px 12px;font-size:0.8rem;color:#065f46;line-height:1.55;">
-            🧾 <strong>طلب توثيق موحّد (داخل المحل أو دليفري / أونلاين):</strong> أدخل قيمة الفاتورة وأرسل الطلب؛ سيصل إشعار فوري لموبايل التاجر وموظفي المتجر لاعتماده وإضافة العائد لصندوق هدفك.
         </div>
 
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:10px;">
@@ -2896,9 +2954,9 @@ function loadReferrals() {
     page.innerHTML = `
         <h2>🔗 بوابة الإحالة، التسكين المتوازن، وتسجيل المباشرين</h2>
 
-        <div data-spec-id="member-referrals-qr" style="background:#fff;border:1.5px solid #10b981;border-radius:16px;padding:18px;margin-top:14px;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;">
+        <div data-spec-id="member-referrals-qr" style="background:#fff;border:1.5px solid #10b981;border-radius:16px;padding:18px;margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:16px;align-items:center;">
             <div>
-                <p style="margin:0 0 10px;">كود الراعي الخاص بك: <strong style="color:#047857;font-size:1.05rem;">#${esc(currentMember.member_code)}</strong> — كل من يسجل عبر هذا الرابط يتأكد من اسمك الثلاثي قبل التسكين الذري التلقائي في أضعف ذراع (G01–G05).</p>
+                <p style="margin:0 0 10px;">كود الراعي الخاص بك: <strong style="color:#047857;font-size:1.05rem;">#${esc(currentMember.member_code)}</strong> — كل من يسجل عبر هذا الرابط يتأكد من اسمك الثلاثي قبل التسكين التلقائي المتوازن في الذراع الأضعف بشجرتك.</p>
                 <div style="margin-bottom:10px;">
                     <label for="referralTargetCountrySelect" style="display:block;font-weight:700;font-size:0.84rem;margin-bottom:4px;color:#065f46;">🌍 الدولة المستهدفة للمدعو (كل دول العالم):</label>
                     <select id="referralTargetCountrySelect" class="form-control" style="max-width:340px;" onchange="updateReferralTargetCountry(this.value)">
@@ -2906,26 +2964,44 @@ function loadReferrals() {
                     </select>
                 </div>
                 <div class="referral-link" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
-                    <input type="text" id="myReferralLinkInput" class="form-control" style="flex:1;direction:ltr;" value="${esc(url)}" readonly>
+                    <input type="text" id="myReferralLinkInput" class="form-control" style="flex:1;min-width:180px;direction:ltr;" value="${esc(url)}" readonly>
                     <button type="button" class="btn btn-primary" onclick="copyReferralLink()">📋 نسخ الرابط</button>
                     <a id="myReferralWaLink" href="https://wa.me/?text=${encodeURIComponent('سجل مجاناً في SAWYAN مع فريقي (كود #' + currentMember.member_code + '): ' + url)}" target="_blank" class="btn btn-outline">💬 واتساب</a>
                 </div>
             </div>
             <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:10px;text-align:center;">
-                <div id="referralQrCanvas"></div>
+                <div id="referralQrCanvas" style="display:flex;justify-content:center;"></div>
                 <div style="font-size:0.74rem;font-weight:800;color:#065f46;margin-top:6px;">امسح للتسجيل تحت #${esc(currentMember.member_code)}</div>
             </div>
         </div>
 
         <div data-spec-id="member-referrals-y06-share" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:14px;padding:14px 16px;margin-top:14px;font-size:0.84rem;color:#1e3a8a;">
-            <strong>📣 إفصاح الدعوة الملتزم بضوابط Y06:</strong> شارك مشروع SAWYAN كنظام استهلاك استثماري حقيقي مرتبط بالمشتريات الفعلية لدى التجار (بلا وعود بدخل مضمون أو أرباح بلا شراء).
+            <strong>📣 قاعدة الدعوة الشفافة:</strong> شارك مشروع SAWYAN كنظام استهلاك استثماري حقيقي مرتبط بالمشتريات الفعلية لدى التجار (بلا وعود بدخل مضمون أو أرباح بلا شراء).
+        </div>
+
+        <div id="memberInviteKitCard" style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;margin-top:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+                <h3 style="margin:0;font-size:1rem;color:#0f2744;">🎒 حقيبة الدعوة الجاهزة (الفيديو الرسمي + رسائل سريعة)</h3>
+                <span style="font-size:0.76rem;color:#047857;font-weight:800;">متوافقة مع ضوابط الدعوة الشفافة</span>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;padding-bottom:12px;border-bottom:1px dashed #e2e8f0;">
+                <a href="../shared/assets/sawyan-promo-official.mp4" download="SAWYAN_Official_Promo_1080p.mp4" class="btn btn-primary btn-sm">📥 تحميل الفيديو الرسمي (HD)</a>
+                <a href="../index.html#promo-explainer" target="_blank" rel="noopener" class="btn btn-outline btn-sm">▶ مشاهدة الفيديو</a>
+                <a href="https://wa.me/?text=${encodeURIComponent('شاهد فكرة منصة SAWYAN للاستهلاك الاستثماري وانضم مجاناً عبر رابطي (كود #' + currentMember.member_code + '): ' + url)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">💬 مشاركة الدعوة عبر واتساب</a>
+            </div>
+            <div style="font-size:0.8rem;font-weight:800;color:#334155;margin-bottom:6px;">📋 انسخ رسالة دعوة جاهزة بضغطة واحدة:</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:8px;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="copyInviteTemplate('shopper')">🛒 رسالة لمتسوق جديد</button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="copyInviteTemplate('merchant')">🏪 رسالة لصاحب متجر</button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="copyInviteTemplate('builder')">👥 رسالة لباحث عن دخل إضافي</button>
+            </div>
         </div>
 
         <div data-spec-id="member-referrals-spillover-predictor" style="background:#ecfdf5;border:1.5px solid #10b981;border-radius:14px;padding:14px 16px;margin-top:14px;">
-            <strong style="color:#065f46;">⚖️ متنبئ موقع الإسقاط المتوازن القادم (Balanced Spillover BFS — G01–G05):</strong>
+            <strong style="color:#065f46;">⚖️ موقع تسكين العضو الجديد القادم في شجرتك:</strong>
             ${nextPrev
                 ? `<div style="margin-top:6px;font-size:0.86rem;color:#0f172a;">
-                    المقعد القادم لمباشرك الجديد سيكون تلقائياً تحت العضو <strong>#${esc(nextPrev.next_parent_code)} ${esc(nextPrev.next_parent_name)}</strong> في الجهة <strong>${nextPrev.next_side === 'right' ? 'اليمنى ⬅️ (Right First)' : 'اليسرى ➡️'}</strong>
+                    المقعد القادم لمباشرك الجديد سيكون تلقائياً تحت العضو <strong>#${esc(nextPrev.next_parent_code)} ${esc(nextPrev.next_parent_name)}</strong> في الجهة <strong>${nextPrev.next_side === 'right' ? 'اليمنى ⬅️' : 'اليسرى ➡️'}</strong>
                     <span style="color:#065f46;">(توازن الذراعين: يمين ${Number(nextPrev.right_arm_count || 0)} • يسار ${Number(nextPrev.left_arm_count || 0)})</span>
                   </div>`
                 : '<div style="margin-top:6px;font-size:0.84rem;color:#475569;">سيُحدَّد المقعد تلقائياً عند تسجيل أول مباشر تحتك.</div>'}
@@ -3031,6 +3107,31 @@ function copyReferralLink() {
     navigator.clipboard?.writeText(input.value).catch(() => document.execCommand('copy'));
     swMemToast('تم نسخ رابط الإحالة!', 'success');
 }
+
+window.copyInviteTemplate = function (kind) {
+    const url = buildReferralUrl(window.__referralTargetCountry || '');
+    const base = window.location.href.split('/member-dashboard/')[0];
+    const merchUrl = `${base}/merchant-dashboard/register.html`;
+    const code = currentMember?.member_code || '';
+    const templates = {
+        shopper: `لا تدفع دون مقابل بعد الآن!\nتسوّق من السوبر ماركت والصيدليات والمطاعم المعتمدة بنفس السعر الطبيعي، ووثّق فاتورتك لتحصل على عائدات الاستهلاك الاستثماري عبر منصة SAWYAN مجاناً 100%.\nسجّل عبر رابطي (كود #${code}):\n${url}`,
+        merchant: `ضاعف مبيعات متجرك دون مجازفة بميزانيات إعلانية مجهولة المردود — ادفع مقابل النتائج والمشتريات الفعلية فقط مع SAWYAN، وانضم مجاناً لتكون ضمن دليل التجار المعتمدين:\n${merchUrl}`,
+        builder: `فرصة مجانية لبناء مشروع حقيقي يبدأ من مشترياتك اليومية المعتادة وفريقك عبر منصة SAWYAN (صفر رأس مال، وعائدات مرتبطة بالمشتريات الفعلية لدى التجار فقط).\nابدأ مجاناً بكودي (#${code}):\n${url}`
+    };
+    const text = templates[kind] || templates.shopper;
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard.writeText(text).catch(() => {});
+    } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.cssText = 'position:fixed;opacity:0;';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch (_e) {}
+        document.body.removeChild(ta);
+    }
+    swMemToast('تم نسخ رسالة الدعوة بنجاح!', 'success');
+};
 
 // ---------------------------------------------------------------------------
 // Screen 11: Settings (Residency Lock + Next-Month Move + KYC + Home GPS + Support Tickets + Password)
@@ -3339,22 +3440,27 @@ async function renderMemberProfileCompletionBanner() {
     if (!banner) {
         banner = document.createElement('div');
         banner.id = 'memberProfileCompletionBanner';
-        host.insertBefore(banner, host.firstChild);
+        const quickBar = document.getElementById('memberHomeQuickCashierBar');
+        if (quickBar && quickBar.parentNode === host) {
+            host.insertBefore(banner, quickBar.nextSibling);
+        } else {
+            host.insertBefore(banner, host.firstChild);
+        }
     }
 
     const missingBadges = st.missingRequired.slice(0, 4)
-        .map(f => `<span style="background:#fff;border:1px solid #93c5fd;color:#1e40af;padding:2px 8px;border-radius:999px;font-size:0.76rem;font-weight:700;">• ${esc(f.label_ar)}</span>`)
+        .map(f => `<span style="background:#fff;border:1px solid #93c5fd;color:#1e40af;padding:2px 8px;border-radius:999px;font-size:0.74rem;font-weight:700;">• ${esc(f.label_ar)}</span>`)
         .join(' ');
 
     banner.innerHTML = `
-        <div style="background:linear-gradient(135deg,#eff6ff,#f0fdf4);border:1.5px solid #93c5fd;border-radius:14px;padding:12px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
-            <div style="flex:1;min-width:240px;">
-                <div style="font-weight:900;color:#1e3a8a;font-size:0.94rem;">📋 اكتمال ملف العضو: ${st.percent}%</div>
-                <div style="font-size:0.82rem;color:#334155;margin-top:2px;">${esc(st.bannerText || 'استكمل بياناتك التكميلية من الإعدادات لتسهيل اكتشاف المتاجر القريبة وتجهيز حسابك لسحب الأرباح.')}</div>
-                ${missingBadges ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">${missingBadges}</div>` : ''}
+        <div style="background:linear-gradient(135deg,#eff6ff,#f0fdf4);border:1.5px solid #93c5fd;border-radius:12px;padding:10px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:200px;">
+                <div style="font-weight:900;color:#1e3a8a;font-size:0.86rem;">📋 اكتمال ملف العضو: ${st.percent}%</div>
+                <div style="font-size:0.78rem;color:#334155;margin-top:2px;line-height:1.45;">${esc(st.bannerText || 'استكمل بياناتك التكميلية من الإعدادات لتجهيز حسابك لسحب الأرباح.')}</div>
+                ${missingBadges ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;">${missingBadges}</div>` : ''}
             </div>
             <button type="button" onclick="goToPage('settings')" class="btn btn-primary btn-sm" style="white-space:nowrap;">
-                ⚙️ استكمال بياناتي الآن
+                ⚙️ استكمال بياناتي
             </button>
         </div>
     `;

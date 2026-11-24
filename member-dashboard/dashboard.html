@@ -96,6 +96,11 @@
             <div class="content-area">
                 <!-- Home Page -->
                 <div id="homePage" class="page active">
+                    <div id="memberHomeQuickCashierBar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+                        <button type="button" class="btn btn-primary" id="homeQuickDocBtn" onclick="openMemberPurchaseModal()" style="flex:1;min-width:140px;font-weight:800;">🧾 وثّق فاتورة الآن</button>
+                        <button type="button" class="btn btn-outline" id="homeQuickQrBtn" onclick="openQuickMemberQrModal()" style="flex:1;min-width:140px;font-weight:800;">📲 كود هويتي (QR)</button>
+                    </div>
+
                     <div class="stats-grid">
                         <div class="stat-card">
                             <div class="stat-icon">💰</div>
@@ -124,11 +129,11 @@
                     </div>
 
                     <div class="qr-section" data-spec-id="member-home-single-qr">
-                        <h2>كود هويتك الشخصي الثابت (POS QR)</h2>
+                        <h2>كود هويتك الشخصي الثابت</h2>
                         <div id="qrCode" class="qr-code"></div>
                         <p>اعرض هذا الكود الثابت للتاجر لتوثيق الفاتورة وتفعيل عائدات الاستهلاك الاستثماري</p>
                         <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:8px;">
-                            <button type="button" class="btn btn-primary btn-sm" id="homeDocPurchaseBtn" onclick="openMemberPurchaseModal()">🧾 توثيق فاتورة شراء (بالصورة أو مع الكاشير)</button>
+                            <button type="button" class="btn btn-primary btn-sm" id="homeDocPurchaseBtn" onclick="openMemberPurchaseModal()">🧾 توثيق فاتورة شراء</button>
                             <button type="button" class="btn btn-outline btn-sm" id="copyMemberBarcodeBtn" onclick="copyMemberStaticBarcode()">📋 نسخ كود العضوية</button>
                             <button type="button" class="btn btn-outline btn-sm" id="homeSaveQrCardBtn" onclick="downloadMemberQrCardPng()">💾 حفظ بطاقة العضوية كصورة</button>
                         </div>
@@ -200,9 +205,6 @@
             <a href="#" class="more-menu-item" data-page="transactions" onclick="goToPage('transactions')">
                 <span>💳</span> العمليات المكتملة
             </a>
-            <a href="#" class="more-menu-item" data-page="tree" onclick="goToPage('tree')">
-                <span>🌳</span> شجرتي
-            </a>
             <a href="#" class="more-menu-item" data-page="favorites" onclick="goToPage('favorites')">
                 <span>❤️</span> المفضلة
             </a>
@@ -257,7 +259,6 @@
             }, 900);
         });
     </script>
-    <script src="js/member-stage7-tools.js?v=20261121_launch_geo"></script>
     <script src="../shared/js/app-shell.js?v=20261121_launch"></script>
 </body>
 

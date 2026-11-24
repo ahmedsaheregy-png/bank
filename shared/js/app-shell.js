@@ -175,7 +175,7 @@
                 ? window.SAWYAN.Logo.svg('default', { compact: true })
                 : '<strong style="font-family:Poppins,sans-serif;font-weight:800;color:#0f2744;font-size:1.12rem;">SAWYAN</strong>';
 
-            bar.innerHTML = `<a href="${homeHref}" class="logo-link sawyan-home-logo" data-sawyan-logo="default" data-sawyan-compact="1" aria-label="SAWYAN — العودة للصفحة الرئيسية" title="العودة للصفحة الرئيسية">${logoMarkup}</a><a href="${homeHref}" class="app-shell-home-btn">🏠 الرئيسية</a>`;
+            bar.innerHTML = `<a href="${homeHref}" class="logo-link sawyan-home-logo" data-sawyan-logo="default" data-sawyan-compact="1" aria-label="SAWYAN — العودة للصفحة الرئيسية" title="العودة للصفحة الرئيسية">${logoMarkup}</a><a href="${homeHref}" class="app-shell-home-btn">🌐 الموقع</a>`;
             mainContent.insertBefore(bar, mainContent.firstChild);
         }
 

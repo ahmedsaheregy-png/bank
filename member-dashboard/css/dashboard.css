@@ -1734,9 +1734,11 @@ body {
 /* تحسين Header للموبايل */
 @media (max-width: 480px) {
     .dashboard-header {
-        flex-direction: column;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
         gap: 8px;
-        text-align: center;
+        text-align: right;
     }
 
     .page-header {
