@@ -43,19 +43,24 @@ def must(cond, label, detail=""):
 def main():
     ts = str(int(time.time()))[-6:]
 
-    # 0. Verify Production (`sawyan`) remains 100% Zero-State
-    _, f_prod = rpc("authenticate_admin_login", {"p_email": "ahmed.saher.egy@gmail.com", "p_password": "Baraawhaneen-1"}, "sawyan")
-    _, b_prod = rpc("get_admin_sovereign_bundle", {"p_admin_id": f_prod["admin"]["id"], "p_session_token": f_prod["session_token"]}, "sawyan")
-    must(
-        b_prod["kpis"]["members_with_root"] >= 1
-        and b_prod["zero_discrepancy"]["is_zero_discrepancy_intact"] is True
-        and b_prod["audit_chain"]["is_hash_chain_intact"] is True,
-        f"0. Production (`sawyan`) Live Integrity Intact (members={b_prod['kpis']['members_total']}, Zero-Discrepancy=$0.00, Hash-Chain valid)",
-        b_prod["kpis"],
-    )
+    # 0. Verify Production (`sawyan`) remains 100% Zero-State (credentials via env vars only — never hardcoded)
+    founder_email = os.environ.get("SAWYAN_FOUNDER_EMAIL", "").strip()
+    founder_pass = os.environ.get("SAWYAN_FOUNDER_PASSWORD", "").strip()
+    if founder_email and founder_pass:
+        _, f_prod = rpc("authenticate_admin_login", {"p_email": founder_email, "p_password": founder_pass}, "sawyan")
+        _, b_prod = rpc("get_admin_sovereign_bundle", {"p_admin_id": f_prod["admin"]["id"], "p_session_token": f_prod["session_token"]}, "sawyan")
+        must(
+            b_prod["kpis"]["members_with_root"] >= 1
+            and b_prod["zero_discrepancy"]["is_zero_discrepancy_intact"] is True
+            and b_prod["audit_chain"]["is_hash_chain_intact"] is True,
+            f"0. Production (`sawyan`) Live Integrity Intact (members={b_prod['kpis']['members_total']}, Zero-Discrepancy=$0.00, Hash-Chain valid)",
+            b_prod["kpis"],
+        )
+    else:
+        print(" [SKIP] 0. Production (`sawyan`) founder login check skipped (set SAWYAN_FOUNDER_EMAIL & SAWYAN_FOUNDER_PASSWORD to run).")
 
-    # Authenticate Founder & Regular Staff on `sawyan_demo`
-    _, f_demo = rpc("authenticate_admin_login", {"p_email": "ahmed.saher.egy@gmail.com", "p_password": "Baraawhaneen-1"}, "sawyan_demo")
+    # Authenticate Demo Founder & Regular Staff on `sawyan_demo`
+    _, f_demo = rpc("authenticate_admin_login", {"p_email": "demo.founder@sawyan.local", "p_password": "Demo@Founder2026"}, "sawyan_demo")
     fid, ftok = f_demo["admin"]["id"], f_demo["session_token"]
     _, m_demo = rpc("authenticate_admin_login", {"p_email": "demo.checker@sawyan.local", "p_password": "Demo@Checker2026"}, "sawyan_demo")
     mid, mtok = m_demo["admin"]["id"], m_demo["session_token"]

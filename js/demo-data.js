@@ -245,6 +245,7 @@ window.calcNetMemberCashback = calcNetMemberCashback;
 const categories = [
     { id: 1, name: 'مطاعم وكافيهات', slug: 'restaurants', icon: '🍽️', count: 234 },
     { id: 2, name: 'سوبرماركت', slug: 'supermarket', icon: '🛒', count: 156 },
+    { id: 9, name: 'صيدليات', slug: 'pharmacy', icon: '💊', count: 64 },
     { id: 3, name: 'ملابس وأزياء', slug: 'fashion', icon: '👗', count: 189 },
     { id: 4, name: 'إلكترونيات', slug: 'electronics', icon: '📱', count: 78 },
     { id: 5, name: 'صحة وجمال', slug: 'health-beauty', icon: '💄', count: 145 },

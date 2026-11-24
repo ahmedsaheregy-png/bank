@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#047857">
   <title>الصفحة غير موجودة (404) — SAWYAN</title>
-  <link rel="icon" type="image/svg+xml" href="shared/assets/sawyan-icon.svg">
-  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="/shared/assets/sawyan-icon.svg">
+  <link rel="manifest" href="/manifest.json">
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -63,10 +63,25 @@
     <h1>عذراً، هذه الصفحة غير متوفرة</h1>
     <p>ربما تم نقل الرابط أو تحديثه. يمكنك العودة إلى الصفحة الرئيسية لمنصة SAWYAN أو تجربة النسخة الاستعراضية التفاعلية أو التواصل مع الدعم.</p>
     <div class="actions">
-      <a class="btn primary" href="index.html">العودة للرئيسية</a>
-      <a class="btn secondary" href="preview/index.html">بيئة التجربة</a>
-      <a class="btn ghost" href="public/contact.html">تواصل معنا</a>
+      <a class="btn primary" id="homeLink404" href="/">العودة للرئيسية</a>
+      <a class="btn secondary" id="demoLink404" href="/preview/index.html">بيئة التجربة</a>
+      <a class="btn ghost" id="contactLink404" href="/public/contact.html">تواصل معنا</a>
     </div>
   </main>
+  <script>
+    (function () {
+      var p = window.location.pathname || '/';
+      // Handle GitHub Pages project subpath if deployed under /<repo>/
+      var segs = p.split('/').filter(Boolean);
+      var knownRoots = ['preview', 'public', 'member-dashboard', 'merchant-dashboard', 'admin-dashboard', 'docs', 'tools', 'shared', 'css', 'js', 'landing-page'];
+      var base = '/';
+      if (segs.length > 0 && knownRoots.indexOf(segs[0]) === -1 && segs[0].indexOf('.') === -1) {
+        base = '/' + segs[0] + '/';
+      }
+      document.getElementById('homeLink404').href = base + 'index.html';
+      document.getElementById('demoLink404').href = base + 'preview/index.html';
+      document.getElementById('contactLink404').href = base + 'public/contact.html';
+    })();
+  </script>
 </body>
 </html>

@@ -1,748 +1,410 @@
-// لوحة تحكم الأدمن
-let currentAdmin = null;
+/**
+ * ============================================================================
+ * SAWYAN V3.0 — Sovereign Admin Cockpit Shell & Power-Operator Controller
+ * ============================================================================
+ * Replaces legacy V1 unguarded dashboard.js & dashboard-extended.js:
+ *   - Strict sessionStorage-only Admin Auth guard (zero localStorage admin tokens)
+ *   - Zero unguarded client .from() writes & zero native alert/confirm/prompt
+ *   - Lazy-loader for 313 KB admin-decisions-lab.js on first visit
+ *   - Global Ctrl+K Command Palette & Esc Modal Closer
+ *   - BOM-UTF8 Formula-Safe CSV Exporters (Members, Merchants, Transactions, Commissions, Disputes, Support)
+ *   - Smart Table Pagination (25 / 50 / 100 rows) & Session Idle Expiry Warning
+ */
+(function () {
+    'use strict';
 
-document.addEventListener('DOMContentLoaded', async function () {
-    if (window.SAWYAN && window.SAWYAN.Logo) {
-        document.getElementById('logoContainer').innerHTML = `<a href="../index.html" class="logo-link" style="text-decoration:none;">${window.SAWYAN.Logo.svg('light-on-dark')}</a>`;
+    let currentAdmin = null;
+    let decisionsLabLoaded = false;
+    let decisionsLabLoading = null;
+    let lastActivityAt = Date.now();
+    let idleWarningShown = false;
+
+    const PAGE_TITLES = {
+        home: 'غرفة العمليات المركزية',
+        members: 'إدارة الأعضاء',
+        networkTree: 'الشجرة الكاملة للشركة',
+        merchants: 'إدارة التجار',
+        transactions: 'العمليات والفواتير الحية',
+        commissions: 'العمولات والخزينة',
+        withdrawals: 'طلبات سحب الأرباح',
+        governanceOps: 'وحدات الرقابة والإقفال',
+        reports: 'التقارير والإحصائيات',
+        disputes: 'الشكاوى والنزاعات',
+        support: 'الدعم الفني واستعادة الحسابات',
+        academyAdmin: 'الأكاديمية التدريبية',
+        sovereignOpsCenter: 'التأسيس والموظفون',
+        registrationBuilder: 'هندسة نماذج التسجيل',
+        decisionsLab: 'مختبر القرارات والمقترحات',
+        settings: 'إعدادات النظام والحوكمة'
+    };
+
+    const COMMAND_NAV_ITEMS = [
+        { page: 'home', icon: '🏠', label: 'الرئيسية — غرفة العمليات', keywords: 'home dashboard kpi' },
+        { page: 'members', icon: '👥', label: 'إدارة الأعضاء وKYC', keywords: 'members users kyc' },
+        { page: 'networkTree', icon: '🌳', label: 'الشجرة الكاملة للشركة', keywords: 'tree network binary' },
+        { page: 'merchants', icon: '🏪', label: 'إدارة التجار والشحن المسبق', keywords: 'merchants stores prepaid' },
+        { page: 'transactions', icon: '💳', label: 'العمليات والفواتير وطابور FIFO', keywords: 'transactions invoices fifo sw' },
+        { page: 'commissions', icon: '💰', label: 'العمولات والخزينة', keywords: 'commissions treasury' },
+        { page: 'withdrawals', icon: '💸', label: 'طلبات سحب الأرباح', keywords: 'withdrawals payouts' },
+        { page: 'governanceOps', icon: '🛡️', label: 'وحدات الرقابة والإقفال والمطابقة', keywords: 'governance close recon fraud' },
+        { page: 'disputes', icon: '⚠️', label: 'الشكاوى والنزاعات وبلاغات الأسعار', keywords: 'disputes complaints' },
+        { page: 'support', icon: '🎫', label: 'الدعم الفني واستعادة الحسابات', keywords: 'support tickets recovery' },
+        { page: 'academyAdmin', icon: '🎓', label: 'الأكاديمية التدريبية LMS', keywords: 'academy lms lessons' },
+        { page: 'sovereignOpsCenter', icon: '👑', label: 'التأسيس والموظفون والدول', keywords: 'sovereign staff founder root' },
+        { page: 'registrationBuilder', icon: '🧩', label: 'هندسة نماذج التسجيل', keywords: 'registration builder forms' },
+        { page: 'decisionsLab', icon: '🧪', label: 'مختبر القرارات والمقترحات', keywords: 'decisions lab proposals' },
+        { page: 'reports', icon: '📊', label: 'التقارير والإحصائيات', keywords: 'reports analytics' },
+        { page: 'settings', icon: '⚙️', label: 'إعدادات النظام ومفاتيح الطوارئ', keywords: 'settings kill switch 2fa' }
+    ];
+
+    function esc(v) {
+        return String(v === null || v === undefined ? '' : v)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    await checkAuth();
-    await loadStats();
-    await loadRecentActivity();
+    function notify(msg, type) {
+        if (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.toast === 'function') {
+            window.SAWYAN.UI.toast(msg, type || 'info');
+        } else if (typeof window.svAdminToast === 'function') {
+            window.svAdminToast(msg, type === 'error' || type === 'warning');
+        }
+    }
 
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.addEventListener('click', handleNavigation);
-    });
+    function csvCellSafe(v) {
+        let s = String(v === null || v === undefined ? '' : v);
+        if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+        return '"' + s.replace(/"/g, '""') + '"';
+    }
 
-    // تفعيل Bottom Navigation
-    document.querySelectorAll('.bottom-nav-item').forEach(item => {
-        item.addEventListener('click', function (e) {
-            e.preventDefault();
-            const page = this.dataset.page;
+    function downloadBomCsv(filename, headers, rows) {
+        const lines = [headers].concat(rows).map(r => r.map(csvCellSafe).join(','));
+        const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 300);
+        notify('✅ تم تصدير الملف (' + filename + ') بصيغة UTF-8 آمنة.', 'success');
+    }
 
-            document.querySelectorAll('.bottom-nav-item').forEach(i => i.classList.remove('active'));
-            this.classList.add('active');
+    function exportVisibleTableCsv(tableId, filename) {
+        const tbl = document.getElementById(tableId);
+        if (!tbl) { notify('لا يوجد جدول جاهز للتصدير في هذه الشاشة.', 'warning'); return; }
+        const headers = Array.from(tbl.querySelectorAll('thead th')).map(th => th.textContent.trim());
+        const rows = Array.from(tbl.querySelectorAll('tbody tr')).map(tr =>
+            Array.from(tr.querySelectorAll('td')).map(td => td.textContent.replace(/\s+/g, ' ').trim())
+        ).filter(r => r.length > 1);
+        if (!rows.length) { notify('لا توجد صفوف بيانات للتصدير حالياً.', 'info'); return; }
+        downloadBomCsv(filename, headers, rows);
+    }
 
-            // تحديث الصفحة
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            const pageElement = document.getElementById(page + 'Page');
-            if (pageElement) pageElement.classList.add('active');
+    // Expose BOM-UTF8 safe CSV exporters (replacing V1 "coming soon" alerts)
+    window.exportMembers = function () { exportVisibleTableCsv('membersTable', 'SAWYAN_Members_' + new Date().toISOString().slice(0, 10) + '.csv'); };
+    window.exportMerchants = function () { exportVisibleTableCsv('merchantsTable', 'SAWYAN_Merchants_' + new Date().toISOString().slice(0, 10) + '.csv'); };
+    window.exportTransactions = function () { exportVisibleTableCsv('transactionsTable', 'SAWYAN_Transactions_' + new Date().toISOString().slice(0, 10) + '.csv'); };
+    window.exportCommissions = function () { exportVisibleTableCsv('commissionsTable', 'SAWYAN_Commissions_' + new Date().toISOString().slice(0, 10) + '.csv'); };
+    window.exportDisputes = function () { exportVisibleTableCsv('disputesTable', 'SAWYAN_Disputes_' + new Date().toISOString().slice(0, 10) + '.csv'); };
+    window.exportSupport = function () { exportVisibleTableCsv('supportTable', 'SAWYAN_Support_' + new Date().toISOString().slice(0, 10) + '.csv'); };
+    window.sawyanExportBomCsv = downloadBomCsv;
 
-            // تحميل المحتوى
-            if (page === 'members') loadMembers();
-            if (page === 'merchants') loadMerchants();
+    // Lazy-loader for 313 KB admin-decisions-lab.js
+    function ensureDecisionsLabLoaded() {
+        if (decisionsLabLoaded) return Promise.resolve(true);
+        if (decisionsLabLoading) return decisionsLabLoading;
+        const page = document.getElementById('decisionsLabPage');
+        if (page) {
+            page.innerHTML = '<div style="padding:36px;text-align:center;color:#475569;font-weight:800;">⏳ جاري تحميل مختبر القرارات والمقترحات (Lazy-Load)...</div>';
+        }
+        decisionsLabLoading = new Promise((resolve) => {
+            const sc = document.createElement('script');
+            sc.src = 'js/admin-decisions-lab.js?v=20261121_launch';
+            sc.onload = function () {
+                decisionsLabLoaded = true;
+                if (typeof window.renderDecisionsLab === 'function') window.renderDecisionsLab();
+                else if (typeof window.loadDecisionsLab === 'function') window.loadDecisionsLab();
+                resolve(true);
+            };
+            sc.onerror = function () {
+                if (page) page.innerHTML = '<div style="padding:24px;color:#b91c1c;font-weight:800;">⚠️ تعذر تحميل مختبر القرارات.</div>';
+                decisionsLabLoading = null;
+                resolve(false);
+            };
+            document.body.appendChild(sc);
         });
-    });
-});
-
-async function checkAuth() {
-    if (window.SAWYAN && window.SAWYAN.API) {
-        const adm = window.SAWYAN.API.getSavedAdmin();
-        if (adm) {
-            currentAdmin = adm;
-            const nameEl = document.getElementById('adminName');
-            if (nameEl) nameEl.textContent = currentAdmin.full_name || 'مدير النظام';
-            return;
-        }
+        return decisionsLabLoading;
     }
-    window.location.href = 'login.html';
-}
-
-async function loadStats() {
-    try {
-        const { count: membersCount } = await window.SAWYAN.supabase
-            .from('members')
-            .select('*', { count: 'exact', head: true });
-
-        const { count: merchantsCount } = await window.SAWYAN.supabase
-            .from('merchants')
-            .select('*', { count: 'exact', head: true });
-
-        const { count: transactionsCount } = await window.SAWYAN.supabase
-            .from('transactions')
-            .select('*', { count: 'exact', head: true });
-
-        const { data: commissions } = await window.SAWYAN.supabase
-            .from('transactions')
-            .select('commission_amount');
-
-        const totalCommissions = commissions?.reduce((sum, t) => sum + parseFloat(t.commission_amount || 0), 0) || 0;
-
-        document.getElementById('totalMembers').textContent = membersCount || 0;
-        document.getElementById('totalMerchants').textContent = merchantsCount || 0;
-        document.getElementById('totalTransactions').textContent = transactionsCount || 0;
-        document.getElementById('totalCommissions').textContent = totalCommissions.toFixed(2) + ' ج.م';
-
-    } catch (error) {
-        console.error('Error loading stats:', error);
-    }
-}
-
-async function loadRecentActivity() {
-    try {
-        const { data: transactions } = await window.SAWYAN.supabase
-            .from('transactions')
-            .select(`
-                *,
-                members(full_name, member_code),
-                merchants(business_name, merchant_code)
-            `)
-            .order('created_at', { ascending: false })
-            .limit(10);
-
-        const activityList = document.getElementById('activityList');
-
-        if (!transactions || transactions.length === 0) {
-            activityList.innerHTML = '<p class="empty-state">لا توجد أنشطة حديثة</p>';
-            return;
-        }
-
-        activityList.innerHTML = transactions.map(t => `
-            <div class="activity-item">
-                <div class="activity-icon">💳</div>
-                <div class="activity-details">
-                    <div class="activity-title">عملية جديدة</div>
-                    <div class="activity-description">
-                        ${t.members?.full_name || 'عضو'} (${t.members?.member_code || '-'}) 
-                        اشترى من ${t.merchants?.business_name || 'تاجر'} 
-                        بمبلغ ${parseFloat(t.total_amount).toFixed(2)} ج.م
-                    </div>
-                </div>
-                <div class="activity-time">${new Date(t.created_at).toLocaleDateString('ar-EG')}</div>
-            </div>
-        `).join('');
-
-    } catch (error) {
-        console.error('Error loading activity:', error);
-    }
-}
-
-async function loadMembers() {
-    try {
-        const { data: members } = await window.SAWYAN.supabase
-            .from('members')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        const tbody = document.getElementById('membersTableBody');
-
-        if (!members || members.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">لا يوجد أعضاء</td></tr>';
-            return;
-        }
-
-        tbody.innerHTML = members.map(m => `
-            <tr>
-                <td data-label="كود العضو">${m.member_code}</td>
-                <td data-label="الاسم">${m.full_name}</td>
-                <td data-label="البريد">${m.email}</td>
-                <td data-label="الهاتف">${m.phone}</td>
-                <td data-label="تاريخ التسجيل">${new Date(m.created_at).toLocaleDateString('ar-EG')}</td>
-                <td data-label="الحالة"><span class="badge ${m.is_active ? 'badge-success' : 'badge-danger'}">${m.is_active ? 'نشط' : 'معطل'}</span></td>
-                <td data-label="إجراءات">
-                    <button class="btn-sm btn-primary" onclick="viewMember('${m.id}')">عرض</button>
-                    <button class="btn-sm btn-warning" onclick="toggleMemberStatus('${m.id}', ${!m.is_active})">${m.is_active ? 'تعطيل' : 'تفعيل'}</button>
-                </td>
-            </tr>
-        `).join('');
-
-    } catch (error) {
-        console.error('Error loading members:', error);
-    }
-}
-
-async function loadMerchants() {
-    try {
-        const { data: merchants } = await window.SAWYAN.supabase
-            .from('merchants')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        const tbody = document.getElementById('merchantsTableBody');
-
-        if (!merchants || merchants.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">لا يوجد تجار</td></tr>';
-            return;
-        }
-
-        tbody.innerHTML = merchants.map(m => `
-            <tr>
-                <td data-label="كود التاجر">${m.merchant_code}</td>
-                <td data-label="اسم النشاط">${m.business_name}</td>
-                <td data-label="النوع">${m.merchant_type === 'physical' ? 'فيزيائي' : m.merchant_type === 'online' ? 'أونلاين' : 'كلاهما'}</td>
-                <td data-label="الفئة">${m.business_category}</td>
-                <td data-label="النسبة %">${m.commission_percentage}%</td>
-                <td data-label="المستحقات" style="font-weight: bold; color: #d32f2f;">${parseFloat(m.total_commission_due || 0).toFixed(2)} ج.م</td>
-                <td data-label="الحالة"><span class="badge ${m.is_active ? 'badge-success' : 'badge-danger'}">${m.is_active ? 'نشط' : 'معطل'}</span></td>
-                <td data-label="إجراءات">
-                    <button class="btn-sm btn-primary" onclick="viewMerchant('${m.id}')">عرض</button>
-                    <button class="btn-sm btn-warning" onclick="toggleMerchantStatus('${m.id}', ${!m.is_active})">${m.is_active ? 'تعطيل' : 'تفعيل'}</button>
-                </td>
-            </tr>
-        `).join('');
-
-    } catch (error) {
-        console.error('Error loading merchants:', error);
-    }
-}
-
-async function loadTransactions() {
-    try {
-        const { data: transactions } = await window.SAWYAN.supabase
-            .from('transactions')
-            .select(`
-                *,
-                members(full_name, member_code),
-                merchants(business_name, merchant_code)
-            `)
-            .order('transaction_date', { ascending: false });
-
-        const tbody = document.getElementById('transactionsTableBody');
-
-        if (!transactions || transactions.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">لا توجد عمليات</td></tr>';
-            return;
-        }
-
-        tbody.innerHTML = transactions.map(t => `
-            <tr>
-                <td data-label="كود العملية">${t.transaction_code}</td>
-                <td data-label="العضو">${t.members?.full_name || '-'} (${t.members?.member_code || '-'})</td>
-                <td data-label="التاجر">${t.merchants?.business_name || '-'}</td>
-                <td data-label="المبلغ">${parseFloat(t.total_amount).toFixed(2)} ج.م</td>
-                <td data-label="العمولة">${parseFloat(t.commission_amount).toFixed(2)} ج.م</td>
-                <td data-label="التاريخ">${new Date(t.transaction_date).toLocaleDateString('ar-EG')}</td>
-                <td data-label="الحالة"><span class="badge badge-success">${t.status === 'completed' ? 'مكتملة' : t.status}</span></td>
-            </tr>
-        `).join('');
-
-    } catch (error) {
-        console.error('Error loading transactions:', error);
-    }
-}
-
-function handleNavigation(e) {
-    e.preventDefault();
-    const page = this.dataset.page;
-
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    this.classList.add('active');
-
-    document.querySelectorAll('.page').forEach(p => {
-        p.classList.remove('active');
-    });
-
-    const pageElement = document.getElementById(page + 'Page');
-    if (pageElement) {
-        pageElement.classList.add('active');
-    }
-
-    document.getElementById('pageTitle').textContent = this.querySelector('span:last-child').textContent;
-
-    if (page === 'members') loadMembers();
-    if (page === 'merchants') loadMerchants();
-    if (page === 'transactions') loadTransactions();
-}
-
-function exportMembers() {
-    alert('ميزة التصدير ستكون متاحة قريباً');
-}
-
-function exportMerchants() {
-    alert('ميزة التصدير ستكون متاحة قريباً');
-}
-
-function exportTransactions() {
-    alert('ميزة التصدير ستكون متاحة قريباً');
-}
-
-async function logout() {
-    if (window.SAWYAN && window.SAWYAN.API) {
-        window.SAWYAN.API.clearAdminSession();
-    } else {
-        sessionStorage.clear();
-    }
-    window.location.href = '../index.html';
-}
-
-
-// تحديث handleNavigation لدعم الصفحات الجديدة
-const originalHandleNavigation = handleNavigation;
-handleNavigation = function (e) {
-    originalHandleNavigation.call(this, e);
-    const page = this.dataset.page;
-    if (page === 'commissions' && typeof loadCommissions === 'function') loadCommissions();
-    if (page === 'disputes' && typeof loadDisputes === 'function') loadDisputes();
-    if (page === 'support' && typeof loadSupport === 'function') loadSupport();
-    if (page === 'settings' && typeof loadSettings === 'function') loadSettings();
-    if (page === 'withdrawals' && typeof loadWithdrawals === 'function') loadWithdrawals();
-};
-
-// ===== قائمة المزيد (More Menu) =====
-function toggleMoreMenu(e) {
-    e.preventDefault();
-    const menu = document.getElementById('moreMenu');
-    menu.classList.toggle('open');
-
-    // إظهار/إخفاء التراكب
-    let overlay = document.querySelector('.more-menu-overlay');
-    if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.className = 'more-menu-overlay';
-        overlay.onclick = closeMoreMenu;
-        document.body.appendChild(overlay);
-    }
-    overlay.classList.toggle('open');
-}
-
-function closeMoreMenu() {
-    document.getElementById('moreMenu').classList.remove('open');
-    const overlay = document.querySelector('.more-menu-overlay');
-    if (overlay) overlay.classList.remove('open');
-}
-
-function goToPage(pageName) {
-    closeMoreMenu();
-
-    // تحديث الصفحة
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    const pageElement = document.getElementById(pageName + 'Page');
-    if (pageElement) pageElement.classList.add('active');
-
-    // تحديث الأيقونات
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-        if (item.dataset.page === pageName) item.classList.add('active');
-    });
-    document.querySelectorAll('.bottom-nav-item').forEach(item => {
-        item.classList.remove('active');
-    });
-
-    // تحديث العنوان
-    const titles = {
-        'transactions': 'العمليات',
-        'commissions': 'العمولات',
-        'disputes': 'الشكاوى',
-        'support': 'الدعم الفني',
-        'reports': 'التقارير',
-        'settings': 'الإعدادات',
-        'withdrawals': 'طلبات السحب'
-    };
-    document.getElementById('pageTitle').textContent = titles[pageName] || 'لوحة تحكم الأدمن';
-
-    // تحميل المحتوى
-    if (pageName === 'transactions') loadTransactions();
-    if (pageName === 'commissions' && typeof loadCommissions === 'function') loadCommissions();
-    if (pageName === 'disputes' && typeof loadDisputes === 'function') loadDisputes();
-    if (pageName === 'support') loadSupport();
-    if (pageName === 'settings') loadSettings();
-    if (pageName === 'withdrawals') loadWithdrawals();
-}
-
-// ===== إعدادات النظام =====
-async function loadSettings() {
-    const page = document.getElementById('settingsPage');
-    if (!page) return;
-
-    page.innerHTML = `
-        <div class="settings-admin-page">
-            <h2 class="page-title-mobile">⚙️ إعدادات النظام</h2>
-            
-            <!-- إعدادات عامة -->
-            <div class="settings-section-card">
-                <div class="section-header" onclick="toggleAdminSection('generalSettings')">
-                    <span>🏢 إعدادات عامة</span>
-                    <span class="toggle-icon" id="generalSettingsIcon">▼</span>
-                </div>
-                <div class="section-content" id="generalSettings">
-                    <div class="form-group">
-                        <label>اسم المنصة</label>
-                        <input type="text" id="platformName" class="form-control" value="SAWYAN" placeholder="اسم المنصة">
-                    </div>
-                    <div class="form-group">
-                        <label>البريد الرسمي</label>
-                        <input type="email" id="platformEmail" class="form-control" value="support@sawyan.com" placeholder="البريد الرسمي">
-                    </div>
-                    <div class="form-group">
-                        <label>رقم الهاتف</label>
-                        <input type="tel" id="platformPhone" class="form-control" value="+20 123 456 7890" placeholder="رقم الهاتف">
-                    </div>
-                </div>
-            </div>
-
-            <!-- إعدادات العمولات -->
-            <div class="settings-section-card">
-                <div class="section-header" onclick="toggleAdminSection('commissionSettings')">
-                    <span>💰 إعدادات العمولات</span>
-                    <span class="toggle-icon" id="commissionSettingsIcon">▼</span>
-                </div>
-                <div class="section-content" id="commissionSettings">
-                    <div class="form-group">
-                        <label>نسبة حصة الشركة من العمولة</label>
-                        <input type="number" id="companyShare" class="form-control" value="25" min="0" max="100" step="1">
-                        <small class="form-text">النسبة التي تحصل عليها الشركة من كل عمولة</small>
-                    </div>
-                    <div class="form-group">
-                        <label>الحد الأدنى للسحب (ج.م)</label>
-                        <input type="number" id="minWithdraw" class="form-control" value="100" min="0">
-                    </div>
-                    <div class="form-group">
-                        <label>الحد الأقصى للسحب اليومي (ج.م)</label>
-                        <input type="number" id="maxDailyWithdraw" class="form-control" value="10000" min="0">
-                    </div>
-                </div>
-            </div>
-
-            <!-- إعدادات التسجيل -->
-            <div class="settings-section-card">
-                <div class="section-header" onclick="toggleAdminSection('registrationSettings')">
-                    <span>📝 إعدادات التسجيل</span>
-                    <span class="toggle-icon" id="registrationSettingsIcon">▼</span>
-                </div>
-                <div class="section-content collapsed" id="registrationSettings">
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="allowMemberRegistration" checked>
-                            السماح بتسجيل أعضاء جدد
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="allowMerchantRegistration" checked>
-                            السماح بتسجيل تجار جدد
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="requireEmailVerification">
-                            تفعيل التحقق من البريد الإلكتروني
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="requirePhoneVerification">
-                            تفعيل التحقق من رقم الهاتف
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <!-- إعدادات الإشعارات -->
-            <div class="settings-section-card">
-                <div class="section-header" onclick="toggleAdminSection('notificationSettings')">
-                    <span>🔔 إعدادات الإشعارات</span>
-                    <span class="toggle-icon" id="notificationSettingsIcon">▼</span>
-                </div>
-                <div class="section-content collapsed" id="notificationSettings">
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="enableEmailNotifications" checked>
-                            تفعيل إشعارات البريد
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="enableSmsNotifications">
-                            تفعيل إشعارات SMS
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="enablePushNotifications">
-                            تفعيل إشعارات Push
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="settings-actions-fixed">
-                <button onclick="saveSystemSettings()" class="btn btn-primary btn-block btn-save-profile">
-                    💾 حفظ الإعدادات
-                </button>
-            </div>
-        </div>
-    `;
-}
-
-function toggleAdminSection(sectionId) {
-    const section = document.getElementById(sectionId);
-    const icon = document.getElementById(sectionId + 'Icon');
-
-    if (section.classList.contains('collapsed')) {
-        section.classList.remove('collapsed');
-        if (icon) icon.textContent = '▼';
-    } else {
-        section.classList.add('collapsed');
-        if (icon) icon.textContent = '▶';
-    }
-}
-
-async function saveSystemSettings() {
-    alert('✅ تم حفظ إعدادات النظام بنجاح!\n\n(هذه ميزة تجريبية - سيتم ربطها بقاعدة البيانات لاحقاً)');
-}
-
-// ===== إدارة طلبات السحب =====
-async function loadWithdrawals() {
-    const page = document.getElementById('withdrawalsContent');
-    if (!page) return;
-
-    try {
-        // جلب طلبات السحب المعلقة
-        const { data: withdrawals } = await window.SAWYAN.supabase
-            .from('wallet_transactions')
-            .select(`
-                *,
-                wallets!inner(member_id, members!inner(full_name, member_code, phone))
-            `)
-            .eq('transaction_type', 'withdrawal')
-            .order('created_at', { ascending: false });
-
-        page.innerHTML = `
-            <div class="withdrawals-admin-page">
-                
-                <!-- الفلاتر -->
-                <div class="filter-bar">
-                    <button class="filter-btn active" onclick="filterWithdrawals('all')">الكل</button>
-                    <button class="filter-btn" onclick="filterWithdrawals('pending')">معلقة</button>
-                    <button class="filter-btn" onclick="filterWithdrawals('approved')">مقبولة</button>
-                    <button class="filter-btn" onclick="filterWithdrawals('rejected')">مرفوضة</button>
-                </div>
-
-                <div class="withdrawals-list" id="withdrawalsList">
-                    ${withdrawals && withdrawals.length > 0 ? withdrawals.map(w => {
-            let metadata = {};
-            try { metadata = JSON.parse(w.metadata || '{}'); } catch (e) { }
-            const member = w.wallets?.members || {};
-
-            return `
-                            <div class="withdrawal-card status-${w.status || 'pending'}">
-                                <div class="withdrawal-header">
-                                    <span class="withdrawal-amount">${parseFloat(w.amount).toFixed(2)} ج.م</span>
-                                    <span class="withdrawal-status status-${w.status || 'pending'}">${getWithdrawalStatus(w.status)}</span>
-                                </div>
-                                <div class="withdrawal-details">
-                                    <p><strong>العضو:</strong> ${member.full_name || '-'} (${member.member_code || '-'})</p>
-                                    <p><strong>الهاتف:</strong> ${member.phone || '-'}</p>
-                                    <p><strong>طريقة السحب:</strong> ${getMethodLabel(metadata.method)}</p>
-                                    <p><strong>الحساب:</strong> ${metadata.account || '-'}</p>
-                                    <p><strong>التاريخ:</strong> ${new Date(w.created_at).toLocaleDateString('ar-EG')}</p>
-                                    ${metadata.notes ? `<p><strong>ملاحظات:</strong> ${metadata.notes}</p>` : ''}
-                                </div>
-                                ${w.status === 'pending' ? `
-                                    <div class="withdrawal-actions">
-                                        <button class="btn btn-approve" onclick="approveWithdrawal('${w.id}')">✅ قبول</button>
-                                        <button class="btn btn-reject" onclick="rejectWithdrawal('${w.id}')">❌ رفض</button>
-                                    </div>
-                                ` : ''}
-                            </div>
-                        `;
-        }).join('') : '<p class="empty-state">لا توجد طلبات سحب</p>'}
-                </div>
-            </div>
-        `;
-    } catch (error) {
-        console.error('Error loading withdrawals:', error);
-        page.innerHTML = '<p class="empty-state">خطأ في تحميل طلبات السحب</p>';
-    }
-}
-
-function getWithdrawalStatus(status) {
-    const statuses = {
-        'pending': 'قيد المراجعة',
-        'approved': 'تم القبول',
-        'completed': 'مكتملة',
-        'rejected': 'مرفوضة'
-    };
-    return statuses[status] || status;
-}
-
-function getMethodLabel(method) {
-    const labels = {
-        'vodafone_cash': 'فودافون كاش',
-        'instapay': 'انستاباي',
-        'bank_transfer': 'تحويل بنكي',
-        'mobile_wallet': 'محفظة إلكترونية'
-    };
-    return labels[method] || method || '-';
-}
-
-async function approveWithdrawal(transactionId) {
-    if (!confirm('هل تريد قبول طلب السحب هذا؟')) return;
-
-    try {
-        // محاولة استخدام RPC function الآمنة
-        const { data: rpcResult, error: rpcError } = await window.SAWYAN.supabase
-            .rpc('approve_withdrawal', {
-                p_transaction_id: transactionId
+    window.ensureDecisionsLabLoaded = ensureDecisionsLabLoaded;
+
+    // Smart Table Pagination Helper (25 / 50 / 100 rows)
+    function attachTablePagination(tableEl) {
+        if (!tableEl || tableEl.dataset.swPagedInit) return;
+        const tbody = tableEl.querySelector('tbody');
+        if (!tbody) return;
+        const renderPager = () => {
+            const allRows = Array.from(tbody.querySelectorAll('tr'));
+            if (allRows.length <= 25) {
+                const old = tableEl.parentElement && tableEl.parentElement.querySelector('.admin-table-pager');
+                if (old) old.remove();
+                return;
+            }
+            const pageSize = Number(tableEl.dataset.swPageSize || 25);
+            const totalPages = Math.max(1, Math.ceil(allRows.length / pageSize));
+            let cur = Math.max(1, Math.min(totalPages, Number(tableEl.dataset.swPage || 1)));
+            tableEl.dataset.swPage = String(cur);
+            const start = (cur - 1) * pageSize;
+            allRows.forEach((tr, idx) => {
+                tr.style.display = (idx >= start && idx < start + pageSize) ? '' : 'none';
             });
-
-        if (!rpcError && rpcResult && rpcResult.success) {
-            alert('✅ تم قبول طلب السحب');
-            loadWithdrawals();
-            return;
-        }
-
-        // Fallback إذا لم تكن RPC موجودة
-        console.log('RPC not available, using fallback');
-
-        // جلب بيانات العملية
-        const { data: transaction } = await window.SAWYAN.supabase
-            .from('wallet_transactions')
-            .select('wallet_id, amount, status')
-            .eq('id', transactionId)
-            .single();
-
-        if (!transaction || transaction.status !== 'pending') {
-            throw new Error('العملية غير متاحة للموافقة');
-        }
-
-        // تحديث حالة الطلب
-        await window.SAWYAN.supabase
-            .from('wallet_transactions')
-            .update({ status: 'approved' })
-            .eq('id', transactionId);
-
-        // تحديث المحفظة
-        const { data: wallet } = await window.SAWYAN.supabase
-            .from('wallets')
-            .select('pending_balance, total_withdrawn')
-            .eq('id', transaction.wallet_id)
-            .single();
-
-        if (wallet) {
-            await window.SAWYAN.supabase
-                .from('wallets')
-                .update({
-                    pending_balance: wallet.pending_balance - parseFloat(transaction.amount),
-                    total_withdrawn: (wallet.total_withdrawn || 0) + parseFloat(transaction.amount),
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', transaction.wallet_id);
-        }
-
-        alert('✅ تم قبول طلب السحب');
-        loadWithdrawals();
-    } catch (error) {
-        console.error('Approve error:', error);
-        alert('❌ حدث خطأ: ' + error.message);
-    }
-}
-
-async function rejectWithdrawal(transactionId) {
-    const reason = prompt('سبب الرفض (اختياري):');
-
-    // إذا ضغط المستخدم Cancel
-    if (reason === null) return;
-
-    try {
-        // محاولة استخدام RPC function الآمنة
-        const { data: rpcResult, error: rpcError } = await window.SAWYAN.supabase
-            .rpc('reject_withdrawal', {
-                p_transaction_id: transactionId,
-                p_reason: reason || null
+            let pager = tableEl.parentElement && tableEl.parentElement.querySelector('.admin-table-pager');
+            if (!pager && tableEl.parentElement) {
+                pager = document.createElement('div');
+                pager.className = 'admin-table-pager';
+                tableEl.parentElement.appendChild(pager);
+            }
+            if (!pager) return;
+            pager.innerHTML =
+                '<span>صفحة <strong>' + cur + '</strong> من <strong>' + totalPages + '</strong> (' + allRows.length + ' سجل)</span>' +
+                '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">' +
+                    '<select class="form-control sw-psize-sel" style="width:auto;padding:4px 8px;font-size:0.78rem;">' +
+                        [25, 50, 100].map(sz => '<option value="' + sz + '"' + (sz === pageSize ? ' selected' : '') + '>' + sz + ' / صفحة</option>').join('') +
+                    '</select>' +
+                    '<button type="button" class="btn btn-outline btn-sm sw-prev-btn"' + (cur <= 1 ? ' disabled' : '') + '>◀ السابق</button>' +
+                    '<button type="button" class="btn btn-outline btn-sm sw-next-btn"' + (cur >= totalPages ? ' disabled' : '') + '>التالي ▶</button>' +
+                '</div>';
+            pager.querySelector('.sw-psize-sel')?.addEventListener('change', (e) => {
+                tableEl.dataset.swPageSize = e.target.value;
+                tableEl.dataset.swPage = '1';
+                renderPager();
             });
+            pager.querySelector('.sw-prev-btn')?.addEventListener('click', () => {
+                tableEl.dataset.swPage = String(Math.max(1, cur - 1));
+                renderPager();
+            });
+            pager.querySelector('.sw-next-btn')?.addEventListener('click', () => {
+                tableEl.dataset.swPage = String(Math.min(totalPages, cur + 1));
+                renderPager();
+            });
+        };
+        tableEl.dataset.swPagedInit = '1';
+        const obs = new MutationObserver(() => {
+            tableEl.dataset.swPage = '1';
+            renderPager();
+        });
+        obs.observe(tbody, { childList: true });
+        renderPager();
+    }
 
-        if (!rpcError && rpcResult && rpcResult.success) {
-            alert('تم رفض طلب السحب وإرجاع المبلغ للمحفظة');
-            loadWithdrawals();
+    // Strict SessionStorage Auth Check (overridable by admin-v3-live-bridge.js)
+    async function defaultCheckAuth() {
+        if (window.SAWYAN && window.SAWYAN.API) {
+            const adm = window.SAWYAN.API.getSavedAdmin();
+            if (adm && adm.id) {
+                currentAdmin = adm;
+                window.currentAdmin = adm;
+                const nameEl = document.getElementById('adminName');
+                if (nameEl) nameEl.textContent = adm.full_name || 'مدير النظام';
+                return true;
+            }
+        }
+        window.location.href = 'login.html';
+        return false;
+    }
+    window.checkAuth = defaultCheckAuth;
+
+    function activatePage(page) {
+        if (!page) return;
+        document.querySelectorAll('.nav-item').forEach(i => i.classList.toggle('active', i.dataset.page === page));
+        document.querySelectorAll('.bottom-nav-item').forEach(i => i.classList.toggle('active', i.dataset.page === page));
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        const target = document.getElementById(page + 'Page');
+        if (target) target.classList.add('active');
+        const titleEl = document.getElementById('pageTitle');
+        if (titleEl && PAGE_TITLES[page]) titleEl.textContent = PAGE_TITLES[page];
+
+        if (page === 'decisionsLab') {
+            ensureDecisionsLabLoaded();
+        } else if (page === 'sovereignOpsCenter' && typeof window.openSovereignOpsCenter === 'function') {
+            window.openSovereignOpsCenter('root0');
+        } else if (page === 'academyAdmin' && typeof window.openAcademyAdminPage === 'function') {
+            window.openAcademyAdminPage('lessons');
+        } else if (page === 'registrationBuilder' && typeof window.openRegistrationBuilderPage === 'function') {
+            window.openRegistrationBuilderPage('merchant');
+        } else if (page === 'networkTree' && typeof window.openAdminNetworkTree === 'function') {
+            window.openAdminNetworkTree(0);
+        } else if (page === 'home' && typeof window.loadStats === 'function') {
+            window.loadStats();
+        } else if (page === 'members' && typeof window.loadMembers === 'function') {
+            window.loadMembers();
+        } else if (page === 'merchants' && typeof window.loadMerchants === 'function') {
+            window.loadMerchants();
+        } else if (page === 'transactions' && typeof window.loadTransactions === 'function') {
+            window.loadTransactions();
+        } else if (page === 'commissions' && typeof window.loadCommissions === 'function') {
+            window.loadCommissions();
+        } else if (page === 'disputes' && typeof window.loadDisputes === 'function') {
+            window.loadDisputes();
+        } else if (page === 'support' && typeof window.loadSupport === 'function') {
+            window.loadSupport();
+        } else if (page === 'withdrawals' && typeof window.loadWithdrawals === 'function') {
+            window.loadWithdrawals();
+        } else if (page === 'settings' && typeof window.loadSettings === 'function') {
+            window.loadSettings();
+        }
+        window.closeMoreMenu();
+    }
+
+    function handleNavigation(e) {
+        if (e) e.preventDefault();
+        const page = this && this.dataset ? this.dataset.page : null;
+        if (page) activatePage(page);
+    }
+
+    window.goToPage = function (page) { activatePage(page); };
+    window.toggleMoreMenu = function (e) {
+        if (e) e.preventDefault();
+        const m = document.getElementById('moreMenu');
+        if (m) m.classList.toggle('open');
+    };
+    window.closeMoreMenu = function () {
+        const m = document.getElementById('moreMenu');
+        if (m) m.classList.remove('open');
+    };
+    window.logout = function () {
+        if (window.SAWYAN && window.SAWYAN.API && typeof window.SAWYAN.API.clearAdminSession === 'function') {
+            window.SAWYAN.API.clearAdminSession();
+        }
+        window.location.href = 'login.html';
+    };
+
+    // Global Ctrl+K Command Palette
+    function mountCommandPalette() {
+        if (document.getElementById('adminCmdKOverlay')) return;
+        const ov = document.createElement('div');
+        ov.id = 'adminCmdKOverlay';
+        ov.className = 'admin-cmdk-overlay';
+        ov.innerHTML =
+            '<div class="admin-cmdk-box" role="dialog" aria-modal="true" aria-label="لوحة الأوامر السريعة">' +
+                '<input type="search" id="adminCmdKInput" class="admin-cmdk-input" placeholder="🔍 اكتب اسم شاشة، كود عضو، متجر، أو عملية (SW-XXXX)... (Esc للإغلاق)">' +
+                '<div id="adminCmdKList" class="admin-cmdk-list"></div>' +
+            '</div>';
+        ov.addEventListener('click', (e) => { if (e.target === ov) closeAdminCommandPalette(); });
+        document.body.appendChild(ov);
+
+        const inp = document.getElementById('adminCmdKInput');
+        inp.addEventListener('input', () => renderCmdKResults(inp.value));
+        inp.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const first = document.querySelector('#adminCmdKList .admin-cmdk-item');
+                if (first) first.click();
+            }
+        });
+    }
+
+    function renderCmdKResults(rawQ) {
+        const list = document.getElementById('adminCmdKList');
+        if (!list) return;
+        const q = String(rawQ || '').trim().toLowerCase();
+        const matches = COMMAND_NAV_ITEMS.filter(it => !q || (it.label + ' ' + it.keywords + ' ' + it.page).toLowerCase().includes(q));
+        let html = matches.map((it, idx) =>
+            '<button type="button" class="admin-cmdk-item' + (idx === 0 ? ' active' : '') + '" onclick="closeAdminCommandPalette();goToPage(\'' + it.page + '\')">' +
+                '<span>' + it.icon + ' ' + esc(it.label) + '</span>' +
+                '<small style="color:#64748b;font-family:Poppins,monospace;">' + esc(it.page) + '</small>' +
+            '</button>'
+        ).join('');
+
+        if (q.length >= 2) {
+            html +=
+                '<button type="button" class="admin-cmdk-item" onclick="closeAdminCommandPalette();goToPage(\'transactions\');setTimeout(function(){if(typeof loadTransactions===\'function\')loadTransactions(\'' + esc(rawQ.trim()).replace(/'/g, '') + '\');},120)">' +
+                    '<span>💳 بحث مباشر في العمليات عن: <strong>' + esc(rawQ.trim()) + '</strong></span>' +
+                    '<small style="color:#047857;">PostgreSQL ↗</small>' +
+                '</button>';
+        }
+        list.innerHTML = html || '<div style="padding:18px;text-align:center;color:#64748b;font-size:0.86rem;">لا توجد نتائج مطابقة</div>';
+    }
+
+    window.openAdminCommandPalette = function () {
+        mountCommandPalette();
+        const ov = document.getElementById('adminCmdKOverlay');
+        const inp = document.getElementById('adminCmdKInput');
+        if (ov) ov.style.display = 'flex';
+        if (inp) { inp.value = ''; renderCmdKResults(''); setTimeout(() => inp.focus(), 20); }
+    };
+
+    window.closeAdminCommandPalette = function () {
+        const ov = document.getElementById('adminCmdKOverlay');
+        if (ov) ov.style.display = 'none';
+    };
+
+    // Global Keyboard Shortcuts (Ctrl+K / Cmd+K & Esc)
+    document.addEventListener('keydown', function (e) {
+        if ((e.ctrlKey || e.metaKey) && String(e.key || '').toLowerCase() === 'k') {
+            e.preventDefault();
+            window.openAdminCommandPalette();
             return;
         }
+        if (e.key === 'Escape') {
+            window.closeAdminCommandPalette();
+            if (typeof window.closeStage7Modal === 'function') window.closeStage7Modal();
+            ['svStage7ModalOverlay', 'svAdminModalOverlay', 'opsModalOverlay'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el.style.display !== 'none') el.style.display = 'none';
+            });
+            window.closeMoreMenu();
+        }
+    });
 
-        // Fallback إذا لم تكن RPC موجودة
-        console.log('RPC not available, using fallback');
+    // Session Activity Tracker & Expiry Warning (50 min idle warning before 60 min timeout)
+    ['click', 'keydown', 'pointerdown'].forEach(evt => {
+        document.addEventListener(evt, () => { lastActivityAt = Date.now(); idleWarningShown = false; }, { passive: true });
+    });
+    setInterval(() => {
+        if (!currentAdmin || idleWarningShown) return;
+        const idleMins = (Date.now() - lastActivityAt) / 60000;
+        if (idleMins >= 50) {
+            idleWarningShown = true;
+            notify('⏱️ تنبيه أمان الجلسة: مرّ 50 دقيقة دون نشاط — قم بحفظ عملك أو تحديث الصفحة للاستمرار.', 'warning');
+        }
+    }, 60000);
 
-        // جلب بيانات العملية
-        const { data: transaction } = await window.SAWYAN.supabase
-            .from('wallet_transactions')
-            .select('wallet_id, amount, description, status')
-            .eq('id', transactionId)
-            .single();
-
-        if (!transaction || transaction.status !== 'pending') {
-            throw new Error('العملية غير متاحة للرفض');
+    document.addEventListener('DOMContentLoaded', async function () {
+        if (window.SAWYAN && window.SAWYAN.Logo) {
+            const box = document.getElementById('logoContainer');
+            if (box) box.innerHTML = '<a href="../index.html" class="logo-link" style="text-decoration:none;">' + window.SAWYAN.Logo.svg('light-on-dark') + '</a>';
         }
 
-        // تحديث حالة الطلب
-        await window.SAWYAN.supabase
-            .from('wallet_transactions')
-            .update({
-                status: 'rejected',
-                description: (transaction.description || '') + (reason ? ` - سبب الرفض: ${reason}` : '')
-            })
-            .eq('id', transactionId);
-
-        // إرجاع المبلغ للمحفظة
-        const { data: wallet } = await window.SAWYAN.supabase
-            .from('wallets')
-            .select('balance, pending_balance')
-            .eq('id', transaction.wallet_id)
-            .single();
-
-        if (wallet) {
-            await window.SAWYAN.supabase
-                .from('wallets')
-                .update({
-                    balance: wallet.balance + parseFloat(transaction.amount),
-                    pending_balance: wallet.pending_balance - parseFloat(transaction.amount),
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', transaction.wallet_id);
-        }
-
-        alert('تم رفض طلب السحب وإرجاع المبلغ للمحفظة');
-        loadWithdrawals();
-    } catch (error) {
-        console.error('Reject error:', error);
-        alert('❌ حدث خطأ: ' + error.message);
-    }
-}
-
-function filterWithdrawals(status) {
-    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
-
-    document.querySelectorAll('.withdrawal-card').forEach(card => {
-        if (status === 'all' || card.classList.contains('status-' + status)) {
-            card.style.display = 'block';
+        if (typeof window.checkAuth === 'function') {
+            await window.checkAuth();
         } else {
-            card.style.display = 'none';
+            await defaultCheckAuth();
+        }
+        currentAdmin = window.currentAdmin || (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.getSavedAdmin()) || null;
+        if (!currentAdmin || !currentAdmin.id) return;
+
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', handleNavigation);
+        });
+        document.querySelectorAll('.bottom-nav-item').forEach(item => {
+            if (item.dataset.page === 'more') return;
+            item.addEventListener('click', function (e) {
+                e.preventDefault();
+                activatePage(this.dataset.page);
+            });
+        });
+
+        // Attach automatic smart pagination to main operational tables
+        ['membersTable', 'merchantsTable', 'transactionsTable'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) attachTablePagination(el);
+        });
+
+        // Hydrate live PostgreSQL Sovereign Bundle (mounts sovereignLive nav, admin-home-live-banner & live KPIs)
+        if (typeof window.loadRecentActivity === 'function') {
+            try { await window.loadRecentActivity(); } catch (e) { console.warn('Live bundle boot:', e && e.message); }
+        }
+        if (typeof window.loadStats === 'function') {
+            try { window.loadStats(); } catch (e) {}
         }
     });
-}
-
-// ===== صفحة الدعم الفني =====
-async function loadSupport() {
-    const page = document.getElementById('supportPage');
-    if (!page) return;
-
-    page.innerHTML = `
-        <div class="support-admin-page">
-            <h2 class="page-title-mobile">🛠️ الدعم الفني</h2>
-            
-            <div class="support-stats-grid">
-                <div class="support-stat-card">
-                    <span class="stat-value" id="openTickets">0</span>
-                    <span class="stat-label">تذاكر مفتوحة</span>
-                </div>
-                <div class="support-stat-card">
-                    <span class="stat-value" id="pendingTickets">0</span>
-                    <span class="stat-label">بانتظار الرد</span>
-                </div>
-                <div class="support-stat-card">
-                    <span class="stat-value" id="closedTickets">0</span>
-                    <span class="stat-label">مغلقة</span>
-                </div>
-            </div>
-
-            <div class="tickets-section">
-                <h3>📋 التذاكر الأخيرة</h3>
-                <div id="ticketsList">
-                    <p class="empty-state">لا توجد تذاكر دعم حالياً</p>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
+})();

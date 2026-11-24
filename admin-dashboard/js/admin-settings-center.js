@@ -5,13 +5,24 @@
    اعتماد مدير ثانٍ (Checker) ← تاريخ سريان ← إصدار جديد ← سجل تدقيق لا يُحذف
    ============================================================ */
 (function () {
-    function isFounderSession() {
+    function getLiveAdmin() {
         try {
-            var a = (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.getSavedAdmin)
+            return (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.getSavedAdmin)
                 ? window.SAWYAN.API.getSavedAdmin()
-                : JSON.parse(sessionStorage.getItem('sawyan_admin') || sessionStorage.getItem('sawyan_demo:sawyan_admin') || 'null');
-            return Boolean(a && (a.is_sovereign_founder || String(a.email || '').toLowerCase() === 'ahmed.saher.egy@gmail.com'));
-        } catch (e) { return false; }
+                : (window.currentAdmin || null);
+        } catch (e) { return null; }
+    }
+    function isFounderSession() {
+        var a = getLiveAdmin();
+        return Boolean(a && a.is_sovereign_founder);
+    }
+    function isLiveProductionMode() {
+        return Boolean(
+            window.SAWYAN &&
+            window.SAWYAN.API &&
+            typeof window.SAWYAN.API.isDemoMode === 'function' &&
+            !window.SAWYAN.API.isDemoMode()
+        );
     }
     var LS = 'sawyan_admin_params_v1';
     var USER_LS = 'sawyan_admin_params_user';
@@ -566,46 +577,49 @@
     window.scDiscard = function () { DRAFT = JSON.parse(JSON.stringify(ACTIVE)); render(); };
     window.scSubmit = function () {
         var v = validate(), chs = changes(), u = curUser();
-        if (u.role === 'auditor') { alert('دور «مدقّق» للقراءة فقط.'); return; }
+        if (u.role === 'auditor') { liveToast('دور «مدقّق» للقراءة فقط.', true); return; }
         if (!chs.length) return;
-        if (v.errs.length) { alert('أصلح الأخطاء أولاً:\n' + v.errs.join('\n')); return; }
+        if (v.errs.length) { liveToast('أصلح الأخطاء أولاً: ' + v.errs.join(' | '), true); return; }
         var reason = (document.getElementById('scReason').value || '').trim();
-        if (reason.length < 5) { alert('سبب التغيير إلزامي (5 أحرف على الأقل).'); return; }
+        if (reason.length < 5) { liveToast('سبب التغيير إلزامي (5 أحرف على الأقل).', true); return; }
         var eff = document.getElementById('scEff').value;
         ST.seq++; var id = 'CR-' + (ST.seq < 10 ? '00' : ST.seq < 100 ? '0' : '') + ST.seq;
         if (isFounderSession()) {
+            var founderName = (getLiveAdmin() && getLiveAdmin().full_name) || 'المؤسس السيادي';
             chs.forEach(function (c) { ACTIVE[c.k] = c.nw; });
             ST.version++;
-            ST.pending.push({ id: id, at: now(), by: 'ahmed (المؤسس السيادي)', byId: u.id, checker: 'ahmed (أمر سيادي فوري)', checkerId: u.id, reason: reason, effective: eff, status: 'ACTIVE', changes: chs });
-            ST.history.push({ ver: ST.version, at: now(), by: 'ahmed (المؤسس)', approvedBy: 'صلاحية المؤسس المطلقة', reason: reason, effective: eff, changes: chs });
+            ST.pending.push({ id: id, at: now(), by: founderName, byId: u.id, checker: founderName + ' (أمر سيادي فوري)', checkerId: u.id, reason: reason, effective: eff, status: 'ACTIVE', changes: chs });
+            ST.history.push({ ver: ST.version, at: now(), by: founderName, approvedBy: 'صلاحية المؤسس المطلقة', reason: reason, effective: eff, changes: chs });
             log('SOVEREIGN_FOUNDER_APPLIED', id + ' — اعتماد وتفعيل سيادي فوري بصلاحية المؤسس المطلقة (v' + ST.version + ')');
             save();
             DRAFT = JSON.parse(JSON.stringify(ACTIVE)); render();
-            alert('👑 تم تطبيق وتفعيل التعديلات فوراً (الإصدار v' + ST.version + ') بصلاحية المؤسس السيادية المطلقة!');
+            if (window.svAdminToast) window.svAdminToast('👑 تم تطبيق وتفعيل التعديلات فوراً (الإصدار v' + ST.version + ') في مختبر التجربة', false);
             return;
         }
         ST.pending.push({ id: id, at: now(), by: u.n, byId: u.id, reason: reason, effective: eff, status: 'PENDING', changes: chs });
         log('CHANGE_REQUEST_SUBMITTED', id + ' — ' + chs.length + ' تغيير — سريان ' + eff + ' — السبب: ' + reason);
         DRAFT = JSON.parse(JSON.stringify(ACTIVE)); TAB = 'apr'; render();
-        alert('✅ أُرسل الطلب ' + id + ' للاعتماد. القيم السارية لم تتغير بعد.');
+        liveToast('✅ أُرسل الطلب ' + id + ' للاعتماد. القيم السارية لم تتغير بعد.', false);
     };
     function findReq(id) { return ST.pending.filter(function (r) { return r.id === id; })[0]; }
     window.scApprove = function (id) {
         var r = findReq(id), u = curUser();
         if (!r || r.status !== 'PENDING') return;
-        if (!isFounderSession() && u.role !== 'checker') { alert('يلزم دور «مُعتمِد».'); return; }
-        if (!isFounderSession() && r.byId === u.id) { alert('لا يمكنك اعتماد طلبك (فصل المهام).'); return; }
+        if (!isFounderSession() && u.role !== 'checker') { liveToast('يلزم دور «مُعتمِد».', true); return; }
+        if (!isFounderSession() && r.byId === u.id) { liveToast('لا يمكنك اعتماد طلبك (فصل المهام).', true); return; }
         // فحص تعارض: القيمة القديمة لم تعد مطابقة للسارية
         var stale = r.changes.filter(function (c) { return String(ACTIVE[c.k] === null ? '' : ACTIVE[c.k]) !== String(c.old === null ? '' : c.old); });
-        if (stale.length) { alert('⛔ تعارض: تغيّرت القيمة السارية منذ إنشاء الطلب لـ: ' + stale.map(function (s) { return s.label; }).join('، ') + '\nيلزم إنشاء طلب جديد.'); return; }
+        if (stale.length) { liveToast('⛔ تعارض: تغيّرت القيمة السارية منذ إنشاء الطلب لـ: ' + stale.map(function (s) { return s.label; }).join('، ') + ' — يلزم إنشاء طلب جديد.', true); return; }
         r.status = 'APPROVED'; r.checker = u.n; r.checkerId = u.id;
         log('CHANGE_REQUEST_APPROVED', id + ' بواسطة ' + u.n + ' — بانتظار تاريخ السريان ' + r.effective);
         render();
     };
-    window.scReject = function (id) {
+    window.scReject = async function (id) {
         var r = findReq(id), u = curUser();
         if (!r || r.status !== 'PENDING' || u.role !== 'checker' || r.byId === u.id) return;
-        var why = prompt('سبب الرفض (إلزامي):', 'غير مبرَّر كفاية');
+        var why = window.SAWYAN?.UI?.prompt
+            ? await window.SAWYAN.UI.prompt({ title: 'رفض طلب التغيير', message: 'سبب الرفض (إلزامي):', defaultValue: 'غير مبرَّر كفاية' })
+            : null;
         if (!why) return;
         r.status = 'REJECTED'; r.checker = u.n; r.note = why;
         log('CHANGE_REQUEST_REJECTED', id + ' — ' + why);
@@ -619,22 +633,412 @@
         log('VERSION_ACTIVATED', 'v' + ST.version + ' من الطلب ' + id + ' — سريان ' + r.effective);
         DRAFT = JSON.parse(JSON.stringify(ACTIVE)); save(); render();
     };
-    window.scKill = function (k) {
-        var u = curUser(); if (u.role === 'auditor') { alert('دور «مدقّق» للقراءة فقط.'); return; }
+    window.scKill = async function (k) {
+        var u = curUser(); if (u.role === 'auditor') { liveToast('دور «مدقّق» للقراءة فقط.', true); return; }
         var on = !ACTIVE[k], name = KILL.filter(function (x) { return x[0] === k; })[0][1];
-        var why = prompt((on ? 'سبب ' : 'سبب استئناف ') + name + ' (إلزامي):', '');
+        var why = window.SAWYAN?.UI?.prompt
+            ? await window.SAWYAN.UI.prompt({ title: on ? 'تفعيل مفتاح الطوارئ' : 'إيقاف مفتاح الطوارئ', message: (on ? 'سبب ' : 'سبب استئناف ') + name + ' (إلزامي):', defaultValue: '' })
+            : null;
         if (!why || why.trim().length < 3) return;
         ACTIVE[k] = on; DRAFT[k] = on;
         log(on ? 'BREAK_GLASS_ON' : 'BREAK_GLASS_OFF', name + ' — السبب: ' + why + ' — مراجعة لاحقة خلال 24 ساعة');
         save(); render();
     };
-    window.scReset = function () {
-        if (!confirm('إعادة تعيين التجربة: يمحو الإصدارات والطلبات والسجل. متابعة؟')) return;
+    window.scReset = async function () {
+        var ok = window.SAWYAN?.UI?.confirm
+            ? await window.SAWYAN.UI.confirm({ title: 'إعادة تعيين التجربة', message: 'إعادة تعيين التجربة: يمحو الإصدارات والطلبات والسجل. متابعة؟', confirmText: 'إعادة تعيين', cancelText: 'إلغاء', tone: 'danger' })
+            : true;
+        if (!ok) return;
         localStorage.removeItem(LS); load(); ST.audit.unshift({ t: now(), a: curUser().n, act: 'DEMO_RESET', d: 'أُعيد ضبط المحاكاة' }); save(); TAB = 'fin'; render();
     };
 
+    // =========================================================================
+    // Phase 0 (B5-01 + C2): Live PostgreSQL Control Center on Production (`/`)
+    // Eliminates fake localStorage writes, fake USERS, and fake Kill Switches.
+    // =========================================================================
+    var LIVE_TAB = 'params';
+    var LIVE_2FA_STATE = { loaded: false, loading: false, error: null, admins: [] };
+
+    function liveToast(msg, isErr) {
+        if (typeof window.svAdminToast === 'function') {
+            window.svAdminToast(msg, Boolean(isErr));
+        } else if (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.toast === 'function') {
+            window.SAWYAN.UI.toast(msg, isErr ? 'error' : 'success');
+        }
+    }
+
+    function getLiveSettingsRow() {
+        var b = window.__SAWYAN_ADMIN_LIVE_BUNDLE__;
+        if (!b || !Array.isArray(b.settings)) return null;
+        return b.settings.find(function (s) { return s.country_id === null || s.country_id === undefined; }) || b.settings[0] || null;
+    }
+
+    function fetchLive2faPolicy(force) {
+        if (LIVE_2FA_STATE.loading || (LIVE_2FA_STATE.loaded && !force)) return;
+        if (!window.SAWYAN || !window.SAWYAN.API || typeof window.SAWYAN.API.adminManage2faPolicy !== 'function') return;
+        LIVE_2FA_STATE.loading = true;
+        LIVE_2FA_STATE.error = null;
+        window.SAWYAN.API.adminManage2faPolicy({ action: 'list' })
+            .then(function (res) {
+                LIVE_2FA_STATE.loading = false;
+                LIVE_2FA_STATE.loaded = true;
+                LIVE_2FA_STATE.admins = (res && Array.isArray(res.admins)) ? res.admins : [];
+                if (LIVE_TAB === 'tfa') renderLiveProductionSettings();
+            })
+            .catch(function (err) {
+                LIVE_2FA_STATE.loading = false;
+                LIVE_2FA_STATE.loaded = true;
+                LIVE_2FA_STATE.error = err && err.message ? err.message : 'تعذر تحميل سياسة المصادقة الثنائية من PostgreSQL';
+                if (LIVE_TAB === 'tfa') renderLiveProductionSettings();
+            });
+    }
+
+    function renderLiveParamsTab(s, adm) {
+        var ro = !adm || adm.role === 'auditor';
+        var dis = ro ? ' disabled' : '';
+        var fields = [
+            { id: 'company_percent', label: 'نسبة الخزانة من العمولة العامة (%)', val: s.company_percent ?? 25, step: '0.5', min: '0', max: '100' },
+            { id: 'numerical_stopper_s01', label: 'الستوبر العددي S01 (الأجيال المؤهلة)', val: s.numerical_stopper_s01 ?? 11, step: '1', min: '2', max: '30' },
+            { id: 'upline_ceiling_s02', label: 'سقف التوزيع صعوداً S02 (إجمالي الحصص)', val: s.upline_ceiling_s02 ?? 11, step: '1', min: '2', max: '30' },
+            { id: 'monthly_target_usd', label: 'الهدف الشهري المرجعي ($)', val: s.monthly_target_usd ?? 24.75, step: '0.25', min: '0.25', max: '10000' },
+            { id: 'payout_day', label: 'يوم صرف العمولات من الشهر التالي (W01)', val: s.payout_day ?? 15, step: '1', min: '2', max: '28' },
+            { id: 'merchant_warn1_pct', label: 'عتبة التنبيه الأول لرصيد التاجر (%)', val: s.merchant_warn1_pct ?? 30, step: '1', min: '1', max: '99' },
+            { id: 'merchant_warn2_pct', label: 'عتبة الإنذار الأخير لرصيد التاجر (%)', val: s.merchant_warn2_pct ?? 20, step: '1', min: '1', max: '99' },
+            { id: 'merchant_isolate_pct', label: 'عتبة العزل الوقائي لرصيد التاجر (%)', val: s.merchant_isolate_pct ?? 10, step: '0.5', min: '0.5', max: '99' },
+            { id: 'unsecured_queue_cap', label: 'سقف طابور ما بعد النفاد (فاتورة)', val: s.unsecured_queue_cap ?? 3, step: '1', min: '0', max: '100' },
+            { id: 'unconfirmed_soft_hold_cap_pct', label: 'سقف الحجز المؤقت Soft Hold (%)', val: s.unconfirmed_soft_hold_cap_pct ?? 20, step: '1', min: '1', max: '100' },
+            { id: 'withdrawal_cooldown_hours', label: 'فترة تهدئة تغيير وسيلة السحب (ساعة — W07)', val: s.withdrawal_cooldown_hours ?? 72, step: '1', min: '0', max: '720' },
+            { id: 'dormancy_months', label: 'مدة خمول الرصيد قبل المراجعة (شهر — 0 بلا حد)', val: s.dormancy_months ?? 0, step: '1', min: '0', max: '240' }
+        ];
+        var merCard = (typeof window.renderLiveMerchantRiskSettingsCard === 'function')
+            ? '<div id="svLiveMerSettingsMount" style="margin-top:14px;">' + window.renderLiveMerchantRiskSettingsCard('scMer') + '</div>'
+            : '';
+
+        return '<div class="sc-card">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">' +
+                '<div style="font-weight:900;font-size:1rem;">⚙️ معاملات النواة الحية في PostgreSQL (`sawyan.settings`)</div>' +
+                '<span class="sc-chip" style="background:#d1fae5;color:#065f46;">سارٍ منذ: ' + esc(String(s.effective_from || '').slice(0, 10) || 'الآن') + '</span>' +
+            '</div>' +
+            '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;">' +
+                fields.map(function (f) {
+                    return '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;">' +
+                        '<label for="liveSet_' + f.id + '" style="display:block;font-size:0.78rem;font-weight:800;color:#334155;margin-bottom:6px;">' + esc(f.label) + '</label>' +
+                        '<input type="number" id="liveSet_' + f.id + '" value="' + esc(f.val) + '" step="' + f.step + '" min="' + f.min + '" max="' + f.max + '"' + dis + ' style="width:100%;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:8px;font-family:Poppins,Tajawal,sans-serif;font-weight:700;">' +
+                    '</div>';
+                }).join('') +
+            '</div>' +
+            '<div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(200px,1fr);gap:10px;margin-top:12px;">' +
+                '<div>' +
+                    '<label for="liveSetReason" class="sc-help" style="display:block;margin-bottom:4px;">سبب التعديل الموثّق في سجل التدقيق (إلزامي ≥ 5 أحرف)</label>' +
+                    '<input type="text" id="liveSetReason"' + dis + ' placeholder="مثال: تحديث السياسة المالية للشهر القادم..." style="width:100%;padding:9px 10px;border:1.5px solid #cbd5e1;border-radius:8px;font-family:Tajawal,sans-serif;">' +
+                '</div>' +
+                '<div>' +
+                    '<label for="liveSetEff" class="sc-help" style="display:block;margin-bottom:4px;">تاريخ السريان (Bitemporal D28)</label>' +
+                    '<select id="liveSetEff"' + dis + ' style="width:100%;padding:9px 10px;border:1.5px solid #cbd5e1;border-radius:8px;font-family:Tajawal,sans-serif;font-weight:700;">' +
+                        '<option value="' + nextMonthFirst(0) + 'T00:00:00Z">' + nextMonthFirst(0) + ' (أول الشهر القادم)</option>' +
+                        (isFounderSession() ? '<option value="NOW">تطبيق فوري الآن (صلاحية المؤسس)</option>' : '') +
+                    '</select>' +
+                '</div>' +
+            '</div>' +
+            '<div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+                '<button type="button" class="sc-btn p"' + dis + ' onclick="scLiveSaveSettings()">' +
+                    (isFounderSession() ? '👑 حفظ وتفعيل في PostgreSQL فوراً' : '📤 إرسال طلب تعديل للاعتماد المزدوج (Maker–Checker)') +
+                '</button>' +
+                (ro ? '<span class="sc-err">دور المدقق للقراءة فقط (RBAC Auditor Lock).</span>' : '') +
+            '</div>' +
+        '</div>' + merCard;
+    }
+
+    function renderLiveKillTab(s, adm) {
+        var ro = !adm || adm.role === 'auditor';
+        var sw = (s && s.operational_kill_switches && typeof s.operational_kill_switches === 'object')
+            ? s.operational_kill_switches
+            : { K_REG: false, K_TX: false, K_WD: false, K_PAY: false, K_CLOSE: false };
+        var anyOn = KILL.some(function (k) { return Boolean(sw[k[0]]); });
+
+        return '<div class="sc-card" style="border:2px solid ' + (anyOn ? '#dc2626' : '#cbd5e1') + ';">' +
+            '<div style="font-weight:900;color:#b91c1c;font-size:1rem;margin-bottom:4px;">🚨 مفاتيح الإيقاف الطارئ الحية (PostgreSQL Break-Glass)</div>' +
+            '<div class="sc-help" style="margin-bottom:10px;">تُحفظ مباشرة في <code>sawyan.settings.operational_kill_switches</code> وتُسجَّل في سلسلة التدقيق غير القابلة للمحو <code>sawyan.audit_logs</code>.</div>' +
+            '<div style="margin-bottom:12px;">' +
+                '<label for="liveKillReason" class="sc-help" style="display:block;margin-bottom:4px;">السبب الإلزامي للإجراء الطارئ (≥ 5 أحرف قبل الضغط على أي مفتاح)</label>' +
+                '<input type="text" id="liveKillReason"' + (ro ? ' disabled' : '') + ' placeholder="أدخل سبب الإيقاف أو الاستئناف الطارئ..." style="width:100%;padding:9px 10px;border:1.5px solid #fca5a5;border-radius:8px;font-family:Tajawal,sans-serif;">' +
+            '</div>' +
+            KILL.map(function (k) {
+                var on = Boolean(sw[k[0]]);
+                return '<div class="sc-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">' +
+                    '<div class="sc-lab">' + esc(k[1]) +
+                        ' <code style="font-size:0.74rem;color:#64748b;">(' + k[0] + ')</code>' +
+                        (on ? '<span class="sc-chip" style="background:#fee2e2;color:#b91c1c;">⛔ موقوف في القاعدة الحية</span>' : '<span class="sc-chip" style="background:#d1fae5;color:#065f46;">🟢 يعمل طبيعياً</span>') +
+                    '</div>' +
+                    '<button type="button" class="sc-btn ' + (on ? 'p' : 'd') + '"' + (ro ? ' disabled' : '') + ' onclick="scLiveToggleKill(\'' + k[0] + '\',' + (!on) + ')">' + (on ? '✅ استئناف التشغيل' : '🚨 إيقاف طارئ فوري') + '</button>' +
+                '</div>';
+            }).join('') +
+        '</div>';
+    }
+
+    function renderLive2faTab(adm) {
+        if (!LIVE_2FA_STATE.loaded && !LIVE_2FA_STATE.loading) {
+            fetchLive2faPolicy(false);
+        }
+        var founder = isFounderSession();
+        if (LIVE_2FA_STATE.loading) {
+            return '<div class="sc-card"><div class="sc-help">⏳ جارٍ تحميل سجل المصادقة الثنائية الحية من PostgreSQL...</div></div>';
+        }
+        if (LIVE_2FA_STATE.error) {
+            return '<div class="sc-card" style="border:1.5px solid #f59e0b;background:#fffbeb;">' +
+                '<div style="font-weight:900;color:#92400e;margin-bottom:6px;">⚠️ إدارة سياسة المصادقة الثنائية بانتظار تطبيق ملف التحديث الأمني <code>21_phase0_security_hardening.sql</code></div>' +
+                '<div class="sc-help">' + esc(LIVE_2FA_STATE.error) + '</div>' +
+                '<button type="button" class="sc-btn g" style="margin-top:8px;" onclick="scLiveRefresh2fa()">🔄 إعادة المحاولة</button>' +
+            '</div>';
+        }
+        var list = LIVE_2FA_STATE.admins || [];
+        return '<div class="sc-card">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">' +
+                '<div>' +
+                    '<div style="font-weight:900;font-size:1rem;">🔐 المصادقة الثنائية الحقيقية (RFC 6238 TOTP) واستثناءات الحسابات السيادية</div>' +
+                    '<div class="sc-help">جميع موظفي الإدارة ملزمون بالمصادقة الثنائية الحقيقية، بينما تُستثنى الحسابات السيادية بقرار حصري من المؤسس السيادي.</div>' +
+                '</div>' +
+                '<button type="button" class="sc-btn g" onclick="scLiveRefresh2fa()">🔄 تحديث</button>' +
+            '</div>' +
+            '<div style="overflow-x:auto;"><table class="sc-tbl"><thead><tr><th>الإداري</th><th>الدور</th><th>حالة 2FA</th><th>التطبيق</th>' + (founder ? '<th>إجراءات المؤسس السيادي</th>' : '') + '</tr></thead><tbody>' +
+                (list.length === 0 ? '<tr><td colspan="5">لا توجد حسابات إدارية</td></tr>' : list.map(function (a) {
+                    var badge = a.is_sovereign_founder
+                        ? '<span class="sc-chip" style="background:#fef3c7;color:#92400e;">👑 مؤسس سيادي (معفى دائماً)</span>'
+                        : (a.is_2fa_exempt
+                            ? '<span class="sc-chip" style="background:#dbeafe;color:#1e40af;">🛡️ حساب سيادي (معفى من 2FA)</span>'
+                            : '<span class="sc-chip" style="background:#d1fae5;color:#065f46;">🔐 2FA إلزامي (RFC 6238)</span>');
+                    var appSt = a.is_2fa_exempt
+                        ? '— (معفى)'
+                        : (a.totp_enrolled ? '✅ مربوط ومؤكَّد' : '⏳ بانتظار الربط عند أول دخول');
+                    var actions = '';
+                    if (founder) {
+                        if (a.is_sovereign_founder) {
+                            actions = '<span class="sc-help">إعفاء سيادي مقفل</span>';
+                        } else {
+                            actions = '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+                                '<button type="button" class="sc-btn ' + (a.is_2fa_exempt ? 'd' : 'b') + '" style="padding:5px 10px;font-size:0.75rem;" onclick="scLiveSet2faExempt(\'' + a.id + '\',' + (!a.is_2fa_exempt) + ')">' +
+                                    (a.is_2fa_exempt ? '🔐 إلزام 2FA' : '🛡️ إعفاء سيادي') +
+                                '</button>' +
+                                (a.totp_enrolled ? '<button type="button" class="sc-btn g" style="padding:5px 10px;font-size:0.75rem;" onclick="scLiveResetTotp(\'' + a.id + '\')">🔄 إعادة ضبط الجهاز</button>' : '') +
+                            '</div>';
+                        }
+                    }
+                    return '<tr>' +
+                        '<td><b>' + esc(a.full_name) + '</b><div class="sc-help">' + esc(a.email) + '</div></td>' +
+                        '<td>' + esc(a.role) + (a.is_active ? '' : ' <span class="sc-chip" style="background:#fee2e2;color:#991b1b;">موقوف</span>') + '</td>' +
+                        '<td>' + badge + '</td>' +
+                        '<td>' + appSt + '</td>' +
+                        (founder ? '<td>' + actions + '</td>' : '') +
+                    '</tr>';
+                }).join('')) +
+            '</tbody></table></div>' +
+        '</div>';
+    }
+
+    function renderLiveGovAuditTab(b) {
+        var mc = (b && Array.isArray(b.maker_checker_queue)) ? b.maker_checker_queue : [];
+        var logs = (b && Array.isArray(b.audit_logs)) ? b.audit_logs : [];
+        var chainOk = b && b.audit_chain && b.audit_chain.is_hash_chain_intact;
+        return '<div class="sc-card">' +
+            '<div style="font-weight:900;font-size:1rem;margin-bottom:8px;">✅ طلبات الاعتماد المزدوج الحية (PostgreSQL `maker_checker_requests`)</div>' +
+            '<div style="overflow-x:auto;"><table class="sc-tbl"><thead><tr><th>النوع</th><th>الهدف</th><th>المُنشئ</th><th>المُعتمِد</th><th>السبب</th><th>الحالة</th></tr></thead><tbody>' +
+                (mc.length === 0 ? '<tr><td colspan="6">لا توجد طلبات مسجلة</td></tr>' : mc.slice(0, 20).map(function (r) {
+                    return '<tr><td><b>' + esc(r.action_type) + '</b></td><td>' + esc(r.target_entity) + ' / ' + esc(r.target_id) + '</td><td>' + esc(r.maker_name || '—') + '</td><td>' + esc(r.checker_name || '—') + '</td><td>' + esc(r.reason || '—') + '</td><td><b>' + esc(r.status) + '</b></td></tr>';
+                }).join('')) +
+            '</tbody></table></div>' +
+        '</div>' +
+        '<div class="sc-card">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">' +
+                '<div style="font-weight:900;font-size:1rem;">📜 سجل التدقيق الحي غير القابل للمحو (`sawyan.audit_logs`)</div>' +
+                '<span class="sc-chip" style="background:' + (chainOk ? '#d1fae5;color:#065f46' : '#fee2e2;color:#991b1b') + ';">' + (chainOk ? '✅ سلسلة SHA-256 سليمة 100%' : '⚠️ فحص السلسلة') + '</span>' +
+            '</div>' +
+            '<div style="overflow-x:auto;"><table class="sc-tbl"><thead><tr><th>التوقيت</th><th>الفاعل</th><th>الحدث</th><th>الجدول / السجل</th></tr></thead><tbody>' +
+                (logs.length === 0 ? '<tr><td colspan="4">لا توجد سجلات بعد</td></tr>' : logs.slice(0, 25).map(function (l) {
+                    return '<tr><td style="white-space:nowrap;">' + esc(String(l.recorded_at || '').slice(0, 19).replace('T', ' ')) + '</td><td>' + esc(l.actor_type || '—') + '</td><td><b>' + esc(l.action) + '</b></td><td>' + esc(l.table_name) + ' / ' + esc(String(l.record_id || '').slice(0, 12)) + '</td></tr>';
+                }).join('')) +
+            '</tbody></table></div>' +
+        '</div>';
+    }
+
+    function renderLiveProductionSettings() {
+        var page = document.getElementById('settingsPage');
+        if (!page) return;
+        var b = window.__SAWYAN_ADMIN_LIVE_BUNDLE__;
+        var adm = (b && b.admin) || getLiveAdmin();
+        var s = getLiveSettingsRow();
+
+        if (!b || !s) {
+            page.innerHTML = CSS + '<div class="sc"><div class="sc-card"><div style="font-weight:900;margin-bottom:6px;">⚙️ مركز معاملات الإنتاج الحي (PostgreSQL)</div><div class="sc-help">⏳ جارٍ مزامنة الإعدادات الحية من قاعدة البيانات...</div></div></div>';
+            if (typeof window.refreshSovereignBundle === 'function') window.refreshSovereignBundle(false);
+            return;
+        }
+
+        var sw = (s.operational_kill_switches && typeof s.operational_kill_switches === 'object') ? s.operational_kill_switches : {};
+        var anyKill = KILL.filter(function (k) { return Boolean(sw[k[0]]); });
+        var pendMc = (b.maker_checker_queue || []).filter(function (r) { return r.status === 'pending'; }).length;
+
+        var liveTabs = [
+            ['params', '⚙️ المعاملات الحية (PostgreSQL)'],
+            ['kill', '🚨 مفاتيح الإيقاف الطارئ (Break-Glass)'],
+            ['tfa', '🔐 المصادقة الثنائية 2FA والحسابات السيادية'],
+            ['gov', '✅ الاعتماد المزدوج والتدقيق' + (pendMc ? ' (' + pendMc + ')' : '')]
+        ];
+
+        var bodyHtml = '';
+        if (LIVE_TAB === 'params') bodyHtml = renderLiveParamsTab(s, adm);
+        else if (LIVE_TAB === 'kill') bodyHtml = renderLiveKillTab(s, adm);
+        else if (LIVE_TAB === 'tfa') bodyHtml = renderLive2faTab(adm);
+        else bodyHtml = renderLiveGovAuditTab(b);
+
+        page.innerHTML = CSS + '<div class="sc">' +
+            '<div class="sc-top">' +
+                '<div>' +
+                    '<div style="font-size:1.1rem;font-weight:900;">⚙️ مركز معاملات وحوكمة الإنتاج السيادي</div>' +
+                    '<div class="sc-help">جميع القيم والمفاتيح متصلة مباشرة بقاعدة البيانات الحية دون تخزين محلي وهمي. ' +
+                        '<span class="sc-chip" style="background:#d1fae5;color:#065f46;">🟢 متصل بـ PostgreSQL الحي (`sawyan`)</span>' +
+                    '</div>' +
+                '</div>' +
+                '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+                    '<span class="sc-chip" style="background:#dbeafe;color:#1e40af;font-size:0.78rem;">' + esc((adm && adm.full_name) || 'إداري موثّق') + '</span>' +
+                    '<button type="button" class="sc-btn g" onclick="window.refreshSovereignBundle && window.refreshSovereignBundle(true)">🔄 مزامنة حية</button>' +
+                '</div>' +
+            '</div>' +
+            (anyKill.length ? '<div style="background:#fee2e2;border:2px solid #dc2626;color:#991b1b;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-weight:900;">🚨 إيقاف طارئ مفعّل في قاعدة الإنتاج: ' + anyKill.map(function (k) { return k[1]; }).join(' • ') + '</div>' : '') +
+            '<div class="sc-tabs">' + liveTabs.map(function (t) {
+                return '<button type="button" class="sc-tab' + (t[0] === LIVE_TAB ? ' on' : '') + '" onclick="scLiveTab(\'' + t[0] + '\')">' + t[1] + '</button>';
+            }).join('') + '</div>' +
+            bodyHtml +
+        '</div>';
+    }
+
+    window.scLiveTab = function (t) {
+        LIVE_TAB = t;
+        if (t === 'tfa') fetchLive2faPolicy(false);
+        renderLiveProductionSettings();
+    };
+    window.scLiveRefresh2fa = function () {
+        fetchLive2faPolicy(true);
+        renderLiveProductionSettings();
+    };
+    window.scLiveSaveSettings = async function () {
+        var reasonEl = document.getElementById('liveSetReason');
+        var reason = (reasonEl ? reasonEl.value : '').trim();
+        if (reason.length < 5) {
+            liveToast('سبب التعديل إلزامي (5 أحرف على الأقل) لتوثيقه في سجل التدقيق.', true);
+            if (reasonEl) reasonEl.focus();
+            return;
+        }
+        var getNum = function (id) {
+            var el = document.getElementById('liveSet_' + id);
+            return el && el.value !== '' ? Number(el.value) : null;
+        };
+        var w1 = getNum('merchant_warn1_pct'), w2 = getNum('merchant_warn2_pct'), w3 = getNum('merchant_isolate_pct');
+        if (!(w1 > w2 && w2 > w3 && w3 > 0)) {
+            liveToast('يجب أن يكون: التنبيه الأول > الإنذار الأخير > العزل الوقائي > 0.', true);
+            return;
+        }
+        var effVal = (document.getElementById('liveSetEff') || {}).value || '';
+        var payload = {
+            company_percent: getNum('company_percent'),
+            numerical_stopper_s01: getNum('numerical_stopper_s01'),
+            upline_ceiling_s02: getNum('upline_ceiling_s02'),
+            monthly_target_usd: getNum('monthly_target_usd'),
+            payout_day: getNum('payout_day'),
+            merchant_warn1_pct: w1,
+            merchant_warn2_pct: w2,
+            merchant_isolate_pct: w3,
+            unsecured_queue_cap: getNum('unsecured_queue_cap'),
+            unconfirmed_soft_hold_cap_pct: getNum('unconfirmed_soft_hold_cap_pct'),
+            withdrawal_cooldown_hours: getNum('withdrawal_cooldown_hours'),
+            dormancy_months: getNum('dormancy_months'),
+            effective_from: effVal === 'NOW' ? new Date().toISOString() : effVal
+        };
+        try {
+            var res = await window.SAWYAN.API.adminSubmitGovernanceRequest({
+                actionType: 'BITEMPORAL_SETTINGS_UPDATE',
+                targetEntity: 'settings',
+                targetId: 'GLOBAL',
+                payloadAfter: payload,
+                reason: reason
+            });
+            liveToast(res && res.sovereign_auto_executed
+                ? '👑 تم حفظ وتفعيل المعاملات الحية في PostgreSQL بنجاح!'
+                : '📤 تم تسجيل طلب الاعتماد المزدوج في PostgreSQL بانتظار Checker.', false);
+            if (typeof window.refreshSovereignBundle === 'function') await window.refreshSovereignBundle(false);
+            renderLiveProductionSettings();
+        } catch (err) {
+            liveToast((err && err.message) || 'تعذر حفظ الإعدادات في قاعدة البيانات', true);
+        }
+    };
+    window.scLiveToggleKill = async function (switchKey, enabled) {
+        var reasonEl = document.getElementById('liveKillReason');
+        var reason = (reasonEl ? reasonEl.value : '').trim();
+        if (reason.length < 5) {
+            liveToast('أدخل سبب الإجراء الطارئ (5 أحرف على الأقل) في خانة السبب أولاً.', true);
+            if (reasonEl) reasonEl.focus();
+            return;
+        }
+        try {
+            await window.SAWYAN.API.adminToggleKillSwitch({
+                switchKey: switchKey,
+                enabled: Boolean(enabled),
+                reason: reason
+            });
+            if (reasonEl) reasonEl.value = '';
+            liveToast((enabled ? '🚨 تم تفعيل الإيقاف الطارئ ' : '✅ تم استئناف التشغيل ') + '(' + switchKey + ') في PostgreSQL.', false);
+            if (typeof window.refreshSovereignBundle === 'function') await window.refreshSovereignBundle(false);
+            renderLiveProductionSettings();
+        } catch (err) {
+            liveToast((err && err.message) || 'تعذر تحديث مفتاح الإيقاف الطارئ في PostgreSQL', true);
+        }
+    };
+    window.scLiveSet2faExempt = async function (targetAdminId, isExempt) {
+        try {
+            var res = await window.SAWYAN.API.adminManage2faPolicy({
+                action: 'set_exempt',
+                targetAdminId: targetAdminId,
+                is2faExempt: Boolean(isExempt)
+            });
+            LIVE_2FA_STATE.admins = (res && Array.isArray(res.admins)) ? res.admins : LIVE_2FA_STATE.admins;
+            liveToast(isExempt ? '🛡️ تم منح الإعفاء السيادي من 2FA بنجاح.' : '🔐 تم إلغاء الإعفاء وإلزام المصادقة الثنائية الحقيقية للحساب.', false);
+            renderLiveProductionSettings();
+        } catch (err) {
+            liveToast((err && err.message) || 'تعذر تعديل حالة الإعفاء', true);
+        }
+    };
+    window.scLiveResetTotp = async function (targetAdminId) {
+        try {
+            var res = await window.SAWYAN.API.adminManage2faPolicy({
+                action: 'reset_totp',
+                targetAdminId: targetAdminId
+            });
+            LIVE_2FA_STATE.admins = (res && Array.isArray(res.admins)) ? res.admins : LIVE_2FA_STATE.admins;
+            liveToast('🔄 تم إعادة ضبط جهاز 2FA؛ سيُطلب من الإداري مسح رمز QR جديد عند الدخول القادم.', false);
+            renderLiveProductionSettings();
+        } catch (err) {
+            liveToast((err && err.message) || 'تعذر إعادة ضبط المصادقة الثنائية', true);
+        }
+    };
+    window.refreshLiveSettingsCenterIfOpen = function () {
+        if (!isLiveProductionMode()) return;
+        var page = document.getElementById('settingsPage');
+        if (page && page.classList && page.classList.contains('active')) {
+            renderLiveProductionSettings();
+        }
+    };
+
     // التوصيل مع شاشة الإعدادات
-    load();
-    window.loadSettings = function () { DRAFT = JSON.parse(JSON.stringify(ACTIVE)); render(); };
+    if (!isLiveProductionMode()) {
+        load();
+    }
+    window.loadSettings = function () {
+        if (isLiveProductionMode()) {
+            renderLiveProductionSettings();
+            return;
+        }
+        if (!ST) load();
+        DRAFT = JSON.parse(JSON.stringify(ACTIVE));
+        render();
+    };
     window.SAWYAN_PARAMS = { get: function (k) { return ACTIVE[k]; }, all: function () { return JSON.parse(JSON.stringify(ACTIVE)); }, count: function () { return completeness(); } };
 })();

@@ -299,11 +299,11 @@
                         <p style="font-size:0.85rem; color:#475569; margin:6px 0 12px; line-height:1.5;">${escapeHtml(m.description || '')}</p>
                         <div class="merchant-footer">
                             <div class="merchant-rating">
-                                <span class="stars">★</span>
-                                <span>${escapeHtml(m.rating || 4.8)}</span>
-                                <span class="rating-count">(${window.formatNumber(m.reviewsCount || 0)})</span>
+                                ${(Number(m.reviewsCount || 0) > 0 && Number(m.rating || 0) > 0)
+                                    ? `<span class="stars">★</span><span>${escapeHtml(Number(m.rating).toFixed(1))}</span><span class="rating-count">(${window.formatNumber(m.reviewsCount)})</span>`
+                                    : `<span style="background:#ecfdf5;color:#047857;padding:2px 8px;border-radius:999px;font-size:0.74rem;font-weight:800;">🆕 متجر جديد</span>`}
                             </div>
-                            <span class="merchant-transactions">${window.formatNumber(m.transactionsCount || 0)} معاملة</span>
+                            <span class="merchant-transactions">${Number(m.transactionsCount || 0) > 0 ? `${window.formatNumber(m.transactionsCount)} معاملة` : 'معتمد ✓'}</span>
                         </div>
                     </div>
                 </article>
@@ -456,7 +456,11 @@
         }
         if (byId('modal-merchant-desc')) byId('modal-merchant-desc').textContent = m.description || '';
         if (byId('modal-net-cashback')) byId('modal-net-cashback').textContent = `${netRate}%`;
-        if (byId('modal-merchant-rating')) byId('modal-merchant-rating').textContent = `⭐ ${m.rating || 4.8}`;
+        if (byId('modal-merchant-rating')) {
+            byId('modal-merchant-rating').textContent = (Number(m.reviewsCount || 0) > 0 && Number(m.rating || 0) > 0)
+                ? `⭐ ${Number(m.rating).toFixed(1)}`
+                : '🆕 جديد';
+        }
         if (byId('modal-merchant-tx')) byId('modal-merchant-tx').textContent = window.formatNumber(m.transactionsCount || 0);
 
         const copyBtn = byId('modal-copy-code-btn');
@@ -539,8 +543,32 @@
         const formBox = byId('review-form-box');
         if (byId('toggle-review-form-btn') && formBox) {
             byId('toggle-review-form-btn').addEventListener('click', function () {
+                const isDemo = !(window.SAWYAN && window.SAWYAN.API) || window.SAWYAN.API.isDemoMode();
+                const savedMember = window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.getSavedMember ? window.SAWYAN.API.getSavedMember() : null;
+                if (!isDemo && (!savedMember || !savedMember.id)) {
+                    if (window.SAWYAN?.UI?.toast) {
+                        window.SAWYAN.UI.toast('التقييم متاح لأعضاء SAWYAN المسجّلين بعد توثيق فاتورة شراء فعلية.', 'info');
+                    }
+                    return;
+                }
                 formBox.style.display = formBox.style.display === 'none' ? 'block' : 'none';
             });
+        }
+
+        // Mobile Drawer toggle on Merchants Directory
+        const mBtn = byId('merchantsMobileMenuBtn');
+        const mOv = byId('merchantsMobileOverlay');
+        const mClose = byId('merchantsMobileCloseBtn');
+        if (mBtn && mOv) {
+            const setOpen = (open) => {
+                mOv.classList.toggle('active', open);
+                mOv.setAttribute('aria-hidden', String(!open));
+                mBtn.setAttribute('aria-expanded', String(open));
+                document.body.style.overflow = open ? 'hidden' : '';
+            };
+            mBtn.addEventListener('click', () => setOpen(!mOv.classList.contains('active')));
+            if (mClose) mClose.addEventListener('click', () => setOpen(false));
+            mOv.addEventListener('click', (e) => { if (e.target === mOv) setOpen(false); });
         }
         if (byId('cancel-review-btn') && formBox) {
             byId('cancel-review-btn').addEventListener('click', function () {
@@ -609,9 +637,9 @@
                         category: m.category || 'services',
                         categorySlug: m.category || 'services',
                         cashbackRate: netPct,
-                        rating: 4.9,
-                        reviewsCount: 0,
-                        transactionsCount: 1,
+                        rating: Number(m.avg_rating || 0),
+                        reviewsCount: Number(m.reviews_count || 0),
+                        transactionsCount: Number(m.completed_tx_count || 0),
                         isVerified: true,
                         isLiveDb: true,
                         country: cCode,

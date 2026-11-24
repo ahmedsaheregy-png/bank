@@ -31,7 +31,9 @@
             window.svAdminToast(msg, isErr);
             return;
         }
-        alert((isErr ? '⛔ ' : '✅ ') + msg);
+        if (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.toast === 'function') {
+            window.SAWYAN.UI.toast(msg, isErr ? 'error' : 'success');
+        }
     }
 
     function openModal(title, html, width) {
@@ -469,7 +471,10 @@
     };
 
     window.svDeleteAcademyLesson = async function (id) {
-        if (!confirm('حذف هذه المادة التدريبية نهائياً؟')) return;
+        const ok = window.SAWYAN?.UI?.confirm
+            ? await window.SAWYAN.UI.confirm({ title: 'حذف مادة تدريبية', message: 'حذف هذه المادة التدريبية نهائياً؟', confirmText: 'حذف', cancelText: 'تراجع', tone: 'danger' })
+            : true;
+        if (!ok) return;
         try {
             LMS_STATE = await window.SAWYAN.API.adminManageAcademyLms({ entity: 'lesson', action: 'delete', payload: { id: id } });
             toast('تم حذف المادة التدريبية.', false);
@@ -531,7 +536,10 @@
     };
 
     window.svDeleteAcademyTrack = async function (id) {
-        if (!confirm('حذف هذا المسار الفارغ؟')) return;
+        const ok = window.SAWYAN?.UI?.confirm
+            ? await window.SAWYAN.UI.confirm({ title: 'حذف مسار تدريبي', message: 'حذف هذا المسار الفارغ نهائياً؟', confirmText: 'حذف', cancelText: 'تراجع', tone: 'danger' })
+            : true;
+        if (!ok) return;
         try {
             LMS_STATE = await window.SAWYAN.API.adminManageAcademyLms({ entity: 'track', action: 'delete', payload: { id: id } });
             toast('تم حذف المسار.', false);
@@ -548,7 +556,9 @@
     };
 
     window.svRejectLeaderLesson = async function (id) {
-        const reason = prompt('سبب رفض المادة (سيصل للقائد):', 'يرجى مراجعة صياغة العمولات والالتزام بقواعد المنصة');
+        const reason = window.SAWYAN?.UI?.prompt
+            ? await window.SAWYAN.UI.prompt({ title: 'رفض مادة القائد', message: 'سبب رفض المادة (سيصل للقائد):', defaultValue: 'يرجى مراجعة صياغة العمولات والالتزام بقواعد المنصة' })
+            : null;
         if (!reason) return;
         try {
             LMS_STATE = await window.SAWYAN.API.adminManageAcademyLms({ entity: 'lesson', action: 'reject', payload: { id: id, reason: reason } });

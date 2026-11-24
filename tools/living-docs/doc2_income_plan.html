@@ -122,24 +122,11 @@
 </head>
 <body>
     <div class="container-wrap">
-        
-        <!-- شريط التحرير السحابي والحفظ المباشر المتطور -->
-        <div class="edit-toolbar" style="position: sticky; top: 10px; z-index: 9999; background: #ffffff; border: 2px solid #10b981; border-radius: 12px; padding: 12px 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 10px;">
-            <div style="font-weight: 700; color: #047857; font-size: 1.02rem; display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 1.3rem;">✏️</span>
-                <span>وضع التعديل المباشر أونلاين مفعّل — انقر على أي نص وعدّله مباشرة!</span>
-                <span id="save-status" style="font-size: 0.92rem; color: #059669; font-weight: 700; margin-right: 8px;"></span>
+        <div class="edit-toolbar">
+            <div style="font-weight: 700; color: #047857; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.3rem;">✏️</span> وضع التعديل المباشر مفعّل — محدّث 2026-11-16
             </div>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button type="button" onclick="saveToBrowserStorage()" style="background: #059669; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 800; cursor: pointer; box-shadow: 0 2px 8px rgba(5,150,105,0.3);">💾 حفظ التعديلات (Auto-Saved)</button>
-                <button type="button" onclick="downloadUpdatedHtml()" style="background: #d97706; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: 700; cursor: pointer;">📥 تحميل نسخة HTML المحدثة</button>
-                <button type="button" onclick="copyToDocs()" style="background: #2563eb; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: 700; cursor: pointer;">📋 نسخ لـ Google Docs</button>
-                <button type="button" onclick="window.print()" style="background: #475569; color: white; border: none; padding: 8px 12px; border-radius: 8px; font-weight: 600; cursor: pointer;">🖨️ طباعة</button>
-                <button type="button" onclick="resetToOriginal()" style="background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; padding: 8px 10px; border-radius: 8px; font-weight: 600; cursor: pointer;" title="استعادة النسخة الأصلية">🔄 إعادة ضبط</button>
-            </div>
-        </div>
-    
-<div style="display: flex; gap: 10px;">
+            <div style="display: flex; gap: 10px;">
                 <button onclick="copyToDocs()" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-family: 'Calibri', sans-serif; font-size: 1rem; font-weight: 700; cursor: pointer;">📋 نسخ النص لـ Google Docs</button>
                 <button onclick="window.print()" style="background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-family: 'Calibri', sans-serif; font-size: 1rem; font-weight: 700; cursor: pointer;">🖨️ طباعة / حفظ PDF</button>
             </div>
@@ -2229,112 +2216,17 @@ flowchart TD
 </tbody></table></div>
         </div>
     </div>
-    
     <script>
-        const STORAGE_KEY = "sawyan_doc2_income_plan";
-
-        function getEditableEl() {
-            return document.getElementById('editable-content') || document.querySelector('.paper');
-        }
-
-        // Save directly to browser storage
-        function saveToBrowserStorage() {
-            const paper = getEditableEl();
-            if (!paper) return;
-            const statusEl = document.getElementById('save-status');
-            try {
-                const contentHtml = paper.innerHTML;
-                localStorage.setItem(STORAGE_KEY, contentHtml);
-                localStorage.setItem(STORAGE_KEY + '_time', new Date().toLocaleTimeString('ar-EG'));
-                if (statusEl) {
-                    statusEl.textContent = '✓ تم الحفظ في المتصفح (' + new Date().toLocaleTimeString('ar-EG') + ')';
-                    statusEl.style.color = '#059669';
-                }
-            } catch (e) {
-                if (statusEl) {
-                    statusEl.textContent = '⚠️ مساحة التخزين ممتلئة';
-                    statusEl.style.color = '#dc2626';
-                }
-            }
-        }
-
-        // Auto restore on page load
-        window.addEventListener('DOMContentLoaded', () => {
-            const paper = getEditableEl();
-            if (!paper) return;
-            // Ensure paper is editable
-            paper.setAttribute('contenteditable', 'true');
-            paper.setAttribute('spellcheck', 'false');
-
-            const saved = localStorage.getItem(STORAGE_KEY);
-            const savedTime = localStorage.getItem(STORAGE_KEY + '_time');
-            if (saved) {
-                paper.innerHTML = saved;
-                const statusEl = document.getElementById('save-status');
-                if (statusEl) {
-                    statusEl.textContent = '✓ تم استرجاع آخر تعديلاتك المحفوظة (' + (savedTime || '') + ')';
-                    statusEl.style.color = '#059669';
-                }
-            }
-
-            // Auto-save on input with debounce
-            let timeout = null;
-            paper.addEventListener('input', () => {
-                const statusEl = document.getElementById('save-status');
-                if (statusEl) statusEl.textContent = '⏳ جاري الحفظ التلقائي...';
-                clearTimeout(timeout);
-                timeout = setTimeout(saveToBrowserStorage, 1000);
-            });
-        });
-
-        // Download full updated HTML
-        function downloadUpdatedHtml() {
-            saveToBrowserStorage();
-            const clone = document.documentElement.cloneNode(true);
-            const fullHtml = '<!DOCTYPE html>\n' + clone.outerHTML;
-            const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = "خطة_الدخل_الرسمية.html";
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        // Copy rich formatted text to Google Docs
         function copyToDocs() {
-            const paper = getEditableEl();
-            if (!paper) return;
+            const paper = document.getElementById('editable-content');
             const range = document.createRange();
             range.selectNode(paper);
             window.getSelection().removeAllRanges();
             window.getSelection().addRange(range);
-            try {
-                document.execCommand('copy');
-                alert('✅ تم نسخ محتوى الوثيقة كاملاً بكافة التنسيقات والألوان!\nيمكنك الآن لصقه مباشرة في Google Docs بالضغط على Ctrl + V');
-            } catch (e) {
-                alert('يرجى تحديد النص والضغط على Ctrl + C');
-            }
+            document.execCommand('copy');
             window.getSelection().removeAllRanges();
+            alert('✅ تم نسخ محتوى الوثيقة كاملاً بكافة التنسيقات والألوان! يمكنك الآن الذهاب إلى مستند Google Docs والضغط على Ctrl + V');
         }
-
-        // Reset to original canonical version
-        function resetToOriginal() {
-            if (confirm('هل أنت متأكد من رغبتك في حذف التعديلات واستعادة النسخة الأصلية المعتمدة؟')) {
-                localStorage.removeItem(STORAGE_KEY);
-                localStorage.removeItem(STORAGE_KEY + '_time');
-                location.reload();
-            }
-        }
-
-        // Ctrl+S shortcut
-        document.addEventListener('keydown', function(e) {
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-                e.preventDefault();
-                saveToBrowserStorage();
-            }
-        });
     </script>
-    
 </body>
 </html>

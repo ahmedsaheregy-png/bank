@@ -103,12 +103,34 @@ function getCountryPlanInfo(countryCode) {
     const wasLegacyUnlinked = (Math.abs(rawStopper - 4605.75) < 0.005 && Math.abs(targetUsd - 24.75) > 0.005);
     const stopperUsd = (rawStopper > 0 && !wasLegacyUnlinked) ? rawStopper : defaultStopperUsd;
 
-    const fallbackFx = { EGP: 50, TRY: 50, SAR: 3.75, AED: 3.6725, EUR: 0.92, USD: 1 }[src.currency_code || p.currency_code || 'USD'] || 1;
+    const currencyCode = src.currency_code || (cc === p.country_code ? p.currency_code : null) || ({ EG: 'EGP', TR: 'TRY', SA: 'SAR', AE: 'AED', DE: 'EUR', FR: 'EUR', GB: 'GBP', KW: 'KWD', QA: 'QAR', JO: 'JOD', US: 'USD' }[cc] || 'USD');
+    const fallbackFx = { EGP: 50, TRY: 38, SAR: 3.75, AED: 3.6725, EUR: 0.92, GBP: 0.79, KWD: 0.31, QAR: 3.64, JOD: 0.71, USD: 1 }[currencyCode] || 1;
     const rawFx = Number(src.admin_fx_rate || src.fx_rate_to_usd || 0);
-    const currencyCode = src.currency_code || (cc === p.country_code ? p.currency_code : null) || ({ EG: 'EGP', TR: 'TRY', SA: 'SAR', AE: 'AED', DE: 'EUR', US: 'USD' }[cc] || 'USD');
     const fx = (rawFx > 0 && !(rawFx === 1 && currencyCode !== 'USD')) ? rawFx : fallbackFx;
 
     return { countryCode: cc, currencyCode, fx, targetUsd, s02, s01, idealNodes, unitShareUsd, stopperUsd, defaultStopperUsd };
+}
+
+function getMemLocale() {
+    return (window.SAWYAN && window.SAWYAN.I18n && typeof window.SAWYAN.I18n.getLocale === 'function')
+        ? window.SAWYAN.I18n.getLocale()
+        : 'ar-EG';
+}
+
+function resolveCurrencyFx(countryCode, currencyCode) {
+    if (countryCode) {
+        const info = getCountryPlanInfo(countryCode);
+        if (info && info.fx > 0 && (!currencyCode || String(info.currencyCode).toUpperCase() === String(currencyCode).toUpperCase())) {
+            return info.fx;
+        }
+    }
+    const cur = String(currencyCode || 'USD').toUpperCase();
+    for (const row of liveCountriesPlanMap.values()) {
+        if (String(row.currency_code || '').toUpperCase() === cur && Number(row.admin_fx_rate || row.fx_rate_to_usd || 0) > 0) {
+            return Number(row.admin_fx_rate || row.fx_rate_to_usd);
+        }
+    }
+    return { EGP: 50, TRY: 38, SAR: 3.75, AED: 3.6725, EUR: 0.92, GBP: 0.79, KWD: 0.31, QAR: 3.64, JOD: 0.71, USD: 1 }[cur] || 1;
 }
 
 function getMemberFxContext() {
@@ -246,6 +268,7 @@ async function refreshDashboardBundle(lensCountry = activeLensCountry) {
 
         renderHomePage();
         renderActiveTabIfOpen();
+        scheduleMemberAdaptivePoll();
     } catch (err) {
         console.error('Bundle load error:', err);
         if (String(err.message || '').includes('UNAUTHORIZED_MEMBER_SESSION')) {
@@ -253,6 +276,22 @@ async function refreshDashboardBundle(lensCountry = activeLensCountry) {
             window.location.href = 'login.html';
         }
     }
+}
+
+let __memberPollTimer = null;
+function scheduleMemberAdaptivePoll() {
+    if (__memberPollTimer) { clearTimeout(__memberPollTimer); __memberPollTimer = null; }
+    if (!currentMember || !memberBundle) return;
+    const hasPendingTx = (memberBundle.transactions || []).some(t => t.status === 'pending' || t.status === 'awaiting_merchant_topup');
+    const hasOpenReturn = (memberBundle.return_requests || []).some(r => r.status === 'pending_member_otp' || r.status === 'pending');
+    if (!hasPendingTx && !hasOpenReturn) return;
+    __memberPollTimer = setTimeout(async () => {
+        if (document.hidden || !currentMember?.id) {
+            scheduleMemberAdaptivePoll();
+            return;
+        }
+        try { await refreshDashboardBundle(activeLensCountry); } catch (_) {}
+    }, 6000);
 }
 
 async function loadPublicMerchantsCatalogSafe() {
@@ -653,6 +692,37 @@ function renderHomePage() {
         .slice(0, 6);
 
     const queuedOrPendTxs = (memberBundle.transactions || []).filter(t => t.status === 'awaiting_merchant_topup' || t.status === 'pending');
+    const dayOfMonth = new Date().getDate();
+    const isReviewPhase = dayOfMonth >= 1 && dayOfMonth <= 14;
+    const isPayoutDay = dayOfMonth === 15;
+    const topOrangeNudge = teamRadar.find(n => n.node_color === 'ORANGE' && Number(n.target_pct || 0) >= 60) || teamRadar.find(n => n.node_color === 'ORANGE') || null;
+    const nudgeWa = topOrangeNudge && topOrangeNudge.phone_visible && topOrangeNudge.phone
+        ? `https://wa.me/${String(topOrangeNudge.phone).replace(/\D/g, '')}?text=${encodeURIComponent(`أهلاً ${topOrangeNudge.full_name} 🌟 وصلت إلى ${Number(topOrangeNudge.target_pct || 0)}% من هدفك الشهري على SAWYAN — خطوة بسيطة وتكتمل عمولتك هذا الشهر!`)}`
+        : '';
+
+    const todayActionHtml = !isQual
+        ? `<div style="font-size:0.86rem;color:#0f172a;line-height:1.55;">
+                متبقي لك <strong style="color:#b45309;">${fmtBiDi(fmtLocalFromUsd(remainingUsd))}</strong> لإكمال تأهلك هذا الشهر وتفعيل صرف عمولات فريقك.
+           </div>
+           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+                <button type="button" class="btn btn-primary btn-sm" onclick="openMemberPurchaseModal()">🧾 وثّق فاتورة الآن</button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="goToPage('merchants')">🏪 أقرب التجار</button>
+           </div>`
+        : (topOrangeNudge
+            ? `<div style="font-size:0.86rem;color:#0f172a;line-height:1.55;">
+                    أنت مؤهل 100% ✅! العضو <strong>#${topOrangeNudge.member_code} ${esc(topOrangeNudge.full_name)}</strong> وصل إلى <strong>${Number(topOrangeNudge.target_pct || 0)}%</strong> ويحتاج دفعة بسيطة لإكمال هدفه.
+               </div>
+               <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+                    ${nudgeWa ? `<a href="${nudgeWa}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm" style="background:#16a34a;border-color:#16a34a;">💬 شجّعه عبر واتساب</a>` : ''}
+                    <button type="button" class="btn btn-outline btn-sm" onclick="goToPage('tree')">🌳 افتح غرفة المتابعة</button>
+               </div>`
+            : `<div style="font-size:0.86rem;color:#0f172a;line-height:1.55;">
+                    تأهلك مكتمل 100% ✅! شارك رابط إحالتك لتنمية ذراعك الأضعف ومضاعفة عائدك الشهري.
+               </div>
+               <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="goToPage('referrals')">🔗 مشاركة رابط الإحالة</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="goToPage('tree')">🌳 استوديو الشجرة</button>
+               </div>`);
 
     homeEnhBox.innerHTML = `
         ${queuedOrPendTxs.length > 0 ? `
@@ -669,8 +739,18 @@ function renderHomePage() {
                 </div>
             </div>
         ` : ''}
-        <!-- 1. الصندوق الأبيض للهدف الشهري (يدمج الشهر + المرحل في العداد تلقائياً) -->
-        <div class="target-box-card ${stateCls}" data-spec-id="member-home-target-box" style="background:#ffffff;border:1.5px solid #e2e8f0;border-top:4px solid ${stateBadgeBg};border-radius:16px;padding:18px;margin:14px 0;box-shadow:0 4px 16px rgba(15,23,42,0.06);">
+
+        <!-- خط سير الدورة الشهرية (1-30 تجميع → 1-14 مراجعة → 15 صرف) -->
+        <div class="cycle-timeline-bar" style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:8px 12px;margin:10px 0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;font-size:0.78rem;">
+            <span style="font-weight:800;color:#047857;">🟢 1–30 الشهر: تجميع المشتريات والهدف</span>
+            <span style="color:#94a3b8;">←</span>
+            <span style="font-weight:${isReviewPhase ? '900' : '600'};color:${isReviewPhase ? '#1d4ed8' : '#475569'};">${isReviewPhase ? '🔵' : '⚪'} 1–14 الشهر التالي: المراجعة والمطابقة</span>
+            <span style="color:#94a3b8;">←</span>
+            <span style="font-weight:${isPayoutDay ? '900' : '600'};color:${isPayoutDay ? '#047857' : '#475569'};">${isPayoutDay ? '💰' : '📅'} يوم 15: إتاحة صرف الأرباح</span>
+        </div>
+
+        <!-- 1. الصندوق الأبيض للهدف الشهري (إجابة: كم بقي لي لأتأهل؟) -->
+        <div class="target-box-card ${stateCls}" data-spec-id="member-home-target-box" style="background:#ffffff;border:1.5px solid #e2e8f0;border-top:4px solid ${stateBadgeBg};border-radius:16px;padding:18px;margin:12px 0;box-shadow:0 4px 16px rgba(15,23,42,0.06);">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
                 <strong style="font-size:1.08rem;color:#0f172a;">🎯 الهدف الشهري لشهر (${monthNum})</strong>
                 <div style="display:inline-flex;align-items:center;gap:7px;flex-wrap:wrap;">
@@ -714,6 +794,43 @@ function renderHomePage() {
                 <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
                     <span style="font-size:0.81rem;font-weight:700;color:#1e40af;">📊 متوسط نسبة الهدف من المشتريات</span>
                     <strong style="font-size:0.9rem;color:#1e3a8a;">${avgPctFormatted}</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- 1.5 خطوة اليوم + نبض شجرتي (إجابة سؤالي: ماذا أفعل اليوم؟ + ما الجديد في شجرتي؟) -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:12px;margin:12px 0;">
+            <div data-spec-id="member-home-today-action" style="background:#ffffff;border:1.5px solid #cbd5e1;border-top:4px solid #0284c7;border-radius:16px;padding:16px;box-shadow:0 4px 12px rgba(15,23,42,0.04);">
+                <div style="font-weight:900;color:#0c4a6e;font-size:0.96rem;margin-bottom:8px;">⚡ خطوة اليوم المقترحة لك</div>
+                ${todayActionHtml}
+            </div>
+
+            <div data-spec-id="member-home-tree-pulse" id="memberHomeTreePulseCard" style="background:linear-gradient(135deg,#f0fdf4 0%,#ffffff 100%);border:1.5px solid #86efac;border-top:4px solid #10b981;border-radius:16px;padding:16px;box-shadow:0 4px 12px rgba(16,185,129,0.08);">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;">
+                    <strong style="color:#065f46;font-size:0.96rem;">🌱 نبض شجرتي — ما الجديد؟</strong>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 10px;font-size:0.74rem;" onclick="goToPage('tree')">🌳 فتح الشجرة</button>
+                </div>
+                <div id="memberHomeTreePulseBody" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;font-size:0.8rem;">
+                    <div style="background:#ffffff;border:1px solid #d1fae5;border-radius:10px;padding:8px 10px;">
+                        <div style="color:#64748b;font-size:0.72rem;">🆕 منضمون جدد (7 أيام)</div>
+                        <strong id="pulseNew7d" style="font-size:1.05rem;color:#047857;">—</strong>
+                        <span id="pulseNewMonth" style="font-size:0.72rem;color:#64748b;"></span>
+                    </div>
+                    <div style="background:#ffffff;border:1px solid #d1fae5;border-radius:10px;padding:8px 10px;">
+                        <div style="color:#64748b;font-size:0.72rem;">🛍️ نشطون بعمليات هذا الشهر</div>
+                        <strong id="pulseActiveTx" style="font-size:1.05rem;color:#0284c7;">—</strong>
+                        <span id="pulseTxCount" style="font-size:0.72rem;color:#64748b;"></span>
+                    </div>
+                    <div style="background:#ffffff;border:1px solid #d1fae5;border-radius:10px;padding:8px 10px;">
+                        <div style="color:#64748b;font-size:0.72rem;">📈 تطور عمولات الشهر</div>
+                        <strong id="pulseEstComm" style="font-size:0.98rem;color:#0f172a;">${fmtBiDi(fmtLocalFromUsd(actualTotalUsd))}</strong>
+                        <span id="pulseCommDelta" style="font-size:0.72rem;font-weight:800;"></span>
+                    </div>
+                    <div style="background:#ffffff;border:1px solid #fde68a;border-radius:10px;padding:8px 10px;">
+                        <div style="color:#92400e;font-size:0.72rem;">🔥 قريبون من التأهل</div>
+                        <strong id="pulseNearQual" style="font-size:1.05rem;color:#d97706;">${orangeTeamCount}</strong>
+                        <span style="font-size:0.72rem;color:#64748b;"> عضو</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -786,6 +903,34 @@ function renderHomePage() {
         </div>
     `;
 
+    // ترطيب حي لبطاقة «نبض شجرتي» من الخادم دون إبطاء تحميل الصفحة الرئيسية
+    if (window.SAWYAN?.TreeStudio?.fetchPulseOnly) {
+        window.SAWYAN.TreeStudio.fetchPulseOnly().then(res => {
+            const p = res && res.tree_pulse;
+            if (!p) return;
+            const n7 = document.getElementById('pulseNew7d');
+            const nm = document.getElementById('pulseNewMonth');
+            const act = document.getElementById('pulseActiveTx');
+            const txc = document.getElementById('pulseTxCount');
+            const est = document.getElementById('pulseEstComm');
+            const del = document.getElementById('pulseCommDelta');
+            const nq = document.getElementById('pulseNearQual');
+            if (n7) n7.textContent = String(Number(p.new_members_7d || 0));
+            if (nm) nm.textContent = ` (الشهر: ${Number(p.new_members_month || 0)})`;
+            if (act) act.textContent = String(Number(p.active_transactors_month || 0));
+            if (txc) txc.textContent = ` (${Number(p.tx_count_month || 0)} عملية)`;
+            const estUsd = Number(p.estimated_month_commission_usd || 0);
+            if (est && estUsd > 0) est.innerHTML = fmtBiDi(fmtLocalFromUsd(estUsd));
+            if (del) {
+                const dp = Number(p.commission_delta_pct || 0);
+                if (dp > 0) { del.style.color = '#059669'; del.textContent = ` ▲ +${dp}%`; }
+                else if (dp < 0) { del.style.color = '#dc2626'; del.textContent = ` ▼ ${dp}%`; }
+                else { del.style.color = '#64748b'; del.textContent = ' • مستقر'; }
+            }
+            if (nq && p.near_qualification_count !== undefined) nq.textContent = String(Number(p.near_qualification_count || 0));
+        }).catch(() => {});
+    }
+
     renderPendingReturnRequestsCard(homeEnhBox);
     renderMemberProfileCompletionBanner();
 
@@ -798,8 +943,8 @@ function renderHomePage() {
             : `SAWYAN:MEMBER:${profile.member_code}`;
         new QRCode(qrContainer, {
             text: barcodePayload,
-            width: 180,
-            height: 180,
+            width: 112,
+            height: 112,
             colorDark: '#047857',
             colorLight: '#ffffff'
         });
@@ -816,7 +961,7 @@ function renderHomePage() {
                 <div class="transaction-item" style="flex-wrap:wrap;gap:8px;">
                     <div class="transaction-info">
                         <div class="transaction-merchant">${esc(t.merchant_name)} — <small>${esc(t.sw_short_code)}</small></div>
-                        <div class="transaction-date">${new Date(t.created_at).toLocaleDateString('ar-EG')} • <span style="padding:1px 7px;border-radius:999px;font-size:0.74rem;font-weight:800;background:${stBadge.bg};color:${stBadge.color};">${stBadge.label}</span></div>
+                        <div class="transaction-date">${new Date(t.created_at).toLocaleDateString(getMemLocale())} • <span style="padding:1px 7px;border-radius:999px;font-size:0.74rem;font-weight:800;background:${stBadge.bg};color:${stBadge.color};">${stBadge.label}</span></div>
                     </div>
                     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                         <div class="transaction-amount">${Number(t.total_amount).toFixed(2)} ${esc(t.currency_code)}</div>
@@ -1315,6 +1460,12 @@ function loadTree() {
     const page = document.getElementById('treePage');
     if (!page || !memberBundle) return;
 
+    // Phase 2 Adaptive Server-Side Tree Studio (Mobile 4-5 gens / Laptop 6-8 gens, Zero Scroll-Jacking)
+    if (window.SAWYAN && window.SAWYAN.TreeStudio && typeof window.SAWYAN.TreeStudio.mount === 'function') {
+        window.SAWYAN.TreeStudio.mount('treePage');
+        return;
+    }
+
     const tree = memberBundle.tree_analytics || { nodes: [], commission_team_count: 0, reserve_team_aggregated_count: 0, lens_country_code: 'ALL', country_reports: [] };
     const topology = memberBundle.tree_topology || [];
     const nodes = Array.isArray(tree.nodes) ? tree.nodes : [];
@@ -1731,6 +1882,7 @@ function initTreeEarthPanZoom() {
         vp.classList.remove('panning');
     };
     vp.onwheel = (e) => {
+        if (!e.ctrlKey && !e.metaKey) return;
         e.preventDefault();
         const delta = e.deltaY > 0 ? -0.07 : 0.07;
         treeUiState.zoom = Math.max(0.32, Math.min(1.65, Number((treeUiState.zoom + delta).toFixed(2))));
@@ -2000,7 +2152,7 @@ function loadWalletDetails() {
                             <div style="background:#fff;border:1px solid #cbd5e1;border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
                                 <div>
                                     <strong>${esc(String(m.provider || '').toUpperCase())}</strong> — ${esc(m.account_holder_name)} (<code>****${esc(m.last_four)}</code>)
-                                    <div style="font-size:0.78rem;color:#64748b;">انتهاء التهدئة: ${new Date(m.cooldown_expires_at).toLocaleString('ar-EG')}</div>
+                                    <div style="font-size:0.78rem;color:#64748b;">انتهاء التهدئة: ${new Date(m.cooldown_expires_at).toLocaleString(getMemLocale())}</div>
                                 </div>
                                 <div style="display:flex;align-items:center;gap:8px;">
                                     ${(() => {
@@ -2025,7 +2177,7 @@ function loadWalletDetails() {
                             <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center;">
                                 <div>
                                     <strong>${esc(t.transaction_type)}</strong>
-                                    <div style="font-size:0.78rem;color:#64748b;">${new Date(t.created_at).toLocaleString('ar-EG')} • ${esc(t.status)}</div>
+                                    <div style="font-size:0.78rem;color:#64748b;">${new Date(t.created_at).toLocaleString(getMemLocale())} • ${esc(t.status)}</div>
                                 </div>
                                 <div style="text-align:left;">
                                     <strong style="color:${t.transaction_type === 'withdrawal' ? '#dc2626' : '#047857'};">${esc(fmtLocalFromUsd(t.amount_usd))}</strong>
@@ -2041,7 +2193,7 @@ function loadWalletDetails() {
 }
 
 function openAddPayoutMethodModal() {
-    openMemberModal('🏦 إضافة وسيلة استلام أرباح (تهدئة 72 ساعة — W07)', `
+    openMemberModal('🏦 إضافة وسيلة استلام أرباح (فترة أمان 72 ساعة)', `
         <div>
             <label style="font-weight:700;font-size:0.86rem;">القناة المالية *</label>
             <select name="provider" class="form-control">
@@ -2056,7 +2208,7 @@ function openAddPayoutMethodModal() {
             <input type="text" name="holderName" required class="form-control" value="${esc(currentMember?.full_name || '')}">
         </div>
         <div>
-            <label style="font-weight:700;font-size:0.86rem;">رقم الحساب / IBAN / المحفظة (يُشفّر بـ PGP في الخادم) *</label>
+            <label style="font-weight:700;font-size:0.86rem;">رقم الحساب / IBAN / المحفظة (مشفّر بالكامل) *</label>
             <input type="text" name="accountIdentifier" required minlength="6" class="form-control" placeholder="EG0000... أو 010...">
         </div>
     `, async (form, close) => {
@@ -2073,6 +2225,16 @@ function openAddPayoutMethodModal() {
 }
 
 async function deletePayoutMethod(methodId) {
+    const confirmed = (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.confirm === 'function')
+        ? await window.SAWYAN.UI.confirm({
+            title: 'تأكيد حذف وسيلة الاستلام',
+            message: 'هل أنت متأكد من حذف وسيلة استلام الأرباح هذه؟ تنبيه مهم: إضافة أي وسيلة بديلة لاحقاً ستخضع لفترة تهدئة أمنية جديدة لمدة 72 ساعة قبل السحب.',
+            confirmText: 'نعم، احذف الوسيلة',
+            cancelText: 'تراجع',
+            tone: 'danger'
+        })
+        : true;
+    if (!confirmed) return;
     try {
         await window.SAWYAN.API.manageMemberPayoutMethod({ memberId: currentMember.id, action: 'delete', methodId });
         swMemToast('تم حذف وسيلة السحب بنجاح.', 'success');
@@ -2096,8 +2258,13 @@ function openRequestWithdrawalModal() {
         swMemAlert('وسيلة السحب قيد التفعيل الأمني', 'يجب وجود وسيلة استلام أرباح واحدة على الأقل أتمت فترة الانتظار الأمنية (72 ساعة) قبل السحب.', 'warning');
         return;
     }
+    if (avail < 10) {
+        swMemAlert('الرصيد المتاح أقل من الحد الأدنى للسحب', `رصيدك المتاح حالياً هو ${fmtLocalFromUsd(avail)} (${fmtUsd(avail)})، والحد الأدنى لطلب السحب هو $10.00 (${fmtLocalFromUsd(10)}).`, 'info');
+        return;
+    }
 
-    openMemberModal('💸 طلب سحب أرباح موثق (قيد مزدوج Dr 2302 / Cr 1102)', `
+    const defaultAmt = Math.min(avail, 25).toFixed(2);
+    openMemberModal('💸 طلب سحب أرباح موثق', `
         <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:10px;font-size:0.84rem;color:#065f46;">
             الرصيد المتاح: <strong>${esc(fmtLocalFromUsd(avail))}</strong> (<code>${fmtUsd(avail)}</code>) • الحد الأدنى للسحب: <code>$10.00</code>
         </div>
@@ -2108,8 +2275,9 @@ function openRequestWithdrawalModal() {
             </select>
         </div>
         <div>
-            <label style="font-weight:700;font-size:0.86rem;">المبلغ المطلوب سحبه بالدولار المحاسبي (USD) *</label>
-            <input type="number" step="0.01" min="10" max="${Math.max(10, avail)}" name="amountUsd" required class="form-control" value="${Math.min(avail, 25).toFixed(2)}">
+            <label style="font-weight:700;font-size:0.86rem;">المبلغ المطلوب سحبه بالدولار (USD) *</label>
+            <input type="number" step="0.01" min="10" max="${avail.toFixed(2)}" name="amountUsd" id="wdAmountUsdInput" required class="form-control" value="${defaultAmt}">
+            <div id="wdLocalEquivPreview" style="margin-top:6px;font-size:0.82rem;font-weight:800;color:#047857;">≈ ${esc(fmtLocalFromUsd(Number(defaultAmt)))} بعملتك المحلية</div>
         </div>
     `, async (form, close) => {
         await window.SAWYAN.API.requestMemberWithdrawal({
@@ -2120,6 +2288,15 @@ function openRequestWithdrawalModal() {
         close();
         await refreshDashboardBundle();
     });
+
+    const wdIn = document.getElementById('wdAmountUsdInput');
+    const wdPrev = document.getElementById('wdLocalEquivPreview');
+    if (wdIn && wdPrev) {
+        wdIn.addEventListener('input', () => {
+            const v = Math.max(0, Number(wdIn.value || 0));
+            wdPrev.textContent = `≈ ${fmtLocalFromUsd(v)} بعملتك المحلية`;
+        });
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -2306,14 +2483,7 @@ window.toggleMemberAcademyLessonComplete = toggleMemberAcademyLessonComplete;
 // ---------------------------------------------------------------------------
 // Screen 7 & 8: Nearby Merchants + Leaflet Map + Haversine + Google Maps + Path B Live Calc
 // ---------------------------------------------------------------------------
-async function loadNearbyMerchants() {
-    const page = document.getElementById('merchantsPage');
-    if (!page) return;
-    if (liveCatalog.length === 0) {
-        await loadPublicMerchantsCatalogSafe();
-    }
-
-    const myCoords = getMemberGeoCoords();
+function getFilteredMerchantsList(myCoords) {
     const baseSource = (Array.isArray(radarCatalogOverride) ? radarCatalogOverride : liveCatalog).map(m => {
         const dist = (m.distance_km !== undefined && m.distance_km !== null)
             ? Number(m.distance_km)
@@ -2321,9 +2491,9 @@ async function loadNearbyMerchants() {
         return { ...m, _distanceKm: dist };
     });
 
-    const filtered = baseSource.filter(m => {
+    return baseSource.filter(m => {
         if (merchantFilterState.country !== 'ALL' && String(m.country_code || '').toUpperCase() !== merchantFilterState.country) return false;
-        if (merchantFilterState.category !== 'all' && String(m.category || m.category_code || '') !== merchantFilterState.category) return false;
+        if (merchantFilterState.category !== 'all' && String(m.category || m.category_code || '').toLowerCase() !== merchantFilterState.category) return false;
         if (merchantFilterState.q) {
             const cMeta = window.SAWYAN && typeof window.SAWYAN.getCountryByCode === 'function'
                 ? window.SAWYAN.getCountryByCode(m.country_code) : null;
@@ -2339,152 +2509,192 @@ async function loadNearbyMerchants() {
         if (merchantFilterState.sort === 'cashback_desc') return Number(b.plan_cashback_pct || 0) - Number(a.plan_cashback_pct || 0);
         if (merchantFilterState.sort === 'name') {
             const ls = window.SAWYAN && window.SAWYAN.LocaleSort;
-            return ls ? ls.compareStrings(a.business_name || '', b.business_name || '', ls.getDocLang()) : String(a.business_name || '').localeCompare(String(b.business_name || ''), 'ar');
+            return ls ? ls.compareStrings(a.business_name || '', b.business_name || '', ls.getDocLang()) : String(a.business_name || '').localeCompare(String(b.business_name || ''), getMemLocale());
         }
         const da = a._distanceKm !== null ? a._distanceKm : 999999;
         const db = b._distanceKm !== null ? b._distanceKm : 999999;
         return da - db;
     });
+}
 
+function updateMemberMerchantsResults() {
+    const myCoords = getMemberGeoCoords();
+    const filtered = getFilteredMerchantsList(myCoords);
     const favIds = new Set(((memberBundle?.profile?.metadata?.favorite_merchant_ids) || []).map(String));
 
-    page.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
-            <div>
-                <h2 style="margin:0;">🏪 التجار المعتمدون والخريطة الجغرافية (${filtered.length})</h2>
-                <small style="color:#64748b;">تعرض البطاقات صافي عائدات فريقك من كل متجر • موقعك المرجعي: ${myCoords.lat.toFixed(4)}, ${myCoords.lng.toFixed(4)}</small>
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <button type="button" class="btn btn-primary btn-sm" onclick="openMemberPurchaseModal()">🧾 توثيق فاتورة شراء</button>
-                <button type="button" class="btn btn-outline btn-sm" style="border-color:#dc2626;color:#dc2626;" onclick="openMerchantComplaintModal()">📣 إبلاغ عن تاجر</button>
-                <button type="button" class="btn btn-outline btn-sm" onclick="triggerGpsRadarSearch()">📍 تحديث الأقرب مني (GPS)</button>
-                ${radarCatalogOverride ? `<button type="button" class="btn btn-outline btn-sm" onclick="resetRadarFilter()">إلغاء فلتر المسافة</button>` : ''}
-            </div>
-        </div>
+    const cntEl = document.getElementById('memberMerchantsCountBadge');
+    if (cntEl) cntEl.textContent = `(${filtered.length})`;
+    const radarResetBtn = document.getElementById('memberMerchResetRadarBtn');
+    if (radarResetBtn) radarResetBtn.style.display = radarCatalogOverride ? 'inline-flex' : 'none';
 
-        <div data-spec-id="member-merchants-leaflet-map" style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:16px;padding:8px;margin-bottom:14px;">
-            <div id="memberMerchantsMap" style="height:260px;width:100%;border-radius:12px;background:#e2e8f0;display:flex;align-items:center;justify-content:center;color:#475569;font-weight:700;">
-                🗺️ جاري تهيئة خريطة التجار حولك...
-            </div>
-        </div>
-
-        <div data-spec-id="member-merchants-filters" style="background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:12px;margin-bottom:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));gap:10px;">
-            <input type="search" id="memberMerchSearch" class="form-control" placeholder="ابحث باسم المتجر أو العنوان..." value="${esc(merchantFilterState.q)}">
-            <select id="memberMerchCountry" class="form-control">
-                <option value="ALL" ${merchantFilterState.country === 'ALL' ? 'selected' : ''}>🌍 كل الدول</option>
-                ${buildWorldCountryOptions({ selectedCode: merchantFilterState.country === 'ALL' ? '' : merchantFilterState.country, includeAutoOption: false })}
-            </select>
-            <select id="memberMerchCategory" class="form-control">
-                <option value="all" ${merchantFilterState.category === 'all' ? 'selected' : ''}>📂 كل الفئات</option>
-                <option value="supermarket" ${merchantFilterState.category === 'supermarket' ? 'selected' : ''}>🛒 سوبرماركت</option>
-                <option value="restaurant" ${merchantFilterState.category === 'restaurant' ? 'selected' : ''}>🍽️ مطاعم</option>
-                <option value="pharmacy" ${merchantFilterState.category === 'pharmacy' ? 'selected' : ''}>💊 صيدليات</option>
-                <option value="clothing" ${merchantFilterState.category === 'clothing' ? 'selected' : ''}>👗 ملابس وأزياء</option>
-                <option value="electronics" ${merchantFilterState.category === 'electronics' ? 'selected' : ''}>📱 إلكترونيات</option>
-            </select>
-            <select id="memberMerchSort" data-spec-id="member-merchants-sort-select" class="form-control">
-                <option value="distance" ${merchantFilterState.sort === 'distance' ? 'selected' : ''}>📍 الأقرب مسافة (كم)</option>
-                <option value="cashback_desc" ${merchantFilterState.sort === 'cashback_desc' ? 'selected' : ''}>💎 أعلى عائد خطة دخل (%)</option>
-                <option value="name" ${merchantFilterState.sort === 'name' ? 'selected' : ''}>🔤 الترتيب الأبجدي</option>
-            </select>
-        </div>
-
-        <div data-spec-id="member-merchants-grid">
-            ${filtered.length === 0 ? '<p class="empty-state">لا توجد متاجر نشطة مطابقة لخيارات البحث الحالية.</p>' : `
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:14px;">
-                    ${filtered.map(m => {
-                        const isFav = favIds.has(String(m.merchant_id));
-                        const hasCoords = Number.isFinite(Number(m.latitude)) && Number.isFinite(Number(m.longitude));
-                        const gmapsUrl = hasCoords
-                            ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(m.latitude + ',' + m.longitude)}`
-                            : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((m.business_name || '') + ' ' + (m.address || ''))}`;
-                        const up = window.SAWYAN?.ImageUpload;
-                        const safeLogo = (up && up.isSafeMediaUrl(m.logo_url)) ? m.logo_url : null;
-                        const safeCover = (up && up.isSafeMediaUrl(m.cover_image_url)) ? m.cover_image_url : null;
-                        const coverKey = safeCover && up ? up.registerLightboxItem(safeCover, esc(m.business_name)) : null;
-                        return `
-                            <div style="background:#fff;border:1.5px solid #cbd5e1;border-radius:16px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;gap:8px;">
-                                <div>
-                                    ${safeCover ? `<img src="${esc(safeCover)}" data-sw-lightbox-key="${coverKey || ''}" alt="${esc(m.business_name)}" style="width:100%;height:110px;object-fit:cover;border-radius:10px;margin-bottom:10px;cursor:zoom-in;">` : ''}
-                                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-                                        <div style="display:flex;align-items:center;gap:8px;min-width:0;">
-                                            ${safeLogo ? `<img src="${esc(safeLogo)}" alt="" style="width:36px;height:36px;border-radius:10px;object-fit:cover;border:1px solid #cbd5e1;flex-shrink:0;">` : ''}
-                                            <strong style="overflow:hidden;text-overflow:ellipsis;">${esc(m.business_name)}</strong>
-                                        </div>
-                                        <button type="button" onclick="toggleMerchantFavorite('${m.merchant_id}')" style="border:none;background:transparent;font-size:1.25rem;cursor:pointer;" title="المفضلة">${isFav ? '❤️' : '🤍'}</button>
+    const gridSlot = document.getElementById('memberMerchantsGridSlot');
+    if (gridSlot) {
+        gridSlot.innerHTML = filtered.length === 0 ? '<p class="empty-state">لا توجد متاجر نشطة مطابقة لخيارات البحث الحالية.</p>' : `
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:14px;">
+                ${filtered.map(m => {
+                    const isFav = favIds.has(String(m.merchant_id));
+                    const hasCoords = Number.isFinite(Number(m.latitude)) && Number.isFinite(Number(m.longitude));
+                    const gmapsUrl = hasCoords
+                        ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(m.latitude + ',' + m.longitude)}`
+                        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((m.business_name || '') + ' ' + (m.address || ''))}`;
+                    const up = window.SAWYAN?.ImageUpload;
+                    const safeLogo = (up && up.isSafeMediaUrl(m.logo_url)) ? m.logo_url : null;
+                    const safeCover = (up && up.isSafeMediaUrl(m.cover_image_url)) ? m.cover_image_url : null;
+                    const coverKey = safeCover && up ? up.registerLightboxItem(safeCover, esc(m.business_name)) : null;
+                    const flagHtml = (window.SAWYAN?.Flags?.svg) ? window.SAWYAN.Flags.svg(m.country_code, 16) : esc(m.country_code || '');
+                    return `
+                        <div style="background:#fff;border:1.5px solid #cbd5e1;border-radius:16px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;gap:8px;">
+                            <div>
+                                ${safeCover ? `<img src="${esc(safeCover)}" data-sw-lightbox-key="${coverKey || ''}" alt="${esc(m.business_name)}" style="width:100%;height:110px;object-fit:cover;border-radius:10px;margin-bottom:10px;cursor:zoom-in;">` : ''}
+                                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                                    <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+                                        ${safeLogo ? `<img src="${esc(safeLogo)}" alt="" style="width:36px;height:36px;border-radius:10px;object-fit:cover;border:1px solid #cbd5e1;flex-shrink:0;">` : ''}
+                                        <strong style="overflow:hidden;text-overflow:ellipsis;">${esc(m.business_name)}</strong>
                                     </div>
-                                    <div style="font-size:0.84rem;color:#475569;margin-top:4px;">🏢 ${esc(m.branch_name)} • ${esc(m.country_code || '')}</div>
-                                    <div style="font-size:0.8rem;color:#64748b;margin-top:2px;">📍 ${esc(m.address || 'غير محدد')} ${m._distanceKm !== null ? `• <strong style="color:#0f172a;">${m._distanceKm.toFixed(2)} كم</strong>` : ''}</div>
-                                    <div style="margin:10px 0;display:flex;justify-content:space-between;align-items:center;">
-                                        <span style="background:#ecfdf5;color:#047857;font-weight:800;font-size:0.82rem;padding:4px 10px;border-radius:999px;">✨ عائدات خطة الدخل: ${Number(m.plan_cashback_pct).toFixed(2)}%</span>
-                                        <small>${esc(m.currency_code || '')}</small>
-                                    </div>
+                                    <button type="button" onclick="toggleMerchantFavorite('${m.merchant_id}')" style="border:none;background:transparent;font-size:1.25rem;cursor:pointer;" title="المفضلة">${isFav ? '❤️' : '🤍'}</button>
                                 </div>
-                                <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                                    <button type="button" class="btn btn-primary btn-sm" style="flex:1;" onclick="submitPendingPurchasePrompt('${m.merchant_id}', '${m.branch_id}', '${esc(m.business_name)}', '${esc(m.currency_code || '')}', ${Number(m.plan_cashback_pct || 7.5)})">
-                                        📝 توثيق فاتورة
-                                    </button>
-                                    <button type="button" class="btn btn-outline btn-sm" style="border-color:#fca5a5;color:#b91c1c;" onclick="openMerchantComplaintModal('${m.merchant_id}', '${esc(m.business_name)}')">📣 شكوى</button>
-                                    <a href="${esc(gmapsUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">🗺️ خرائط جوجل</a>
+                                <div style="font-size:0.84rem;color:#475569;margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">🏢 ${esc(m.branch_name)} • ${flagHtml} <span>${esc(m.country_code || '')}</span></div>
+                                <div style="font-size:0.8rem;color:#64748b;margin-top:2px;">📍 ${esc(m.address || 'غير محدد')} ${m._distanceKm !== null ? `• <strong style="color:#0f172a;">${m._distanceKm.toFixed(2)} كم</strong>` : ''}</div>
+                                <div style="margin:10px 0;display:flex;justify-content:space-between;align-items:center;">
+                                    <span style="background:#ecfdf5;color:#047857;font-weight:800;font-size:0.82rem;padding:4px 10px;border-radius:999px;">✨ عائدات خطة الدخل: ${Number(m.plan_cashback_pct).toFixed(2)}%</span>
+                                    <small>${esc(m.currency_code || '')}</small>
                                 </div>
                             </div>
-                        `;
-                    }).join('')}
-                </div>
-            `}
-        </div>
-    `;
-
-    document.getElementById('memberMerchSearch')?.addEventListener('input', (e) => { merchantFilterState.q = e.target.value; loadNearbyMerchants(); });
-    document.getElementById('memberMerchCountry')?.addEventListener('change', (e) => { merchantFilterState.country = e.target.value || 'ALL'; loadNearbyMerchants(); });
-    document.getElementById('memberMerchCategory')?.addEventListener('change', (e) => { merchantFilterState.category = e.target.value; loadNearbyMerchants(); });
-    document.getElementById('memberMerchSort')?.addEventListener('change', (e) => { merchantFilterState.sort = e.target.value; loadNearbyMerchants(); });
-
-    if (window.SAWYAN && window.SAWYAN.SmartSearch) {
-        const mcSel = document.getElementById('memberMerchCountry');
-        if (mcSel) {
-            window.SAWYAN.SmartSearch.attachToSelect(mcSel, {
-                kind: 'country',
-                compact: true,
-                placeholder: 'ابحث عن الدولة (عربي / English)...',
-                showLetterHeaders: true,
-                skipEmptyPlaceholder: false
-            });
-        }
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <button type="button" class="btn btn-primary btn-sm" style="flex:1;" onclick="submitPendingPurchasePrompt('${m.merchant_id}', '${m.branch_id}', '${esc(m.business_name)}', '${esc(m.currency_code || '')}', ${Number(m.plan_cashback_pct || 7.5)})">
+                                    📝 توثيق فاتورة
+                                </button>
+                                <button type="button" class="btn btn-outline btn-sm" style="border-color:#fca5a5;color:#b91c1c;" onclick="openMerchantComplaintModal('${m.merchant_id}', '${esc(m.business_name)}')">📣 شكوى</button>
+                                <a href="${esc(gmapsUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">🗺️ خرائط جوجل</a>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
     }
 
     renderMemberMerchantsLeafletMap(myCoords, filtered);
 }
 
+async function loadNearbyMerchants() {
+    const page = document.getElementById('merchantsPage');
+    if (!page) return;
+    if (liveCatalog.length === 0) {
+        await loadPublicMerchantsCatalogSafe();
+    }
+
+    const myCoords = getMemberGeoCoords();
+    if (!document.getElementById('memberMerchantsShell')) {
+        page.innerHTML = `
+            <div id="memberMerchantsShell">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+                    <div>
+                        <h2 style="margin:0;">🏪 التجار المعتمدون والخريطة الجغرافية <span id="memberMerchantsCountBadge"></span></h2>
+                        <small style="color:#64748b;">تعرض البطاقات صافي عائدات فريقك من كل متجر • موقعك المرجعي: ${myCoords.lat.toFixed(4)}, ${myCoords.lng.toFixed(4)}</small>
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="openMemberPurchaseModal()">🧾 توثيق فاتورة شراء</button>
+                        <button type="button" class="btn btn-outline btn-sm" style="border-color:#dc2626;color:#dc2626;" onclick="openMerchantComplaintModal()">📣 إبلاغ عن تاجر</button>
+                        <button type="button" class="btn btn-outline btn-sm" onclick="triggerGpsRadarSearch()">📍 تحديث الأقرب مني (GPS)</button>
+                        <button type="button" id="memberMerchResetRadarBtn" class="btn btn-outline btn-sm" style="display:none;" onclick="resetRadarFilter()">إلغاء فلتر المسافة</button>
+                    </div>
+                </div>
+
+                <div data-spec-id="member-merchants-leaflet-map" style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:16px;padding:8px;margin-bottom:14px;">
+                    <div id="memberMerchantsMap" style="height:260px;width:100%;border-radius:12px;background:#e2e8f0;display:flex;align-items:center;justify-content:center;color:#475569;font-weight:700;">
+                        🗺️ جاري تهيئة خريطة التجار حولك...
+                    </div>
+                </div>
+
+                <div data-spec-id="member-merchants-filters" style="background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:12px;margin-bottom:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));gap:10px;">
+                    <input type="search" id="memberMerchSearch" class="form-control" placeholder="ابحث باسم المتجر أو العنوان..." value="${esc(merchantFilterState.q)}">
+                    <select id="memberMerchCountry" class="form-control">
+                        <option value="ALL" ${merchantFilterState.country === 'ALL' ? 'selected' : ''}>🌍 كل الدول</option>
+                        ${buildWorldCountryOptions({ selectedCode: merchantFilterState.country === 'ALL' ? '' : merchantFilterState.country, includeAutoOption: false })}
+                    </select>
+                    <select id="memberMerchCategory" class="form-control">
+                        <option value="all" ${merchantFilterState.category === 'all' ? 'selected' : ''}>📂 كل الفئات</option>
+                        <option value="supermarket" ${merchantFilterState.category === 'supermarket' ? 'selected' : ''}>🛒 سوبرماركت ومواد غذائية</option>
+                        <option value="restaurant" ${merchantFilterState.category === 'restaurant' ? 'selected' : ''}>🍽️ مطاعم</option>
+                        <option value="cafe" ${merchantFilterState.category === 'cafe' ? 'selected' : ''}>☕ كافيهات ومخبوزات</option>
+                        <option value="pharmacy" ${merchantFilterState.category === 'pharmacy' ? 'selected' : ''}>💊 صيدليات</option>
+                        <option value="health" ${merchantFilterState.category === 'health' ? 'selected' : ''}>🏥 صحة وعيادات ومختبرات</option>
+                        <option value="clothing" ${merchantFilterState.category === 'clothing' ? 'selected' : ''}>👗 ملابس وأزياء</option>
+                        <option value="beauty" ${merchantFilterState.category === 'beauty' ? 'selected' : ''}>✨ تجميل وعناية</option>
+                        <option value="electronics" ${merchantFilterState.category === 'electronics' ? 'selected' : ''}>📱 إلكترونيات</option>
+                        <option value="automotive" ${merchantFilterState.category === 'automotive' ? 'selected' : ''}>🚗 سيارات وصيانة</option>
+                        <option value="education" ${merchantFilterState.category === 'education' ? 'selected' : ''}>🎓 تعليم وتدريب</option>
+                        <option value="travel" ${merchantFilterState.category === 'travel' ? 'selected' : ''}>✈️ سياحة وسفر</option>
+                        <option value="services" ${merchantFilterState.category === 'services' ? 'selected' : ''}>🛠️ خدمات منزلية ومهنية</option>
+                    </select>
+                    <select id="memberMerchSort" data-spec-id="member-merchants-sort-select" class="form-control">
+                        <option value="distance" ${merchantFilterState.sort === 'distance' ? 'selected' : ''}>📍 الأقرب مسافة (كم)</option>
+                        <option value="cashback_desc" ${merchantFilterState.sort === 'cashback_desc' ? 'selected' : ''}>💎 أعلى عائد خطة دخل (%)</option>
+                        <option value="name" ${merchantFilterState.sort === 'name' ? 'selected' : ''}>🔤 الترتيب الأبجدي</option>
+                    </select>
+                </div>
+
+                <div data-spec-id="member-merchants-grid" id="memberMerchantsGridSlot"></div>
+            </div>
+        `;
+
+        document.getElementById('memberMerchSearch')?.addEventListener('input', (e) => { merchantFilterState.q = e.target.value; updateMemberMerchantsResults(); });
+        document.getElementById('memberMerchCountry')?.addEventListener('change', (e) => { merchantFilterState.country = e.target.value || 'ALL'; updateMemberMerchantsResults(); });
+        document.getElementById('memberMerchCategory')?.addEventListener('change', (e) => { merchantFilterState.category = e.target.value; updateMemberMerchantsResults(); });
+        document.getElementById('memberMerchSort')?.addEventListener('change', (e) => { merchantFilterState.sort = e.target.value; updateMemberMerchantsResults(); });
+
+        if (window.SAWYAN && window.SAWYAN.SmartSearch) {
+            const mcSel = document.getElementById('memberMerchCountry');
+            if (mcSel) {
+                window.SAWYAN.SmartSearch.attachToSelect(mcSel, {
+                    kind: 'country',
+                    compact: true,
+                    placeholder: 'ابحث عن الدولة (عربي / English)...',
+                    showLetterHeaders: true,
+                    skipEmptyPlaceholder: false
+                });
+            }
+        }
+    }
+
+    updateMemberMerchantsResults();
+}
+
 function renderMemberMerchantsLeafletMap(myCoords, merchants) {
     const mapDiv = document.getElementById('memberMerchantsMap');
     if (!mapDiv) return;
-    if (window.__sawyanMerchantsMap) {
-        try { window.__sawyanMerchantsMap.remove(); } catch (_) {}
-        window.__sawyanMerchantsMap = null;
-    }
     if (typeof L === 'undefined') {
         mapDiv.innerHTML = `<div style="padding:16px;text-align:center;">🗺️ خريطة التجار المعتمدين (${merchants.length} فرع حول ${myCoords.lat.toFixed(3)}, ${myCoords.lng.toFixed(3)})</div>`;
         return;
     }
     try {
-        mapDiv.innerHTML = '';
-        const map = L.map(mapDiv).setView([myCoords.lat, myCoords.lng], 11);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+        let map = window.__sawyanMerchantsMap;
+        if (!map || !mapDiv._leaflet_id) {
+            if (map) { try { map.remove(); } catch (_) {} }
+            mapDiv.innerHTML = '';
+            // Zero Scroll-Jacking: scrollWheelZoom: false so page scrolls freely over the map
+            map = L.map(mapDiv, { scrollWheelZoom: false }).setView([myCoords.lat, myCoords.lng], 11);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+            window.__sawyanMerchantsMap = map;
+            window.__sawyanMerchantsMarkersLayer = L.layerGroup().addTo(map);
+        }
+        const layer = window.__sawyanMerchantsMarkersLayer || L.layerGroup().addTo(map);
+        window.__sawyanMerchantsMarkersLayer = layer;
+        layer.clearLayers();
         L.circleMarker([myCoords.lat, myCoords.lng], { radius: 8, color: '#1d4ed8', fillColor: '#3b82f6', fillOpacity: 0.9 })
-            .addTo(map).bindPopup('📍 موقعي المرجعي');
+            .addTo(layer).bindPopup('📍 موقعي المرجعي');
         const bounds = [[myCoords.lat, myCoords.lng]];
         merchants.forEach(m => {
             if (Number.isFinite(Number(m.latitude)) && Number.isFinite(Number(m.longitude))) {
                 const lat = Number(m.latitude);
                 const lng = Number(m.longitude);
-                L.marker([lat, lng]).addTo(map)
+                L.marker([lat, lng]).addTo(layer)
                     .bindPopup(`<b>${esc(m.business_name)}</b><br>${esc(m.branch_name || '')}<br>عائد خطة الدخل: ${Number(m.plan_cashback_pct || 0).toFixed(2)}%`);
                 bounds.push([lat, lng]);
             }
         });
         if (bounds.length > 1) map.fitBounds(bounds, { padding: [24, 24], maxZoom: 13 });
-        window.__sawyanMerchantsMap = map;
         setTimeout(() => { try { map.invalidateSize(); } catch (_) {} }, 150);
     } catch (_) {
         mapDiv.innerHTML = `<div style="padding:16px;text-align:center;">🗺️ متاح ${merchants.length} فرع معتمد.</div>`;
@@ -2562,7 +2772,7 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
             <label style="font-weight:800;font-size:0.84rem;display:block;margin-bottom:4px;">🏪 المتجر والفرع المعتمد *</label>
             <input type="search" id="mpMerchantSearchInput" class="form-control" placeholder="ابحث باسم المتجر أو الكود أو المدينة..." style="margin-bottom:6px;">
             <select id="mpMerchantSelect" class="form-control" required>
-                ${catalog.map(m => `<option value="${esc(m.merchant_id)}::${esc(m.branch_id || '')}" data-pct="${Number(m.plan_cashback_pct || 7.5)}" data-curr="${esc(m.currency_code || plan.currencyCode)}" ${(String(m.merchant_id) === String(initialRow.merchant_id) && String(m.branch_id || '') === String(initialRow.branch_id || '')) ? 'selected' : ''}>${esc(m.business_name)} (${esc(m.branch_name || 'الفرع الرئيسي')}) — عائد ${Number(m.plan_cashback_pct || 7.5).toFixed(2)}% (${esc(m.currency_code || '')})</option>`).join('')}
+                ${catalog.map(m => `<option value="${esc(m.merchant_id)}::${esc(m.branch_id || '')}" data-pct="${Number(m.plan_cashback_pct || 7.5)}" data-curr="${esc(m.currency_code || plan.currencyCode)}" data-cc="${esc(m.country_code || '')}" ${(String(m.merchant_id) === String(initialRow.merchant_id) && String(m.branch_id || '') === String(initialRow.branch_id || '')) ? 'selected' : ''}>${esc(m.business_name)} (${esc(m.branch_name || 'الفرع الرئيسي')}) — عائد ${Number(m.plan_cashback_pct || 7.5).toFixed(2)}% (${esc(m.currency_code || '')})</option>`).join('')}
             </select>
         </div>
 
@@ -2665,12 +2875,20 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
     function getSelectedMeta() {
         if (!preMerchantId && merchSel && merchSel.selectedOptions && merchSel.selectedOptions[0]) {
             const opt = merchSel.selectedOptions[0];
+            const curr = opt.dataset.curr || plan.currencyCode;
+            const cc = opt.dataset.cc || '';
             return {
                 pct: Number(opt.dataset.pct || 7.5),
-                curr: opt.dataset.curr || plan.currencyCode
+                curr,
+                fx: resolveCurrencyFx(cc, curr)
             };
         }
-        return { pct: Number(initialRow.plan_cashback_pct || 7.5), curr: initialRow.currency_code || plan.currencyCode };
+        const curr = initialRow.currency_code || plan.currencyCode;
+        return {
+            pct: Number(initialRow.plan_cashback_pct || 7.5),
+            curr,
+            fx: resolveCurrencyFx(initialRow.country_code || '', curr)
+        };
     }
 
     function updatePreview() {
@@ -2680,9 +2898,14 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
         const v = parseFloat(amtIn?.value || '0') || 0;
         if (v > 0) {
             const addLocal = v * (sm.pct / 100);
+            const addUsd = addLocal / Math.max(Number(sm.fx || 1), 0.0001);
             const targetLocal = plan.targetUsd * plan.fx;
-            const covPct = Math.min(100, Math.round((addLocal / Math.max(targetLocal, 0.01)) * 100));
-            prevEl.innerHTML = `✨ العائد لخطة الدخل (${sm.pct.toFixed(2)}%): <strong>${addLocal.toFixed(2)} ${esc(sm.curr)}</strong> (يغطي نحو <strong>${covPct}%</strong> من الهدف الشهري ${targetLocal.toFixed(2)})`;
+            const addHomeLocal = addUsd * plan.fx;
+            const covPct = Math.min(100, Math.round((addUsd / Math.max(plan.targetUsd, 0.01)) * 100));
+            const crossNote = String(sm.curr).toUpperCase() !== String(plan.currencyCode).toUpperCase()
+                ? ` (≈ <strong>${addHomeLocal.toFixed(2)} ${esc(plan.currencyCode)}</strong> / <code>${fmtUsd(addUsd)}</code>)`
+                : '';
+            prevEl.innerHTML = `✨ العائد لخطة الدخل (${sm.pct.toFixed(2)}%): <strong>${addLocal.toFixed(2)} ${esc(sm.curr)}</strong>${crossNote} — يغطي نحو <strong>${covPct}%</strong> من هدفك الشهري (${targetLocal.toFixed(2)} ${esc(plan.currencyCode)})`;
         } else {
             prevEl.innerHTML = `💡 نسبة عائد خطة الدخل بهذا المتجر: <strong>${sm.pct.toFixed(2)}%</strong> — اكتب مبلغ الفاتورة لمعاينة الإضافة لصندوق هدفك.`;
         }
@@ -2717,7 +2940,7 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
             const list = catalog.filter(m => !q || `${m.business_name} ${m.branch_name} ${m.merchant_code} ${m.address || ''}`.toLowerCase().includes(q));
             merchSel.innerHTML = list.length === 0
                 ? '<option value="">لا توجد نتائج مطابقة</option>'
-                : list.map(m => `<option value="${esc(m.merchant_id)}::${esc(m.branch_id || '')}" data-pct="${Number(m.plan_cashback_pct || 7.5)}" data-curr="${esc(m.currency_code || plan.currencyCode)}">${esc(m.business_name)} (${esc(m.branch_name || 'الفرع الرئيسي')}) — عائد ${Number(m.plan_cashback_pct || 7.5).toFixed(2)}% (${esc(m.currency_code || '')})</option>`).join('');
+                : list.map(m => `<option value="${esc(m.merchant_id)}::${esc(m.branch_id || '')}" data-pct="${Number(m.plan_cashback_pct || 7.5)}" data-curr="${esc(m.currency_code || plan.currencyCode)}" data-cc="${esc(m.country_code || '')}">${esc(m.business_name)} (${esc(m.branch_name || 'الفرع الرئيسي')}) — عائد ${Number(m.plan_cashback_pct || 7.5).toFixed(2)}% (${esc(m.currency_code || '')})</option>`).join('');
             updatePreview();
         });
     }
@@ -2744,9 +2967,13 @@ async function toggleMerchantFavorite(merchantId) {
     }
 }
 
-function loadFavorites() {
+async function loadFavorites() {
     const page = document.getElementById('favoritesPage');
     if (!page) return;
+    if (!Array.isArray(liveCatalog) || liveCatalog.length === 0) {
+        page.innerHTML = '<h2>❤️ متاجري المفضلة</h2><p class="empty-state">⏳ جاري تحميل المتاجر المفضلة...</p>';
+        await loadPublicMerchantsCatalogSafe();
+    }
     const favIds = new Set(((memberBundle?.profile?.metadata?.favorite_merchant_ids) || []).map(String));
     const favMerchants = liveCatalog.filter(m => favIds.has(String(m.merchant_id)));
 
@@ -3022,34 +3249,75 @@ function loadReferrals() {
         </div>
 
         <div data-spec-id="member-referrals-registered-table" style="background:#ffffff;border:1px solid #cbd5e1;border-radius:14px;padding:16px;margin-top:14px;">
-            <h3 style="margin:0 0 10px;font-size:1rem;">👥 سجل المدعوين المسجلين بكودك (${regRefs.length})</h3>
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+                <h3 style="margin:0;font-size:1rem;">👥 سجل المدعوين المسجلين بكودك (${regRefs.length})</h3>
+                ${regRefs.length > 5 ? `<input type="search" id="referralsTableSearch" class="form-control" style="max-width:240px;padding:6px 10px;font-size:0.82rem;" placeholder="🔍 ابحث بالاسم أو الكود...">` : ''}
+            </div>
             <div class="table-responsive-wrap">
                 <table class="data-table">
                     <thead>
                         <tr><th>الكود</th><th>الاسم</th><th>الجيل</th><th>التموضع</th><th>الدولة</th><th>حالة الهدف هذا الشهر</th><th>التواصل</th></tr>
                     </thead>
-                    <tbody>
-                        ${regRefs.length === 0
-                            ? '<tr><td colspan="7" style="text-align:center;padding:16px;color:#64748b;">لا يوجد مدعوون مسجلون مباشرة بكودك حتى الآن.</td></tr>'
-                            : regRefs.map(r => {
-                                const wa = r.phone_visible && r.phone ? `https://wa.me/${String(r.phone).replace(/\D/g, '')}` : '';
-                                return `
-                                    <tr>
-                                        <td data-label="الكود"><strong>#${r.member_code}</strong></td>
-                                        <td data-label="الاسم">${esc(r.full_name)}</td>
-                                        <td data-label="الجيل">${esc(r.structural_me || '-')}</td>
-                                        <td data-label="التموضع">تحت #${esc(r.parent_member_code || '-')} (${esc(r.placement_side || '')})</td>
-                                        <td data-label="الدولة">${esc(r.residency_country_code || '')}</td>
-                                        <td data-label="حالة الهدف هذا الشهر">${r.is_qualified_this_month ? '🟢 مؤهل' : '⏳ قيد التجميع'}</td>
-                                        <td data-label="التواصل">${wa ? `<a href="${esc(wa)}" target="_blank" style="color:#047857;font-weight:800;">💬 ${esc(r.phone)}</a>` : '🔒 محمي للخصوصية'}</td>
-                                    </tr>
-                                `;
-                            }).join('')}
-                    </tbody>
+                    <tbody id="referralsTableBodySlot"></tbody>
                 </table>
             </div>
+            <div id="referralsTablePagerSlot" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-top:10px;font-size:0.82rem;"></div>
         </div>
     `;
+
+    const REF_PAGE_SIZE = 20;
+    let refPage = 1;
+    let refQuery = '';
+    const renderReferralsTablePage = () => {
+        const tbody = document.getElementById('referralsTableBodySlot');
+        const pager = document.getElementById('referralsTablePagerSlot');
+        if (!tbody) return;
+        const filteredRefs = !refQuery ? regRefs : regRefs.filter(r =>
+            `${r.member_code || ''} ${r.full_name || ''} ${r.residency_country_code || ''}`.toLowerCase().includes(refQuery)
+        );
+        const totalPages = Math.max(1, Math.ceil(filteredRefs.length / REF_PAGE_SIZE));
+        if (refPage > totalPages) refPage = totalPages;
+        const start = (refPage - 1) * REF_PAGE_SIZE;
+        const slice = filteredRefs.slice(start, start + REF_PAGE_SIZE);
+        tbody.innerHTML = slice.length === 0
+            ? '<tr><td colspan="7" style="text-align:center;padding:16px;color:#64748b;">لا يوجد مدعوون مطابقون حالياً.</td></tr>'
+            : slice.map(r => {
+                const wa = r.phone_visible && r.phone ? `https://wa.me/${String(r.phone).replace(/\D/g, '')}` : '';
+                const fl = (window.SAWYAN?.Flags?.svg) ? window.SAWYAN.Flags.svg(r.residency_country_code, 15) : '';
+                return `
+                    <tr>
+                        <td data-label="الكود"><strong>#${r.member_code}</strong></td>
+                        <td data-label="الاسم">${esc(r.full_name)}</td>
+                        <td data-label="الجيل">${esc(r.structural_me || '-')}</td>
+                        <td data-label="التموضع">تحت #${esc(r.parent_member_code || '-')} (${esc(r.placement_side || '')})</td>
+                        <td data-label="الدولة">${fl} ${esc(r.residency_country_code || '')}</td>
+                        <td data-label="حالة الهدف هذا الشهر">${r.is_qualified_this_month ? '🟢 مؤهل' : '⏳ قيد التجميع'}</td>
+                        <td data-label="التواصل">${wa ? `<a href="${esc(wa)}" target="_blank" style="color:#047857;font-weight:800;">💬 ${esc(r.phone)}</a>` : '🔒 محمي للخصوصية'}</td>
+                    </tr>
+                `;
+            }).join('');
+        if (pager) {
+            if (filteredRefs.length <= REF_PAGE_SIZE) {
+                pager.innerHTML = filteredRefs.length > 0 ? `<span style="color:#64748b;">عرض ${filteredRefs.length} من ${regRefs.length} مدعو</span>` : '';
+            } else {
+                pager.innerHTML = `
+                    <span style="color:#64748b;">صفحة <strong>${refPage}</strong> من <strong>${totalPages}</strong> (${filteredRefs.length} مدعو)</span>
+                    <div style="display:flex;gap:6px;">
+                        <button type="button" class="btn btn-outline btn-sm" id="refPrevBtn" ${refPage <= 1 ? 'disabled' : ''}>◀ السابق</button>
+                        <button type="button" class="btn btn-outline btn-sm" id="refNextBtn" ${refPage >= totalPages ? 'disabled' : ''}>التالي ▶</button>
+                    </div>
+                `;
+                document.getElementById('refPrevBtn')?.addEventListener('click', () => { refPage = Math.max(1, refPage - 1); renderReferralsTablePage(); });
+                document.getElementById('refNextBtn')?.addEventListener('click', () => { refPage = Math.min(totalPages, refPage + 1); renderReferralsTablePage(); });
+            }
+        }
+    };
+    renderReferralsTablePage();
+    document.getElementById('referralsTableSearch')?.addEventListener('input', (e) => {
+        refQuery = String(e.target.value || '').trim().toLowerCase();
+        refPage = 1;
+        renderReferralsTablePage();
+    });
 
     updateReferralTargetCountry(selectedCountry);
 
@@ -3152,145 +3420,182 @@ async function loadSettings() {
         : null;
     const curCountryAr = curCountryMeta ? `${curCountryMeta.flag} ${curCountryMeta.nameAr} (${curCc})` : curCc;
     const isKycVerified = p.kyc_status === 'verified';
+    const activeTab = window.__memberSettingsTab || 'profile';
 
     page.innerHTML = `
-        <h2>⚙️ الملف الشخصي، الإقامة، الهوية (KYC)، الدعم والأمان</h2>
+        <h2>⚙️ الإعدادات والحساب الشخصي</h2>
 
-        <div data-spec-id="member-settings-residency-lock" style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:16px;padding:18px;margin-top:14px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-                <div>
-                    <strong style="color:#92400e;font-size:1.02rem;">🌍 دولة الإقامة المقيدة حسابياً حالياً: ${esc(curCountryAr)} — العملة: ${esc(p.currency_code)}</strong>
-                    <div style="font-size:0.84rem;color:#78350f;margin-top:4px;"><strong>⚠️ لحماية أرباحك: دولة إقامتك مقفلة طوال الشهر المفتوح (D9).</strong> استخدم هذا القسم <u>فقط إذا انتقلت للإقامة الفعلية في دولة أخرى</u> ليسري النقل مطلع الشهر القادم مع حفظ رصيد Carry On السابق كاملاً.</div>
+        <div class="member-settings-tabs" role="tablist">
+            <button type="button" class="member-settings-tab-btn ${activeTab === 'profile' ? 'active' : ''}" data-set-tab="profile" onclick="switchMemberSettingsTab('profile')">👤 الملف الشخصي والموقع</button>
+            <button type="button" class="member-settings-tab-btn ${activeTab === 'security' ? 'active' : ''}" data-set-tab="security" onclick="switchMemberSettingsTab('security')">🔐 الأمان وكلمة المرور</button>
+            <button type="button" class="member-settings-tab-btn ${activeTab === 'kyc' ? 'active' : ''}" data-set-tab="kyc" onclick="switchMemberSettingsTab('kyc')">🪪 الهوية (KYC) والدعم</button>
+            <button type="button" class="member-settings-tab-btn ${activeTab === 'residency' ? 'active' : ''}" data-set-tab="residency" onclick="switchMemberSettingsTab('residency')">✈️ نقل دولة الإقامة</button>
+        </div>
+
+        <form id="memberSettingsForm" data-spec-id="member-settings-password">
+            <div class="member-settings-pane" data-pane="profile" style="display:${activeTab === 'profile' ? 'block' : 'none'};">
+                <div style="background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:20px;margin-top:10px;display:grid;gap:14px;">
+                    <h3 style="margin:0;font-size:1rem;">👤 الصورة الشخصية وبيانات الحساب</h3>
+                    <div>
+                        <label style="font-weight:700;font-size:0.84rem;">🖼️ الصورة الشخصية (Avatar)</label>
+                        <div id="setAvatarUploader"></div>
+                        <input type="hidden" id="setAvatarUrl" value="${esc(p.avatar_url || '')}">
+                    </div>
+                    <div>
+                        <label>الاسم الكامل</label>
+                        <input type="text" id="setFullName" class="form-control" value="${esc(p.full_name || '')}" required>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
+                        <div>
+                            <label>البريد الإلكتروني</label>
+                            <input type="email" id="setEmail" class="form-control" value="${esc(p.email || '')}">
+                        </div>
+                        <div>
+                            <label>الحي / المنطقة</label>
+                            <input type="text" id="setDistrict" class="form-control" value="${esc(p.manual_district_fallback || '')}">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">💾 حفظ بيانات الملف الشخصي</button>
                 </div>
-                <span style="background:#ffffff;border:1px solid #f59e0b;color:#92400e;padding:4px 12px;border-radius:999px;font-weight:800;font-size:0.8rem;">🔒 قفل الشهر المفتوح</span>
+
+                <div data-spec-id="member-settings-home-gps" style="background:#ffffff;border:1px solid #cbd5e1;border-radius:16px;padding:18px;margin-top:14px;">
+                    <h3 style="margin:0 0 8px;font-size:1rem;">📍 موقع المنزل الافتراضي للخريطة والرادار</h3>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;align-items:center;">
+                        <input type="number" step="0.000001" id="setHomeLat" class="form-control" value="${esc(homeGps.lat ?? '')}" placeholder="خط العرض (Latitude)">
+                        <input type="number" step="0.000001" id="setHomeLng" class="form-control" value="${esc(homeGps.lng ?? '')}" placeholder="خط الطول (Longitude)">
+                        <button type="button" class="btn btn-outline btn-sm" onclick="captureBrowserHomeGps()">📡 التقط إحداثياتي الآن</button>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="saveHomeGpsCoords()">💾 حفظ إحداثيات المنزل</button>
+                    </div>
+                    <div id="memberSettingsGeoPickerHost" style="margin-top:10px;"></div>
+                </div>
+
+                <div id="memberPushSettingsCard" style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:16px;padding:18px;margin-top:14px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                        <div>
+                            <h3 style="margin:0 0 4px;font-size:1rem;color:#065f46;">🔔 إشعارات شاشة القفل بالصوت</h3>
+                            <div id="memberPushStatusNote" style="font-size:0.8rem;color:#047857;">استقبل تنبيهاً فورياً بالصوت لحظة اعتماد أو رفض فاتورتك حتى والهاتف مقفل.</div>
+                        </div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button type="button" id="memberPushToggleBtn" class="btn btn-primary btn-sm" onclick="toggleMemberLockPush()">🔔 تفعيل إشعارات شاشة القفل</button>
+                            <button type="button" id="memberInstallPwaBtn" class="btn btn-outline btn-sm" style="display:none;" onclick="installMemberPwaApp()">📲 تثبيت تطبيق SAWYAN</button>
+                        </div>
+                    </div>
+                </div>
             </div>
-            ${moveReqs.length ? `<div style="margin-top:10px;background:#ffffff;border:1px solid #fcd34d;border-radius:10px;padding:10px;font-size:0.82rem;">✈️ طلب نقل إقامة مسجل إلى <strong>${esc(moveReqs[0].target_country_code)}</strong> — الحالة: <strong>${esc(moveReqs[0].status)}</strong> • يسري من: ${esc(String(moveReqs[0].effective_from || '').slice(0, 10))}</div>` : ''}
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:12px;align-items:end;">
-                <div>
-                    <label for="setMoveTargetCountry" style="display:block;font-size:0.78rem;font-weight:800;color:#92400e;margin-bottom:4px;">1️⃣ دولة الإقامة الجديدة (كل دول العالم)</label>
-                    <select id="setMoveTargetCountry" class="form-control">
-                        ${buildWorldCountryOptions({ selectedCode: '', includeAutoOption: false, excludeCode: curCc })}
-                    </select>
+
+            <div class="member-settings-pane" data-pane="security" style="display:${activeTab === 'security' ? 'block' : 'none'};">
+                <div style="background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:20px;margin-top:10px;display:grid;gap:14px;">
+                    <h3 style="margin:0;font-size:1rem;">🔐 تغيير كلمة المرور وأمان الحساب</h3>
+                    <div style="font-size:0.84rem;color:#475569;">اختر كلمة مرور قوية من 8 أحرف على الأقل لحماية حسابك ومحفظتك. يؤدي تغيير كلمة المرور تلقائياً إلى إنهاء أي جلسات قديمة.</div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">
+                        <div>
+                            <label style="font-weight:700;font-size:0.84rem;">كلمة المرور الحالية</label>
+                            <div class="pw-field-wrap">
+                                <input type="password" id="setCurrPass" autocomplete="current-password" class="form-control" placeholder="كلمة المرور الحالية">
+                                <button type="button" class="pw-toggle-btn" aria-label="إظهار/إخفاء" onclick="toggleSawyanPwInput('setCurrPass', this)">👁️</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label style="font-weight:700;font-size:0.84rem;">كلمة المرور الجديدة (8+ أحرف)</label>
+                            <div class="pw-field-wrap">
+                                <input type="password" id="setNewPass" autocomplete="new-password" class="form-control" minlength="8" placeholder="كلمة المرور الجديدة">
+                                <button type="button" class="pw-toggle-btn" aria-label="إظهار/إخفاء" onclick="toggleSawyanPwInput('setNewPass', this)">👁️</button>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">🔐 تحديث كلمة المرور وحفظ الأمان</button>
                 </div>
-                <div>
-                    <label for="setMoveDocNum" style="display:block;font-size:0.78rem;font-weight:800;color:#92400e;margin-bottom:4px;">2️⃣ رقم إثبات الإقامة بالبلد الجديد (إقامة / تأشيرة عمل / عقد سكن)</label>
-                    <input type="text" id="setMoveDocNum" class="form-control" placeholder="أدخل رقم مستند الإقامة في الدولة الجديدة">
+            </div>
+        </form>
+
+        <div class="member-settings-pane" data-pane="kyc" style="display:${activeTab === 'kyc' ? 'block' : 'none'};">
+            <div data-spec-id="member-settings-kyc" style="background:#ffffff;border:1.5px solid ${isKycVerified ? '#10b981' : '#cbd5e1'};border-radius:16px;padding:18px;margin-top:10px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+                    <div>
+                        <h3 style="margin:0;font-size:1rem;">🪪 توثيق الهوية الشخصية — KYC (مرة واحدة قبل أول سحب)</h3>
+                        <small style="color:#64748b;">لتأكيد شخصيتك بالبطاقة القومية أو جواز السفر عند سحب الأرباح.</small>
+                    </div>
+                    <span style="padding:4px 12px;border-radius:999px;font-size:0.8rem;font-weight:800;background:${isKycVerified ? '#d1fae5' : p.kyc_status === 'pending' ? '#fef3c7' : '#fee2e2'};color:${isKycVerified ? '#065f46' : p.kyc_status === 'pending' ? '#92400e' : '#991b1b'};">
+                        ${isKycVerified ? '✅ الهوية موثّقة' : p.kyc_status === 'pending' ? '⏳ قيد المراجعة' : '⚠️ غير موثّقة'}
+                    </span>
                 </div>
-                <div>
-                    <label for="setMoveFileUploader" style="display:block;font-size:0.78rem;font-weight:800;color:#92400e;margin-bottom:4px;">3️⃣ صورة مستند الإقامة (اختياري الآن)</label>
-                    <div id="setMoveFileUploader"></div>
-                    <input type="hidden" id="setMoveFileUrl">
+                ${isKycVerified ? `
+                    <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                        <span style="color:#065f46;font-weight:700;font-size:0.86rem;">✅ هويتك الوطنية موثّقة ومعتمدة بالكامل — يمكنك سحب أرباحك بحرية دون الحاجة لإعادة الرفع.</span>
+                        <button type="button" class="btn btn-outline btn-sm" onclick="toggleKycReupload()">🔄 تحديث وثيقة الهوية</button>
+                    </div>
+                ` : ''}
+                <div id="kycReuploadWrap" style="display:${isKycVerified ? 'none' : 'block'};margin-top:10px;">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
+                        <div>
+                            <label for="setKycLegalName" style="display:block;font-size:0.78rem;font-weight:800;color:#334155;margin-bottom:4px;">الاسم القانوني الرباعي (كما بالوثيقة)</label>
+                            <input type="text" id="setKycLegalName" class="form-control" value="${esc(p.full_name || '')}" placeholder="الاسم القانوني الرباعي">
+                        </div>
+                        <div>
+                            <label for="setKycDocType" style="display:block;font-size:0.78rem;font-weight:800;color:#334155;margin-bottom:4px;">نوع وثيقة الهوية</label>
+                            <select id="setKycDocType" class="form-control">
+                                <option value="national_id">بطاقة رقم قومي</option>
+                                <option value="passport">جواز سفر ساري</option>
+                                <option value="residency_permit">إقامة سارية</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="setKycDocNumber" style="display:block;font-size:0.78rem;font-weight:800;color:#334155;margin-bottom:4px;">رقم البطاقة القومية / جواز السفر</label>
+                            <input type="text" id="setKycDocNumber" class="form-control" placeholder="أدخل رقم البطاقة أو الجواز">
+                        </div>
+                        <div>
+                            <label for="setKycFileUploader" style="display:block;font-size:0.78rem;font-weight:800;color:#334155;margin-bottom:4px;">صورة وثيقة الهوية (وجه واضح)</label>
+                            <div id="setKycFileUploader"></div>
+                            <input type="hidden" id="setKycFileUrl">
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="submitSettingsKycUpload()">📤 إرسال مستند الهوية للاعتماد</button>
                 </div>
-                <div>
-                    <button type="button" data-spec-id="member-settings-residency-move-btn" class="btn btn-primary btn-block" onclick="submitSettingsResidencyMove()">✈️ تقديم طلب نقل دولة الإقامة (الشهر القادم)</button>
+            </div>
+
+            <div data-spec-id="member-settings-support" style="background:#ffffff;border:1px solid #cbd5e1;border-radius:16px;padding:18px;margin-top:14px;">
+                <h3 id="memberSupportTicketsHeader" style="margin:0 0 10px;font-size:1rem;">🎫 مركز الدعم الفني والتواصل المباشر</h3>
+                <div style="display:grid;gap:8px;margin-bottom:12px;">
+                    <input type="text" id="setSupSubject" class="form-control" placeholder="موضوع التذكرة *">
+                    <textarea id="setSupBody" rows="2" class="form-control" placeholder="اكتب رسالتك أو استفسارك للإدارة... *"></textarea>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="submitMemberSupportTicket()">📨 إرسال التذكرة</button>
                 </div>
+                <div id="memberSupportTicketsListSlot"><p style="font-size:0.84rem;color:#64748b;margin:0;">جاري تحميل تذاكر الدعم...</p></div>
             </div>
         </div>
 
-        <div data-spec-id="member-settings-kyc" style="background:#ffffff;border:1.5px solid ${isKycVerified ? '#10b981' : '#cbd5e1'};border-radius:16px;padding:18px;margin-top:14px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-                <div>
-                    <h3 style="margin:0;font-size:1rem;">🪪 توثيق الهوية الشخصية — KYC (مرة واحدة قبل أول سحب)</h3>
-                    <small style="color:#64748b;">لتأكيد شخصيتك بالبطاقة القومية أو جواز السفر عند سحب الأرباح (منفصل تماماً عن طلب الانتقال لدولة أخرى أعلاه).</small>
-                </div>
-                <span style="padding:4px 12px;border-radius:999px;font-size:0.8rem;font-weight:800;background:${isKycVerified ? '#d1fae5' : p.kyc_status === 'pending' ? '#fef3c7' : '#fee2e2'};color:${isKycVerified ? '#065f46' : p.kyc_status === 'pending' ? '#92400e' : '#991b1b'};">
-                    ${isKycVerified ? '✅ الهوية موثّقة' : p.kyc_status === 'pending' ? '⏳ قيد المراجعة' : '⚠️ غير موثّقة'}
-                </span>
-            </div>
-            ${isKycVerified ? `
-                <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-                    <span style="color:#065f46;font-weight:700;font-size:0.86rem;">✅ هويتك الوطنية موثّقة ومعتمدة بالكامل — يمكنك سحب أرباحك بحرية دون الحاجة لإعادة الرفع.</span>
-                    <button type="button" class="btn btn-outline btn-sm" onclick="toggleKycReupload()">🔄 تحديث وثيقة الهوية</button>
-                </div>
-            ` : ''}
-            <div id="kycReuploadWrap" style="display:${isKycVerified ? 'none' : 'block'};margin-top:10px;">
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
+        <div class="member-settings-pane" data-pane="residency" style="display:${activeTab === 'residency' ? 'block' : 'none'};">
+            <div data-spec-id="member-settings-residency-lock" style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:16px;padding:18px;margin-top:10px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
                     <div>
-                        <label for="setKycLegalName" style="display:block;font-size:0.78rem;font-weight:800;color:#334155;margin-bottom:4px;">الاسم القانوني الرباعي (كما بالوثيقة)</label>
-                        <input type="text" id="setKycLegalName" class="form-control" value="${esc(p.full_name || '')}" placeholder="الاسم القانوني الرباعي">
+                        <strong style="color:#92400e;font-size:1.02rem;">🌍 دولة الإقامة الحالية: ${esc(curCountryAr)} — العملة: ${esc(p.currency_code)}</strong>
+                        <div style="font-size:0.84rem;color:#78350f;margin-top:4px;"><strong>⚠️ لحماية أرباحك: دولة إقامتك ثابتة طوال الشهر المفتوح.</strong> استخدم هذا القسم <u>فقط إذا انتقلت للإقامة الفعلية في دولة أخرى</u> ليسري النقل مطلع الشهر القادم مع حفظ رصيد Carry On السابق كاملاً.</div>
                     </div>
+                    <span style="background:#ffffff;border:1px solid #f59e0b;color:#92400e;padding:4px 12px;border-radius:999px;font-weight:800;font-size:0.8rem;">🔒 قفل الشهر المفتوح</span>
+                </div>
+                ${moveReqs.length ? `<div style="margin-top:10px;background:#ffffff;border:1px solid #fcd34d;border-radius:10px;padding:10px;font-size:0.82rem;">✈️ طلب نقل إقامة مسجل إلى <strong>${esc(moveReqs[0].target_country_code)}</strong> — الحالة: <strong>${esc(moveReqs[0].status)}</strong> • يسري من: ${esc(String(moveReqs[0].effective_from || '').slice(0, 10))}</div>` : ''}
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:12px;align-items:end;">
                     <div>
-                        <label for="setKycDocType" style="display:block;font-size:0.78rem;font-weight:800;color:#334155;margin-bottom:4px;">نوع وثيقة الهوية</label>
-                        <select id="setKycDocType" class="form-control">
-                            <option value="national_id">بطاقة رقم قومي</option>
-                            <option value="passport">جواز سفر ساري</option>
-                            <option value="residency_permit">إقامة سارية</option>
+                        <label for="setMoveTargetCountry" style="display:block;font-size:0.78rem;font-weight:800;color:#92400e;margin-bottom:4px;">1️⃣ دولة الإقامة الجديدة</label>
+                        <select id="setMoveTargetCountry" class="form-control">
+                            <option value="">-- اختر دولة الإقامة الجديدة --</option>
+                            ${buildWorldCountryOptions({ selectedCode: '', includeAutoOption: false, excludeCode: curCc })}
                         </select>
                     </div>
                     <div>
-                        <label for="setKycDocNumber" style="display:block;font-size:0.78rem;font-weight:800;color:#334155;margin-bottom:4px;">رقم البطاقة القومية / جواز السفر</label>
-                        <input type="text" id="setKycDocNumber" class="form-control" placeholder="أدخل رقم البطاقة أو الجواز">
+                        <label for="setMoveDocNum" style="display:block;font-size:0.78rem;font-weight:800;color:#92400e;margin-bottom:4px;">2️⃣ رقم إثبات الإقامة بالبلد الجديد (إقامة / تأشيرة عمل / عقد سكن)</label>
+                        <input type="text" id="setMoveDocNum" class="form-control" placeholder="أدخل رقم مستند الإقامة في الدولة الجديدة">
                     </div>
                     <div>
-                        <label for="setKycFileUploader" style="display:block;font-size:0.78rem;font-weight:800;color:#334155;margin-bottom:4px;">صورة وثيقة الهوية (وجه واضح)</label>
-                        <div id="setKycFileUploader"></div>
-                        <input type="hidden" id="setKycFileUrl">
+                        <label for="setMoveFileUploader" style="display:block;font-size:0.78rem;font-weight:800;color:#92400e;margin-bottom:4px;">3️⃣ صورة مستند الإقامة (اختياري الآن)</label>
+                        <div id="setMoveFileUploader"></div>
+                        <input type="hidden" id="setMoveFileUrl">
+                    </div>
+                    <div>
+                        <button type="button" data-spec-id="member-settings-residency-move-btn" class="btn btn-primary btn-block" onclick="submitSettingsResidencyMove()">✈️ تقديم طلب نقل دولة الإقامة (الشهر القادم)</button>
                     </div>
                 </div>
-                <button type="button" class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="submitSettingsKycUpload()">📤 إرسال مستند الهوية للاعتماد</button>
             </div>
-        </div>
-
-        <div data-spec-id="member-settings-home-gps" style="background:#ffffff;border:1px solid #cbd5e1;border-radius:16px;padding:18px;margin-top:14px;">
-            <h3 style="margin:0 0 8px;font-size:1rem;">📍 موقع المنزل الافتراضي للخريطة والرادار (اللاقط التلقائي على خرائط جوجل)</h3>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;align-items:center;">
-                <input type="number" step="0.000001" id="setHomeLat" class="form-control" value="${esc(homeGps.lat ?? '')}" placeholder="خط العرض (Latitude)">
-                <input type="number" step="0.000001" id="setHomeLng" class="form-control" value="${esc(homeGps.lng ?? '')}" placeholder="خط الطول (Longitude)">
-                <button type="button" class="btn btn-outline btn-sm" onclick="captureBrowserHomeGps()">📡 التقط إحداثياتي الآن</button>
-                <button type="button" class="btn btn-primary btn-sm" onclick="saveHomeGpsCoords()">💾 حفظ إحداثيات المنزل</button>
-            </div>
-            <div id="memberSettingsGeoPickerHost" style="margin-top:10px;"></div>
-        </div>
-
-        <div id="memberPushSettingsCard" style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:16px;padding:18px;margin-top:14px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-                <div>
-                    <h3 style="margin:0 0 4px;font-size:1rem;color:#065f46;">🔔 إشعارات شاشة القفل بالصوت (تطبيق الويب وGoogle Play)</h3>
-                    <div id="memberPushStatusNote" style="font-size:0.8rem;color:#047857;">استقبل تنبيهاً فورياً بالصوت لحظة اعتماد أو رفض فاتورتك حتى والهاتف مقفل.</div>
-                </div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <button type="button" id="memberPushToggleBtn" class="btn btn-primary btn-sm" onclick="toggleMemberLockPush()">🔔 تفعيل إشعارات شاشة القفل</button>
-                    <button type="button" id="memberInstallPwaBtn" class="btn btn-outline btn-sm" style="display:none;" onclick="installMemberPwaApp()">📲 تثبيت تطبيق SAWYAN</button>
-                </div>
-            </div>
-        </div>
-
-        <form id="memberSettingsForm" data-spec-id="member-settings-password" style="background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:20px;margin-top:14px;display:grid;gap:14px;">
-            <h3 style="margin:0;font-size:1rem;">🔐 الصورة الشخصية، بيانات الحساب وكلمة المرور</h3>
-            <div>
-                <label style="font-weight:700;font-size:0.84rem;">🖼️ الصورة الشخصية (Avatar)</label>
-                <div id="setAvatarUploader"></div>
-                <input type="hidden" id="setAvatarUrl" value="${esc(p.avatar_url || '')}">
-            </div>
-            <div>
-                <label>الاسم الكامل</label>
-                <input type="text" id="setFullName" class="form-control" value="${esc(p.full_name || '')}" required>
-            </div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
-                <div>
-                    <label>البريد الإلكتروني</label>
-                    <input type="email" id="setEmail" class="form-control" value="${esc(p.email || '')}">
-                </div>
-                <div>
-                    <label>الحي / المنطقة</label>
-                    <input type="text" id="setDistrict" class="form-control" value="${esc(p.manual_district_fallback || '')}">
-                </div>
-            </div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
-                <input type="password" id="setCurrPass" class="form-control" placeholder="كلمة المرور الحالية (عند التغيير)">
-                <input type="password" id="setNewPass" class="form-control" minlength="8" placeholder="كلمة المرور الجديدة (8+ أحرف)">
-            </div>
-            <button type="submit" class="btn btn-primary">💾 حفظ الإعدادات في الخادم</button>
-        </form>
-
-        <div data-spec-id="member-settings-support" style="background:#ffffff;border:1px solid #cbd5e1;border-radius:16px;padding:18px;margin-top:14px;">
-            <h3 id="memberSupportTicketsHeader" style="margin:0 0 10px;font-size:1rem;">🎫 مركز الدعم الفني والتواصل المباشر</h3>
-            <div style="display:grid;gap:8px;margin-bottom:12px;">
-                <input type="text" id="setSupSubject" class="form-control" placeholder="موضوع التذكرة *">
-                <textarea id="setSupBody" rows="2" class="form-control" placeholder="اكتب رسالتك أو استفسارك للإدارة... *"></textarea>
-                <button type="button" class="btn btn-primary btn-sm" onclick="submitMemberSupportTicket()">📨 إرسال التذكرة</button>
-            </div>
-            <div id="memberSupportTicketsListSlot"><p style="font-size:0.84rem;color:#64748b;margin:0;">جاري تحميل تذاكر الدعم...</p></div>
         </div>
     `;
 
@@ -3403,11 +3708,34 @@ async function loadSettings() {
     });
 }
 
+window.switchMemberSettingsTab = function (tab) {
+    window.__memberSettingsTab = tab || 'profile';
+    document.querySelectorAll('.member-settings-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.setTab === window.__memberSettingsTab);
+    });
+    document.querySelectorAll('.member-settings-pane').forEach(pane => {
+        pane.style.display = pane.dataset.pane === window.__memberSettingsTab ? 'block' : 'none';
+    });
+};
+
+window.toggleSawyanPwInput = function (inputId, btn) {
+    const inp = document.getElementById(inputId);
+    if (!inp) return;
+    const isPw = inp.type === 'password';
+    inp.type = isPw ? 'text' : 'password';
+    if (btn) btn.textContent = isPw ? '🙈' : '👁️';
+};
+
 async function renderMemberProfileCompletionBanner() {
     const p = memberBundle?.profile || currentMember;
     const host = document.getElementById('homePage');
     const eng = window.SAWYAN && window.SAWYAN.RegEngine;
     if (!p || !host || !eng) return;
+    if (sessionStorage.getItem('sawyan_member_profile_banner_dismissed') === '1') {
+        const old = document.getElementById('memberProfileCompletionBanner');
+        if (old) old.remove();
+        return;
+    }
 
     let cfg = { settings: [], fields: [] };
     try {
@@ -3448,49 +3776,21 @@ async function renderMemberProfileCompletionBanner() {
         }
     }
 
-    const missingBadges = st.missingRequired.slice(0, 4)
-        .map(f => `<span style="background:#fff;border:1px solid #93c5fd;color:#1e40af;padding:2px 8px;border-radius:999px;font-size:0.74rem;font-weight:700;">• ${esc(f.label_ar)}</span>`)
-        .join(' ');
-
     banner.innerHTML = `
-        <div style="background:linear-gradient(135deg,#eff6ff,#f0fdf4);border:1.5px solid #93c5fd;border-radius:12px;padding:10px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-            <div style="flex:1;min-width:200px;">
-                <div style="font-weight:900;color:#1e3a8a;font-size:0.86rem;">📋 اكتمال ملف العضو: ${st.percent}%</div>
-                <div style="font-size:0.78rem;color:#334155;margin-top:2px;line-height:1.45;">${esc(st.bannerText || 'استكمل بياناتك التكميلية من الإعدادات لتجهيز حسابك لسحب الأرباح.')}</div>
-                ${missingBadges ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;">${missingBadges}</div>` : ''}
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:7px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:0.8rem;">
+            <span style="color:#1e3a8a;font-weight:800;">📋 اكتمال ملفك الشخصي: ${st.percent}% ${st.missingRequired.length ? `(${st.missingRequired.slice(0, 2).map(f => esc(f.label_ar)).join('، ')})` : ''}</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+                <button type="button" onclick="goToPage('settings')" class="btn btn-primary btn-sm" style="padding:3px 10px;font-size:0.75rem;">استكمال</button>
+                <button type="button" aria-label="إخفاء" onclick="sessionStorage.setItem('sawyan_member_profile_banner_dismissed','1');document.getElementById('memberProfileCompletionBanner')?.remove();" style="border:none;background:transparent;color:#64748b;cursor:pointer;font-weight:900;font-size:0.9rem;padding:2px 6px;">✕</button>
             </div>
-            <button type="button" onclick="goToPage('settings')" class="btn btn-primary btn-sm" style="white-space:nowrap;">
-                ⚙️ استكمال بياناتي
-            </button>
         </div>
     `;
-}
-
-function readCompressedKycImage(inputEl) {
-    return new Promise((resolve) => {
-        if (!inputEl || !inputEl.files || !inputEl.files[0]) return resolve(null);
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const img = new Image();
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const scale = Math.min(1, 700 / Math.max(img.width, img.height));
-                canvas.width = Math.round(img.width * scale);
-                canvas.height = Math.round(img.height * scale);
-                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-                resolve(canvas.toDataURL('image/jpeg', 0.65));
-            };
-            img.onerror = () => resolve(null);
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(inputEl.files[0]);
-    });
 }
 
 window.submitSettingsKycUpload = async function () {
     try {
         const u = window._memberSettingsUploaders || {};
-        const imgData = ((u.kycFile ? u.kycFile.getValue() : null) || document.getElementById('setKycFileUrl')?.value || '').trim() || await readCompressedKycImage(document.getElementById('setKycFileInput'));
+        const imgData = ((u.kycFile ? u.kycFile.getValue() : null) || document.getElementById('setKycFileUrl')?.value || '').trim();
         await window.SAWYAN.API.submitMemberKycOrResidencyMove({
             memberId: currentMember.id,
             requestKind: 'kyc_verification',
@@ -3723,6 +4023,7 @@ function closeMoreMenu() {
 }
 
 function logout() {
+    if (__memberPollTimer) { clearTimeout(__memberPollTimer); __memberPollTimer = null; }
     if (window.SAWYAN && window.SAWYAN.API) {
         window.SAWYAN.API.clearMemberSession();
     }

@@ -56,7 +56,7 @@
 
     function isSovereignFounder(adm) {
         if (!adm) return false;
-        return Boolean(adm.is_sovereign_founder || String(adm.email || '').toLowerCase() === 'ahmed.saher.egy@gmail.com');
+        return Boolean(adm.is_sovereign_founder);
     }
 
     function roleLabel(role, adm) {
@@ -106,7 +106,7 @@
                 const loginRes = await api.authenticateAdminLogin({
                     email: 'demo.maker@sawyan.local',
                     password: 'Demo@Maker2026',
-                    totpCode: '246810'
+                    totpCode: null
                 });
                 adm = loginRes.admin;
                 tok = loginRes.session_token;
@@ -186,7 +186,7 @@
             const res = await window.SAWYAN.API.authenticateAdminLogin({
                 email: creds.email,
                 password: creds.password,
-                totpCode: '246810'
+                totpCode: null
             });
             window.currentAdmin = res.admin;
             updateHeaderIdentity(res.admin);
@@ -211,6 +211,7 @@
             const periodInput = document.getElementById('svClosePeriodInput');
             const ym = periodInput && periodInput.value ? periodInput.value.trim() : null;
             LIVE_BUNDLE = await api.getAdminSovereignBundle({ periodYm: ym });
+            window.__SAWYAN_ADMIN_LIVE_BUNDLE__ = LIVE_BUNDLE;
             if (LIVE_BUNDLE && LIVE_BUNDLE.admin) {
                 window.currentAdmin = LIVE_BUNDLE.admin;
                 updateHeaderIdentity(LIVE_BUNDLE.admin);
@@ -224,6 +225,9 @@
             }
             if (typeof window.hydrateAdminOpsFromLiveBundle === 'function') {
                 window.hydrateAdminOpsFromLiveBundle(LIVE_BUNDLE);
+            }
+            if (typeof window.refreshLiveSettingsCenterIfOpen === 'function') {
+                window.refreshLiveSettingsCenterIfOpen(LIVE_BUNDLE);
             }
             const merMount = document.getElementById('svLiveMerSettingsMount');
             if (merMount && typeof window.renderLiveMerchantRiskSettingsCard === 'function') {
@@ -968,7 +972,9 @@
         try {
             let rejReason = null;
             if (decision === 'rejected') {
-                rejReason = prompt('سبب الرفض الرقابي:', 'غير مستوفٍ لضوابط الحوكمة');
+                rejReason = window.SAWYAN?.UI?.prompt
+                    ? await window.SAWYAN.UI.prompt({ title: 'سبب الرفض الرقابي', message: 'أدخل سبب رفض طلب الاعتماد المزدوج:', defaultValue: 'غير مستوفٍ لضوابط الحوكمة' })
+                    : null;
                 if (!rejReason) return;
             }
             await window.SAWYAN.API.adminDecideGovernanceRequest({
@@ -1021,7 +1027,9 @@
     window.svRequestBreakGlass = async function () {
         try {
             const ym = document.getElementById('svClosePeriodInput').value.trim();
-            const reason = prompt('سبب الفتح الاستثنائي لقفل الشهر (Break-Glass — ساعتان باعتماد مزدوج):', 'تصحيح قيد تسوية بنكية موثق قبل الصرف');
+            const reason = window.SAWYAN?.UI?.prompt
+                ? await window.SAWYAN.UI.prompt({ title: '🔓 فتح استثنائي لقفل الشهر (Break-Glass)', message: 'سبب الفتح الاستثنائي لقفل الشهر (ساعتان باعتماد مزدوج):', defaultValue: 'تصحيح قيد تسوية بنكية موثق قبل الصرف' })
+                : null;
             if (!reason || reason.trim().length < 5) return;
             const bgRes = await window.SAWYAN.API.adminSubmitGovernanceRequest({
                 actionType: 'BREAK_GLASS_UNLOCK',

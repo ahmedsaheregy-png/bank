@@ -340,7 +340,12 @@ window.SAWYAN = window.SAWYAN || {};
                 renderPreview();
                 notifyChange();
             } catch (err) {
-                alert('⚠️ ' + (err?.message || 'تعذر معالجة الصورة'));
+                const msg = '⚠️ ' + (err?.message || 'تعذر معالجة الصورة');
+                if (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.toast === 'function') {
+                    window.SAWYAN.UI.toast(msg, 'error');
+                } else {
+                    console.error(msg);
+                }
             } finally {
                 if (zoneLabel) zoneLabel.textContent = origText;
                 fileInput.value = '';

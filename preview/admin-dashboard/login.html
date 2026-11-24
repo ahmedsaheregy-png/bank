@@ -88,6 +88,76 @@
             border: 1px solid #fca5a5;
             color: #991b1b;
         }
+
+        .login-alert.info {
+            display: block;
+            background: #eff6ff;
+            border: 1px solid #93c5fd;
+            color: #1e40af;
+        }
+
+        .pwd-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .pwd-wrap input {
+            width: 100%;
+            padding-inline-end: 44px;
+        }
+
+        .pwd-toggle-btn {
+            position: absolute;
+            inset-inline-end: 8px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 1.05rem;
+            padding: 4px 6px;
+            color: #475569;
+            border-radius: 6px;
+        }
+
+        .pwd-toggle-btn:hover {
+            background: #f1f5f9;
+        }
+
+        .totp-enrollment-box {
+            display: none;
+            background: #f8fafc;
+            border: 1.5px solid #059669;
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 14px;
+            text-align: center;
+        }
+
+        .totp-enrollment-box.active {
+            display: block;
+        }
+
+        .totp-secret-code {
+            display: inline-block;
+            background: #ffffff;
+            border: 1px dashed #059669;
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-family: 'Poppins', monospace;
+            font-size: 0.86rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            direction: ltr;
+            color: #065f46;
+            margin: 6px 0;
+            word-break: break-all;
+        }
+
+        .totp-hint {
+            font-size: 0.76rem;
+            color: #64748b;
+            margin-top: 4px;
+        }
     </style>
 </head>
 
@@ -112,70 +182,120 @@
             <h1>بوابة الحوكمة والإدارة السيادية</h1>
             <p class="subtitle">نظام الصلاحيات السبعة (RBAC) والاعتماد المزدوج الإجباري (Maker–Checker)</p>
 
-            <div id="demoSandboxPanel" class="rbac-sandbox-box">
-                <div style="font-size:0.84rem;font-weight:900;color:#92400e;">🧪 بيئة التجربة الموازية (`sawyan_demo`) — اختبار فصل المهام الحقيقي:</div>
-                <div style="font-size:0.76rem;color:#78350f;margin-top:2px;">اختر أحد الأدوار المشفرة بـ Bcrypt لتجربة الصلاحية المطلقة أو دورة الإعداد والاعتماد وقفل المدقق:</div>
-                <button type="button" class="rbac-sandbox-btn" style="border-color:#d97706;background:#fffbeb;" onclick="quickDemoLogin('demo.founder@sawyan.local', 'Demo@Founder2026')">
-                    👑 ٠. دخول المؤسس السيادي — إدارة مطلقة فورية (Sovereign Founder)
-                </button>
-                <button type="button" class="rbac-sandbox-btn" onclick="quickDemoLogin('demo.maker@sawyan.local', 'Demo@Maker2026')">
-                    💼 ١. دخول مالي مُنشئ للطلبات (Maker — Role: finance)
-                </button>
-                <button type="button" class="rbac-sandbox-btn" onclick="quickDemoLogin('demo.checker@sawyan.local', 'Demo@Checker2026')">
-                    ✅ ٢. دخول سلطة الاعتماد الثانية (Checker — Role: approver)
-                </button>
-                <button type="button" class="rbac-sandbox-btn" onclick="quickDemoLogin('demo.auditor@sawyan.local', 'Demo@Auditor2026')">
-                    🔍 ٣. دخول مدقّق مستقل للقراءة فقط (Auditor — Role: auditor)
-                </button>
-            </div>
+            <div id="demoSandboxPanel" class="rbac-sandbox-box"></div>
 
             <div id="loginAlert" class="login-alert"></div>
 
-            <form id="loginForm" class="auth-form" autocomplete="off" novalidate>
+            <div id="totpEnrollmentBox" class="totp-enrollment-box" aria-live="polite">
+                <div style="font-weight:900;color:#065f46;font-size:0.92rem;margin-bottom:6px;">🔐 تفعيل المصادقة الثنائية الحقيقية (2FA — RFC 6238)</div>
+                <div style="font-size:0.8rem;color:#334155;margin-bottom:10px;line-height:1.6;">
+                    امسح الرمز التالي بتطبيق <b>Google Authenticator</b> أو <b>Authy</b>، ثم أدخل الرمز المكوّن من 6 أرقام أدناه لإتمام الربط والدخول:
+                </div>
+                <div style="display:flex;justify-content:center;margin:8px 0;">
+                    <canvas id="totpQrCanvas" width="180" height="180" style="border-radius:10px;border:1px solid #e2e8f0;background:#ffffff;padding:6px;"></canvas>
+                </div>
+                <div style="font-size:0.75rem;color:#475569;margin-top:6px;">أو أدخل المفتاح يدوياً في التطبيق:</div>
+                <div><code id="totpSecretText" class="totp-secret-code"></code></div>
+                <button type="button" id="copyTotpSecretBtn" style="margin-top:4px;background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7;border-radius:8px;padding:5px 12px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:0.78rem;cursor:pointer;">📋 نسخ المفتاح السري</button>
+            </div>
+
+            <form id="loginForm" class="auth-form" autocomplete="on" novalidate>
                 <div class="form-group">
                     <label for="email">البريد المؤسسي للإداري</label>
-                    <input type="email" id="email" required class="form-control" placeholder="name@sawyan.global">
+                    <input type="email" id="email" name="email" required autocomplete="username" class="form-control" placeholder="name@sawyan.global">
                 </div>
 
                 <div class="form-group">
                     <label for="password">كلمة المرور المشفرة</label>
-                    <input type="password" id="password" required class="form-control" placeholder="••••••••••••">
+                    <div class="pwd-wrap">
+                        <input type="password" id="password" name="password" required autocomplete="current-password" class="form-control" placeholder="••••••••••••">
+                        <button type="button" id="togglePwdBtn" class="pwd-toggle-btn" aria-label="إظهار أو إخفاء كلمة المرور" title="إظهار / إخفاء">👁️</button>
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="totpCode">رمز المصادقة الثنائية 2FA (اختياري في الاختبار المحلي)</label>
-                    <input type="text" id="totpCode" class="form-control" inputmode="numeric" maxlength="6" placeholder="000000">
+                <div class="form-group" id="totpGroup">
+                    <label for="totpCode">رمز المصادقة الثنائية 2FA (للموظفين — الحسابات السيادية مستثناة)</label>
+                    <input type="text" id="totpCode" name="totpCode" class="form-control" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" dir="ltr" style="text-align:center;letter-spacing:0.25em;font-family:'Poppins',monospace;font-weight:700;">
+                    <div class="totp-hint">اتركه فارغاً للحسابات السيادية المعفاة، أو أدخل الرمز السداسي من تطبيق Authenticator.</div>
                 </div>
 
                 <button type="submit" id="adminLoginBtn" class="btn btn-primary btn-block">🔐 توثيق الجلسة والدخول</button>
 
                 <div class="auth-footer">
-                    <p style="font-size:0.8rem;color:#64748b;margin-bottom:8px;">نسيت كلمة المرور الإدارية؟ تواصل مع المؤسس السيادي لإعادة التعيين الموثّق.</p>
+                    <p style="font-size:0.8rem;color:#64748b;margin-bottom:8px;">نسيت كلمة المرور الإدارية أو فقدت جهاز المصادقة؟ تواصل مع المؤسس السيادي لإعادة التعيين الموثّق.</p>
                     <p style="margin-top: 0.75rem;"><a href="../index.html">← العودة للبوابة الرئيسية</a></p>
                 </div>
             </form>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     <script src="../shared/components/logo.js?v=20261121_launch"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../shared/config/supabase.js?v=20261121_launch"></script>
     <script src="../shared/api/sawyan-api.js?v=20261121_launch"></script>
     <script src="../shared/components/ui-feedback.js?v=20261121_launch"></script>
     <script>
-        function showLoginError(raw, extraPayload) {
+        function normalizeDigits(str) {
+            return String(str || '')
+                .replace(/[\u0660-\u0669]/g, function (d) { return String(d.charCodeAt(0) - 0x0660); })
+                .replace(/[\u06F0-\u06F9]/g, function (d) { return String(d.charCodeAt(0) - 0x06F0); })
+                .replace(/\D/g, '')
+                .slice(0, 6);
+        }
+
+        function renderTotpEnrollment(enrollment) {
+            const box = document.getElementById('totpEnrollmentBox');
+            const secretEl = document.getElementById('totpSecretText');
+            const canvas = document.getElementById('totpQrCanvas');
+            if (!box || !enrollment || !enrollment.secret_b32) return;
+            box.classList.add('active');
+            if (secretEl) secretEl.textContent = enrollment.secret_b32;
+            if (canvas && window.QRCode && typeof window.QRCode.toCanvas === 'function' && enrollment.otpauth_uri) {
+                window.QRCode.toCanvas(canvas, enrollment.otpauth_uri, { width: 180, margin: 1 }, function () {});
+            }
+            const totpInput = document.getElementById('totpCode');
+            if (totpInput) {
+                totpInput.value = '';
+                totpInput.focus();
+            }
+        }
+
+        function showLoginFeedback(raw, extraPayload) {
             const box = document.getElementById('loginAlert');
             if (!box) return;
-            const m = String(raw || (extraPayload && extraPayload.error_code) || '');
-            let msg = m || 'تعذر التحقق من بيانات الدخول الإدارية';
-            if (m.includes('ADMIN_INVALID_CREDENTIALS')) {
+            const code = String((extraPayload && extraPayload.error_code) || raw || '');
+            let msg = code || 'تعذر التحقق من بيانات الدخول الإدارية';
+            let isInfo = false;
+
+            if (code.includes('ADMIN_TOTP_ENROLLMENT_REQUIRED')) {
+                isInfo = true;
+                msg = 'يرجى ربط تطبيق المصادقة الثنائية (2FA) عبر الرمز أدناه ثم إدخال الرمز السداسي لتفعيل حسابك.';
+                renderTotpEnrollment(extraPayload && extraPayload.enrollment);
+            } else if (code.includes('ADMIN_TOTP_ENROLLMENT_INVALID')) {
+                msg = 'رمز التفعيل غير مطابق — تأكد من مزامنة وقت الهاتف وأدخل أحدث رمز من 6 أرقام من التطبيق.';
+                renderTotpEnrollment(extraPayload && extraPayload.enrollment);
+            } else if (code.includes('ADMIN_TOTP_REQUIRED')) {
+                isInfo = true;
+                msg = 'أدخل رمز المصادقة الثنائية (6 أرقام) من تطبيق Authenticator لإكمال الدخول.';
+                const totpInput = document.getElementById('totpCode');
+                if (totpInput) totpInput.focus();
+            } else if (code.includes('ADMIN_TOTP_INVALID')) {
+                msg = 'رمز المصادقة الثنائية غير صحيح أو منتهي الصلاحية أو سبق استخدامه. أدخل الرمز الجديد.';
+                const totpInput = document.getElementById('totpCode');
+                if (totpInput) { totpInput.value = ''; totpInput.focus(); }
+            } else if (code.includes('ADMIN_INVALID_CREDENTIALS')) {
                 msg = 'البريد المؤسسي أو كلمة المرور غير صحيحة.';
+            } else if (code.includes('ADMIN_ACCOUNT_DEACTIVATED')) {
+                msg = 'تم إيقاف هذا الحساب الإداري — راجع المؤسس السيادي.';
+            } else if (code.includes('ADMIN_LOGIN_MISSING_CREDENTIALS')) {
+                msg = 'يرجى إدخال البريد المؤسسي وكلمة المرور.';
+            } else if (code.includes('CONSTITUTIONAL_SECURITY_VIOLATION')) {
+                msg = 'كلمة المرور الافتراضية 123456 محظورة أمنياً.';
             }
-            else if (m.includes('ADMIN_ACCOUNT_DEACTIVATED')) msg = 'تم إيقاف هذا الحساب الإداري — راجع المؤسس السيادي.';
-            else if (m.includes('ADMIN_LOGIN_MISSING_CREDENTIALS')) msg = 'يرجى إدخال البريد المؤسسي وكلمة المرور.';
-            else if (m.includes('CONSTITUTIONAL_SECURITY_VIOLATION')) msg = 'كلمة المرور الافتراضية 123456 محظورة أمنياً.';
-            box.className = 'login-alert error';
-            box.textContent = '⛔ ' + msg;
+
+            box.className = 'login-alert ' + (isInfo ? 'info' : 'error');
+            box.textContent = (isInfo ? '🔐 ' : '⛔ ') + msg;
         }
 
         async function executeAdminLogin(email, password, totpCode) {
@@ -185,46 +305,102 @@
             overlay.classList.add('active');
             try {
                 for (let i = 0; i < 30 && (!window.SAWYAN || !window.SAWYAN.supabase); i++) {
-                    await new Promise(r => setTimeout(r, 100));
+                    await new Promise(function (r) { setTimeout(r, 100); });
                 }
+                const cleanCode = normalizeDigits(totpCode);
                 await window.SAWYAN.API.authenticateAdminLogin({
                     email: email,
                     password: password,
-                    totpCode: totpCode || null
+                    totpCode: cleanCode || null
                 });
                 overlay.classList.remove('active');
                 window.location.href = 'dashboard.html';
             } catch (err) {
                 overlay.classList.remove('active');
-                showLoginError(err.message || 'تعذر التحقق من بيانات الدخول الإدارية', err.payload);
+                showLoginFeedback(err.message || 'تعذر التحقق من بيانات الدخول الإدارية', err.payload);
             }
         }
 
         window.quickDemoLogin = function (email, password) {
+            if (!window.SAWYAN || !window.SAWYAN.API || !window.SAWYAN.API.isDemoMode()) return;
             document.getElementById('email').value = email;
             document.getElementById('password').value = password;
-            executeAdminLogin(email, password, '246810');
+            executeAdminLogin(email, password, null);
         };
+
+        function mountDemoSandboxButtonsIfAllowed() {
+            if (!window.SAWYAN || !window.SAWYAN.API || !window.SAWYAN.API.isDemoMode()) return;
+            const sb = document.getElementById('demoSandboxPanel');
+            if (!sb) return;
+            const roles = [
+                { key: 'founder', email: 'demo.founder@sawyan.local', pass: 'Demo@Founder2026', label: '👑 ٠. دخول المؤسس السيادي — إدارة مطلقة فورية (Sovereign Founder)', highlight: true },
+                { key: 'maker',   email: 'demo.maker@sawyan.local',   pass: 'Demo@Maker2026',   label: '💼 ١. دخول مالي مُنشئ للطلبات (Maker — Role: finance)' },
+                { key: 'checker', email: 'demo.checker@sawyan.local', pass: 'Demo@Checker2026', label: '✅ ٢. دخول سلطة الاعتماد الثانية (Checker — Role: approver)' },
+                { key: 'auditor', email: 'demo.auditor@sawyan.local', pass: 'Demo@Auditor2026', label: '🔍 ٣. دخول مدقّق مستقل للقراءة فقط (Auditor — Role: auditor)' }
+            ];
+            sb.innerHTML =
+                '<div style="font-size:0.84rem;font-weight:900;color:#92400e;">🧪 بيئة التجربة الموازية (`sawyan_demo`) — اختبار فصل المهام الحقيقي:</div>' +
+                '<div style="font-size:0.76rem;color:#78350f;margin-top:2px;">اختر أحد الأدوار لتجربة الصلاحية المطلقة أو دورة الإعداد والاعتماد وقفل المدقق:</div>';
+            roles.forEach(function (r) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'rbac-sandbox-btn';
+                if (r.highlight) {
+                    btn.style.borderColor = '#d97706';
+                    btn.style.background = '#fffbeb';
+                }
+                btn.textContent = r.label;
+                btn.addEventListener('click', function () {
+                    window.quickDemoLogin(r.email, r.pass);
+                });
+                sb.appendChild(btn);
+            });
+            sb.style.display = 'block';
+
+            const q = new URLSearchParams(window.location.search).get('quick');
+            if (q) {
+                const targetKey = (q === 'staff') ? 'maker' : q;
+                const found = roles.find(function (x) { return x.key === targetKey; });
+                if (found) window.quickDemoLogin(found.email, found.pass);
+            }
+        }
 
         document.addEventListener('DOMContentLoaded', function () {
             if (window.SAWYAN && window.SAWYAN.Logo) {
                 document.getElementById('logoContainer').innerHTML = window.SAWYAN.Logo.full();
             }
 
-            if (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.isDemoMode()) {
-                const sb = document.getElementById('demoSandboxPanel');
-                if (sb) sb.style.display = 'block';
-                const q = new URLSearchParams(window.location.search).get('quick');
-                const quickMap = {
-                    founder: ['demo.founder@sawyan.local', 'Demo@Founder2026'],
-                    staff: ['demo.maker@sawyan.local', 'Demo@Maker2026'],
-                    maker: ['demo.maker@sawyan.local', 'Demo@Maker2026'],
-                    checker: ['demo.checker@sawyan.local', 'Demo@Checker2026'],
-                    auditor: ['demo.auditor@sawyan.local', 'Demo@Auditor2026']
-                };
-                if (q && quickMap[q]) {
-                    window.quickDemoLogin(quickMap[q][0], quickMap[q][1]);
-                }
+            mountDemoSandboxButtonsIfAllowed();
+
+            const toggleBtn = document.getElementById('togglePwdBtn');
+            const pwdInput = document.getElementById('password');
+            if (toggleBtn && pwdInput) {
+                toggleBtn.addEventListener('click', function () {
+                    const show = pwdInput.type === 'password';
+                    pwdInput.type = show ? 'text' : 'password';
+                    toggleBtn.textContent = show ? '🙈' : '👁️';
+                });
+            }
+
+            const totpInput = document.getElementById('totpCode');
+            if (totpInput) {
+                totpInput.addEventListener('input', function () {
+                    const norm = normalizeDigits(this.value);
+                    if (this.value !== norm) this.value = norm;
+                });
+            }
+
+            const copyBtn = document.getElementById('copyTotpSecretBtn');
+            if (copyBtn) {
+                copyBtn.addEventListener('click', function () {
+                    const txt = (document.getElementById('totpSecretText') || {}).textContent || '';
+                    if (txt && navigator.clipboard) {
+                        navigator.clipboard.writeText(txt).then(function () {
+                            copyBtn.textContent = '✅ تم نسخ المفتاح';
+                            setTimeout(function () { copyBtn.textContent = '📋 نسخ المفتاح السري'; }, 2000);
+                        });
+                    }
+                });
             }
 
             document.getElementById('loginForm').addEventListener('submit', function (e) {
@@ -239,4 +415,3 @@
 </body>
 
 </html>
-

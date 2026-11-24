@@ -14,7 +14,7 @@ DB_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_DIR = os.path.dirname(DB_DIR)
 DOCS_DIR = os.path.join(REPO_DIR, "docs")
 
-SYNC_DATE = "2026-11-23"
+SYNC_DATE = "2026-11-24"
 
 CODE_STYLE = (
     "background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; "

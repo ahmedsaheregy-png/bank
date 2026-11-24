@@ -120,7 +120,7 @@
 
     function isFounder() {
         const a = curAdmin();
-        return Boolean(a && (a.is_sovereign_founder || String(a.email || '').toLowerCase() === 'ahmed.saher.egy@gmail.com'));
+        return Boolean(a && a.is_sovereign_founder);
     }
 
     function getBaseSiteRootUrl() {
@@ -310,7 +310,7 @@
                         '<td data-label="الدولة">' + esc(t.country_code) + '</td>' +
                         '<td data-label="الحالة">' + (used ? '<span class="badge badge-success">✅ استُخدم (' + esc(t.used_by_phone || '') + ')</span>' : '<span class="badge badge-warning">🟢 متاح لمرة واحدة</span>') + '</td>' +
                         '<td data-label="الصلاحية"><small>' + esc(String(t.expires_at || '').slice(0, 16).replace('T', ' ')) + '</small></td>' +
-                        '<td data-label="رابط التسجيل والنسخ / واتساب">' + (used ? '—' : ('<div style="display:flex;gap:5px;flex-wrap:wrap;"><button type="button" class="btn-sm btn-primary" onclick="navigator.clipboard.writeText(\'' + esc(url) + '\');alert(\'✅ تم نسخ الرابط التأسيسي!\')">📋 نسخ الرابط</button><a href="' + esc(wa) + '" target="_blank" style="background:#16a34a;color:#fff;padding:4px 9px;border-radius:6px;text-decoration:none;font-size:0.76rem;font-weight:800;">💬 إرسال واتساب</a></div>')) + '</td>' +
+                        '<td data-label="رابط التسجيل والنسخ / واتساب">' + (used ? '—' : ('<div style="display:flex;gap:5px;flex-wrap:wrap;"><button type="button" class="btn-sm btn-primary" onclick="navigator.clipboard.writeText(\'' + esc(url) + '\');window.SAWYAN?.UI?.toast(\'✅ تم نسخ الرابط التأسيسي!\',\'success\')">📋 نسخ الرابط</button><a href="' + esc(wa) + '" target="_blank" style="background:#16a34a;color:#fff;padding:4px 9px;border-radius:6px;text-decoration:none;font-size:0.76rem;font-weight:800;">💬 إرسال واتساب</a></div>')) + '</td>' +
                         '<td data-label="إجراء">' + (!used && founder ? '<button type="button" class="btn-sm btn-danger" onclick="svRevokeRootToken(\'' + esc(t.token) + '\')">إلغاء</button>' : '—') + '</td>' +
                     '</tr>';
                 }).join('')) +
@@ -331,7 +331,7 @@
                         '<td data-label="الهاتف">' + esc(l.phone) + '</td>' +
                         '<td data-label="الدولة">' + esc(l.country_code) + '</td>' +
                         '<td data-label="حجم فريقه"><b>' + Number(l.team_size || 0) + '</b> عضو</td>' +
-                        '<td data-label="إجراءات ورابط الإحالة"><div style="display:flex;gap:5px;flex-wrap:wrap;"><button type="button" class="btn-sm btn-outline" onclick="if (typeof openAdminNetworkTree === \'function\') openAdminNetworkTree(' + Number(l.member_code) + ')">🌳 شجرته</button><button type="button" class="btn-sm btn-primary" onclick="navigator.clipboard.writeText(\'' + esc(refUrl) + '\');alert(\'تم نسخ رابط إحالة القائد #' + l.member_code + '\')">📋 نسخ رابط القائد</button></div></td>' +
+                        '<td data-label="إجراءات ورابط الإحالة"><div style="display:flex;gap:5px;flex-wrap:wrap;"><button type="button" class="btn-sm btn-outline" onclick="if (typeof openAdminNetworkTree === \'function\') openAdminNetworkTree(' + Number(l.member_code) + ')">🌳 شجرته</button><button type="button" class="btn-sm btn-primary" onclick="navigator.clipboard.writeText(\'' + esc(refUrl) + '\');window.SAWYAN?.UI?.toast(\'تم نسخ رابط إحالة القائد #' + l.member_code + '\',\'success\')">📋 نسخ رابط القائد</button></div></td>' +
                     '</tr>';
                 }).join('')) +
                 '</tbody></table></div>' +
@@ -575,9 +575,13 @@
     };
 
     window.svPromptStaffRole = async function (id, curRole, curScope) {
-        const nr = prompt('أدخل الدور الجديد (finance / kyc_officer / support / reviewer / approver / auditor / data_entry):', curRole);
+        const nr = window.SAWYAN?.UI?.prompt
+            ? await window.SAWYAN.UI.prompt({ title: 'تحديث دور الموظف', message: 'أدخل الدور الجديد (finance / kyc_officer / support / reviewer / approver / auditor / data_entry):', defaultValue: curRole })
+            : null;
         if (!nr) return;
-        const ns = prompt('أدخل نطاق الدولة (GLOBAL لجميع الدول أو رمز الدولة مثل EG أو SA أو TR):', curScope);
+        const ns = window.SAWYAN?.UI?.prompt
+            ? await window.SAWYAN.UI.prompt({ title: 'تحديث نطاق الدولة', message: 'أدخل نطاق الدولة (GLOBAL لجميع الدول أو رمز الدولة مثل EG أو SA أو TR):', defaultValue: curScope })
+            : null;
         if (!ns) return;
         try {
             await window.SAWYAN.API.adminManageStaffAccounts({ action: 'update', targetId: id, role: nr.trim(), countryScope: ns.trim() });
@@ -587,7 +591,9 @@
     };
 
     window.svPromptStaffResetPwd = async function (id) {
-        const np = prompt('أدخل كلمة المرور المؤقتة الجديدة للموظف (8 أحرف فأكثر):', 'Sawyan@Staff2026!');
+        const np = window.SAWYAN?.UI?.prompt
+            ? await window.SAWYAN.UI.prompt({ title: 'تعيين كلمة مرور مؤقتة', message: 'أدخل كلمة المرور المؤقتة الجديدة للموظف (8 أحرف فأكثر):', defaultValue: 'Sawyan@Staff2026!' })
+            : null;
         if (!np) return;
         try {
             await window.SAWYAN.API.adminManageStaffAccounts({ action: 'reset_password', targetId: id, password: np });
@@ -597,7 +603,10 @@
     };
 
     window.svKillStaff = async function (id) {
-        if (!confirm('تأكيد إيقاف حساب الموظف وطرده من الجلسة المفتوحة فوراً؟')) return;
+        const ok = window.SAWYAN?.UI?.confirm
+            ? await window.SAWYAN.UI.confirm({ title: 'إيقاف حساب الموظف فوراً', message: 'تأكيد إيقاف حساب الموظف وطرده من الجلسة المفتوحة فوراً؟', confirmText: 'إيقاف فوري', cancelText: 'تراجع', tone: 'danger' })
+            : true;
+        if (!ok) return;
         try {
             await window.SAWYAN.API.adminManageStaffAccounts({ action: 'kill_deactivate', targetId: id });
             toast('⛔ تم إيقاف الموظف وطرده من النظام في التو واللحظة!', false);
@@ -667,7 +676,10 @@
         } catch (err) { toast(err.message, true); }
     };
     window.svDeleteCountryCity = async function (gid) {
-        if (!confirm('حذف هذه المدينة من القائمة؟')) return;
+        const ok = window.SAWYAN?.UI?.confirm
+            ? await window.SAWYAN.UI.confirm({ title: 'حذف مدينة', message: 'حذف هذه المدينة من القائمة؟', confirmText: 'حذف', cancelText: 'إلغاء', tone: 'danger' })
+            : true;
+        if (!ok) return;
         try {
             await window.SAWYAN.API.adminManageCountryCities({ action: 'delete', countryCode: SELECTED_CITY_CC, geonameId: gid });
             toast('تم حذف المدينة.', false);
@@ -1259,12 +1271,16 @@
         window.svDecideLiveWithdrawal = async function (wtxId, dec) {
             try {
                 if (dec === 'completed') {
-                    const ref = prompt('أدخل رقم مرجع التحويل الفعلي (البنك / InstaPay / المحفظة) — إلزامي ليظهر للعضو:');
+                    const ref = window.SAWYAN?.UI?.prompt
+                        ? await window.SAWYAN.UI.prompt({ title: 'تأكيد التحويل المالي', message: 'أدخل رقم مرجع التحويل الفعلي (البنك / InstaPay / المحفظة) — إلزامي ليظهر للعضو:', defaultValue: '' })
+                        : null;
                     if (!ref) return;
                     await window.SAWYAN.API.adminDecideWithdrawalV3({ walletTxId: wtxId, decision: 'completed', payoutRef: ref });
                     toast('✅ تم توثيق التحويل وإرسال رقم المرجع للعضو!', false);
                 } else {
-                    const reason = prompt('أدخل سبب رفض طلب السحب (سيُعكس القيد المحاسبي ويعود المبلغ 100% لمحفظة العضو فوراً):', 'بيانات رقم الحساب المستلم غير صحيحة — يرجى مراجعتها');
+                    const reason = window.SAWYAN?.UI?.prompt
+                        ? await window.SAWYAN.UI.prompt({ title: 'رفض طلب السحب', message: 'أدخل سبب رفض طلب السحب (سيُعكس القيد المحاسبي ويعود المبلغ 100% لمحفظة العضو فوراً):', defaultValue: 'بيانات رقم الحساب المستلم غير صحيحة — يرجى مراجعتها' })
+                        : null;
                     if (!reason) return;
                     await window.SAWYAN.API.adminDecideWithdrawalV3({ walletTxId: wtxId, decision: 'rejected', rejectReason: reason });
                     toast('↩️ تم رفض الطلب وإعادة كامل المبلغ لمحفظة العضو بقيد عكسي متزن!', false);
@@ -1305,7 +1321,9 @@
         };
 
         window.svReplySupportTicket = async function (ticketId) {
-            const reply = prompt('اكتب رد الإدارة الرسمي (سيظهر للعضو/التاجر فوراً داخل حسابه):');
+            const reply = window.SAWYAN?.UI?.prompt
+                ? await window.SAWYAN.UI.prompt({ title: 'الرد على تذكرة الدعم', message: 'اكتب رد الإدارة الرسمي (سيظهر للعضو/التاجر فوراً داخل حسابه):', defaultValue: '' })
+                : null;
             if (!reply) return;
             try {
                 await window.SAWYAN.API.adminSearchAndReplyOps({ action: 'reply_support_ticket', recordId: ticketId, replyText: reply, newStatus: 'closed' });
@@ -1332,8 +1350,13 @@
                 reject_escalated: 'رفض هذه الفاتورة المعلقة وتحرير الحجز المرن؟',
                 reverse_pre_payout: 'عكس هذه الفاتورة المكتملة (متاح فقط قبل إقفال وصرف يوم 15)؟'
             };
-            if (!confirm(labels[decision] || 'تأكيد تنفيذ القرار التشغيلي على العملية؟')) return;
-            const reason = prompt('ملاحظة / سبب القرار الإداري (يُسجّل في Audit Log):', decision);
+            const ok = window.SAWYAN?.UI?.confirm
+                ? await window.SAWYAN.UI.confirm({ title: 'تأكيد القرار المحاسبي', message: labels[decision] || 'تأكيد تنفيذ القرار التشغيلي على العملية؟', confirmText: 'تأكيد', cancelText: 'إلغاء', tone: 'warning' })
+                : true;
+            if (!ok) return;
+            const reason = window.SAWYAN?.UI?.prompt
+                ? await window.SAWYAN.UI.prompt({ title: 'ملاحظة التدقيق', message: 'ملاحظة / سبب القرار الإداري (يُسجّل في Audit Log):', defaultValue: decision })
+                : decision;
             if (reason === null) return;
             try {
                 await window.SAWYAN.API.adminOperationalDecision({

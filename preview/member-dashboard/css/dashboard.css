@@ -2684,7 +2684,139 @@ body {
     box-shadow: inset 0 2px 12px rgba(15, 23, 42, 0.06);
     cursor: grab;
     user-select: none;
-    touch-action: none;
+    touch-action: pan-y pan-x;
+}
+
+/* Phase 2: Grouped Sidebar Navigation, Compact QR Strip, Calm Home & Settings Tabs */
+.sidebar-nav-group-label {
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.56);
+    padding: 12px 14px 4px;
+    text-transform: uppercase;
+    user-select: none;
+}
+
+.sidebar-nav-group-label:first-child {
+    padding-top: 4px;
+}
+
+.qr-section.qr-section-compact {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    text-align: start;
+    padding: 16px 20px;
+    margin: 14px 0;
+    flex-wrap: wrap;
+}
+
+.qr-section.qr-section-compact .qr-compact-box {
+    background: #ffffff;
+    border: 2px solid #10b981;
+    border-radius: 14px;
+    padding: 8px;
+    cursor: pointer;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.14);
+}
+
+.qr-section.qr-section-compact .qr-code {
+    margin: 0;
+    padding: 0;
+    width: 112px;
+    height: 112px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.qr-section.qr-section-compact .qr-code canvas,
+.qr-section.qr-section-compact .qr-code img {
+    width: 112px !important;
+    height: 112px !important;
+}
+
+.qr-section.qr-section-compact .qr-compact-info {
+    flex: 1;
+    min-width: 210px;
+}
+
+.qr-section.qr-section-compact h2 {
+    margin: 0 0 4px;
+    font-size: 1.02rem;
+}
+
+.qr-section.qr-section-compact p {
+    margin: 0;
+    font-size: 0.84rem;
+    color: #475569;
+}
+
+.member-settings-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 14px 0 6px;
+    padding: 6px;
+    background: #f1f5f9;
+    border-radius: 14px;
+    border: 1px solid #cbd5e1;
+}
+
+.member-settings-tab-btn {
+    border: none;
+    background: transparent;
+    color: #334155;
+    font-family: 'Tajawal', sans-serif;
+    font-size: 0.84rem;
+    font-weight: 800;
+    padding: 8px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.member-settings-tab-btn.active {
+    background: #047857;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(4, 120, 87, 0.25);
+}
+
+.pw-field-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.pw-field-wrap input {
+    width: 100%;
+    padding-inline-end: 42px;
+}
+
+.pw-toggle-btn {
+    position: absolute;
+    inset-inline-end: 8px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 4px;
+    color: #475569;
+}
+
+[data-theme="dark"] .member-settings-tabs {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+[data-theme="dark"] .member-settings-tab-btn {
+    color: #cbd5e1;
+}
+
+[data-theme="dark"] .qr-section.qr-section-compact p {
+    color: #94a3b8;
 }
 
 .tree-earth-viewport.panning {

@@ -78,15 +78,20 @@ def main():
         rls,
     )
 
-    _, f_prod = rpc("authenticate_admin_login", {"p_email": "ahmed.saher.egy@gmail.com", "p_password": "Baraawhaneen-1"}, "sawyan")
-    _, b_prod = rpc("get_admin_sovereign_bundle", {"p_admin_id": f_prod["admin"]["id"], "p_session_token": f_prod["session_token"]}, "sawyan")
-    must(
-        b_prod["kpis"]["members_with_root"] >= 1
-        and b_prod["zero_discrepancy"]["is_zero_discrepancy_intact"] is True
-        and b_prod["audit_chain"]["is_hash_chain_intact"] is True,
-        f"2. Production (`sawyan`) Live Integrity Intact (members={b_prod['kpis']['members_total']}, Zero-Discrepancy=$0.00, Hash-Chain valid)",
-        b_prod["kpis"],
-    )
+    founder_email = os.environ.get("SAWYAN_FOUNDER_EMAIL", "").strip()
+    founder_pass = os.environ.get("SAWYAN_FOUNDER_PASSWORD", "").strip()
+    if founder_email and founder_pass:
+        _, f_prod = rpc("authenticate_admin_login", {"p_email": founder_email, "p_password": founder_pass}, "sawyan")
+        _, b_prod = rpc("get_admin_sovereign_bundle", {"p_admin_id": f_prod["admin"]["id"], "p_session_token": f_prod["session_token"]}, "sawyan")
+        must(
+            b_prod["kpis"]["members_with_root"] >= 1
+            and b_prod["zero_discrepancy"]["is_zero_discrepancy_intact"] is True
+            and b_prod["audit_chain"]["is_hash_chain_intact"] is True,
+            f"2. Production (`sawyan`) Live Integrity Intact (members={b_prod['kpis']['members_total']}, Zero-Discrepancy=$0.00, Hash-Chain valid)",
+            b_prod["kpis"],
+        )
+    else:
+        print(" [SKIP] 2. Production (`sawyan`) founder login check skipped (set SAWYAN_FOUNDER_EMAIL & SAWYAN_FOUNDER_PASSWORD to run).")
 
     # 3. Verify RBAC: Auditor read-only can list, blocked from writes; Approver/Founder can manage
     _, f_demo = rpc("authenticate_admin_login", {"p_email": "demo.founder@sawyan.local", "p_password": "Demo@Founder2026"}, "sawyan_demo")

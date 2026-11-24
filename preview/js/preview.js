@@ -44,8 +44,8 @@
                         coverImageUrl: r.cover_image_url || null,
                         images: Array.isArray(r.images) ? r.images : [],
                         image: r.cover_image_url || r.logo_url || null,
-                        rating: 5.0,
-                        reviewsCount: 1,
+                        rating: Number(r.avg_rating || 0),
+                        reviewsCount: Number(r.reviews_count || 0),
                         isVerified: true,
                         isFeatured: true
                     };
@@ -70,6 +70,7 @@
     const CATEGORY_ICONS = {
         restaurants: '🍽️',
         supermarket: '🛒',
+        pharmacy: '💊',
         fashion: '👗',
         electronics: '📱',
         'health-beauty': '💄',
@@ -507,7 +508,7 @@
             byId('floatingGainLabel').textContent = `+${gVal} عائد مشتريات`;
         }
         if (byId('walletMonthGain')) {
-            const mVal = window.formatCurrency(Number((890 * cfg.fxRate).toFixed(0)), cfg.code);
+            const mVal = window.formatCurrency(Number((42.50 * cfg.fxRate).toFixed(2)), cfg.code);
             byId('walletMonthGain').textContent = `+${mVal}`;
         }
         if (byId('walletPreviewGeoTag')) {

@@ -225,6 +225,13 @@
                 if (fromReferralLink) confirmBox.checked = true;
                 confirmRow.style.display = 'flex';
             }
+            const hero = document.getElementById('referralWelcomeHero');
+            const heroTxt = document.getElementById('referralWelcomeText');
+            if (hero && heroTxt && fromReferralLink) {
+                const safeName = getEngine() ? getEngine().escapeHtml(res.full_name) : String(res.full_name || '');
+                heroTxt.innerHTML = `مرحباً بك! تمت دعوتك للانضمام مجاناً إلى فريق <strong>${safeName}</strong> (كود الراعي <code style="background:rgba(255,255,255,0.16);color:#fff;padding:1px 6px;border-radius:6px;">#${Number(res.member_code)}</code>) في منظومة SAWYAN.`;
+                hero.style.display = 'block';
+            }
             if (_progressTracker) _progressTracker.update();
         } catch (err) {
             verifiedSponsorRecord = null;

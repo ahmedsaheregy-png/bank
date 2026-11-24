@@ -38,6 +38,28 @@ window.SAWYAN_ADMIN_DEMO = {
     var D = window.SAWYAN_ADMIN_DEMO;
     var fmt = function (n) { return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
     var fmt0 = function (n) { return Number(n || 0).toLocaleString('en-US'); };
+    var fmtUsdSigned = function (n) {
+        var v = Number(n || 0);
+        var sign = v < 0 ? '-' : '';
+        return '<span dir="ltr" style="display:inline-block;unicode-bidi:isolate;">' + sign + '$' + fmt(Math.abs(v)) + '</span>';
+    };
+
+    function syncSidebarSlaBadges() {
+        var map = {
+            navBadgeWithdrawals: Number((D.pending && D.pending.withdrawals) || 0),
+            navBadgeDisputes: Number((D.pending && D.pending.disputes) || 0),
+            navBadgeSupport: Number((D.pending && D.pending.support) || 0),
+            navBadgeMerchants: Number((D.merchants && (D.merchants.frozen + D.merchants.pending_approval)) || 0),
+            navBadgeTransactions: Number((D.ops_fifo || 0) + (D.ops_pending_review || 0))
+        };
+        Object.keys(map).forEach(function (id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            var cnt = map[id];
+            el.textContent = cnt > 99 ? '99+' : String(cnt);
+            el.style.display = cnt > 0 ? 'inline-flex' : 'none';
+        });
+    }
 
     function esc(s) {
         return String(s === null || s === undefined ? '' : s)
@@ -198,6 +220,7 @@ window.SAWYAN_ADMIN_DEMO = {
 
         renderHome();
         refreshPromoRow();
+        syncSidebarSlaBadges();
     };
 
     function renderHome() {
@@ -258,19 +281,19 @@ window.SAWYAN_ADMIN_DEMO = {
             '<span style="background:#dcfce7; color:#065f46; border:1px solid #6ee7b7; padding:4px 12px; border-radius:8px; font-size:0.74rem; font-weight:800;">🟢 مرتبط بقاعدة البيانات الحية (' + esc(D.schema) + ')</span>' +
         '</div>' +
 
-        '<div data-spec-id="admin-home-kpis" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap:14px; margin-bottom:18px;">' +
+        '<div data-spec-id="admin-home-kpis" class="admin-kpi-grid-3x2" style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:14px; margin-bottom:18px;">' +
             kpi('👥', 'إجمالي الأعضاء', fmt0(D.members.total), fmt0(D.members.active) + ' نشط • ' + D.members.pending_kyc + ' بانتظار توثيق الهوية • ' + D.members.suspended + ' محجوب', '#3b82f6') +
             kpi('🏪', 'إجمالي التجار', fmt0(D.merchants.total), D.merchants.active + ' نشط • ' + D.merchants.frozen + ' معزول • ' + D.merchants.pending_approval + ' بانتظار الاعتماد', '#10b981') +
             kpi('💳', 'العمليات المكتملة', fmt0(D.ops_mtd),
-                'متوسط الفاتورة $' + fmt(avgTicketUsd) +
+                'متوسط الفاتورة ' + fmtUsdSigned(avgTicketUsd) +
                 ((D.ops_fifo > 0 || D.ops_pending_review > 0)
-                    ? '<br><span style="color:#b91c1c;font-weight:800;">⏸️ ' + fmt0(D.ops_fifo) + ' بطابور FIFO ($' + fmt(D.fifo_gmv_usd) + ') • ⏳ ' + fmt0(D.ops_pending_review) + ' معلقة</span>'
+                    ? '<br><span style="color:#b91c1c;font-weight:800;">⏸️ ' + fmt0(D.ops_fifo) + ' بطابور FIFO (' + fmtUsdSigned(D.fifo_gmv_usd) + ') • ⏳ ' + fmt0(D.ops_pending_review) + ' معلقة</span>'
                     : ''), '#6366f1') +
-            kpi('🛒', 'حجم المبيعات (GMV موحد $)', '$' + fmt(D.gmv_usd_completed), curSummary, '#0ea5e9') +
-            kpi('💰', 'عمولات سويا المحصّلة ($)', '$' + fmt(commUsd),
-                'خزينة الشركة (25%): <b>$' + fmt(treasuryUsd) + '</b><br>خطة الدخل والأعضاء (75%): <b>$' + fmt(planUsd) + '</b>' + commByCurSummary, '#f59e0b') +
-            kpi('🛡️', 'التزام الشحن المسبق (2101)', '$' + fmt(D.prepaid_held_usd),
-                'صافي أرصدة الشحن الحرة المقومة بالدولار في دفتر الأستاذ', '#059669') +
+            kpi('🛒', 'حجم المبيعات (GMV موحد $)', fmtUsdSigned(D.gmv_usd_completed), curSummary, '#0ea5e9') +
+            kpi('💰', 'عمولات سويا المحصّلة ($)', fmtUsdSigned(commUsd),
+                'خزينة الشركة (25%): <b>' + fmtUsdSigned(treasuryUsd) + '</b><br>خطة الدخل والأعضاء (75%): <b>' + fmtUsdSigned(planUsd) + '</b>' + commByCurSummary, '#f59e0b') +
+            kpi('🛡️', 'التزام الشحن المسبق (2101)', fmtUsdSigned(D.prepaid_held_usd),
+                'صافي أرصدة الشحن الحرة المقومة بالدولار في دفتر الأستاذ', Number(D.prepaid_held_usd || 0) < 0 ? '#dc2626' : '#059669') +
         '</div>' +
 
         '<div style="background:white; border:1.5px solid #e2e8f0; border-radius:14px; padding:18px; margin-bottom:18px;">' +

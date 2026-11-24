@@ -66,35 +66,11 @@
         },
 
         /**
-         * إرسال معاملة نقطة بيع / دفع بـ Soft Hold أو PIN مع مفتاح عدم تكرار إلزامي (Point 14 / D25)
+         * Phase 0 C1: تم إغلاق الاستدعاء المباشر لدالة submit_pos_transaction من المتصفح نهائياً.
+         * استخدم حصراً المسارات المصادقة: merchantCreatePosTransaction / employeeCreateVerificationTx / submitMemberPendingPurchase.
          */
-        async submitPosTransaction({
-            memberId,
-            merchantId,
-            branchId,
-            amount,
-            paymentType = 'cash',
-            uniquePaymentRef,
-            swShortCode,
-            idempotencyKey = null,
-            cashierEmployeeId = null,
-            isInstantPin = true,
-            receiptMediaUrl = null
-        }) {
-            const idem = idempotencyKey || generateIdempotencyKey();
-            return await callRpc('submit_pos_transaction', {
-                p_member_id: memberId,
-                p_merchant_id: merchantId,
-                p_branch_id: branchId,
-                p_amount: Number(amount),
-                p_payment_type: paymentType,
-                p_unique_payment_ref: uniquePaymentRef,
-                p_sw_short_code: swShortCode,
-                p_idempotency_key: idem,
-                p_cashier_employee_id: cashierEmployeeId,
-                p_is_instant_pin: Boolean(isInstantPin),
-                p_receipt_media_url: receiptMediaUrl
-            });
+        async submitPosTransaction() {
+            throw new Error('DIRECT_SUBMIT_POS_TRANSACTION_REVOKED_C1: Direct client calls to submit_pos_transaction are disabled; use authenticated merchant, cashier, or member RPCs.');
         },
 
         /**
@@ -150,15 +126,16 @@
         },
 
         /**
-         * إرسال عرض خاطف لمراجعة الإدارة بعد التحقق من المنطقة الخضراء وخلو النص من الروابط/الهواتف (Point 12)
+         * إرسال عرض خاطف لمراجعة الإدارة عبر الواجهة المصادقة بجلسة التاجر (Phase 0 C5 / Point 12)
          */
-        async submitMerchantFlashOffer({ merchantId, title, body, discountHint = null, actorId = null }) {
-            return await callRpc('submit_merchant_flash_offer', {
+        async submitMerchantFlashOffer({ merchantId, title, body, discountHint = null, sessionToken = null }) {
+            const tok = sessionToken || SawyanAPI.getMerchantSessionToken();
+            return await callRpc('merchant_submit_flash_offer_guarded', {
                 p_merchant_id: merchantId,
                 p_title: title,
                 p_body: body,
                 p_discount_hint: discountHint,
-                p_actor_id: actorId
+                p_session_token: tok
             });
         },
 
@@ -192,6 +169,30 @@
             return await callRpc('get_tree_analytics_with_country_lens', {
                 p_viewer_member_id: viewerMemberId,
                 p_period_ym: periodYm,
+                p_country_code: countryCode
+            });
+        },
+
+        /**
+         * Phase 2: محرك الشجرة التكيّفي بالتحميل الكسول من الخادم (Mobile 4-5 gens / Laptop 6-8+ gens) + نبض الشجرة
+         */
+        async getMemberTreeSubtree({
+            memberId,
+            rootMemberCode = null,
+            periodYm = null,
+            maxDepth = 4,
+            nodeLimit = 80,
+            countryCode = null,
+            sessionToken = null
+        }) {
+            const tok = sessionToken || SawyanAPI.getMemberSessionToken();
+            return await callRpc('get_member_tree_subtree', {
+                p_member_id: memberId,
+                p_session_token: tok,
+                p_root_member_code: rootMemberCode !== null && rootMemberCode !== undefined ? Number(rootMemberCode) : null,
+                p_period_ym: periodYm,
+                p_max_depth: Number(maxDepth || 4),
+                p_node_limit: Number(nodeLimit || 80),
                 p_country_code: countryCode
             });
         },
@@ -1166,6 +1167,30 @@
             }
             SawyanAPI.saveAdminSession(res.admin, res.session_token);
             return res;
+        },
+
+        async adminToggleKillSwitch({ adminId = null, sessionToken = null, switchKey, enabled, reason }) {
+            const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id);
+            const tok = sessionToken || SawyanAPI.getAdminSessionToken();
+            return await callRpc('admin_toggle_kill_switch', {
+                p_admin_id: adm,
+                p_session_token: tok,
+                p_switch_key: String(switchKey || '').trim().toUpperCase(),
+                p_enabled: Boolean(enabled),
+                p_reason: String(reason || '').trim()
+            });
+        },
+
+        async adminManage2faPolicy({ adminId = null, sessionToken = null, action = 'list', targetAdminId = null, is2faExempt = null } = {}) {
+            const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id);
+            const tok = sessionToken || SawyanAPI.getAdminSessionToken();
+            return await callRpc('admin_manage_2fa_policy', {
+                p_admin_id: adm,
+                p_session_token: tok,
+                p_action: action,
+                p_target_admin_id: targetAdminId,
+                p_is_2fa_exempt: is2faExempt
+            });
         },
 
         async getAdminSovereignBundle({ adminId = null, periodYm = null, sessionToken = null } = {}) {

@@ -104,19 +104,16 @@ class SawyanPaymentService {
                 throw new Error(result.error || 'فشل في معالجة الدفع');
             }
 
-            // تسجيل العملية ذرياً في نواة PostgreSQL إذا كانت واجهة API محملة
+            // تسجيل طلب تحقق معلق عبر جلسة العضو المصادقة (Phase 0 C1: حظر submit_pos_transaction المباشر من المتصفح)
             let ledgerResult = null;
             if (typeof window !== 'undefined' && window.SAWYAN && window.SAWYAN.API && branchId) {
-                ledgerResult = await window.SAWYAN.API.submitPosTransaction({
+                ledgerResult = await window.SAWYAN.API.submitMemberPendingPurchase({
                     memberId,
                     merchantId,
                     branchId,
                     amount,
                     paymentType,
-                    uniquePaymentRef: result.transactionId,
-                    swShortCode: `SW-${idemKey.slice(0, 8).toUpperCase()}`,
-                    idempotencyKey: idemKey,
-                    isInstantPin: true
+                    idempotencyKey: idemKey
                 });
             }
 
@@ -128,7 +125,7 @@ class SawyanPaymentService {
                 paymentProvider: provider.providerName,
                 paymentReference: result.transactionId,
                 ledgerResult,
-                message: 'تم الدفع وتوثيق القيد المحاسبي بنجاح'
+                message: 'تم إرسال طلب توثيق الفاتورة بانتظار اعتماد التاجر أو الكاشير'
             };
         } catch (error) {
             return { success: false, error: error.message };
@@ -157,29 +154,29 @@ class SawyanPaymentService {
             const provider = this.getProvider(providerName);
             const refCode = `OFFLINE-${Date.now()}-${qrPayload.memberCode}`;
 
-            if (typeof window !== 'undefined' && window.SAWYAN && window.SAWYAN.API && qrPayload.memberId && branchId) {
-                const ledgerResult = await window.SAWYAN.API.submitPosTransaction({
-                    memberId: qrPayload.memberId,
-                    merchantId,
-                    branchId,
-                    amount,
-                    paymentType: 'cash',
-                    uniquePaymentRef: refCode,
-                    swShortCode: `SW-${idemKey.slice(0, 8).toUpperCase()}`,
-                    idempotencyKey: idemKey,
-                    cashierEmployeeId,
-                    isInstantPin: true
-                });
-
-                return {
-                    success: true,
-                    memberCode: qrPayload.memberCode,
-                    idempotencyKey: idemKey,
-                    paymentProvider: provider.providerName,
-                    paymentReference: refCode,
-                    ledgerResult,
-                    message: 'تم تسجيل معاملة العميل غير المتصل في السجل المحاسبي'
-                };
+            // Phase 0 C1: التوثيق الفوري محصور بدوال الكاشير/التاجر المصادقة (merchantCreatePosTransaction / employeeCreateVerificationTx)
+            if (typeof window !== 'undefined' && window.SAWYAN && window.SAWYAN.API && qrPayload.memberCode && branchId) {
+                const empTok = window.SAWYAN.API.getEmployeeSessionToken ? window.SAWYAN.API.getEmployeeSessionToken() : null;
+                if (cashierEmployeeId && empTok && typeof window.SAWYAN.API.employeeCreateVerificationTx === 'function') {
+                    const ledgerResult = await window.SAWYAN.API.employeeCreateVerificationTx({
+                        employeeId: cashierEmployeeId,
+                        memberCode: qrPayload.memberCode,
+                        amount,
+                        paymentType: 'cash',
+                        idempotencyKey: idemKey,
+                        uniquePaymentRef: refCode,
+                        sessionToken: empTok
+                    });
+                    return {
+                        success: true,
+                        memberCode: qrPayload.memberCode,
+                        idempotencyKey: idemKey,
+                        paymentProvider: provider.providerName,
+                        paymentReference: refCode,
+                        ledgerResult,
+                        message: 'تم تسجيل معاملة العميل عبر جلسة الكاشير الموثّقة'
+                    };
+                }
             }
 
             return {
@@ -189,7 +186,8 @@ class SawyanPaymentService {
                 paymentProvider: provider.providerName,
                 paymentReference: refCode,
                 requiresSync: true,
-                message: 'جاهز للمزامنة الآمنة عبر طابور المتجر'
+                requiresCashierAuth: true,
+                message: 'جاهز للمزامنة الآمنة عبر بوابة التاجر أو الكاشير الموثّقة'
             };
         } catch (error) {
             return { success: false, error: error.message };

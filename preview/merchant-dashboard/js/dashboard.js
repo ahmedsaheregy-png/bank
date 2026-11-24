@@ -1144,26 +1144,29 @@ function generateMerchantWifiQR() {
 
     container.style.display = 'block';
 
-    // استخدام مكتبة qrcode.js إذا كانت متاحة
-    if (typeof QRCode !== 'undefined') {
-        qrCodeDiv.innerHTML = '';
+    // استخدام مكتبة qrcode@1.5.1 (QRCode.toCanvas) أو qrcodejs
+    qrCodeDiv.innerHTML = '';
+    if (typeof QRCode !== 'undefined' && typeof QRCode.toCanvas === 'function') {
+        const cvs = document.createElement('canvas');
+        qrCodeDiv.appendChild(cvs);
+        QRCode.toCanvas(cvs, wifiString, { width: 180, margin: 1, color: { dark: '#000000', light: '#ffffff' } }, function (err) {
+            if (err) {
+                qrCodeDiv.innerHTML = `<div style="padding:14px;background:#f8fafc;border-radius:8px;"><code>${escM(wifiString)}</code></div>`;
+            }
+        });
+    } else if (typeof QRCode === 'function') {
         new QRCode(qrCodeDiv, {
             text: wifiString,
             width: 180,
             height: 180,
             colorDark: '#000000',
-            colorLight: '#ffffff',
-            correctLevel: QRCode.CorrectLevel.M
+            colorLight: '#ffffff'
         });
     } else {
-        // Fallback: عرض النص فقط
         qrCodeDiv.innerHTML = `
-            <div style="padding: 20px; background: #f5f5f5; border-radius: 8px;">
-                <p style="font-size: 0.85rem; margin-bottom: 10px;">نص QR للواي فاي:</p>
-                <code style="word-break: break-all; font-size: 0.75rem;">${wifiString}</code>
-                <p style="font-size: 0.8rem; margin-top: 10px; color: #666;">
-                    💡 لإنشاء QR مرئي، أضف مكتبة qrcode.js للمشروع
-                </p>
+            <div style="padding: 16px; background: #f5f5f5; border-radius: 8px;">
+                <p style="font-size: 0.85rem; margin-bottom: 8px;">نص QR للواي فاي:</p>
+                <code style="word-break: break-all; font-size: 0.75rem;">${escM(wifiString)}</code>
             </div>
         `;
     }
@@ -2251,10 +2254,11 @@ async function loadKioskModePage() {
                 <h2 style="margin:8px 0 2px;font-size:1.35rem;">${escM(p.business_name || 'متجر SAWYAN')} — <code>#${escM(p.merchant_code || '')}</code></h2>
                 <small style="color:#cbd5e1;">صمم لسرعة طابور الكاشير في 5 ثوانٍ مع تشفير الأوفلاين التلقائي <code>AES-256-GCM</code></small>
             </div>
+            ${(window.SAWYAN?.API?.isDemoMode && window.SAWYAN.API.isDemoMode()) ? `
             <label style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.12);padding:8px 14px;border-radius:10px;cursor:pointer;font-size:0.84rem;font-weight:700;">
                 <input type="checkbox" id="deadZoneToggle" ${forceDeadZoneSimulation ? 'checked' : ''} onchange="toggleDeadZoneSim(this.checked)">
-                <span>📴 محاكاة انقطاع الإنترنت (Dead-Zone Test)</span>
-            </label>
+                <span>📴 محاكاة انقطاع الإنترنت (بيئة التجربة فقط)</span>
+            </label>` : ''}
         </div>
 
         <!-- الأزرار الثلاثة العملاقة فقط وفق الباب 7.4 #1 -->
@@ -2509,7 +2513,11 @@ async function loadPendingTransactions(skipRefresh = false) {
     `;
 }
 
+const _merchantTxBusySet = new Set();
+
 async function overrideEmployeeRejection(id) {
+    if (_merchantTxBusySet.has(id)) return;
+    _merchantTxBusySet.add(id);
     try {
         const res = await window.SAWYAN.API.confirmOrRejectPendingTx({
             merchantId: currentMerchant.id,
@@ -2523,10 +2531,14 @@ async function overrideEmployeeRejection(id) {
         await loadPendingTransactions();
     } catch (err) {
         swNotify(formatMerchantErrorMessage(err), 'error');
+    } finally {
+        _merchantTxBusySet.delete(id);
     }
 }
 
 async function approvePendingTx(id) {
+    if (_merchantTxBusySet.has(id)) return;
+    _merchantTxBusySet.add(id);
     try {
         const res = await window.SAWYAN.API.confirmOrRejectPendingTx({
             merchantId: currentMerchant.id,
@@ -2540,6 +2552,8 @@ async function approvePendingTx(id) {
         await loadPendingTransactions();
     } catch (err) {
         swNotify(formatMerchantErrorMessage(err), 'error');
+    } finally {
+        _merchantTxBusySet.delete(id);
     }
 }
 
@@ -2640,9 +2654,9 @@ async function loadAllTransactions(periodFilter = activeShiftPeriod) {
                     ${tx.unique_payment_ref ? `<div style="font-family:monospace;color:#475569;font-size:0.72rem;" dir="ltr">Ref: ${escM(tx.unique_payment_ref)}</div>` : ''}
                     ${thumb ? `<div style="margin-top:4px;">${thumb}</div>` : ''}
                 </td>
-                <td data-label="إجمالي الفاتورة" style="padding:12px;font-weight:800;color:#0f172a;">${fmtMerchantMoney(tx.total_amount, tx.currency_code || curr)}</td>
-                <td data-label="العمولة التعاقدية" style="padding:12px;font-weight:800;color:#dc2626;">-${fmtMerchantMoney(tx.commission_amount, tx.currency_code || curr)}</td>
-                <td data-label="صافي الدرج" style="padding:12px;font-weight:800;color:#059669;">${fmtMerchantMoney(tx.merchant_net_amount, tx.currency_code || curr)}</td>
+                <td data-label="إجمالي الفاتورة" style="padding:12px;font-weight:800;color:#0f172a;"><span dir="ltr">${fmtMerchantMoney(tx.total_amount, tx.currency_code || curr)}</span></td>
+                <td data-label="العمولة التعاقدية" style="padding:12px;font-weight:800;color:#dc2626;"><span dir="ltr">-${fmtMerchantMoney(tx.commission_amount, tx.currency_code || curr)}</span></td>
+                <td data-label="صافي الدرج" style="padding:12px;font-weight:800;color:#059669;"><span dir="ltr">${fmtMerchantMoney(tx.merchant_net_amount, tx.currency_code || curr)}</span></td>
                 <td data-label="التوقيت" style="padding:12px;font-size:0.8rem;color:#64748b;">${new Date(tx.completed_at || tx.created_at).toLocaleString('ar-EG')}</td>
                 <td data-label="الفرع والكاشير" style="padding:12px;font-size:0.76rem;"><span style="background:#ecfdf5;color:#047857;padding:2px 8px;border-radius:6px;font-weight:800;">${escM(tx.branch_name || '-')} • ${escM(tx.cashier_name || '')}</span></td>
                 <td data-label="إجراء المرتجع" style="padding:12px;font-size:0.76rem;">
@@ -3309,14 +3323,24 @@ async function loadSettings() {
     const cmLim  = cMeta('max_tx_amount_limit', 'سقف الفاتورة المباشرة', 'فارغ = بلا سقف', '', true, false);
     const cmNot  = cMeta('notify_owner_realtime', 'إشعار فوري لصاحب المحل مع كل فاتورة', '', '', true, false);
 
+    const activeMerTab = window.__merchantSettingsTab || 'profile';
+
     page.innerHTML = `
-        <div style="margin-bottom:16px;">
-            <h2 style="margin:0;font-size:1.3rem;font-weight:900;color:#0f172a;">⚙️ إعدادات المتجر، استكمال البيانات وموظفي الكاشير</h2>
-            <p style="margin:4px 0 0;font-size:0.84rem;color:#64748b;">إدارة هوية المتجر، الموقع على خرائط جوجل، نسبة المساهمة، مواعيد العمل، المستندات، وحسابات الكاشير المستقلة</p>
+        <div style="margin-bottom:14px;">
+            <h2 style="margin:0;font-size:1.3rem;font-weight:900;color:#0f172a;">⚙️ إعدادات المتجر، الفروع وموظفي الكاشير</h2>
+            <p style="margin:4px 0 0;font-size:0.84rem;color:#64748b;">إدارة هوية المتجر، الموقع على خرائط جوجل، الصور والوثائق، موظفي الكاشير، والفروع والدعم</p>
         </div>
 
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:18px;">
-            <div style="background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:20px;">
+        <div class="merchant-settings-tabs" role="tablist">
+            <button type="button" class="merchant-settings-tab-btn ${activeMerTab === 'profile' ? 'active' : ''}" data-mer-tab="profile" onclick="switchMerchantSettingsTab('profile')">🏪 البيانات والواي فاي</button>
+            <button type="button" class="merchant-settings-tab-btn ${activeMerTab === 'location' ? 'active' : ''}" data-mer-tab="location" onclick="switchMerchantSettingsTab('location')">📍 الموقع والمواعيد</button>
+            <button type="button" class="merchant-settings-tab-btn ${activeMerTab === 'media' ? 'active' : ''}" data-mer-tab="media" onclick="switchMerchantSettingsTab('media')">🖼️ الصور والوثائق</button>
+            <button type="button" class="merchant-settings-tab-btn ${activeMerTab === 'employees' ? 'active' : ''}" data-mer-tab="employees" onclick="switchMerchantSettingsTab('employees')">👨‍💼 الموظفون (${cashiers.length})</button>
+            <button type="button" class="merchant-settings-tab-btn ${activeMerTab === 'advanced' ? 'active' : ''}" data-mer-tab="advanced" onclick="switchMerchantSettingsTab('advanced')">🏢 الفروع والمرتجع والدعم</button>
+        </div>
+
+        <div style="display:grid;gap:16px;">
+            <div class="merchant-settings-pane" data-mer-pane="profile" style="display:${activeMerTab === 'profile' ? 'block' : 'none'};background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:20px;">
                 <h3 style="margin:0 0 12px;color:#0f172a;">🏪 البيانات الأساسية والتعاقدية للمنشأة</h3>
                 <div style="display:grid;gap:10px;">
                     <div>
@@ -3397,7 +3421,7 @@ async function loadSettings() {
                 </div>
             </div>
 
-            <div style="background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:20px;">
+            <div class="merchant-settings-pane" data-mer-pane="location" style="display:${activeMerTab === 'location' ? 'block' : 'none'};background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:20px;">
                 <h3 style="margin:0 0 12px;color:#0f172a;">📍 الموقع على خرائط جوجل، الروابط ومواعيد العمل</h3>
                 <div style="display:grid;gap:10px;">
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:10px;">
@@ -3452,7 +3476,7 @@ async function loadSettings() {
                 </div>
             </div>
 
-            <div style="background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:20px;">
+            <div class="merchant-settings-pane" data-mer-pane="media" style="display:${activeMerTab === 'media' ? 'block' : 'none'};background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:20px;">
                 <h3 style="margin:0 0 12px;color:#0f172a;">🖼️ صور المتجر ووثائق التحقق الرسمية</h3>
                 <div style="display:grid;gap:12px;">
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:10px;">
@@ -3489,7 +3513,7 @@ async function loadSettings() {
                 </div>
             </div>
 
-            <div style="background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:20px;">
+            <div class="merchant-settings-pane" data-mer-pane="employees" style="display:${activeMerTab === 'employees' ? 'block' : 'none'};background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:20px;">
                 <h3 style="margin:0 0 6px;color:#0f172a;">👨‍💼 موظفو التوثيق المستقلون (دخول معزول من موبايلاتهم الشخصية)</h3>
                 <p style="margin:0 0 10px;font-size:0.78rem;color:#64748b;line-height:1.55;">
                     لا تشارك كلمة مرورك مع أي موظف — أضف كل موظف بكود ورمز <strong>PIN مؤقت (4 أرقام)</strong> ليدخل من موبايله الشخصي، وسيُطلب منه تلقائياً تغيير الـ PIN لرمز سري خاص به عند أول دخول.
@@ -3558,10 +3582,21 @@ async function loadSettings() {
                             </div>
                             <div style="display:flex;gap:6px;flex-wrap:wrap;">
                                 <button type="button" class="btn btn-outline btn-sm" onclick="resetCashierEmployeePin('${c.id}', '${escM(c.employee_code)}')">🔑 تصفير PIN</button>
-                                <button type="button" class="btn btn-outline btn-sm" onclick="toggleCashierEmployee('${c.id}')">${c.is_active ? 'إيقاف فوري' : 'تفعيل وفك قفل'}</button>
+                                <button type="button" class="btn btn-outline btn-sm" onclick="toggleCashierEmployee('${c.id}', ${c.is_active ? 'true' : 'false'}, '${escM(c.full_name)}')">${c.is_active ? 'إيقاف فوري' : 'تفعيل وفك قفل'}</button>
                             </div>
                         </div>
                     `).join('')}
+                </div>
+            </div>
+
+            <div class="merchant-settings-pane" data-mer-pane="advanced" style="display:${activeMerTab === 'advanced' ? 'block' : 'none'};background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:20px;">
+                <h3 style="margin:0 0 8px;color:#0f172a;">🏢 الفروع، الشحن البنكي، المرتجعات، والدعم الفني</h3>
+                <p style="margin:0 0 14px;font-size:0.84rem;color:#64748b;">اختر الأداة المطلوبة لفتحها مباشرة دون مغادرة شاشة الإعدادات:</p>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
+                    <button type="button" class="btn btn-outline" onclick="if(typeof openMerchantStage7Modal==='function')openMerchantStage7Modal('branches')">🏢 إدارة الفروع (${branches.length})</button>
+                    <button type="button" class="btn btn-outline" onclick="if(typeof openMerchantTopupModal==='function')openMerchantTopupModal()">🏦 شحن الرصيد / تحويل بنكي</button>
+                    <button type="button" class="btn btn-outline" onclick="if(typeof openMerchantStage7Modal==='function')openMerchantStage7Modal('refund')">↩️ مرتجع فاتورة بـ OTP</button>
+                    <button type="button" class="btn btn-outline" onclick="if(typeof openMerchantStage7Modal==='function')openMerchantStage7Modal('support')">🎫 الدعم وتغيير كلمة المرور</button>
                 </div>
             </div>
         </div>
@@ -3806,7 +3841,25 @@ async function saveFullMerchantProfileAndWifi() {
     }
 }
 
-async function toggleCashierEmployee(empId) {
+window.switchMerchantSettingsTab = function (tab) {
+    window.__merchantSettingsTab = tab || 'profile';
+    document.querySelectorAll('.merchant-settings-tab-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.merTab === window.__merchantSettingsTab);
+    });
+    document.querySelectorAll('.merchant-settings-pane').forEach(p => {
+        p.style.display = p.dataset.merPane === window.__merchantSettingsTab ? 'block' : 'none';
+    });
+};
+
+async function toggleCashierEmployee(empId, isCurrentlyActive = true, empName = '') {
+    if (isCurrentlyActive) {
+        const ok = await swConfirmBox(
+            'تأكيد إيقاف موظف التوثيق',
+            `هل تريد إيقاف حساب الموظف ${empName || ''} فوراً؟ سيتم إنهاء جلسته النشطة على موبايله ومنعه من اعتماد أي فواتير حتى تعيد تفعيله.`,
+            true
+        );
+        if (!ok) return;
+    }
     try {
         await window.SAWYAN.API.manageMerchantCashierAndSettings({
             merchantId: currentMerchant.id,

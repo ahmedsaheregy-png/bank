@@ -21,16 +21,8 @@
     let ACTIVE_MER_TAB = 'branches'; // branches | topup | refund | support
 
     function mountMerchantToolsButton() {
-        const hdr = document.querySelector('.dashboard-header') || document.querySelector('header') || document.body;
-        if (!document.getElementById('svMerchantStage7Btn')) {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.id = 'svMerchantStage7Btn';
-            btn.style.cssText = 'background:linear-gradient(135deg,#0f172a,#047857);color:#fff;border:none;padding:7px 13px;border-radius:10px;font-family:Tajawal,sans-serif;font-weight:900;font-size:0.82rem;cursor:pointer;margin:4px 8px;';
-            btn.innerHTML = '🏢 الفروع والشحن البنكي والمرتجع والدعم';
-            btn.onclick = function () { window.openMerchantStage7Modal('branches'); };
-            hdr.appendChild(btn);
-        }
+        // Phase 2: Tools are now cleanly integrated inside Settings Tab 5 (`الفروع والمرتجع والدعم`)
+        // to eliminate header button bloat and mobile header overflow.
     }
 
     window.openMerchantStage7Modal = async function (tab) {
@@ -180,11 +172,22 @@
     };
 
     function renderMerchantVoluntaryRefund(body) {
+        const recentCompleted = ((window.__merchantBundleCache && window.__merchantBundleCache.completed_transactions) || [])
+            .filter(function (t) { return t && t.status === 'completed'; })
+            .slice(0, 30);
+        const optionsHtml = recentCompleted.length > 0
+            ? '<option value="">-- اختر الفاتورة من عملياتك المكتملة --</option>' + recentCompleted.map(function (t) {
+                return '<option value="' + esc(t.id) + '">' + esc(t.sw_short_code) + ' — ' + esc(t.member_masked_name || 'عميل') + ' (' + Number(t.total_amount || 0).toFixed(2) + ' ' + esc(t.currency_code || '') + ')</option>';
+            }).join('')
+            : '<option value="">لا توجد فواتير مكتملة قابلة للمرتجع حالياً</option>';
+
         body.innerHTML =
             '<div style="background:#fff7ed;border:1.5px solid #fb923c;border-radius:12px;padding:16px;">' +
-                '<h4 style="margin:0 0 8px 0;color:#9a3412;">↩️ مصافحة مرتجع الفاتورة بـ OTP (خلال نافذة الـ 14 يوماً قبل الصرف)</h4>' +
+                '<h4 style="margin:0 0 8px 0;color:#9a3412;">↩️ مصافحة مرتجع الفاتورة بـ OTP (قبل يوم الصرف 15)</h4>' +
                 '<p style="font-size:0.82rem;color:#334155;margin:0 0 10px 0;">⚠️ لا تُسلِّم النقد للعميل قبل تأكيد رمز التحقق (OTP) أو موافقته في التطبيق؛ وبعد الصرف في يوم 15 يتحمل التاجر وحده المرتجع خارج المنصة.</p>' +
-                '<input id="svRefTxId" type="text" placeholder="معرّف الفاتورة (Transaction UUID)" class="form-control" style="margin-bottom:8px;">' +
+                '<label style="display:block;font-weight:800;font-size:0.82rem;margin-bottom:4px;">اختر الفاتورة المطلوب استرجاعها:</label>' +
+                '<select id="svRefTxSelect" class="form-control" style="margin-bottom:8px;" onchange="var v=this.value;var inp=document.getElementById(\'svRefTxId\');if(inp&&v)inp.value=v;">' + optionsHtml + '</select>' +
+                '<input id="svRefTxId" type="hidden" value="' + (recentCompleted[0] ? '' : '') + '">' +
                 '<input id="svRefReason" type="text" value="مرتجع بضاعة طوعي بطلب العميل" class="form-control" style="margin-bottom:8px;">' +
                 '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">' +
                     '<button type="button" class="btn btn-primary" onclick="svExecMerchantVoluntaryRefund(\'request_otp\')">١. إرسال OTP للعميل</button>' +

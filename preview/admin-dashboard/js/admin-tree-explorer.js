@@ -135,10 +135,29 @@
         return Boolean(adm && String(adm.role || '').toLowerCase() === 'auditor');
     }
 
-    function countryFlag(cc) {
+    function countryFlag(cc, size) {
         const clean = String(cc || '').trim().toUpperCase();
         if (!/^[A-Z]{2}$/.test(clean)) return '🌐';
-        return String.fromCodePoint(127397 + clean.charCodeAt(0), 127397 + clean.charCodeAt(1));
+        if (window.SAWYAN && window.SAWYAN.Flags && typeof window.SAWYAN.Flags.svg === 'function') {
+            return window.SAWYAN.Flags.svg(clean, size || 16);
+        }
+        return clean;
+    }
+
+    function safeAvatarUrl(raw) {
+        const val = String(raw || '').trim();
+        if (!val) return '';
+        if (window.SAWYAN && window.SAWYAN.ImageUpload && typeof window.SAWYAN.ImageUpload.isSafeMediaUrl === 'function') {
+            return window.SAWYAN.ImageUpload.isSafeMediaUrl(val) ? val : '';
+        }
+        return /^(https?:\/\/|data:image\/(png|jpeg|jpg|webp|gif);base64,)/i.test(val) ? val : '';
+    }
+
+    function memberInitials(name, code) {
+        const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+        if (!parts.length) return '#' + Number(code || 0);
+        if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
     }
 
     function sideLabelAr(side, memberCode) {
@@ -267,6 +286,9 @@
             isHighlighted ? 'atree-highlighted' : ''
         ].filter(Boolean).join(' ');
 
+        const avatarUrl = !isCompanyRoot ? safeAvatarUrl(n.avatar_url) : '';
+        const flagHtml = n.residency_country_code ? countryFlag(n.residency_country_code, 14) : '';
+
         if (STATE.viewMode === 'circles') {
             let mainBadge;
             let subBadge;
@@ -288,24 +310,30 @@
                 'tree-circle-disc',
                 'atree-node-anchor',
                 isViewRoot ? 'c-root-disc' : '',
-                isCompanyRoot ? 'atree-disc-company-root' : ''
+                isCompanyRoot ? 'atree-disc-company-root' : '',
+                avatarUrl ? 'atree-disc-has-avatar' : ''
             ].filter(Boolean).join(' ');
 
             const sidePill = isCompanyRoot
                 ? `🏢 ${subTotal} عضو`
                 : (n.placement_side === 'root_direct'
-                    ? `👑 قائد${subTotal > 0 ? ' +' + subTotal : ''}`
-                    : `${n.placement_side === 'right' ? 'يمين' : 'يسار'}${subTotal > 0 ? ' +' + subTotal : ''}`);
+                    ? `${flagHtml} 👑 قائد${subTotal > 0 ? ' +' + subTotal : ''}`
+                    : `${flagHtml} ${n.placement_side === 'right' ? 'يمين' : 'يسار'}${subTotal > 0 ? ' +' + subTotal : ''}`);
+
+            const discInner = avatarUrl
+                ? `<img src="${esc(avatarUrl)}" alt="${esc(n.full_name || ('#' + code))}" loading="lazy" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.remove();" />` +
+                  `<span style="position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);background:rgba(15,23,42,0.88);color:#ffffff;font-size:0.62rem;font-weight:800;padding:1px 6px;border-radius:999px;white-space:nowrap;border:1px solid ${pal.border};">${mainBadge}</span>`
+                : `<span style="font-size:${isCompanyRoot ? '0.92rem' : '0.84rem'};line-height:1.1;">${mainBadge}</span>` +
+                  `<span style="font-size:0.63rem;opacity:0.92;margin-top:2px;">${subBadge}</span>`;
 
             return (
                 `<div class="${wrapClasses}" data-code="${code}" data-parent="${pCode}" data-side="${esc(n.placement_side || '')}" data-vcolor="${esc(vColor)}" data-hay="${esc(hay)}" onclick="openAdminTreeNodeModal(${code})">` +
-                    `<div class="${discClasses}" style="background:${pal.bg};border-color:${pal.border};color:${pal.circleText};">` +
-                        `<span style="font-size:${isCompanyRoot ? '0.92rem' : '0.84rem'};line-height:1.1;">${mainBadge}</span>` +
-                        `<span style="font-size:0.63rem;opacity:0.92;margin-top:2px;">${subBadge}</span>` +
+                    `<div class="${discClasses}" style="position:relative;overflow:${avatarUrl ? 'visible' : 'hidden'};background:${pal.bg};border-color:${pal.border};color:${pal.circleText};">` +
+                        discInner +
                     `</div>` +
                     `<div class="atree-node-caption">` +
                         `<div class="atree-node-name" title="#${code} ${esc(n.full_name || '')}">${isCompanyRoot ? 'شركة SAWYAN (#0)' : esc(n.full_name || '')}</div>` +
-                        `<div class="atree-node-subtag">${sidePill}</div>` +
+                        `<div class="atree-node-subtag" style="display:inline-flex;align-items:center;justify-content:center;gap:4px;">${sidePill}</div>` +
                     `</div>` +
                 `</div>`
             );
@@ -315,11 +343,16 @@
         const topBadge = isCompanyRoot
             ? '👑 الجذر #0'
             : (vColor === 'BANNED' ? '⛔ محظور' : (n.stopper_slot ? esc(n.stopper_slot) : `${pal.icon} ${pal.label}`));
+        const cardAvatarHtml = isCompanyRoot
+            ? `<span style="width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:#064e3b;color:#facc15;font-size:0.88rem;flex-shrink:0;">👑</span>`
+            : (avatarUrl
+                ? `<img src="${esc(avatarUrl)}" alt="${esc(n.full_name || '')}" loading="lazy" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid ${pal.border};flex-shrink:0;" onerror="this.remove();" />`
+                : `<span style="width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:${pal.solidBg === '#ffffff' ? '#e2e8f0' : pal.solidBg};color:${vColor === 'WHITE' ? '#0f172a' : pal.circleText};font-size:0.72rem;font-weight:800;flex-shrink:0;">${esc(memberInitials(n.full_name, code))}</span>`);
         return (
             `<div class="${wrapClasses}" data-code="${code}" data-parent="${pCode}" data-side="${esc(n.placement_side || '')}" data-vcolor="${esc(vColor)}" data-hay="${esc(hay)}" onclick="openAdminTreeNodeModal(${code})">` +
                 `<div class="atree-card-box atree-node-anchor" style="background:${pal.softBg};border:2px solid ${pal.border};color:${pal.text};">` +
                     `<div class="atree-card-head">` +
-                        `<strong>#${code} [${esc(n.residency_country_code || '')}]</strong>` +
+                        `<strong style="display:inline-flex;align-items:center;gap:5px;">${cardAvatarHtml}<span>#${code}</span> ${flagHtml}</strong>` +
                         `<span class="atree-card-pill" style="background:${pal.solidBg === '#ffffff' ? '#64748b' : pal.solidBg};color:${vColor === 'WHITE' ? '#ffffff' : pal.circleText};">${topBadge}</span>` +
                     `</div>` +
                     `<div class="atree-card-title">${isCompanyRoot ? 'شركة SAWYAN العالمية' : esc(n.full_name || '')}</div>` +
@@ -695,6 +728,8 @@
             vp.classList.remove('panning');
         };
         vp.onwheel = (e) => {
+            // Phase 2 Zero Scroll-Jacking: allow normal page scroll unless Ctrl/Meta is held
+            if (!e.ctrlKey && !e.metaKey) return;
             e.preventDefault();
             const delta = e.deltaY > 0 ? -0.07 : 0.07;
             STATE.zoom = Math.max(0.18, Math.min(1.80, Number((STATE.zoom + delta).toFixed(2))));
@@ -888,11 +923,21 @@
         const auditor = isAuditorOnly();
         const subTotalIncSelf = Number(node.subtree_total || 0) + 1;
 
+        const modalAvatarUrl = !isRoot0 ? safeAvatarUrl(node.avatar_url) : '';
+        const modalAvatarHtml = isRoot0
+            ? `<div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#064e3b,#0f172a);border:2px solid #facc15;display:flex;align-items:center;justify-content:center;font-size:1.35rem;flex-shrink:0;">👑</div>`
+            : (modalAvatarUrl
+                ? `<img src="${esc(modalAvatarUrl)}" alt="${esc(node.full_name || '')}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2.5px solid ${pal.border};flex-shrink:0;" onerror="this.remove();" />`
+                : `<div style="width:48px;height:48px;border-radius:50%;background:${pal.solidBg === '#ffffff' ? '#e2e8f0' : pal.solidBg};color:${vColor === 'WHITE' ? '#0f172a' : pal.circleText};border:2px solid ${pal.border};display:flex;align-items:center;justify-content:center;font-weight:900;font-size:0.95rem;flex-shrink:0;">${esc(memberInitials(node.full_name, code))}</div>`);
+
         const bodyHtml =
-            '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;border-bottom:1.5px solid #e2e8f0;padding-bottom:10px;margin-bottom:12px;">' +
-                '<div>' +
-                    `<div style="font-size:1.05rem;font-weight:900;color:#0f172a;">${isRoot0 ? '👑 شركة SAWYAN العالمية — الجذر #0' : esc(node.full_name)} <small style="color:#059669;">(#${code})</small></div>` +
-                    `<div style="font-size:0.8rem;color:#64748b;margin-top:2px;">الجيل العام #${Number(node.company_gen || 0)} • ${sideLabelAr(node.placement_side, code)} • الإقامة: ${countryFlag(node.residency_country_code)} ${esc(node.residency_country_code || '')}</div>` +
+            '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;border-bottom:1.5px solid #e2e8f0;padding-bottom:10px;margin-bottom:12px;">' +
+                '<div style="display:flex;align-items:center;gap:10px;">' +
+                    modalAvatarHtml +
+                    '<div>' +
+                        `<div style="font-size:1.05rem;font-weight:900;color:#0f172a;">${isRoot0 ? '👑 شركة SAWYAN العالمية — الجذر #0' : esc(node.full_name)} <small style="color:#059669;">(#${code})</small></div>` +
+                        `<div style="font-size:0.8rem;color:#64748b;margin-top:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;"><span>الجيل العام #${Number(node.company_gen || 0)} • ${sideLabelAr(node.placement_side, code)} • الإقامة:</span> ${countryFlag(node.residency_country_code, 16)} <span>${esc(node.residency_country_code || '')}</span></div>` +
+                    '</div>' +
                 '</div>' +
                 `<span style="background:${pal.solidBg === '#ffffff' ? '#334155' : pal.solidBg};color:${vColor === 'WHITE' ? '#ffffff' : pal.circleText};padding:4px 11px;border-radius:999px;font-size:0.78rem;font-weight:800;">${node.stopper_slot ? `مقعد ${esc(node.stopper_slot)}` : `${pal.icon} ${pal.label}`}</span>` +
             '</div>' +

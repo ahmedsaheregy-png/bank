@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="css/admin.css?v=20261121_launch">
     <link rel="stylesheet" href="css/admin_mobile_tables.css?v=20261121_launch">
     <link rel="stylesheet" href="../shared/css/app-shell.css?v=20261121_launch">
+    <link rel="stylesheet" href="../css/bidi-support.css?v=20261121_launch">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
@@ -31,69 +32,81 @@
             </div>
 
             <nav class="sidebar-nav">
+                <div class="sidebar-nav-group-label">غرفة القيادة والعمليات</div>
                 <a href="#" class="nav-item active" data-page="home">
                     <span class="icon">🏠</span>
-                    <span>الرئيسية</span>
-                </a>
-                <a href="#" class="nav-item nav-item-sovereign" id="svStage7HubNavItem" data-page="sovereignOpsCenter">
-                    <span class="icon">👑</span>
-                    <span>التأسيس والموظفون</span>
-                </a>
-                <a href="#" class="nav-item" id="svAcademyAdminNavItem" data-page="academyAdmin">
-                    <span class="icon">🎓</span>
-                    <span>الأكاديمية التدريبية</span>
-                </a>
-                <a href="#" class="nav-item" id="svRegBuilderNavItem" data-page="registrationBuilder" onclick="if (typeof openRegistrationBuilderPage === 'function') openRegistrationBuilderPage('merchant'); return false;">
-                    <span class="icon">🧩</span>
-                    <span>هندسة نماذج التسجيل</span>
-                </a>
-                <a href="#" class="nav-item" data-page="decisionsLab">
-                    <span class="icon">🧪</span>
-                    <span>مختبر القرارات والمقترحات</span>
-                </a>
-                <a href="#" class="nav-item" data-page="governanceOps">
-                    <span class="icon">🛡️</span>
-                    <span>وحدات الرقابة والإقفال</span>
+                    <span class="nav-label">الرئيسية</span>
                 </a>
                 <a href="#" class="nav-item" data-page="members">
                     <span class="icon">👥</span>
-                    <span>الأعضاء</span>
+                    <span class="nav-label">الأعضاء</span>
                 </a>
                 <a href="#" class="nav-item" id="svAdminTreeNavItem" data-page="networkTree">
                     <span class="icon">🌳</span>
-                    <span>الشجرة الكاملة</span>
+                    <span class="nav-label">الشجرة الكاملة</span>
                 </a>
                 <a href="#" class="nav-item" data-page="merchants">
                     <span class="icon">🏪</span>
-                    <span>التجار</span>
+                    <span class="nav-label">التجار</span>
+                    <span id="navBadgeMerchants" class="nav-sla-badge">0</span>
                 </a>
                 <a href="#" class="nav-item" data-page="transactions">
                     <span class="icon">💳</span>
-                    <span>العمليات</span>
+                    <span class="nav-label">العمليات</span>
+                    <span id="navBadgeTransactions" class="nav-sla-badge">0</span>
                 </a>
+
+                <div class="sidebar-nav-group-label">المالية والامتثال</div>
                 <a href="#" class="nav-item" data-page="commissions">
                     <span class="icon">💰</span>
-                    <span>العمولات</span>
-                </a>
-                <a href="#" class="nav-item" data-page="disputes">
-                    <span class="icon">⚠️</span>
-                    <span>الشكاوى</span>
-                </a>
-                <a href="#" class="nav-item" data-page="support">
-                    <span class="icon">🎫</span>
-                    <span>الدعم الفني</span>
-                </a>
-                <a href="#" class="nav-item" data-page="reports">
-                    <span class="icon">📊</span>
-                    <span>التقارير</span>
+                    <span class="nav-label">العمولات</span>
                 </a>
                 <a href="#" class="nav-item" data-page="withdrawals">
                     <span class="icon">💸</span>
-                    <span>طلبات السحب</span>
+                    <span class="nav-label">طلبات السحب</span>
+                    <span id="navBadgeWithdrawals" class="nav-sla-badge">0</span>
+                </a>
+                <a href="#" class="nav-item" data-page="governanceOps">
+                    <span class="icon">🛡️</span>
+                    <span class="nav-label">وحدات الرقابة والإقفال</span>
+                </a>
+                <a href="#" class="nav-item" data-page="reports">
+                    <span class="icon">📊</span>
+                    <span class="nav-label">التقارير</span>
+                </a>
+
+                <div class="sidebar-nav-group-label">الدعم والنزاعات والأكاديمية</div>
+                <a href="#" class="nav-item" data-page="disputes">
+                    <span class="icon">⚠️</span>
+                    <span class="nav-label">الشكاوى والنزاعات</span>
+                    <span id="navBadgeDisputes" class="nav-sla-badge">0</span>
+                </a>
+                <a href="#" class="nav-item" data-page="support">
+                    <span class="icon">🎫</span>
+                    <span class="nav-label">الدعم الفني</span>
+                    <span id="navBadgeSupport" class="nav-sla-badge">0</span>
+                </a>
+                <a href="#" class="nav-item" id="svAcademyAdminNavItem" data-page="academyAdmin">
+                    <span class="icon">🎓</span>
+                    <span class="nav-label">الأكاديمية التدريبية</span>
+                </a>
+
+                <div class="sidebar-nav-group-label">السيادة وهندسة النظام</div>
+                <a href="#" class="nav-item nav-item-sovereign" id="svStage7HubNavItem" data-page="sovereignOpsCenter">
+                    <span class="icon">👑</span>
+                    <span class="nav-label">التأسيس والموظفون</span>
+                </a>
+                <a href="#" class="nav-item" id="svRegBuilderNavItem" data-page="registrationBuilder" onclick="if (typeof openRegistrationBuilderPage === 'function') openRegistrationBuilderPage('merchant'); return false;">
+                    <span class="icon">🧩</span>
+                    <span class="nav-label">هندسة نماذج التسجيل</span>
+                </a>
+                <a href="#" class="nav-item" data-page="decisionsLab">
+                    <span class="icon">🧪</span>
+                    <span class="nav-label">مختبر القرارات والمقترحات</span>
                 </a>
                 <a href="#" class="nav-item" data-page="settings">
                     <span class="icon">⚙️</span>
-                    <span>الإعدادات</span>
+                    <span class="nav-label">الإعدادات</span>
                 </a>
             </nav>
 
@@ -104,10 +117,18 @@
 
         <main class="main-content">
             <header class="dashboard-header">
-                <h1 id="pageTitle">لوحة تحكم الأدمن</h1>
-                <div class="user-info">
-                    <span id="adminName">مدير النظام</span>
-                    <span class="member-code">Super Admin</span>
+                <h1 id="pageTitle" style="margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">لوحة تحكم الإدارة</h1>
+                <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                    <button type="button" id="adminCmdKBtn" class="admin-cmdk-trigger" onclick="openAdminCommandPalette()" title="بحث سريع وتنقل (Ctrl+K)">
+                        <span>🔍</span>
+                        <span class="cmdk-label">بحث سريع</span>
+                        <kbd dir="ltr">Ctrl+K</kbd>
+                    </button>
+                    <span id="sawyanGlobalControlsSlot"></span>
+                    <div class="user-info" style="display:flex;align-items:center;gap:6px;">
+                        <span id="adminName">مدير النظام</span>
+                        <span class="member-code">Super Admin</span>
+                    </div>
                 </div>
             </header>
 
@@ -167,6 +188,23 @@
                     <div class="recent-activity" data-spec-id="admin-home-activity">
                         <h2>النشاط الأخير</h2>
                         <div id="activityList" class="activity-list"></div>
+                    </div>
+
+                    <!-- بطاقة تدقيق واعتماد الإعلانات الترويجية للتجار (داخل #homePage فقط) -->
+                    <div id="adminPromoModerationSection" class="card" style="border: 2px solid #3b82f6; border-radius: 14px; padding: 18px; margin: 20px 0; background: #ffffff; box-shadow: 0 4px 15px rgba(59,130,246,0.1);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 1.3rem;">🛡️</span>
+                                <div>
+                                    <h3 style="margin: 0; color: #1e3a8a; font-size: 1.05rem; font-weight: 800;">طلبات الإعلانات الترويجية للتجار (بانتظار موافقة الإدارة)</h3>
+                                    <div style="font-size: 0.78rem; color: #64748b; margin-top: 2px;">مراجعة النصوص والعروض قبل البث المباشر على هواتف الأعضاء بالحي</div>
+                                </div>
+                            </div>
+                            <span id="adminPromoCountBadge" style="background: #f0fdf4; color: #15803d; font-size: 0.78rem; font-weight: 800; padding: 4px 10px; border-radius: 8px; border: 1px solid #bbf7d0;">
+                                ✅ لا توجد معلقات (0)
+                            </span>
+                        </div>
+                        <div id="adminPromoQueueContainer"></div>
                     </div>
                 </div>
 
@@ -463,26 +501,6 @@
                 <div id="registrationBuilderPage" class="page" data-spec-id="admin-reg-builder"></div>
 
             </div>
-        
-    <!-- بطاقة تدقيق واعتماد الإعلانات الترويجية للتجار (Admin Promo Moderation Queue) -->
-    <div id="adminPromoModerationSection" class="card" style="border: 2px solid #3b82f6; border-radius: 14px; padding: 18px; margin: 20px 0; background: #ffffff; box-shadow: 0 4px 15px rgba(59,130,246,0.1);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 1.3rem;">🛡️</span>
-                <div>
-                    <h3 style="margin: 0; color: #1e3a8a; font-size: 1.1rem; font-weight: 800;">طلبات الإعلانات الترويجية للتجار (بانتظار موافقة الإدارة)</h3>
-                    <div style="font-size: 0.78rem; color: #64748b; margin-top: 2px;">مراجعة النصوص والعروض قبل البث المباشر على هواتف الأعضاء بالحي</div>
-                </div>
-            </div>
-            <span id="adminPromoCountBadge" style="background: #f0fdf4; color: #15803d; font-size: 0.78rem; font-weight: 800; padding: 4px 10px; border-radius: 8px; border: 1px solid #bbf7d0;">
-                ✅ لا توجد معلقات (0)
-            </span>
-        </div>
-
-        <div id="adminPromoQueueContainer">
-            <!-- يُملأ ديناميكياً عند وجود طلبات عروض مروّجة -->
-        </div>
-    </div>
 
     <script>
     function renderAdminPromoQueue() {
@@ -584,6 +602,8 @@
         </div>
     </div>
 
+    <script src="../shared/components/flags.js?v=20261121_launch"></script>
+    <script src="../shared/i18n/i18n.js?v=20261121_launch"></script>
     <script src="../shared/components/logo.js?v=20261121_launch"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../shared/config/supabase.js?v=20261121_launch"></script>
@@ -591,11 +611,10 @@
     <script src="../shared/components/ui-feedback.js?v=20261121_launch_s14"></script>
     <script src="../shared/components/image-upload.js?v=20261121_launch"></script>
     <script src="js/dashboard.js?v=20261121_launch"></script>
-    <script src="js/dashboard-extended.js?v=20261121_launch"></script>
     <script src="js/admin-home-demo.js?v=20261121_launch"></script>
     <script src="js/admin-settings-center.js?v=20261121_launch"></script>
     <script src="js/admin-screens-demo.js?v=20261121_launch_geo"></script>
-    <script src="js/admin-decisions-lab.js?v=20261121_launch"></script>
+    <!-- admin-decisions-lab.js (313 KB) is now lazy-loaded on demand when opening decisionsLab -->
     <script src="js/admin-v3-live-bridge.js?v=20261121_launch_s14"></script>
     <script src="../shared/data/countries.js?v=20261121_launch_geo"></script>
     <script src="../shared/components/smart-search.js?v=20261121_launch_geo"></script>

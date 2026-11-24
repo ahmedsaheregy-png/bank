@@ -4,3 +4,6 @@ Disallow: /admin-dashboard/
 Disallow: /preview/admin-dashboard/
 Disallow: /database/
 Disallow: /specs/
+Disallow: /docs/
+Disallow: /tools/
+Disallow: /landing-page/

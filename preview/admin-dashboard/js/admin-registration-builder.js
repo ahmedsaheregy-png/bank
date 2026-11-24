@@ -470,7 +470,10 @@
         }
 
         async function doReset() {
-            if (!confirm('هل تريد استعادة الإعدادات والنصوص الافتراضية القياسية لهذا النموذج فقط؟')) return;
+            const ok = window.SAWYAN?.UI?.confirm
+                ? await window.SAWYAN.UI.confirm({ title: 'استعادة الافتراضي', message: 'هل تريد استعادة الإعدادات والنصوص الافتراضية القياسية لهذا النموذج فقط؟', confirmText: 'استعادة', cancelText: 'إلغاء', tone: 'warning' })
+                : true;
+            if (!ok) return;
             try {
                 await window.SAWYAN.API.adminManageRegistrationFields({
                     action: 'reset_defaults',
@@ -589,7 +592,7 @@
         if (typeof window.L !== 'undefined') {
             const lat0 = Number(document.getElementById('svPitchLat').value);
             const lng0 = Number(document.getElementById('svPitchLng').value);
-            _pitchMap = window.L.map('svPitchMapCanvas').setView([lat0, lng0], 12);
+            _pitchMap = window.L.map('svPitchMapCanvas', { scrollWheelZoom: false }).setView([lat0, lng0], 12);
             window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap',
                 maxZoom: 19

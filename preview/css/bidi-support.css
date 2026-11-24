@@ -1,9 +1,128 @@
-/* ============================================
-   SAWYAN - Bidirectional Text Support
-   دعم النص ثنائي الاتجاه (RTL + LTR)
-   ============================================ */
+/* ============================================================================
+   SAWYAN V3.0 — Bidirectional (RTL/LTR), Unified Dark Mode, Field Accessibility
+   (A+) & Global Controls Bar
+   ============================================================================ */
 
-/* ===== Logo and English Elements - الشعار والعناصر الإنجليزية ===== */
+/* ===== Global Controls Widget (Language SVG Flags + A+ + Dark Mode) ===== */
+.sawyan-global-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: nowrap;
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+
+.sawyan-lang-switcher {
+    display: inline-flex;
+    align-items: center;
+    background: var(--surface-pill, #f1f5f9);
+    border: 1px solid var(--border-subtle, #cbd5e1);
+    border-radius: 999px;
+    padding: 2px;
+    gap: 2px;
+}
+
+.sawyan-lang-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted, #334155);
+    font-family: 'Poppins', 'Tajawal', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 4px 8px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+    min-height: 28px;
+}
+
+.sawyan-lang-btn:hover {
+    background: rgba(16, 185, 129, 0.12);
+    color: #047857;
+}
+
+.sawyan-lang-btn.active {
+    background: #059669;
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25);
+}
+
+.sawyan-ctrl-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 7px;
+    border-radius: 999px;
+    border: 1px solid var(--border-subtle, #cbd5e1);
+    background: var(--surface-pill, #f8fafc);
+    color: var(--text-primary, #0f172a);
+    font-family: 'Poppins', 'Tajawal', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.sawyan-ctrl-icon-btn:hover,
+.sawyan-ctrl-icon-btn.active {
+    border-color: #059669;
+    background: #ecfdf5;
+    color: #065f46;
+}
+
+@media (max-width: 640px) {
+    .sawyan-global-controls {
+        gap: 4px;
+        flex-shrink: 1;
+        min-width: 0;
+    }
+    .sawyan-lang-btn {
+        padding: 3px 5px;
+        font-size: 0.68rem;
+        min-height: 24px;
+    }
+    .sawyan-lang-btn span:last-child {
+        display: none;
+    }
+    .sawyan-ctrl-icon-btn {
+        min-width: 28px;
+        height: 28px;
+        font-size: 0.72rem;
+    }
+    .preview-nav .nav-content {
+        gap: 6px;
+        padding-inline: 10px;
+    }
+    .preview-nav .nav-right-controls {
+        gap: 5px;
+        min-width: 0;
+        flex-shrink: 1;
+    }
+    .preview-nav .sawyan-ctrl-icon-btn {
+        display: none;
+    }
+    .preview-nav .sawyan-lang-btn {
+        padding: 2px 4px;
+    }
+    .preview-nav .mobile-quick-join {
+        padding: 5px 8px;
+        font-size: 0.74rem;
+        white-space: nowrap;
+    }
+}
+
+/* ===== Field Accessibility Large Text Scale (A+) ===== */
+html[data-font-scale="large"] {
+    font-size: 114%;
+}
+
+/* ===== Bidirectional Text Isolation (RTL + LTR Safe) ===== */
 .nav-logo,
 .nav-logo span,
 .mobile-menu-title {
@@ -12,7 +131,6 @@
     font-family: 'Poppins', sans-serif !important;
 }
 
-/* ===== Numbers and Statistics - الأرقام والإحصائيات ===== */
 .stat-value,
 .stat-number,
 .balance-amount,
@@ -22,117 +140,167 @@
 .team-stat-value,
 .merchant-rating-compact,
 .merchant-cashback-small,
-.wallet-balance-big .balance-value {
+.wallet-balance-big .balance-value,
+.transaction-amount,
+.amount-value,
+.cashback-value,
+.positive-amount,
+.negative-amount,
+.price,
+.amount,
+.currency-value,
+.member-code,
+.phone-number,
+.email,
+[type="tel"],
+[type="email"] {
     direction: ltr;
     unicode-bidi: isolate;
-    display: inline-block;
 }
 
-/* ===== Rating Stars - تقييم النجوم ===== */
-.merchant-rating-compact {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    direction: ltr;
+.stat-label,
+.stat-card-label,
+.ws-label,
+.balance-label,
+.balance-currency {
+    direction: inherit;
+    unicode-bidi: normal;
 }
 
-.merchant-rating-compact span:first-child {
-    color: #fbbf24;
-}
-
-/* ===== Fix Star Position in RTL ===== */
 .star-rating,
 .stars-interactive {
     direction: ltr;
     unicode-bidi: isolate;
 }
 
-/* ===== Income Plan Return Badge - شارة عائدات خطة الدخل ===== */
-.merchant-cashback-small {
-    direction: ltr;
-    unicode-bidi: isolate;
-    text-align: center;
+/* ===== LTR Logical Layout Flip for English (EN) & Turkish (TR) ===== */
+html[dir="ltr"] body {
+    font-family: 'Poppins', 'Inter', 'Tajawal', sans-serif;
+    text-align: left;
 }
 
-/* ===== Transaction Amounts - مبالغ العمليات ===== */
-.transaction-amount,
-.amount-value,
-.cashback-value {
-    direction: ltr;
-    unicode-bidi: isolate;
+html[dir="ltr"] .sidebar {
+    right: auto !important;
+    left: 0 !important;
+    border-left: none !important;
+    border-right: 1px solid var(--border-subtle, #e2e8f0) !important;
 }
 
-/* ===== Fix Plus/Minus Signs - إصلاح علامات + و - ===== */
-.positive-amount,
-.negative-amount {
-    direction: ltr;
-    unicode-bidi: isolate;
+html[dir="ltr"] .main-content,
+html[dir="ltr"] .dashboard-main {
+    margin-right: 0 !important;
+    margin-left: var(--sidebar-width, 260px);
 }
 
-/* ===== Arabic Text in Stats - النص العربي في الإحصائيات ===== */
-.stat-label,
-.stat-card-label,
-.ws-label,
-.balance-label,
-.balance-currency {
-    direction: rtl;
-    unicode-bidi: normal;
+@media (max-width: 992px) {
+    html[dir="ltr"] .main-content,
+    html[dir="ltr"] .dashboard-main {
+        margin-left: 0 !important;
+    }
+    html[dir="ltr"] .sidebar {
+        transform: translateX(-100%);
+    }
+    html[dir="ltr"] .sidebar.active,
+    html[dir="ltr"] .sidebar.open {
+        transform: translateX(0);
+    }
 }
 
-/* ===== Hero Stats Section ===== */
-.hero-stats .stat-item {
-    text-align: center;
+html[dir="ltr"] th,
+html[dir="ltr"] td {
+    text-align: left;
 }
 
-.hero-stats .stat-value {
-    font-weight: 800;
-    direction: rtl;
-    unicode-bidi: normal;
+/* ===== Unified Dark Mode Across All 4 Portals ===== */
+html[data-theme="dark"] {
+    --color-background: #0b1220;
+    --color-surface: #111c30;
+    --color-text: #f1f5f9;
+    --color-text-secondary: #cbd5e1;
+    --surface-pill: #1e293b;
+    --border-subtle: #334155;
+    --text-primary: #f8fafc;
+    --text-muted: #cbd5e1;
+    color-scheme: dark;
 }
 
-/* ===== Stats Section Grid ===== */
-.stats-section .stat-number {
-    font-weight: 700;
-    direction: rtl;
-    unicode-bidi: normal;
+html[data-theme="dark"] body {
+    background-color: #0b1220 !important;
+    color: #f1f5f9 !important;
 }
 
-/* ===== Merchant Card Number Fix ===== */
-.merchant-card .merchant-rating-compact,
-.merchant-card .merchant-cashback-small {
-    font-family: 'Inter', sans-serif !important;
+html[data-theme="dark"] .sidebar,
+html[data-theme="dark"] .dashboard-header,
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .stat-card,
+html[data-theme="dark"] .section-card,
+html[data-theme="dark"] .sc-card,
+html[data-theme="dark"] .sc-top,
+html[data-theme="dark"] .auth-card,
+html[data-theme="dark"] .modal-content,
+html[data-theme="dark"] .mobile-bottom-nav,
+html[data-theme="dark"] .calm-card,
+html[data-theme="dark"] .ts-card {
+    background-color: #111c30 !important;
+    color: #f1f5f9 !important;
+    border-color: #24324a !important;
 }
 
-/* ===== Wallet Card Values ===== */
-.demo-wallet-card .wallet-stats .ws-value {
-    font-family: 'Inter', sans-serif !important;
+html[data-theme="dark"] .nav-item {
+    color: #cbd5e1 !important;
 }
 
-/* ===== QR Code Section ===== */
-.member-code {
-    direction: ltr;
-    unicode-bidi: isolate;
-    font-family: 'Courier New', monospace;
+html[data-theme="dark"] .nav-item:hover,
+html[data-theme="dark"] .nav-item.active {
+    background-color: rgba(16, 185, 129, 0.16) !important;
+    color: #34d399 !important;
 }
 
-/* ===== Price and Currency ===== */
-.price,
-.amount,
-.currency-value {
-    direction: ltr;
-    unicode-bidi: embed;
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+    background-color: #0f172a !important;
+    color: #f8fafc !important;
+    border-color: #334155 !important;
 }
 
-/* ===== Phone Numbers ===== */
-.phone-number,
-[type="tel"] {
-    direction: ltr;
-    unicode-bidi: isolate;
+html[data-theme="dark"] table th {
+    background-color: #162238 !important;
+    color: #e2e8f0 !important;
 }
 
-/* ===== Email ===== */
-.email,
-[type="email"] {
-    direction: ltr;
-    unicode-bidi: isolate;
+html[data-theme="dark"] table td {
+    border-color: #24324a !important;
+    color: #e2e8f0 !important;
+}
+
+html[data-theme="dark"] .sawyan-lang-switcher,
+html[data-theme="dark"] .sawyan-ctrl-icon-btn {
+    background: #1e293b;
+    border-color: #334155;
+    color: #f1f5f9;
+}
+
+@media (max-width: 768px) {
+    .sawyan-global-controls {
+        gap: 4px !important;
+        flex-wrap: nowrap !important;
+    }
+    .sawyan-lang-switcher {
+        padding: 2px 4px !important;
+        gap: 2px !important;
+    }
+    .sawyan-lang-switcher button {
+        padding: 3px 5px !important;
+        font-size: 0.7rem !important;
+    }
+    .sawyan-ctrl-icon-btn {
+        width: 30px !important;
+        height: 30px !important;
+        padding: 0 !important;
+        font-size: 0.78rem !important;
+    }
+    .dashboard-header .sawyan-ctrl-icon-btn[data-ctrl="font"] {
+        display: none !important;
+    }
 }

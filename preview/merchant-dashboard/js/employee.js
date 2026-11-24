@@ -21,6 +21,9 @@
     let resolvedMember = null;
     let lookupDebounce = null;
     let empReceiptUploader = null;
+    let empPendingSearchQuery = '';
+    const empBusyTxIds = new Set();
+    let empQrScannerInstance = null;
 
     const PAY_TYPE_LABELS = {
         cash: '💵 نقدي (كاش)',
@@ -211,6 +214,30 @@
         }
     };
 
+    window.openEmpTempScreenLock = function () {
+        const ov = document.getElementById('empTempLockOverlay');
+        if (ov) ov.style.display = 'flex';
+    };
+
+    window.unlockEmpTempScreen = function () {
+        const ov = document.getElementById('empTempLockOverlay');
+        if (ov) ov.style.display = 'none';
+    };
+
+    window.endEmployeeShiftWithConfirm = async function () {
+        const ok = (window.SAWYAN?.UI?.confirm)
+            ? await window.SAWYAN.UI.confirm({
+                title: '🚪 تأكيد إنهاء الوردية والخروج',
+                message: 'هل تريد إنهاء ورديتك الآن وإيقاف إشعارات هذا الجهاز حتى دخولك القادم؟ (للقفل السريع المؤقت دون إنهاء الوردية استخدم «قفل مؤقت»).',
+                confirmText: 'نعم، أنهِ الوردية',
+                cancelText: 'تراجع',
+                tone: 'danger'
+            })
+            : true;
+        if (!ok) return;
+        await window.quickLockEmployeeSession();
+    };
+
     window.quickLockEmployeeSession = async function () {
         if (pollTimer) clearInterval(pollTimer);
         const storeCode = empState?.merchant_code || '';
@@ -286,8 +313,33 @@
             badge.style.display = list.length > 0 ? 'inline-block' : 'none';
         }
 
-        if (list.length === 0) {
+        if (!document.getElementById('empPendingSearchBar')) {
             panel.innerHTML = `
+                <div id="empPendingSearchBar" style="margin-bottom:12px;">
+                    <input type="search" id="empPendingSearchInput" class="emp-input" style="padding:9px 12px;font-size:0.88rem;" placeholder="🔍 ابحث برقم الفاتورة (SW-XXXX) أو اسم العميل أو المبلغ..." value="${esc(empPendingSearchQuery)}">
+                </div>
+                <div id="empPendingListSlot"></div>
+            `;
+            document.getElementById('empPendingSearchInput')?.addEventListener('input', (e) => {
+                empPendingSearchQuery = String(e.target.value || '').trim().toLowerCase();
+                renderPendingCardsOnly();
+            });
+        }
+        renderPendingCardsOnly();
+    }
+
+    function renderPendingCardsOnly() {
+        const slot = document.getElementById('empPendingListSlot');
+        if (!slot) return;
+        const rawList = empBundle?.pending_transactions || [];
+        const info = empBundle?.employee || empState || {};
+        const canReject = info.can_reject_pending_manually !== false;
+        const list = !empPendingSearchQuery ? rawList : rawList.filter(tx =>
+            `${tx.sw_short_code || ''} ${tx.member_masked_name || ''} ${tx.total_amount || ''}`.toLowerCase().includes(empPendingSearchQuery)
+        );
+
+        if (rawList.length === 0) {
+            slot.innerHTML = `
                 <div class="emp-empty">
                     <div style="font-size:2.6rem;margin-bottom:8px;">✅</div>
                     <div style="font-weight:900;font-size:1.02rem;color:#0f172a;">لا توجد طلبات توثيق معلّقة لفرعك حالياً</div>
@@ -297,10 +349,15 @@
             `;
             return;
         }
+        if (list.length === 0) {
+            slot.innerHTML = '<div class="emp-empty">🔍 لا توجد فواتير معلّقة مطابقة للبحث.</div>';
+            return;
+        }
 
-        panel.innerHTML = list.map(tx => {
+        slot.innerHTML = list.map(tx => {
             const payLbl = PAY_TYPE_LABELS[tx.payment_type] || tx.payment_type;
             const hasThumb = tx.receipt_media_url && window.SAWYAN?.ImageUpload?.renderThumbHtml;
+            const busy = empBusyTxIds.has(tx.id);
             return `
                 <div class="emp-card">
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
@@ -326,9 +383,9 @@
                     ${hasThumb ? `<div style="margin-bottom:12px;">${window.SAWYAN.ImageUpload.renderThumbHtml(tx.receipt_media_url, '🧾 إيصال ' + esc(tx.sw_short_code))}</div>` : ''}
 
                     <div class="emp-actions-row">
-                        <button type="button" class="emp-btn-approve" onclick="empDecideTx('${esc(tx.id)}', 'approve', ${Number(tx.total_amount || 0)})">✅ اعتماد التوثيق</button>
+                        <button type="button" class="emp-btn-approve" ${busy ? 'disabled' : ''} onclick="empDecideTx('${esc(tx.id)}', 'approve', ${Number(tx.total_amount || 0)})">${busy ? '⏳ جاري التنفيذ...' : '✅ اعتماد التوثيق'}</button>
                         ${canReject
-                            ? `<button type="button" class="emp-btn-reject" onclick="empDecideTx('${esc(tx.id)}', 'reject', ${Number(tx.total_amount || 0)})">❌ رفض</button>`
+                            ? `<button type="button" class="emp-btn-reject" ${busy ? 'disabled' : ''} onclick="empDecideTx('${esc(tx.id)}', 'reject', ${Number(tx.total_amount || 0)})">❌ رفض</button>`
                             : `<span style="background:#fff7ed;color:#9a3412;border:1px solid #fdba74;padding:8px 10px;border-radius:8px;font-size:0.75rem;font-weight:800;">🔒 الرفض اليدوي موقوف</span>`}
                     </div>
                 </div>
@@ -337,6 +394,7 @@
     }
 
     window.empDecideTx = async function (txId, decision, amount) {
+        if (empBusyTxIds.has(txId)) return;
         let reason = null;
         if (decision === 'reject') {
             reason = await window.SAWYAN.UI.prompt({
@@ -361,6 +419,8 @@
             reconfirmPin = normalizeDigits(p);
         }
 
+        empBusyTxIds.add(txId);
+        renderPendingCardsOnly();
         try {
             const res = await window.SAWYAN.API.employeeDecidePendingTx({
                 employeeId: empState.id,
@@ -409,6 +469,52 @@
                 notify(humanErr(err), 'error');
                 await refreshEmployeeBundle(true);
             }
+        } finally {
+            empBusyTxIds.delete(txId);
+            renderPendingCardsOnly();
+        }
+    };
+
+    window.openEmpCameraQrScanner = async function () {
+        const modal = document.getElementById('empQrScannerModal');
+        const statusEl = document.getElementById('empQrReaderStatus');
+        if (!modal) return;
+        modal.style.display = 'flex';
+        if (typeof Html5Qrcode === 'undefined') {
+            if (statusEl) statusEl.textContent = '⚠️ مكتبة الكاميرا غير متاحة — أدخل كود العضو يدوياً.';
+            return;
+        }
+        try {
+            if (empQrScannerInstance) {
+                try { await empQrScannerInstance.stop(); } catch (_e) {}
+            }
+            empQrScannerInstance = new Html5Qrcode('empQrReaderHost');
+            await empQrScannerInstance.start(
+                { facingMode: 'environment' },
+                { fps: 10, qrbox: { width: 220, height: 220 } },
+                (decodedText) => {
+                    closeEmpCameraQrScanner();
+                    const inp = document.getElementById('empCreateMemberInput');
+                    if (inp) {
+                        inp.value = String(decodedText || '').trim();
+                        inp.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                    notify('📷 تم مسح كود العضو بنجاح!', 'success');
+                },
+                () => {}
+            );
+        } catch (_err) {
+            if (statusEl) statusEl.textContent = '⚠️ تعذر فتح الكاميرا — تأكد من منح صلاحية الكاميرا أو أدخل كود العضو يدوياً.';
+        }
+    };
+
+    window.closeEmpCameraQrScanner = async function () {
+        const modal = document.getElementById('empQrScannerModal');
+        if (modal) modal.style.display = 'none';
+        if (empQrScannerInstance) {
+            try { await empQrScannerInstance.stop(); } catch (_e) {}
+            try { empQrScannerInstance.clear(); } catch (_e) {}
+            empQrScannerInstance = null;
         }
     };
 
@@ -428,9 +534,12 @@
 
                 <form id="empCreateTxForm">
                     <div class="emp-form-group">
-                        <label>👤 كود العضو أو رقم هاتفه (أو نص QR) *</label>
-                        <input type="text" id="empCreateMemberInput" required class="emp-input" placeholder="مثال: 1001 أو رقم الهاتف">
-                        <div id="empMemberLookupStatus" style="margin-top:6px;font-size:0.8rem;font-weight:700;color:#64748b;">أدخل كود العضو للتحقق من هويته المقنّعة.</div>
+                        <label>👤 كود العضو أو رقم هاتفه (أو امسح QR) *</label>
+                        <div style="display:flex;gap:8px;">
+                            <input type="text" id="empCreateMemberInput" required class="emp-input" style="flex:1;" placeholder="مثال: 1001 أو رقم الهاتف">
+                            <button type="button" onclick="openEmpCameraQrScanner()" style="border:1.5px solid #059669;background:#ecfdf5;color:#065f46;border-radius:10px;padding:0 12px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:0.84rem;cursor:pointer;white-space:nowrap;">📷 مسح QR</button>
+                        </div>
+                        <div id="empMemberLookupStatus" style="margin-top:6px;font-size:0.8rem;font-weight:700;color:#64748b;">أدخل كود العضو أو امسح بطاقته للتحقق من هويته المقنّعة.</div>
                     </div>
 
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:10px;">
@@ -446,7 +555,11 @@
                                 <option value="instant_transfer">⚡ تحويل لحظي (إنستاباي/سريع)</option>
                                 <option value="digital_wallet">📱 محفظة رقمية</option>
                                 <option value="iban_swift_sepa">🏦 تحويل بنكي</option>
+                                <option value="payment_gateway">🌐 بوابة دفع إلكترونية</option>
+                                <option value="bnpl">📆 تقسيط (BNPL)</option>
+                                <option value="cheque">📝 شيك بنكي</option>
                                 <option value="cod">🚚 دفع عند الاستلام (دليفري)</option>
+                                <option value="marketplace_escrow">🛒 متجر إلكتروني</option>
                             </select>
                         </div>
                     </div>
@@ -589,8 +702,32 @@
         const panel = document.getElementById('empTodayPanel');
         if (!panel) return;
         const rows = empBundle?.today_transactions || [];
+        const info = empBundle?.employee || empState || {};
+        const curr = info.currency_code || (rows[0] && rows[0].currency_code) || 'EGP';
+        const completedRows = rows.filter(tx => tx.status === 'completed');
+        const completedSum = completedRows.reduce((acc, tx) => acc + Number(tx.total_amount || 0), 0);
+        const queuedCount = rows.filter(tx => tx.status === 'awaiting_merchant_topup').length;
+
+        const summaryBar = `
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-bottom:14px;">
+                <div style="background:#ecfdf5;border:1.5px solid #86efac;border-radius:12px;padding:12px;text-align:center;">
+                    <div style="font-size:0.74rem;font-weight:800;color:#065f46;">✅ عملياتك المعتمدة اليوم</div>
+                    <strong style="font-size:1.25rem;color:#047857;">${completedRows.length}</strong>
+                </div>
+                <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:12px;text-align:center;">
+                    <div style="font-size:0.74rem;font-weight:800;color:#1e40af;">💰 إجمالي فواتير ورديتك</div>
+                    <strong style="font-size:1.15rem;color:#1d4ed8;" dir="ltr">${fmtMoney(completedSum, curr)}</strong>
+                </div>
+                ${queuedCount > 0 ? `
+                <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:12px;padding:12px;text-align:center;">
+                    <div style="font-size:0.74rem;font-weight:800;color:#92400e;">⏸️ بانتظار الشحن</div>
+                    <strong style="font-size:1.25rem;color:#b45309;">${queuedCount}</strong>
+                </div>` : ''}
+            </div>
+        `;
+
         if (rows.length === 0) {
-            panel.innerHTML = `
+            panel.innerHTML = summaryBar + `
                 <div class="emp-empty">
                     <div style="font-size:2.4rem;margin-bottom:8px;">📋</div>
                     <div style="font-weight:900;color:#0f172a;">لا توجد عمليات مسجلة باسمك اليوم بعد</div>
@@ -598,7 +735,7 @@
             `;
             return;
         }
-        panel.innerHTML = rows.map(tx => {
+        panel.innerHTML = summaryBar + rows.map(tx => {
             const stMap = {
                 completed: { lbl: '✅ معتمدة', bg: '#dcfce7', col: '#166534' },
                 awaiting_merchant_topup: { lbl: '⏸️ بانتظار الشحن', bg: '#fef3c7', col: '#92400e' },

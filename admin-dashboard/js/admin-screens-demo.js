@@ -50,6 +50,7 @@
             disputes: [],
             supportTickets: [],
             withdrawals: [],
+            bankSlips: [],
             fraudQueue: [],
             reconDiffInjected: false,
             closeStep: 1,
@@ -299,15 +300,23 @@
         if (!m) return;
         m.hold = !m.hold; saveOps(); renderMembersTable(); opsMemberModal(id);
     };
+    function uiNotify(msg, type) {
+        if (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.toast === 'function') {
+            window.SAWYAN.UI.toast(msg, type || 'info');
+        } else if (typeof window.svAdminToast === 'function') {
+            window.svAdminToast(msg, type === 'error' || type === 'warning');
+        }
+    }
+
     window.opsMemberAdjust = function (id) {
         var amt = parseFloat((document.getElementById('adjAmt') || {}).value || '0');
         var why = ((document.getElementById('adjWhy') || {}).value || '').trim();
-        if (!amt || why.length < 3) { alert('أدخل مبلغ التسوية وسبباً واضحاً (3 أحرف على الأقل).'); return; }
+        if (!amt || why.length < 3) { uiNotify('أدخل مبلغ التسوية وسبباً واضحاً (3 أحرف على الأقل).', 'warning'); return; }
         var m = OPS.members.filter(function (x) { return x.id === id; })[0];
         if (!m) return;
         m.earnedUsd = Number((m.earnedUsd + amt).toFixed(2));
         saveOps();
-        alert('✅ سُجل قيد تسوية عكسي بمبلغ ' + amt + '$ مع ربطه بسجل التدقيق (السبب: ' + why + ').');
+        uiNotify('✅ سُجل قيد تسوية عكسي بمبلغ ' + amt + '$ مع ربطه بسجل التدقيق (السبب: ' + why + ').', 'success');
         opsMemberModal(id);
     };
     window.exportMembers = function () {
@@ -379,28 +388,32 @@
 
         var box = document.getElementById('merBankSlipsBox');
         if (box) {
-            var pendingSlips = OPS.bankSlips.filter(function (s) { return s.status === 'pending'; }).length;
+            var slips = Array.isArray(OPS.bankSlips) ? OPS.bankSlips : [];
+            var pendingSlips = slips.filter(function (s) { return s.status === 'pending'; }).length;
             box.innerHTML =
                 '<div style="background:white;border:2px solid #3b82f6;border-radius:14px;padding:16px;">' +
                     '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">' +
                         '<div><h3 style="margin:0;color:#1e3a8a;font-size:1.02rem;">🏦 طابور مطابقة إشعارات التحويل البنكي لشحن التجار (P1-11)</h3><div style="font-size:0.76rem;color:#64748b;">لا يُضاف الرصيد تلقائياً عند رفع الإيصال حتى يطابقه المالي بالبنك</div></div>' +
                         badgeProp('بانتظار المطابقة: ' + pendingSlips) +
                     '</div>' +
-                    OPS.bankSlips.map(function (s) {
-                        var done = s.status !== 'pending';
-                        return '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding:10px 12px;border:1px solid ' + (done ? '#d1fae5' : '#bfdbfe') + ';background:' + (done ? '#f0fdf4' : '#f8fafc') + ';border-radius:10px;margin-bottom:8px;">' +
-                            '<div><b>' + esc(s.merchantName) + '</b> • مبلغ: <b style="color:#059669;">' + fmt(s.amount) + ' ج.م</b><div style="font-size:0.76rem;color:#475569;">المرجع: <code>' + esc(s.ref) + '</code> • الوسيلة: ' + esc(s.method) + ' • ' + esc(s.at) + '</div></div>' +
-                            (s.status === 'pending'
-                                ? '<div style="display:flex;gap:6px;"><button class="btn-sm btn-primary" onclick="opsBankSlip(\'' + s.id + '\',\'approved\')">✅ مطابقة واعتماد الشحن</button><button class="btn-sm" style="background:#fee2e2;color:#dc2626;" onclick="opsBankSlip(\'' + s.id + '\',\'rejected\')">❌ رفض</button></div>'
-                                : '<span class="badge ' + (s.status === 'approved' ? 'badge-success' : 'badge-danger') + '">' + (s.status === 'approved' ? '✅ تم التحصيل وإضافة الرصيد' : '❌ مرفوض') + '</span>') +
-                        '</div>';
-                    }).join('') +
+                    (slips.length === 0
+                        ? '<div style="padding:14px;text-align:center;color:#64748b;font-size:0.84rem;">لا توجد إشعارات تحويل بنكي معلقة حالياً.</div>'
+                        : slips.map(function (s) {
+                            var done = s.status !== 'pending';
+                            return '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding:10px 12px;border:1px solid ' + (done ? '#d1fae5' : '#bfdbfe') + ';background:' + (done ? '#f0fdf4' : '#f8fafc') + ';border-radius:10px;margin-bottom:8px;">' +
+                                '<div><b>' + esc(s.merchantName) + '</b> • مبلغ: <b style="color:#059669;">' + fmt(s.amount) + ' ج.م</b><div style="font-size:0.76rem;color:#475569;">المرجع: <code>' + esc(s.ref) + '</code> • الوسيلة: ' + esc(s.method) + ' • ' + esc(s.at) + '</div></div>' +
+                                (s.status === 'pending'
+                                    ? '<div style="display:flex;gap:6px;"><button class="btn-sm btn-primary" onclick="opsBankSlip(\'' + s.id + '\',\'approved\')">✅ مطابقة واعتماد الشحن</button><button class="btn-sm" style="background:#fee2e2;color:#dc2626;" onclick="opsBankSlip(\'' + s.id + '\',\'rejected\')">❌ رفض</button></div>'
+                                    : '<span class="badge ' + (s.status === 'approved' ? 'badge-success' : 'badge-danger') + '">' + (s.status === 'approved' ? '✅ تم التحصيل وإضافة الرصيد' : '❌ مرفوض') + '</span>') +
+                            '</div>';
+                        }).join('')) +
                 '</div>';
         }
     }
     window.loadMerchants = async function () { renderMerchantsPage(); };
     window.opsBankSlip = function (slipId, act) {
-        var s = OPS.bankSlips.filter(function (x) { return x.id === slipId; })[0];
+        var slips = Array.isArray(OPS.bankSlips) ? OPS.bankSlips : [];
+        var s = slips.filter(function (x) { return x.id === slipId; })[0];
         if (!s || s.status !== 'pending') return;
         s.status = act;
         if (act === 'approved') {
@@ -1073,13 +1086,19 @@
 
     window.govTab = function (t) { GOV_TAB = t; renderGovernanceOps(); };
     window.govAdvanceClose = function () {
-        if (OPS.reconDiffInjected) { alert('الإقفال محظور لوجود فرق محاسبي!'); return; }
+        if (OPS.reconDiffInjected) { uiNotify('الإقفال محظور لوجود فرق محاسبي!', 'error'); return; }
         if (OPS.closeStep < 6) { OPS.closeStep++; saveOps(); renderGovernanceOps(); }
-        else { alert('✅ اكتملت مراحل الإقفال الشهري الست وصرف يوم 15 والقفل النهائي (Hard Lock).'); }
+        else { uiNotify('✅ اكتملت مراحل الإقفال الشهري الست وصرف يوم 15 والقفل النهائي (Hard Lock).', 'success'); }
     };
     window.govResetClose = function () { OPS.closeStep = 1; OPS.breakGlassOpenUntil = null; OPS.breakGlassReason = ''; saveOps(); renderGovernanceOps(); };
-    window.govBreakGlassReopen = function () {
-        var why = prompt('سبب الفتح الاستثنائي لقفل الشهر (إلزامي للتدقيق):', 'تصحيح فاتورة مستعجل لمرتجع تاجر');
+    window.govBreakGlassReopen = async function () {
+        var why = window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.prompt === 'function'
+            ? await window.SAWYAN.UI.prompt({
+                title: '🔓 فتح استثنائي لقفل الشهر',
+                message: 'سبب الفتح الاستثنائي لقفل الشهر (إلزامي للتدقيق):',
+                defaultValue: 'تصحيح فاتورة مستعجل لمرتجع تاجر'
+            })
+            : null;
         if (!why || why.trim().length < 3) return;
         OPS.closeStep = Math.max(1, OPS.closeStep - 1);
         OPS.breakGlassOpenUntil = '4 ساعات من ' + nowStr();
@@ -1111,7 +1130,7 @@
         OPS.fxRates[idx].curRate = OPS.fxRates[idx].nextDraft;
         OPS.fxRates[idx].locked = true;
         saveOps(); renderGovernanceOps();
-        alert('✅ تم اعتماد السعر الجديد وقفل إصدار الصرف للدولة: ' + OPS.fxRates[idx].country);
+        uiNotify('✅ تم اعتماد السعر الجديد وقفل إصدار الصرف للدولة: ' + OPS.fxRates[idx].country, 'success');
     };
 
     /* ---------- ربط الملاحة الإضافية مع لوحة الإدارة دون كسر السكربتات السابقة ---------- */
