@@ -2974,36 +2974,14 @@ html:not([data-theme="dark"]) body {
     .user-type-cards.three-cards { grid-template-columns: 1fr !important; }
 }
 
-/* 8. Verifier & 4 Anti-Pyramid Legal Pillars */
-.verifier-bar-card {
-    background: linear-gradient(135deg, #eff6ff 0%, #ecfdf5 100%);
-    border: 1.5px solid #93c5fd;
-    border-radius: 18px;
-    padding: 26px;
-    margin-bottom: 28px;
-    text-align: center;
-}
-.verifier-input-row {
-    display: flex;
-    gap: 10px;
-    max-width: 560px;
-    margin: 14px auto 8px;
-}
-.verifier-input-row input {
-    flex: 1;
-    padding: 11px 14px;
-    border-radius: 10px;
-    border: 1.5px solid #cbd5e1;
-    font-size: 1rem;
-    color: #0f172a;
-}
+/* 8. 4 Anti-Pyramid Legal Pillars */
 .pillars-grid-4 {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 16px;
 }
 @media (max-width: 992px) { .pillars-grid-4 { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 560px) { .pillars-grid-4 { grid-template-columns: 1fr; } .verifier-input-row { flex-direction: column; } }
+@media (max-width: 560px) { .pillars-grid-4 { grid-template-columns: 1fr; } }
 .legal-pillar-card {
     background: #ffffff;
     border: 1px solid #cbd5e1;
@@ -3495,9 +3473,8 @@ html:not([data-theme="dark"]) body {
         overflow: hidden;
         text-overflow: ellipsis;
     }
-    .top-trust-chips a {
-        font-size: 0.75rem;
-        white-space: nowrap;
+    .top-trust-chips {
+        display: none !important;
     }
     .portal-hero { padding: 20px 0 32px !important; }
     .portal-hero .hero-content {

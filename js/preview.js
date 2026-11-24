@@ -494,8 +494,6 @@
         if (byId('bigStatTransactions')) byId('bigStatTransactions').textContent = isProd ? '0' : '5';
         if (byId('heroStatReturns')) byId('heroStatReturns').textContent = isProd ? '0.00' : 'مربوط بالدفتر';
         if (byId('bigStatReturns')) byId('bigStatReturns').textContent = isProd ? '0.00' : 'مربوط بالدفتر';
-        const verifierChips = byId('homeVerifierDemoChips');
-        if (verifierChips) verifierChips.style.display = isProd ? 'none' : 'inline-flex';
         if (byId('heroMetricMerchantsLabel')) {
             byId('heroMetricMerchantsLabel').textContent = cfg.code === 'ALL' ? 'تاجر معتمد' : `متاجر مميزة (${cfg.name})`;
         }
@@ -742,97 +740,6 @@
         });
     }
 
-    function initHomeVerifier() {
-        const form = byId('homeVerifierForm');
-        const input = byId('homeVerifierInput');
-        const resultBox = byId('homeVerifierResult');
-        if (!form || !input || !resultBox) return;
-
-        async function runVerify(codeRaw) {
-            const code = String(codeRaw || '').trim().toUpperCase();
-            if (!code) return;
-            const pageUrl = `public/verify.html?code=${encodeURIComponent(code)}`;
-            const isDemo = !(window.SAWYAN && window.SAWYAN.API) || window.SAWYAN.API.isDemoMode();
-
-            // محاولة التحقق المباشر عبر PostgreSQL V3.0 (D26 Masked — بلا هواتف)
-            let record = null;
-            if (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.supabase) {
-                try {
-                    const liveRes = await window.SAWYAN.API.publicVerifyTransaction(code);
-                    if (liveRes && liveRes.found) {
-                        const statusMap = {
-                            completed: '✅ فاتورة موثقة ومحتسبة في صندوق الهدف',
-                            pending: '⏳ قيد المراجعة / انتظار تأكيد التاجر',
-                            awaiting_merchant_topup: '⏸️ بانتظار شحن رصيد التاجر (FIFO)',
-                            reversed: '↩️ فاتورة مسترجعة / ملغاة'
-                        };
-                        record = {
-                            code: liveRes.short_code,
-                            statusText: statusMap[liveRes.status] || liveRes.status,
-                            merchantName: `${liveRes.merchant_name}${liveRes.branch_name ? ' — ' + liveRes.branch_name : ''}`,
-                            country: liveRes.currency_code || '—',
-                            memberMasked: liveRes.masked_member_name,
-                            amountLocal: `${Number(liveRes.total_amount).toFixed(2)} ${liveRes.currency_code || ''}`,
-                            planRatePct: 'موثقة بالدفتر الحي',
-                            targetAddedLocal: liveRes.payment_type || 'POS',
-                            recordedAt: new Date(liveRes.created_at).toLocaleString('ar-EG')
-                        };
-                    }
-                } catch (err) {
-                    console.warn('Live verifier fallback check:', err.message);
-                }
-            }
-
-            if (!record && isDemo) {
-                const db = window.demoVerifyTransactions || {};
-                record = db[code] || null;
-            }
-
-            if (record) {
-                resultBox.style.display = 'block';
-                resultBox.innerHTML = `
-                    <div style="background:#ffffff; border:1.5px solid #10b981; border-radius:14px; padding:16px; text-align:right; color:#0f172a; box-shadow:0 6px 18px rgba(16,185,129,0.12);">
-                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
-                            <strong style="color:#047857;">${escapeHtml(record.statusText)}</strong>
-                            <code style="background:#f1f5f9; padding:3px 8px; border-radius:6px; font-weight:800;">${escapeHtml(record.code)}</code>
-                        </div>
-                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap:8px; font-size:0.88rem;">
-                            <div><strong>المتجر:</strong> ${escapeHtml(record.merchantName)}</div>
-                            <div><strong>النطاق / العملة:</strong> ${escapeHtml(record.country)}</div>
-                            <div><strong>العضو (مقنّع D26):</strong> ${escapeHtml(record.memberMasked)}</div>
-                            <div><strong>قيمة الفاتورة:</strong> ${escapeHtml(record.amountLocal)}</div>
-                            <div><strong>الحالة والتوثيق:</strong> ${escapeHtml(record.planRatePct)} (${escapeHtml(record.targetAddedLocal)})</div>
-                            <div><strong>التوقيت:</strong> ${escapeHtml(record.recordedAt)}</div>
-                        </div>
-                        <div style="margin-top:12px; text-align:left;">
-                            <a href="${pageUrl}" class="btn btn-primary btn-sm">فتح شهادة التحقق الكاملة ←</a>
-                        </div>
-                    </div>
-                `;
-            } else {
-                resultBox.style.display = 'block';
-                resultBox.innerHTML = `
-                    <div style="background:#fff7ed; border:1.5px solid #f59e0b; border-radius:14px; padding:14px; color:#7c2d12; font-size:0.9rem;">
-                        لم يتم العثور على الكود <strong>${escapeHtml(code)}</strong> في السجل الحالي. يمكنك فحصه مباشرة عبر <a href="${pageUrl}" style="font-weight:800; color:#b45309; text-decoration:underline;">بوابة التحقق الرسمية ↗</a> أو تجربة <code>SW-1001</code> في البيئة الموازية.
-                    </div>
-                `;
-            }
-        }
-
-        form.addEventListener('submit', function (e) {
-            e.preventDefault();
-            runVerify(input.value);
-        });
-
-        document.querySelectorAll('.sample-verify-code').forEach(function (chip) {
-            chip.addEventListener('click', function () {
-                const c = chip.getAttribute('data-code') || 'SW-1001';
-                input.value = c;
-                runVerify(c);
-            });
-        });
-    }
-
     function initPromoPlayer() {
         const card = byId('promoTheatreCard');
         if (!card) return;
@@ -1034,7 +941,6 @@
         initExplorerControls();
         initHowItWorksTabs();
         initPromoPlayer();
-        initHomeVerifier();
 
         const detected = window.SAWYAN_GEO
             ? window.SAWYAN_GEO.detectInitial()

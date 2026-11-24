@@ -25,3 +25,9 @@
 ## 3. Terminology & Domain Guardrails
 - Never use `كاشباك` / `كاش باك`, `SAWYAN BANK`, `التسويق الشبكي`, `-19.75$`, or `Rolling Reserve`. Use `عائدات الاستهلاك الاستثماري` / `صندوق الهدف الشهري` and `SAWYAN`.
 - Legacy 2025 specs and V1/V2 prototypes live solely in `legacy_archive/` and must never be treated as active specifications or linked in production UI.
+
+## 4. Product & Friction Judgment (Anti-Bloat Discipline)
+1. **Who / When / If-Deleted (`المستخدم / اللحظة / أثر الحذف`):** Every new or modified UI screen, section, or CTA added to `docs/` must state who uses it, in which real-world moment, and what breaks if removed; elements lacking a clear real user + moment are immediate removal candidates.
+2. **Challenge-Before-Obey (`التحدي قبل الطاعة`):** Never blindly build or preserve UI clutter solely because an older doc mentioned it — flag bloat, dead weight, or duplication to the founder with a Cut/Merge recommendation first.
+3. **Out-of-Scope Delivery Observations (`لاحظته خارج نطاق المهمة`):** Every completed implementation/fix report must include at least 3 concrete product/UX observations noticed outside the immediate task (cut, merge, friction fix, or leapfrog idea).
+4. **3-List Decision Card on Broad Requests:** When asked to «طوّر / افعل اللازم / مسح شامل», output a concise 3-list Decision Card (`✂️ حذف ودمج` / `🔧 تقليل الاحتكاك` / `🚀 أفكار متقدمة`) for quick founder sign-off before bulk edits. Use `.agent/workflows/product-ux-sweep.md` scoped to ONE portal per session.

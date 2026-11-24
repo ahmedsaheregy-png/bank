@@ -685,53 +685,6 @@ const globalDemoMerchants = [
 const featuredSaudiMerchants = globalDemoMerchants.filter(m => m.country === 'SA' && m.isFeatured);
 const demoMerchants = globalDemoMerchants;
 
-// سجل فواتير موثقة للتجربة في صفحة التحقق العلنية verify.html (مع تقنيع بيانات العضو وفق D26)
-const demoVerifyTransactions = {
-    'SW-1001': {
-        code: 'SW-1001',
-        status: 'completed',
-        statusText: '✅ مكتملة ومعتمدة في صندوق الهدف',
-        merchantName: 'سوبر ماركت النخبة المركزي',
-        merchantCode: 'EG-MKT-101',
-        country: 'مصر — القاهرة',
-        memberMasked: 'أحمد م. — #1042',
-        amountLocal: '400.00 ج.م',
-        planRatePct: '7.5%',
-        targetAddedLocal: '+30.00 ج.م',
-        recordedAt: '2026-11-16 20:14:22 UTC',
-        paymentMethod: 'نقد (Cash) + كود SW-8821 على الإيصال'
-    },
-    'T178001': {
-        code: 'T178001',
-        status: 'completed',
-        statusText: '✅ مكتملة ومعتمدة في صندوق الهدف',
-        merchantName: 'بوتيك الأناقة',
-        merchantCode: 'SAWYAN-F001',
-        country: 'السعودية — الرياض',
-        memberMasked: 'سارة ع. — #1180',
-        amountLocal: '600.00 ر.س',
-        planRatePct: '15%',
-        targetAddedLocal: '+90.00 ر.س',
-        recordedAt: '2026-11-16 18:05:10 UTC',
-        paymentMethod: 'بطاقة بنكية (POS RRN Locked)'
-    },
-    'SW-4910': {
-        code: 'SW-4910',
-        status: 'pending',
-        statusText: '⏳ معلقة (بانتظار موافقة التاجر خلال 48 ساعة — Soft Hold)',
-        merchantName: 'مركت البسفور العائلي',
-        merchantCode: 'TR-MKT-201',
-        country: 'تركيا — إسطنبول',
-        memberMasked: 'خالد ن. — #2031',
-        amountLocal: '1,200.00 ₺',
-        planRatePct: '7.5%',
-        targetAddedLocal: '+90.00 ₺ (تقديري عند القبول)',
-        recordedAt: '2026-11-16 21:40:05 UTC',
-        paymentMethod: 'دليفري — مرفق صورة الفاتورة'
-    }
-};
-window.demoVerifyTransactions = demoVerifyTransactions;
-
 // نظام التقييمات والملاحظات الكتابية للأعضاء على التجار
 const merchantReviews = {
     'EG01': [

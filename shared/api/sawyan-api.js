@@ -66,15 +66,6 @@
         },
 
         /**
-         * التحقق العلني الآمن من كود الفاتورة بدون كشف هواتف أو نسب تقسيم (verify.html / D26)
-         */
-        async publicVerifyTransaction(shortCode) {
-            return await callRpc('public_verify_transaction', {
-                p_short_code: String(shortCode || '').trim()
-            });
-        },
-
-        /**
          * إرسال معاملة نقطة بيع / دفع بـ Soft Hold أو PIN مع مفتاح عدم تكرار إلزامي (Point 14 / D25)
          */
         async submitPosTransaction({

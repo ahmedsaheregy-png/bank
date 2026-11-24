@@ -33,7 +33,8 @@
       ],
       "forbidden_href_substrings": [
         "member-showcase.html",
-        "member-demo"
+        "member-demo",
+        "verify.html"
       ]
     },
     "member": {

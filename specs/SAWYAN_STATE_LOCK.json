@@ -1,7 +1,7 @@
 {
   "state_version": "3.0.0",
   "active_milestone": "v3_full_zero_defect_sealed",
-  "manifest_sha256": "19f2715b779d76332dc7452519f4879b96d5bf352cfb73452b6a3f5f3fc38c70",
+  "manifest_sha256": "19055938777515870ec12b986f031a0f8f7ab62163b5b76a2a7f6c7da8e8d056",
   "strict_parity_enabled": true,
   "phase_a_docs_verified": true,
   "phase_0_locks_installed": true,
@@ -10,6 +10,6 @@
   "frozen_items": [
     "OFFLINE_TOTP_MEMBER_QR_60S"
   ],
-  "last_full_audit_verified_at": "2026-11-22T00:10:00Z",
-  "notes": "strict_parity_enabled becomes true upon completing Phase 1 & Phase 2 and binds Stop Hook + Zero-Defect Gate to full D29/D30 visual & spec parity. Stage 10 (Merchant 3-Axis Lifecycle, 3-Param D4 Credit Cycle & Grace Window, Live Risk Settings, Self-Service Pause & Member Complaints), Stage 11 (Launch Hardening Auth 5-Strike Lockout, Masked Sponsor Lookup, SAWYAN.UI Feedback, Country-Aware Merchant Topup + Receipt Visibility, Member Remote Receipt Default + Local QR Card Export, Admin sessionStorage Isolation, PWA/404/SEO Assets, ?v=20261121_launch & Gate #11), and Stage 12 (Mobile-First Homepage Redesign, Canonical Copy Preserved, 4 Optimized Bespoke Visuals, Interactive 45s Promo Player, 2x2 Value Strip, Smart Geo City Fallback & ?v=20261121_launch_ui2) sealed 2026-11-21."
+  "last_full_audit_verified_at": "2026-11-24T03:45:00Z",
+  "notes": "strict_parity_enabled becomes true upon completing Phase 1 & Phase 2 and binds Stop Hook + Zero-Defect Gate to full D29/D30 visual & spec parity. Stage 10 (Merchant 3-Axis Lifecycle, 3-Param D4 Credit Cycle & Grace Window, Live Risk Settings, Self-Service Pause & Member Complaints), Stage 11 (Launch Hardening Auth 5-Strike Lockout, Masked Sponsor Lookup, SAWYAN.UI Feedback, Country-Aware Merchant Topup + Receipt Visibility, Member Remote Receipt Default + Local QR Card Export, Admin sessionStorage Isolation, PWA/404/SEO Assets, ?v=20261121_launch & Gate #11), Stage 12 (Mobile-First Homepage Redesign, Canonical Copy Preserved, 4 Optimized Bespoke Visuals, Interactive 45s Promo Player, 2x2 Value Strip, Smart Geo City Fallback & ?v=20261121_launch_ui2), and Stage 16 (Retired public verify.html & homepage verifier clutter, cleaned doc drift, and institutionalized Product & Friction Judgment + single-portal UX sweep workflow) sealed 2026-11-23."
 }

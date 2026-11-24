@@ -246,10 +246,10 @@
         }
         if (id === 'D26') {
             return '<div class="lab-sim-box" id="sim_D26">' +
-                '<div style="font-weight:900;color:#312e81;margin-bottom:8px;">🌳 معاينة بطاقة الشجرة الجديدة (الفريق الرديف الموحد + ظهور الهاتف للـ 10 فوقه حرفياً + حماية verify.html)</div>' +
+                '<div style="font-weight:900;color:#312e81;margin-bottom:8px;">🌳 معاينة بطاقة الشجرة الجديدة (الفريق الرديف الموحد + ظهور الهاتف للـ 10 فوقه حرفياً + تقنيع الكاشير وإلغاء verify.html العامة)</div>' +
                 '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
                     '<label>العدسة المختارة: <select id="d26_lens" style="padding:4px;border:1px solid #cbd5e1;border-radius:6px;" onchange="SAWYAN_SIM.calcD26()"><option value="EG">🇪🇬 مصر (EG — مفعلة)</option><option value="SA">🇸🇦 السعودية (SA — غير نشطة بعد)</option></select></label>' +
-                    '<label>موقع المشاهد في الشجرة: <select id="d26_opt" style="padding:4px;border:1px solid #cbd5e1;border-radius:6px;" onchange="SAWYAN_SIM.calcD26()"><option value="yes">✅ ضمن الـ 10 أشخاص فوقه حرفياً (أو قائد 10 أجيال فوقه، بلا شرط تأهل)</option><option value="no">❌ زائر verify.html أو خارج نطاق الـ 10 فوقه حرفياً</option></select></label>' +
+                    '<label>موقع المشاهد في الشجرة: <select id="d26_opt" style="padding:4px;border:1px solid #cbd5e1;border-radius:6px;" onchange="SAWYAN_SIM.calcD26()"><option value="yes">✅ ضمن الـ 10 أشخاص فوقه حرفياً (أو قائد 10 أجيال فوقه، بلا شرط تأهل)</option><option value="no">❌ مستخدم خارج نطاق الـ 10 فوقه حرفياً (أو استعلام كاشير مقنّع)</option></select></label>' +
                 '</div>' +
                 '<div class="lab-sim-out" id="simOut_D26"></div>' +
             '</div>';
@@ -485,7 +485,7 @@
             var opt = (document.getElementById('d26_opt') || {}).value || 'yes';
             var out = document.getElementById('simOut_D26'); if (!out) return;
             var badge = lens === 'EG' ? '🟢 مؤهل (مصر)' : '⬛ دولة غير نشطة بعد (عدسة سوداء مطفية)';
-            var phone = opt === 'yes' ? '+20 101 234 5678 (يظهر فقط لـ 10 فوقه حرفياً بالشجرة بلا شرط تأهل — قرار المؤسس D26)' : 'أحمد م. — #1042 (verify.html مقنّع + Rate Limit بلا رقم هاتف)';
+            var phone = opt === 'yes' ? '+20 101 234 5678 (يظهر فقط لـ 10 فوقه حرفياً بالشجرة بلا شرط تأهل — قرار المؤسس D26)' : 'أحمد م. — #1042 (تقنيع الاسم + Rate Limit بلا رقم هاتف؛ الفواتير داخل لوحة العضو الموثّقة فقط)';
             out.innerHTML =
                 '<div><b>العدادات الموحدة للستوبر (S495 = M1197):</b> ① فريق العمولات: <b>11 مؤهلاً</b> | ② غير مؤهلين داخل النطاق: <b>4</b> | ③ الفريق الرديف (مؤهل+غير مؤهل مجمع): <b>38</b></div>' +
                 '<div><b>حالة العدسة:</b> ' + badge + ' • <b>الهوية/الهاتف الظاهر:</b> <code>' + phone + '</code></div>';

@@ -77,6 +77,11 @@ def run_static_gates(manifest, state_lock, full_mode):
             if os.path.exists(os.path.join(REPO_DIR, rel)):
                 failures.append(f"Duplicate V2 showcase file still in web root (D29): {rel}")
 
+        # Retired public verify.html must remain absent from active web roots
+        for rel in [os.path.join("public", "verify.html"), os.path.join("preview", "public", "verify.html")]:
+            if os.path.exists(os.path.join(REPO_DIR, rel)):
+                failures.append(f"Retired verify.html still present in active web root: {rel}")
+
         # Forbidden mock / outdated terminology static scan
         web_roots = [
             os.path.join(PREVIEW_DIR, d)
