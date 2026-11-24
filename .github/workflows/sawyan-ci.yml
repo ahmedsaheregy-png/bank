@@ -1,0 +1,36 @@
+name: SAWYAN V3.0 CI & Security Gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  static-security-and-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify Dual-Site 1:1 Mirror Parity (preview/ == /)
+        run: |
+          python3 database/sync_dual_site_mirror.py
+          git diff --exit-code
+
+      - name: Run Gate 11 Static Launch & Security Readiness
+        run: |
+          python3 -c "import sys; sys.path.insert(0, 'database'); import verify_production_readiness_gate as g; g.check_static_readiness()"
+
+      - name: Run Phase 0 & Phase 1 Regression Security Suite (Static + Hygiene)
+        run: |
+          python3 database/verify_phase1_regression_suite.py --static-only
+
+      - name: Verify Living Documentation Sync (when docs/ present)
+        run: |
+          python3 database/verify_doc_sync.py
