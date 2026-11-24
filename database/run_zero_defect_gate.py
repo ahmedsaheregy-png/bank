@@ -26,6 +26,9 @@ INTERNAL_ONLY_FUNCTIONS = {
     "verify_merchant_session",
     "verify_admin_session",
     "verify_cashier_session",
+    "enqueue_and_dispatch_push",
+    "trg_fn_notifications_dispatch_push",
+    "trg_fn_employee_revoke_push",
     "append_audit_log",
     "filter_academy_url_is_safe",
     "validate_attachment_data",
@@ -38,7 +41,7 @@ INTERNAL_ONLY_FUNCTIONS = {
 }
 
 MIRROR_DIRS = ["assets", "css", "js", "public", "shared", "member-dashboard", "merchant-dashboard", "admin-dashboard"]
-MIRROR_FILES = ["index.html", "auth-gateway.html", "manifest.json"]
+MIRROR_FILES = ["index.html", "auth-gateway.html", "manifest.json", "sw.js"]
 SKIP_NAMES = {".git", "__pycache__", ".DS_Store", "Thumbs.db", "test_modal.html", "test_submit_runner.html"}
 
 

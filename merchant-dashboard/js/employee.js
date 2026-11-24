@@ -150,31 +150,75 @@
         document.getElementById('empWorkspace').style.display = 'block';
     }
 
-    window.toggleEmployeeAlerts = async function () {
-        alertsEnabled = !alertsEnabled;
+    async function refreshEmployeePushButtonState() {
         const btn = document.getElementById('empAlertToggleBtn');
-        if (alertsEnabled) {
-            playChime();
-            if ('Notification' in window && Notification.permission === 'default') {
-                try { await Notification.requestPermission(); } catch (_e) {}
-            }
-            if (btn) {
-                btn.classList.add('active-sound');
-                btn.textContent = '🔊 التنبيهات الصوتية مفعّلة';
-            }
-            notify('تم تفعيل الجرس الصوتي وإشعارات المتصفح لطلبات التوثيق الواردة.', 'success');
+        const instBtn = document.getElementById('empInstallAppBtn');
+        if (instBtn && window.SAWYAN?.Push) {
+            instBtn.style.display = window.SAWYAN.Push.canInstallApp() ? 'inline-block' : 'none';
+        }
+        if (!btn || !window.SAWYAN?.Push) return;
+        const st = await window.SAWYAN.Push.getStatus();
+        if (st.subscribed) {
+            alertsEnabled = true;
+            btn.classList.add('active-sound');
+            btn.textContent = '🔊 إشعارات القفل مفعّلة';
         } else {
-            if (btn) {
-                btn.classList.remove('active-sound');
-                btn.textContent = '🔔 تفعيل الصوت والإشعارات';
-            }
-            notify('تم كتم التنبيهات الصوتية مؤقتاً.', 'info');
+            btn.classList.remove('active-sound');
+            btn.textContent = '🔔 تفعيل إشعارات شاشة القفل';
+        }
+    }
+
+    window.installEmployeePwaApp = async function () {
+        if (!window.SAWYAN?.Push) return;
+        const res = await window.SAWYAN.Push.promptInstallApp();
+        if (res && res.installed) {
+            notify('🎉 تم تثبيت تطبيق SAWYAN على الشاشة الرئيسية بنجاح!', 'success');
+        }
+        refreshEmployeePushButtonState();
+    };
+
+    window.toggleEmployeeAlerts = async function () {
+        const btn = document.getElementById('empAlertToggleBtn');
+        if (!window.SAWYAN?.Push || !empState?.id) {
+            alertsEnabled = !alertsEnabled;
+            if (alertsEnabled) playChime();
+            notify(alertsEnabled ? 'تم تفعيل الصوت داخل الصفحة.' : 'تم كتم الصوت.', 'info');
+            return;
+        }
+        const st = await window.SAWYAN.Push.getStatus();
+        if (st.subscribed) {
+            await window.SAWYAN.Push.disablePush({ actorType: 'employee', actorId: empState.id });
+            alertsEnabled = false;
+            await refreshEmployeePushButtonState();
+            notify('تم إيقاف إشعارات شاشة القفل لهذا الهاتف.', 'info');
+            return;
+        }
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ جاري التفعيل...'; }
+        try {
+            playChime();
+            await window.SAWYAN.Push.enablePush({
+                actorType: 'employee',
+                actorId: empState.id,
+                sendWelcomeTest: true
+            });
+            alertsEnabled = true;
+            notify('✅ تم تفعيل إشعارات شاشة القفل بالصوت! أرسلنا لك إشعاراً تجريبياً الآن.', 'success');
+        } catch (err) {
+            notify(humanErr(err), 'warning');
+        } finally {
+            if (btn) btn.disabled = false;
+            await refreshEmployeePushButtonState();
         }
     };
 
     window.quickLockEmployeeSession = async function () {
         if (pollTimer) clearInterval(pollTimer);
         const storeCode = empState?.merchant_code || '';
+        try {
+            if (empState?.id && window.SAWYAN?.Push) {
+                await window.SAWYAN.Push.disablePush({ actorType: 'employee', actorId: empState.id });
+            }
+        } catch (_e) {}
         try {
             if (empState?.id) {
                 await window.SAWYAN.API.employeeLockSession({ employeeId: empState.id });
@@ -680,6 +724,11 @@
         } else {
             showWorkspace();
             await refreshEmployeeBundle(false);
+            if (window.SAWYAN?.Push) {
+                window.SAWYAN.Push.syncIfAlreadyGranted({ actorType: 'employee', actorId: empState.id }).then(() => refreshEmployeePushButtonState());
+                refreshEmployeePushButtonState();
+                window.addEventListener('sawyan:pwa-install-ready', refreshEmployeePushButtonState);
+            }
         }
     }
 

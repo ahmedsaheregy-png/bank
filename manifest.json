@@ -1,21 +1,63 @@
 {
+  "id": "./",
   "name": "SAWYAN — الاستهلاك الاستثماري",
   "short_name": "SAWYAN",
-  "description": "منصة SAWYAN للاستهلاك الاستثماري والادخار التجاري الموثق للمشتركين والتجار.",
+  "description": "منصة SAWYAN للاستهلاك الاستثماري والتوثيق الموحّد للمشتريات للمشتركين والتجار وموظفي التوثيق.",
   "dir": "rtl",
   "lang": "ar",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait-primary",
   "theme_color": "#047857",
   "background_color": "#ffffff",
+  "prefer_related_applications": false,
+  "categories": ["shopping", "finance", "business"],
   "icons": [
+    {
+      "src": "shared/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "shared/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "shared/assets/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
     {
       "src": "shared/assets/sawyan-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "شاشة التوثيق (الموظف)",
+      "short_name": "توثيق الموظف",
+      "url": "./merchant-dashboard/login.html?tab=employee",
+      "icons": [{ "src": "shared/assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "لوحة التاجر",
+      "short_name": "التاجر",
+      "url": "./merchant-dashboard/login.html",
+      "icons": [{ "src": "shared/assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "لوحة العضو",
+      "short_name": "العضو",
+      "url": "./member-dashboard/login.html",
+      "icons": [{ "src": "shared/assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]
 }

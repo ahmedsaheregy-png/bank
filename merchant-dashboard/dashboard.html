@@ -9,6 +9,7 @@
         href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
         rel="stylesheet">
     <link rel="manifest" href="../manifest.json">
+    <link rel="apple-touch-icon" href="../shared/assets/icon-192.png">
     <link rel="icon" type="image/svg+xml" href="../shared/assets/sawyan-icon.svg">
     <link rel="stylesheet" href="../shared/css/variables.css?v=20261121_launch">
     <link rel="stylesheet" href="../shared/css/logo.css?v=20261121_launch">
@@ -110,6 +111,7 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                     <span id="posVaultStatusBadge" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;padding:4px 10px;border-radius:999px;font-size:0.78rem;font-weight:800;">🟢 متصل بالنظام</span>
+                    <button type="button" id="merchantOwnerPushBtn" onclick="toggleMerchantOwnerPush()" style="background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;padding:6px 11px;border-radius:8px;font-weight:800;font-size:0.78rem;cursor:pointer;font-family:'Tajawal';">🔔 إشعارات القفل</button>
                     <button type="button" onclick="showPage('kiosk')" style="background:#0f172a;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-weight:800;font-size:0.8rem;cursor:pointer;font-family:'Tajawal';">🧾 شاشة التوثيق</button>
                     <button type="button" onclick="openStoreKitModal()" style="background:#059669;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-weight:800;font-size:0.8rem;cursor:pointer;font-family:'Tajawal';">🖨️ ملصق المتجر (Store Kit)</button>
                 </div>
@@ -324,7 +326,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     <script src="../shared/config/supabase.js?v=20261121_launch"></script>
-    <script src="../shared/api/sawyan-api.js?v=20261121_launch_s14"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261121_launch_s15"></script>
+    <script src="../shared/js/push-manager.js?v=20261121_launch_s15"></script>
     <script src="../shared/data/countries.js?v=20261121_launch_geo"></script>
     <script src="../shared/components/smart-search.js?v=20261121_launch_geo"></script>
     <script src="../shared/js/registration-engine.js?v=20261121_launch_geo"></script>
@@ -334,7 +337,7 @@
     <script src="../shared/payments/payment-provider.js?v=20261121_launch"></script>
     <script src="../shared/payments/payment-service.js?v=20261121_launch"></script>
     <script src="../shared/payments/payment-init.js?v=20261121_launch"></script>
-    <script src="js/dashboard.js?v=20261121_launch_s14"></script>
+    <script src="js/dashboard.js?v=20261121_launch_s15"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             setTimeout(() => {

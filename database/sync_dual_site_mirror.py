@@ -9,6 +9,7 @@ SYNC_FILES = [
     "index.html",
     "auth-gateway.html",
     "manifest.json",
+    "sw.js",
 ]
 
 SYNC_DIRS = [

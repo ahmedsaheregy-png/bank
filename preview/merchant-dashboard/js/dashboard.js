@@ -3935,4 +3935,55 @@ function _syncOwnerLiveAlertsAndPoll(bundle) {
         }, ms);
         _ownerPollTimer._ms = ms;
     }
+    _syncMerchantOwnerPushUi();
+}
+
+let _ownerPushSyncedOnce = false;
+async function _syncMerchantOwnerPushUi() {
+    const btn = document.getElementById('merchantOwnerPushBtn');
+    if (!window.SAWYAN?.Push || !currentMerchant?.id) return;
+    if (!_ownerPushSyncedOnce) {
+        _ownerPushSyncedOnce = true;
+        window.SAWYAN.Push.syncIfAlreadyGranted({ actorType: 'merchant_owner', actorId: currentMerchant.id }).catch(() => {});
+    }
+    if (!btn) return;
+    const st = await window.SAWYAN.Push.getStatus();
+    if (st.subscribed) {
+        btn.style.background = '#ecfdf5';
+        btn.style.color = '#047857';
+        btn.style.borderColor = '#6ee7b7';
+        btn.textContent = '🔊 إشعارات القفل مفعّلة';
+    } else {
+        btn.style.background = '#eff6ff';
+        btn.style.color = '#1d4ed8';
+        btn.style.borderColor = '#93c5fd';
+        btn.textContent = '🔔 إشعارات القفل';
+    }
+}
+
+async function toggleMerchantOwnerPush() {
+    if (!window.SAWYAN?.Push || !currentMerchant?.id) return;
+    const btn = document.getElementById('merchantOwnerPushBtn');
+    const st = await window.SAWYAN.Push.getStatus();
+    if (st.subscribed) {
+        await window.SAWYAN.Push.disablePush({ actorType: 'merchant_owner', actorId: currentMerchant.id });
+        swNotify('تم إيقاف إشعارات شاشة القفل لهذا الهاتف.', 'info');
+        await _syncMerchantOwnerPushUi();
+        return;
+    }
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ جاري التفعيل...'; }
+    try {
+        _playOwnerGentleChime();
+        await window.SAWYAN.Push.enablePush({
+            actorType: 'merchant_owner',
+            actorId: currentMerchant.id,
+            sendWelcomeTest: true
+        });
+        swNotify('✅ تم تفعيل إشعارات شاشة القفل بالصوت لحساب التاجر! أرسلنا لك إشعاراً تجريبياً الآن.', 'success');
+    } catch (err) {
+        swNotify(formatMerchantErrorMessage(err), 'warning');
+    } finally {
+        if (btn) btn.disabled = false;
+        await _syncMerchantOwnerPushUi();
+    }
 }

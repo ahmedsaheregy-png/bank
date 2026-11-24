@@ -861,6 +861,71 @@
             });
         },
 
+        // Stage 15: Unified Multi-Channel Push (Web Push VAPID + Google Play FCM/APNs ready)
+        async getPushVapidPublicKey() {
+            return await callRpc('get_push_vapid_public_key', {});
+        },
+
+        async registerPushSubscription({
+            actorType,
+            actorId,
+            endpoint,
+            p256dh = null,
+            authSecret = null,
+            channel = 'web_push',
+            deviceLabel = null,
+            sessionToken = null
+        }) {
+            const tok = sessionToken || (
+                actorType === 'employee'
+                    ? SawyanAPI.getEmployeeSessionToken()
+                    : actorType === 'merchant_owner'
+                    ? SawyanAPI.getMerchantSessionToken()
+                    : SawyanAPI.getMemberSessionToken()
+            );
+            return await callRpc('register_push_subscription', {
+                p_actor_type: actorType,
+                p_actor_id: actorId,
+                p_session_token: tok,
+                p_endpoint: endpoint,
+                p_p256dh: p256dh,
+                p_auth_secret: authSecret,
+                p_channel: channel || 'web_push',
+                p_device_label: deviceLabel || null
+            });
+        },
+
+        async unregisterPushSubscription({ actorType, actorId, endpoint, sessionToken = null }) {
+            const tok = sessionToken || (
+                actorType === 'employee'
+                    ? SawyanAPI.getEmployeeSessionToken()
+                    : actorType === 'merchant_owner'
+                    ? SawyanAPI.getMerchantSessionToken()
+                    : SawyanAPI.getMemberSessionToken()
+            );
+            return await callRpc('unregister_push_subscription', {
+                p_actor_type: actorType,
+                p_actor_id: actorId,
+                p_session_token: tok,
+                p_endpoint: endpoint
+            });
+        },
+
+        async sendMyTestPush({ actorType, actorId, sessionToken = null }) {
+            const tok = sessionToken || (
+                actorType === 'employee'
+                    ? SawyanAPI.getEmployeeSessionToken()
+                    : actorType === 'merchant_owner'
+                    ? SawyanAPI.getMerchantSessionToken()
+                    : SawyanAPI.getMemberSessionToken()
+            );
+            return await callRpc('send_my_test_push', {
+                p_actor_type: actorType,
+                p_actor_id: actorId,
+                p_session_token: tok
+            });
+        },
+
         async lookupMemberForPos({ merchantId, memberIdentifier, sessionToken = null }) {
             const tok = sessionToken || SawyanAPI.getMerchantSessionToken();
             return await callRpc('lookup_member_for_pos', {

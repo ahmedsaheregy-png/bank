@@ -3141,6 +3141,19 @@ async function loadSettings() {
             <div id="memberSettingsGeoPickerHost" style="margin-top:10px;"></div>
         </div>
 
+        <div id="memberPushSettingsCard" style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:16px;padding:18px;margin-top:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                <div>
+                    <h3 style="margin:0 0 4px;font-size:1rem;color:#065f46;">🔔 إشعارات شاشة القفل بالصوت (تطبيق الويب وGoogle Play)</h3>
+                    <div id="memberPushStatusNote" style="font-size:0.8rem;color:#047857;">استقبل تنبيهاً فورياً بالصوت لحظة اعتماد أو رفض فاتورتك حتى والهاتف مقفل.</div>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button type="button" id="memberPushToggleBtn" class="btn btn-primary btn-sm" onclick="toggleMemberLockPush()">🔔 تفعيل إشعارات شاشة القفل</button>
+                    <button type="button" id="memberInstallPwaBtn" class="btn btn-outline btn-sm" style="display:none;" onclick="installMemberPwaApp()">📲 تثبيت تطبيق SAWYAN</button>
+                </div>
+            </div>
+        </div>
+
         <form id="memberSettingsForm" data-spec-id="member-settings-password" style="background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:20px;margin-top:14px;display:grid;gap:14px;">
             <h3 style="margin:0;font-size:1rem;">🔐 الصورة الشخصية، بيانات الحساب وكلمة المرور</h3>
             <div>
@@ -3179,6 +3192,8 @@ async function loadSettings() {
             <div id="memberSupportTicketsListSlot"><p style="font-size:0.84rem;color:#64748b;margin:0;">جاري تحميل تذاكر الدعم...</p></div>
         </div>
     `;
+
+    _syncMemberPushUi();
 
     (async function hydrateSettingsTickets() {
         const slot = document.getElementById('memberSupportTicketsListSlot');
@@ -3607,3 +3622,66 @@ function logout() {
     }
     window.location.href = '../index.html';
 }
+
+async function _syncMemberPushUi() {
+    if (!window.SAWYAN?.Push || !currentMember?.id) return;
+    const btn = document.getElementById('memberPushToggleBtn');
+    const note = document.getElementById('memberPushStatusNote');
+    const inst = document.getElementById('memberInstallPwaBtn');
+    if (inst) inst.style.display = window.SAWYAN.Push.canInstallApp() ? 'inline-block' : 'none';
+    if (!btn) return;
+    const st = await window.SAWYAN.Push.getStatus();
+    if (st.subscribed) {
+        btn.className = 'btn btn-outline btn-sm';
+        btn.textContent = '🔕 إيقاف إشعارات شاشة القفل';
+        if (note) note.textContent = '✅ إشعارات شاشة القفل بالصوت مفعّلة على هذا الهاتف.';
+    } else {
+        btn.className = 'btn btn-primary btn-sm';
+        btn.textContent = '🔔 تفعيل إشعارات شاشة القفل';
+        if (note) note.textContent = 'استقبل تنبيهاً فورياً بالصوت لحظة اعتماد أو رفض فاتورتك حتى والهاتف مقفل.';
+    }
+}
+
+window.toggleMemberLockPush = async function () {
+    if (!window.SAWYAN?.Push || !currentMember?.id) return;
+    const btn = document.getElementById('memberPushToggleBtn');
+    const st = await window.SAWYAN.Push.getStatus();
+    if (st.subscribed) {
+        await window.SAWYAN.Push.disablePush({ actorType: 'member', actorId: currentMember.id });
+        swMemToast('تم إيقاف إشعارات شاشة القفل لهذا الهاتف.', 'info');
+        await _syncMemberPushUi();
+        return;
+    }
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ جاري التفعيل...'; }
+    try {
+        await window.SAWYAN.Push.enablePush({
+            actorType: 'member',
+            actorId: currentMember.id,
+            sendWelcomeTest: true
+        });
+        swMemToast('✅ تم تفعيل إشعارات شاشة القفل بالصوت! أرسلنا لك إشعاراً تجريبياً الآن.', 'success');
+    } catch (err) {
+        swMemToast(swMemErrText(err), 'warning');
+    } finally {
+        if (btn) btn.disabled = false;
+        await _syncMemberPushUi();
+    }
+};
+
+window.installMemberPwaApp = async function () {
+    if (!window.SAWYAN?.Push) return;
+    const res = await window.SAWYAN.Push.promptInstallApp();
+    if (res && res.installed) {
+        swMemToast('🎉 تم تثبيت تطبيق SAWYAN على الشاشة الرئيسية بنجاح!', 'success');
+    }
+    _syncMemberPushUi();
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        if (currentMember?.id && window.SAWYAN?.Push) {
+            window.SAWYAN.Push.syncIfAlreadyGranted({ actorType: 'member', actorId: currentMember.id }).then(() => _syncMemberPushUi());
+            window.addEventListener('sawyan:pwa-install-ready', _syncMemberPushUi);
+        }
+    }, 1500);
+});
