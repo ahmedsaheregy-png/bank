@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شاشة التوثيق — موظف المتجر | SAWYAN</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+    <link rel="manifest" href="../manifest.json">
+    <link rel="icon" type="image/svg+xml" href="../shared/assets/sawyan-icon.svg">
+    <link rel="stylesheet" href="../shared/css/variables.css?v=20261121_launch_s14">
+    <link rel="stylesheet" href="../shared/css/logo.css?v=20261121_launch_s14">
+    <link rel="stylesheet" href="../shared/css/ui-feedback.css?v=20261121_launch_s14">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: 'Tajawal', sans-serif;
+            background: #f1f5f9;
+            color: #0f172a;
+            min-height: 100vh;
+            padding-bottom: 84px;
+        }
+        .emp-header {
+            background: linear-gradient(135deg, #0f2744 0%, #1e3a5f 100%);
+            color: #fff;
+            padding: 14px 16px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.16);
+        }
+        .emp-header-inner {
+            max-width: 760px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .emp-store-title {
+            font-size: 1.05rem;
+            font-weight: 900;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .emp-sub-meta {
+            font-size: 0.78rem;
+            color: #cbd5e1;
+            margin-top: 2px;
+        }
+        .emp-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .emp-pill-btn {
+            border: 1px solid rgba(255,255,255,0.28);
+            background: rgba(255,255,255,0.12);
+            color: #fff;
+            padding: 7px 12px;
+            border-radius: 10px;
+            font-family: 'Tajawal', sans-serif;
+            font-weight: 800;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: background 0.18s;
+        }
+        .emp-pill-btn:hover { background: rgba(255,255,255,0.22); }
+        .emp-pill-btn.danger { background: rgba(239,68,68,0.24); border-color: rgba(252,165,165,0.6); }
+        .emp-pill-btn.active-sound { background: rgba(16,185,129,0.28); border-color: #6ee7b7; }
+        .emp-main {
+            max-width: 760px;
+            margin: 16px auto 0;
+            padding: 0 14px;
+        }
+        .emp-tabs {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            background: #fff;
+            padding: 6px;
+            border-radius: 14px;
+            border: 1px solid #cbd5e1;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(15,23,42,0.04);
+        }
+        .emp-tab-btn {
+            border: none;
+            background: transparent;
+            color: #475569;
+            padding: 10px 8px;
+            border-radius: 10px;
+            font-family: 'Tajawal', sans-serif;
+            font-weight: 800;
+            font-size: 0.84rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.18s;
+        }
+        .emp-tab-btn.active {
+            background: #0f2744;
+            color: #fff;
+        }
+        .emp-badge {
+            background: #ef4444;
+            color: #fff;
+            border-radius: 999px;
+            padding: 1px 7px;
+            font-size: 0.72rem;
+            font-weight: 900;
+        }
+        .emp-card {
+            background: #fff;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 14px;
+            box-shadow: 0 2px 10px rgba(15,23,42,0.04);
+        }
+        .emp-short-code {
+            display: inline-block;
+            font-family: 'Poppins', monospace;
+            font-weight: 800;
+            font-size: 1.05rem;
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1.5px solid #bfdbfe;
+            padding: 3px 10px;
+            border-radius: 8px;
+            letter-spacing: 0.5px;
+        }
+        .emp-amount-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px;
+            margin: 10px 0 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .emp-amount-val {
+            font-size: 1.3rem;
+            font-weight: 900;
+            color: #059669;
+            font-family: 'Poppins', 'Tajawal', sans-serif;
+        }
+        .emp-actions-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .emp-btn-approve {
+            flex: 2;
+            min-width: 160px;
+            background: linear-gradient(135deg, #059669, #047857);
+            color: #fff;
+            border: none;
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-family: 'Tajawal', sans-serif;
+            font-weight: 900;
+            font-size: 0.94rem;
+            cursor: pointer;
+        }
+        .emp-btn-reject {
+            flex: 1;
+            min-width: 105px;
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1.5px solid #fca5a5;
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-family: 'Tajawal', sans-serif;
+            font-weight: 800;
+            font-size: 0.88rem;
+            cursor: pointer;
+        }
+        .emp-form-group { margin-bottom: 12px; }
+        .emp-form-group label { display: block; font-weight: 800; font-size: 0.84rem; margin-bottom: 5px; color: #1e293b; }
+        .emp-input {
+            width: 100%;
+            padding: 11px 13px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 10px;
+            font-family: 'Tajawal', sans-serif;
+            font-size: 0.96rem;
+            font-weight: 700;
+            outline: none;
+            background: #fff;
+        }
+        .emp-input:focus { border-color: #059669; }
+        .emp-live-strip {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            background: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            color: #065f46;
+            border-radius: 12px;
+            padding: 9px 12px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            margin-bottom: 14px;
+        }
+        .emp-pin-gate {
+            max-width: 460px;
+            margin: 28px auto;
+            background: #fff;
+            border: 2px solid #059669;
+            border-radius: 18px;
+            padding: 22px;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+        }
+        .emp-empty {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 28px 18px;
+            text-align: center;
+            color: #64748b;
+        }
+        .emp-status-pill {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 0.74rem;
+            font-weight: 800;
+        }
+    </style>
+</head>
+
+<body>
+    <header class="emp-header">
+        <div class="emp-header-inner">
+            <div>
+                <h1 class="emp-store-title">🧾 <span id="empStoreName">شاشة التوثيق</span></h1>
+                <div class="emp-sub-meta" id="empMetaLine">جاري تحميل جلسة الموظف...</div>
+            </div>
+            <div class="emp-header-actions">
+                <button type="button" id="empAlertToggleBtn" class="emp-pill-btn" onclick="toggleEmployeeAlerts()">🔔 تفعيل الصوت والإشعارات</button>
+                <button type="button" class="emp-pill-btn" onclick="openChangeMyPinModal()">🔑 تغيير PIN</button>
+                <button type="button" class="emp-pill-btn danger" onclick="quickLockEmployeeSession()">🔒 قفل سريع</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="emp-main">
+        <!-- بوابة التغيير الإلزامي للـ PIN المؤقت عند أول دخول أو بعد تصفير المالك -->
+        <section id="empForcePinGate" class="emp-pin-gate" style="display:none;">
+            <div style="text-align:center;margin-bottom:14px;">
+                <div style="font-size:2.4rem;">🔐</div>
+                <h2 style="margin:6px 0 4px;font-size:1.2rem;font-weight:900;color:#0f172a;">تعيين رمز PIN السري الخاص بك</h2>
+                <p style="margin:0;font-size:0.84rem;color:#475569;line-height:1.55;">
+                    لأمانك وسرية عملياتك: اختر رمز <strong>PIN جديداً من 4 أرقام</strong> خاصاً بك وحدك. بعد الحفظ يُشفّر فوراً <strong>ولا يستطيع المالك ولا الإدارة رؤيته</strong>.
+                </p>
+            </div>
+            <form id="forceChangePinForm">
+                <div class="emp-form-group">
+                    <label>الرمز المؤقت الحالي (الذي استلمته من المالك) *</label>
+                    <input type="password" id="fcCurrentPin" required maxlength="4" inputmode="numeric" dir="ltr" class="emp-input" placeholder="••••">
+                </div>
+                <div class="emp-form-group">
+                    <label>رمز PIN السري الجديد (4 أرقام مختلفة عن المؤقت) *</label>
+                    <input type="password" id="fcNewPin" required maxlength="4" inputmode="numeric" dir="ltr" class="emp-input" placeholder="••••">
+                </div>
+                <div class="emp-form-group">
+                    <label>تأكيد رمز PIN الجديد *</label>
+                    <input type="password" id="fcConfirmPin" required maxlength="4" inputmode="numeric" dir="ltr" class="emp-input" placeholder="••••">
+                </div>
+                <div id="fcErrorBox" style="display:none;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:9px 12px;border-radius:10px;font-size:0.84rem;font-weight:700;margin-bottom:12px;"></div>
+                <button type="submit" id="fcSubmitBtn" class="emp-btn-approve" style="width:100%;">✅ حفظ رمزي السري وفتح شاشة التوثيق</button>
+            </form>
+        </section>
+
+        <!-- شاشة التوثيق المعزولة للموظف -->
+        <div id="empWorkspace" style="display:none;">
+            <div class="emp-live-strip" id="empLiveStrip">
+                <span>🟢 تحديث حي لطلبات فرعك • معزول تماماً عن حساب المالك</span>
+                <span id="empSessionTimerInfo">الوردية نشطة</span>
+            </div>
+
+            <nav class="emp-tabs" role="tablist">
+                <button type="button" id="empTabPending" class="emp-tab-btn active" onclick="switchEmpTab('pending')">
+                    <span>⏳ الطلبات الواردة</span>
+                    <span id="empPendingCountBadge" class="emp-badge" style="display:none;">0</span>
+                </button>
+                <button type="button" id="empTabCreate" class="emp-tab-btn" onclick="switchEmpTab('create')">
+                    <span>➕ إنشاء توثيق</span>
+                </button>
+                <button type="button" id="empTabToday" class="emp-tab-btn" onclick="switchEmpTab('today')">
+                    <span>📋 عملياتي اليوم</span>
+                </button>
+            </nav>
+
+            <!-- 1. طلبات التوثيق الواردة للفرع -->
+            <section id="empPendingPanel"></section>
+
+            <!-- 2. إنشاء عملية توثيق (لعميل بدون إنترنت أو بطارية) -->
+            <section id="empCreatePanel" style="display:none;"></section>
+
+            <!-- 3. سجل عمليات الموظف اليومية فقط -->
+            <section id="empTodayPanel" style="display:none;"></section>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../shared/config/supabase.js?v=20261121_launch_s14"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261121_launch_s14"></script>
+    <script src="../shared/components/ui-feedback.js?v=20261121_launch_s14"></script>
+    <script src="../shared/components/image-upload.js?v=20261121_launch_s14"></script>
+    <script src="js/employee.js?v=20261121_launch_s14"></script>
+</body>
+
+</html>

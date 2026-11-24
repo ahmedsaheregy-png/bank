@@ -2503,18 +2503,9 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
             </select>
         </div>
 
-        <input type="hidden" id="mpModeInput" value="remote_pending">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:8px;">
-            <button type="button" id="mpModeBtnRemote" class="btn btn-primary btn-sm" style="padding:10px;border-radius:10px;font-weight:800;">
-                🧾 إرسال الفاتورة بالصورة (داخل المحل أو أونلاين)
-            </button>
-            <button type="button" id="mpModeBtnInstant" class="btn btn-outline btn-sm" style="padding:10px;border-radius:10px;font-weight:800;">
-                ⚡ اعتماد فوري مع الكاشير (برمز الموظف PIN)
-            </button>
-        </div>
-
-        <div id="mpModeExplainer" style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:10px;font-size:0.8rem;color:#92400e;line-height:1.5;">
-            📸 <strong>الوضع القياسي بالصورة:</strong> أدخل قيمة الفاتورة والتقط أو ارفع صورة الفاتورة أو إيصال الدفع، وسيصل طلبك مباشرة للتاجر لاعتماده وإضافة العائد لصندوقك.
+        <input type="hidden" id="mpModeInput" value="unified_pending">
+        <div id="mpModeExplainer" style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:10px 12px;font-size:0.8rem;color:#065f46;line-height:1.55;">
+            🧾 <strong>طلب توثيق موحّد (داخل المحل أو دليفري / أونلاين):</strong> أدخل قيمة الفاتورة وأرسل الطلب؛ سيصل إشعار فوري لموبايل التاجر وموظفي المتجر لاعتماده وإضافة العائد لصندوق هدفك.
         </div>
 
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:10px;">
@@ -2539,19 +2530,9 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
             <input type="text" name="uniquePaymentRef" id="mpUniquePaymentRef" class="form-control" placeholder="مرجع الدفع الفريد (لمنع التكرار)">
         </div>
 
-        <div id="mpCashierPinGroup" style="display:none;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:10px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:12px;">
-            <div>
-                <label style="font-weight:800;font-size:0.82rem;">👨‍💼 كود موظف الكاشير *</label>
-                <input type="text" name="employeeCode" id="mpEmployeeCode" class="form-control" placeholder="مثال: EMP-01">
-            </div>
-            <div>
-                <label style="font-weight:800;font-size:0.82rem;">🔢 رمز PIN الكاشير (4 أرقام) *</label>
-                <input type="password" name="cashierPin" id="mpCashierPin" maxlength="4" inputmode="numeric" class="form-control" placeholder="****">
-            </div>
-        </div>
-
         <div>
-            <label id="mpReceiptLabel" style="font-weight:800;font-size:0.84rem;">🧾 صورة الفاتورة أو إيصال الدفع *</label>
+            <label id="mpReceiptLabel" style="font-weight:800;font-size:0.84rem;">📷 صورة الفاتورة أو الإيصال (اختياري)</label>
+            <div style="font-size:0.75rem;color:#64748b;margin:2px 0 6px;">اختياري — يُنصح بإرفاق صورة الإيصال/السلعة أو الاحتفاظ بها لحماية حقك في حال النزاع.</div>
             <div id="mpReceiptUploader"></div>
             <input type="hidden" name="receiptUrl" id="mpReceiptUrl">
         </div>
@@ -2570,19 +2551,8 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
         if (!Number.isFinite(amount) || amount <= 0) throw new Error('أدخل قيمة فاتورة صالحة أكبر من صفر.');
 
         const pt = document.getElementById('mpPaymentType')?.value || 'cash';
-        const mode = document.getElementById('mpModeInput')?.value || 'remote_pending';
-        const meta = getMemberPayTypeMeta(pt);
         const refVal = (document.getElementById('mpUniquePaymentRef')?.value || '').trim() || null;
         const receiptVal = ((mpReceiptUp && mpReceiptUp.getValue()) || document.getElementById('mpReceiptUrl')?.value || '').trim() || null;
-        const empCode = mode === 'instant_pin' && !meta.deferred ? ((document.getElementById('mpEmployeeCode')?.value || '').trim() || null) : null;
-        const empPin = mode === 'instant_pin' && !meta.deferred ? ((document.getElementById('mpCashierPin')?.value || '').trim() || null) : null;
-
-        if (mode === 'instant_pin' && !meta.deferred) {
-            if (!empCode) throw new Error('أدخل كود موظف الكاشير أو بدّل لوضع «إرسال الفاتورة بالصورة».');
-            if (!empPin || !/^\d{4}$/.test(empPin)) throw new Error('أدخل رمز PIN الكاشير من 4 أرقام.');
-        } else {
-            if (!receiptVal) throw new Error('يرجى التقاط أو رفع صورة الفاتورة / الإيصال لإرسال الطلب للتاجر.');
-        }
 
         try {
             const res = await window.SAWYAN.API.submitMemberPendingPurchase({
@@ -2592,25 +2562,10 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
                 amount,
                 paymentType: pt,
                 receiptUrl: receiptVal,
-                uniquePaymentRef: refVal,
-                employeeCode: empCode,
-                cashierPin: empPin
+                uniquePaymentRef: refVal
             });
             if (res && res.success === false) {
-                if (res.error_code === 'CASHIER_PIN_LOCKED_15M' || res.error_code === 'CASHIER_LOCKED') {
-                    throw new Error('تم قفل التحقق برمز الكاشير لمدة 15 دقيقة بعد 5 محاولات خاطئة.');
-                }
-                if (res.error_code === 'INVALID_CASHIER_CREDENTIALS') {
-                    const rem = res.remaining_attempts !== undefined ? ` (المحاولات المتبقية: ${res.remaining_attempts})` : '';
-                    throw new Error(`بيانات كود الموظف أو رمز PIN غير صحيحة${rem}. يمكنك التبديل لوضع إرسال الصورة.`);
-                }
-                if (res.error_code === 'CASHIER_TX_LIMIT_EXCEEDED') {
-                    throw new Error(`قيمة الفاتورة تتجاوز حد اعتماد موظف الكاشير — استخدم وضع إرسال الفاتورة بالصورة للتاجر.`);
-                }
-                if (res.status === 'rejected_self_cashier_pin') {
-                    throw new Error('لا يمكن لموظف الكاشير توثيق فاتورة لحسابه الشخصي برمز الكاشير.');
-                }
-                throw new Error(swMemErrText(res.error_code || res.status || 'تعذر تسجيل الفاتورة.'));
+                throw new Error(swMemErrText(res.error_code || res.status || 'تعذر تسجيل طلب التوثيق.'));
             }
             close();
             const isCompleted = res.status === 'completed';
@@ -2618,10 +2573,10 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
                 ? 'تم اعتماد الفاتورة وإضافتها لصندوق هدفك الشهري فوراً!'
                 : (res.status === 'awaiting_merchant_topup'
                     ? 'تم حفظ الفاتورة وستُعتمد تلقائياً فور استكمال التاجر.'
-                    : 'تم إرسال الفاتورة بنجاح وهي الآن بانتظار اعتماد التاجر.');
+                    : 'وصل طلبك فوراً لموبايل التاجر وموظفي المتجر — أخبرهم بالكود أدناه إذا كنت داخل المحل، أو تابعه من «طلباتي المعلقة».');
             await swMemAlert(
-                isCompleted ? 'تم اعتماد الفاتورة بنجاح' : 'تم إرسال الفاتورة للتاجر',
-                `🧾 رقم الفاتورة: ${res.sw_short_code}\n📌 الحالة: ${statusText}`,
+                isCompleted ? 'تم اعتماد الفاتورة بنجاح' : 'تم إرسال طلب التوثيق بنجاح',
+                `🧾 كود التوثيق القصير:\n${res.sw_short_code}\n\n📌 ${statusText}`,
                 isCompleted ? 'success' : 'info',
                 isCompleted ? [] : [{ label: '⏳ عرض طلباتي المعلقة', onClick: () => goToPage('myPending') }]
             );
@@ -2633,19 +2588,14 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
 
     if (window.SAWYAN?.ImageUpload) {
         mpReceiptUp = window.SAWYAN.ImageUpload.mountUploader(document.getElementById('mpReceiptUploader'), {
-            label: '📷 التقط أو ارفع صورة الفاتورة / الإيصال *',
+            label: '📷 التقط أو ارفع صورة الفاتورة / الإيصال (اختياري)',
             maxDim: 1280,
             maxChars: 360000,
             onChange: (v) => { const el = document.getElementById('mpReceiptUrl'); if (el) el.value = v || ''; }
         });
     }
 
-    const modeIn = document.getElementById('mpModeInput');
-    const btnInst = document.getElementById('mpModeBtnInstant');
-    const btnRem = document.getElementById('mpModeBtnRemote');
     const expEl = document.getElementById('mpModeExplainer');
-    const pinGrp = document.getElementById('mpCashierPinGroup');
-    const recLbl = document.getElementById('mpReceiptLabel');
     const ptSel = document.getElementById('mpPaymentType');
     const refGrp = document.getElementById('mpUniqueRefGroup');
     const amtIn = document.getElementById('pendingInvoiceAmtInput');
@@ -2680,50 +2630,26 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
         }
     }
 
-    function syncModeUi(nextMode) {
+    function syncPaymentUi() {
         const pt = ptSel?.value || 'cash';
         const ptMeta = getMemberPayTypeMeta(pt);
-        const effMode = ptMeta.deferred ? 'remote_pending' : nextMode;
-        if (modeIn) modeIn.value = effMode;
         if (refGrp) refGrp.style.display = ptMeta.needsRef ? 'block' : 'none';
-
-        if (effMode === 'instant_pin') {
-            if (btnInst) { btnInst.className = 'btn btn-primary btn-sm'; }
-            if (btnRem) { btnRem.className = 'btn btn-outline btn-sm'; }
-            if (pinGrp) pinGrp.style.display = 'grid';
-            if (recLbl) recLbl.textContent = '🧾 صورة إيصال الشراء / الدفع (اختياري مع رمز الكاشير)';
-            if (expEl) {
-                expEl.style.background = '#ecfdf5';
-                expEl.style.borderColor = '#6ee7b7';
-                expEl.style.color = '#065f46';
-                expEl.innerHTML = '⚡ <strong>الوضع الفوري مع الكاشير:</strong> إذا كان موظف الكاشير أمامك ولديه كود ورمز اعتماد من 4 أرقام، أدخلهما ليُعتمد رصيدك في نفس الثانية.';
-            }
-        } else {
-            if (btnInst) { btnInst.className = 'btn btn-outline btn-sm'; }
-            if (btnRem) { btnRem.className = 'btn btn-primary btn-sm'; }
-            if (pinGrp) pinGrp.style.display = 'none';
-            if (recLbl) recLbl.textContent = '🧾 صورة الفاتورة أو إيصال الدفع * (إلزامي)';
-            if (expEl) {
+        if (expEl) {
+            if (ptMeta.deferred) {
                 expEl.style.background = '#fffbeb';
                 expEl.style.borderColor = '#fcd34d';
                 expEl.style.color = '#92400e';
-                expEl.innerHTML = ptMeta.deferred
-                    ? '🚚 <strong>دفع عند الاستلام / شيك مؤجل:</strong> يظل الطلب «معلقاً» لحين تأكيد التاجر الاستلام والتحصيل الفعلي، ثم يُغذى صندوق هدفك تلقائياً. ارفع صورة الفاتورة أدناه.'
-                    : '📸 <strong>إرسال الفاتورة بالصورة (داخل المحل أو أونلاين):</strong> التقط أو ارفع صورة الفاتورة لتصل فوراً للتاجر ويعتمدها لحسابك.';
+                expEl.innerHTML = '🚚 <strong>دفع عند الاستلام / شيك مؤجل:</strong> يصل طلبك للتاجر وموظفيه الآن، ويُعتمد فور الاستلام والتحصيل الفعلي لتغذية صندوق هدفك تلقائياً.';
+            } else {
+                expEl.style.background = '#f0fdf4';
+                expEl.style.borderColor = '#86efac';
+                expEl.style.color = '#065f46';
+                expEl.innerHTML = '🧾 <strong>طلب توثيق موحّد (داخل المحل أو دليفري / أونلاين):</strong> أدخل قيمة الفاتورة وأرسل الطلب؛ سيصل إشعار فوري لموبايل التاجر وموظفي المتجر لاعتماده وإضافة العائد لصندوق هدفك.';
             }
         }
     }
 
-    btnInst?.addEventListener('click', () => {
-        if (getMemberPayTypeMeta(ptSel?.value).deferred) {
-            swMemToast('الدفع عند الاستلام أو الشيك مؤجل التحصيل ويُرسل في وضع المراجعة حتى تأكيد التاجر.', 'warning');
-            syncModeUi('remote_pending');
-            return;
-        }
-        syncModeUi('instant_pin');
-    });
-    btnRem?.addEventListener('click', () => syncModeUi('remote_pending'));
-    ptSel?.addEventListener('change', () => syncModeUi(modeIn?.value || 'remote_pending'));
+    ptSel?.addEventListener('change', syncPaymentUi);
     amtIn?.addEventListener('input', updatePreview);
     merchSel?.addEventListener('change', updatePreview);
 
@@ -2738,7 +2664,7 @@ async function openMemberPurchaseModal(preMerchantId = null, preBranchId = null,
         });
     }
 
-    syncModeUi('remote_pending');
+    syncPaymentUi();
     updatePreview();
 }
 window.openMemberPurchaseModal = openMemberPurchaseModal;

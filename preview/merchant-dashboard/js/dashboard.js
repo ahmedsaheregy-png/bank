@@ -261,6 +261,7 @@ async function refreshMerchantBundle(shiftFilter = 'today', branchId = null) {
             window.SAWYAN.Notifications.hydrateFromBundle(merchantBundle.notifications);
         }
         renderLiveHomeStats();
+        _syncOwnerLiveAlertsAndPoll(merchantBundle);
         return merchantBundle;
     } catch (err) {
         console.error('Merchant bundle error:', err);
@@ -787,13 +788,13 @@ function showPage(page) {
 
     const titles = {
         home: 'لوحة تحكم التاجر',
-        kiosk: '⚡ وضع الكاشير السريع المعزول (POS Kiosk Mode)',
-        pending: 'طلبات الفواتير المعلقة وطابور FIFO',
-        scan: 'تسجيل عملية جديدة',
-        qrScanner: 'نقطة البيع والتحقق بـ PIN الكاشير (D25)',
+        kiosk: '🧾 شاشة التوثيق السريعة',
+        pending: 'طلبات التوثيق الواردة وطابور الشحن',
+        scan: 'إنشاء عملية توثيق',
+        qrScanner: 'توثيق بالـ QR أو كود العضو',
         transactions: 'العمليات المكتملة وتقفيل الوردية',
         financial: 'الموقف المالي والفواتير الضريبية B2B',
-        settings: 'الإعدادات وموظفو الكاشير (D25)'
+        settings: 'الإعدادات وموظفو التوثيق'
     };
     const tEl = document.getElementById('pageTitle');
     if (tEl && titles[page]) tEl.textContent = titles[page];
@@ -2420,34 +2421,39 @@ function openStoreKitModal() {
 // ============================================================================
 // 3. الصفحات الحية المربوطة بقاعدة البيانات (Pending, Completed+Shift CSV, Financials, Settings+D25)
 // ============================================================================
-async function loadPendingTransactions() {
+async function loadPendingTransactions(skipRefresh = false) {
     const page = document.getElementById('pendingPage');
     if (!page) return;
-    await refreshMerchantBundle();
+    if (!skipRefresh) await refreshMerchantBundle();
     const pendingData = merchantBundle?.pending_transactions || [];
+    const empRejections = merchantBundle?.recent_employee_rejections || [];
     const curr = merchantBundle?.profile?.currency_code || 'EGP';
     const canRejectManual = (merchantBundle?.profile?.effective_access?.can_reject_pending_manually !== false);
 
     const itemsHtml = pendingData.length === 0 ? `
         <div style="background:white;border-radius:12px;padding:30px;text-align:center;border:1px solid #e2e8f0;">
             <div style="font-size:2.5rem;margin-bottom:8px;">✅</div>
-            <div style="font-weight:800;font-size:1.05rem;color:#0f172a;">لا توجد طلبات فواتير معلقة أو في طابور الشحن حالياً</div>
-            <div style="font-size:0.82rem;color:#64748b;margin-top:4px;">كافة العمليات موثقة في الدفتر المحاسبي المزدوج.</div>
+            <div style="font-weight:800;font-size:1.05rem;color:#0f172a;">لا توجد طلبات توثيق معلقة أو في طابور الشحن حالياً</div>
+            <div style="font-size:0.82rem;color:#64748b;margin-top:4px;">كافة العمليات موثقة في الدفتر المحاسبي المزدوج — التحديث الحي يعمل تلقائياً.</div>
         </div>
     ` : pendingData.map(tx => `
         <div style="background:white;border:1.5px solid ${tx.status === 'awaiting_merchant_topup' ? '#ef4444' : '#cbd5e1'};border-radius:14px;padding:16px;margin-bottom:14px;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;border-bottom:1px solid #f1f5f9;padding-bottom:8px;flex-wrap:wrap;gap:8px;">
                 <div>
-                    <div style="font-weight:900;font-size:1rem;color:#0f172a;">👤 العضو: ${escM(tx.member_masked_name)}</div>
-                    <div style="font-size:0.78rem;color:#64748b;margin-top:2px;">⏱️ ${new Date(tx.created_at).toLocaleString('ar-EG')} • كود الفاتورة: <code>${escM(tx.sw_short_code)}</code></div>
+                    <div style="font-weight:900;font-size:1rem;color:#0f172a;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <span>👤 العضو: ${escM(tx.member_masked_name)}</span>
+                        <span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:2px 9px;border-radius:7px;font-family:monospace;font-size:0.9rem;font-weight:900;" dir="ltr">${escM(tx.sw_short_code)}</span>
+                    </div>
+                    <div style="font-size:0.78rem;color:#64748b;margin-top:3px;">⏱️ ${new Date(tx.created_at).toLocaleString('ar-EG')} ${tx.branch_name ? `• 📍 ${escM(tx.branch_name)}` : ''}</div>
                     <div style="font-size:0.76rem;color:#334155;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                         <span style="background:#f1f5f9;padding:2px 8px;border-radius:6px;font-weight:700;">${escM(fmtMerchantPayTypeLabel(tx.payment_type))}</span>
                         ${tx.unique_payment_ref ? `<span>مرجع: <code dir="ltr">${escM(tx.unique_payment_ref)}</code></span>` : ''}
+                        ${tx.zero_hold_in_isolation ? '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:6px;font-weight:800;">🟠 طلب بالعزل 10% (بدون حجز مؤقت)</span>' : ''}
                         ${(tx.payment_type === 'cod' || tx.payment_type === 'cheque') ? '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:6px;font-weight:800;">🚚 تحصيل مؤجل — اعتمدها بعد استلام المبلغ</span>' : ''}
                     </div>
                 </div>
                 <span style="background:${tx.status === 'awaiting_merchant_topup' ? '#fee2e2' : '#fef3c7'};color:${tx.status === 'awaiting_merchant_topup' ? '#991b1b' : '#92400e'};font-size:0.75rem;font-weight:800;padding:3px 10px;border-radius:999px;">
-                    ${tx.status === 'awaiting_merchant_topup' ? '⏸️ بانتظار شحن رصيد المتجر' : '⏳ بانتظار مطابقة واعتماد التاجر'}
+                    ${tx.status === 'awaiting_merchant_topup' ? '⏸️ بانتظار شحن رصيد المتجر' : '⏳ بانتظار اعتمادك (أو أحد الموظفين)'}
                 </span>
             </div>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:8px;background:#f8fafc;padding:10px 12px;border-radius:10px;margin-bottom:12px;font-size:0.84rem;">
@@ -2457,7 +2463,7 @@ async function loadPendingTransactions() {
             </div>
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
                 ${tx.status === 'pending' ? `
-                    <button type="button" onclick="approvePendingTx('${tx.id}')" style="flex:2;background:#059669;color:white;border:none;padding:10px 14px;border-radius:8px;font-weight:800;cursor:pointer;">✅ اعتماد الفاتورة وتغذية الصندوق</button>
+                    <button type="button" onclick="approvePendingTx('${tx.id}')" style="flex:2;background:#059669;color:white;border:none;padding:10px 14px;border-radius:8px;font-weight:800;cursor:pointer;">✅ اعتماد الفاتورة مباشرة (بصلاحية المالك)</button>
                     ${canRejectManual
                         ? `<button type="button" onclick="rejectPendingTx('${tx.id}')" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;padding:10px 14px;border-radius:8px;font-weight:700;cursor:pointer;">❌ رفض</button>`
                         : `<span style="background:#fff7ed;color:#9a3412;border:1px solid #fdba74;padding:8px 12px;border-radius:8px;font-size:0.78rem;font-weight:800;">🔒 الرفض اليدوي موقوف مؤقتاً</span>`}
@@ -2469,15 +2475,55 @@ async function loadPendingTransactions() {
         </div>
     `).join('');
 
+    const empRejHtml = empRejections.length === 0 ? '' : `
+        <div style="margin-top:22px;background:#fff7ed;border:1.5px solid #fdba74;border-radius:14px;padding:16px;">
+            <h3 style="margin:0 0 6px;font-size:1.02rem;font-weight:900;color:#9a3412;">⚠️ فواتير رفضها موظفون خلال آخر 48 ساعة (${empRejections.length})</h3>
+            <p style="margin:0 0 12px;font-size:0.8rem;color:#7c2d12;">بصفتك مالك المتجر، يمكنك التراجع الفوري واعتماد أي فاتورة رفضها موظف بالخطأ خلال مهلة الـ 48 ساعة لحماية متجرك من النزاعات (D2).</p>
+            ${empRejections.map(rx => `
+                <div style="background:#fff;border:1px solid #fed7aa;border-radius:10px;padding:12px;margin-bottom:10px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+                        <div>
+                            <strong>👤 ${escM(rx.member_masked_name)}</strong> • <code dir="ltr">${escM(rx.sw_short_code)}</code>
+                            <div style="font-size:0.78rem;color:#9a3412;margin-top:2px;">👨‍💼 رفضها الموظف: <strong>${escM(rx.employee_name || '')} (${escM(rx.employee_code || '')})</strong> • السبب: «${escM(rx.rejection_reason || 'غير مطابق')}»</div>
+                        </div>
+                        <strong style="color:#0f172a;">${fmtMerchantMoney(rx.total_amount, rx.currency_code || curr)}</strong>
+                    </div>
+                    <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                        <button type="button" onclick="overrideEmployeeRejection('${rx.id}')" style="background:#059669;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-weight:800;font-size:0.82rem;cursor:pointer;">✅ تراجع واعتماد الفاتورة (بصلاحية المالك)</button>
+                        ${(rx.receipt_media_url && window.SAWYAN && window.SAWYAN.ImageUpload) ? window.SAWYAN.ImageUpload.renderThumbHtml(rx.receipt_media_url, '🧾 إيصال ' + escM(rx.sw_short_code)) : ''}
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+
     page.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
             <div>
-                <h2 style="margin:0;font-size:1.3rem;font-weight:900;color:#0f172a;">⏳ طلبات الفواتير المعلقة (${pendingData.length})</h2>
-                <p style="margin:4px 0 0;font-size:0.84rem;color:#64748b;">راجع إيصال الشراء ثم اضغط «اعتماد» لتوثيق الفاتورة وإضافتها للمبيعات بأمان.</p>
+                <h2 style="margin:0;font-size:1.3rem;font-weight:900;color:#0f172a;">⏳ طلبات التوثيق الواردة (${pendingData.length})</h2>
+                <p style="margin:4px 0 0;font-size:0.84rem;color:#64748b;">اعتمد الطلب مباشرة بصلاحية المالك (بدون PIN) أو سيعتمدها أسرع موظف من موبايله الشخصي.</p>
             </div>
         </div>
         <div id="pendingList">${itemsHtml}</div>
+        ${empRejHtml}
     `;
+}
+
+async function overrideEmployeeRejection(id) {
+    try {
+        const res = await window.SAWYAN.API.confirmOrRejectPendingTx({
+            merchantId: currentMerchant.id,
+            transactionId: id,
+            decision: 'approve'
+        });
+        const st = res?.result?.status || res?.feed?.status || 'completed';
+        swNotify(st === 'awaiting_merchant_topup'
+            ? 'تم التراجع عن رفض الموظف وحفظ الفاتورة بانتظار شحن الرصيد.'
+            : '✅ تم التراجع عن رفض الموظف واعتماد الفاتورة وإشعار العميل فوراً!', st === 'awaiting_merchant_topup' ? 'warning' : 'success');
+        await loadPendingTransactions();
+    } catch (err) {
+        swNotify(formatMerchantErrorMessage(err), 'error');
+    }
 }
 
 async function approvePendingTx(id) {
@@ -3444,10 +3490,14 @@ async function loadSettings() {
             </div>
 
             <div style="background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:20px;">
-                <h3 style="margin:0 0 6px;color:#0f172a;">👨‍💼 موظفو الكاشير المستقلون (PIN 4 أرقام)</h3>
-                <p style="margin:0 0 12px;font-size:0.78rem;color:#64748b;">
-                    كل موظف كاشير يحصل على رمز PIN ثابت من 4 أرقام خاص به لاعتماد المبيعات أمام العملاء وحماية حساب المالك.
+                <h3 style="margin:0 0 6px;color:#0f172a;">👨‍💼 موظفو التوثيق المستقلون (دخول معزول من موبايلاتهم الشخصية)</h3>
+                <p style="margin:0 0 10px;font-size:0.78rem;color:#64748b;line-height:1.55;">
+                    لا تشارك كلمة مرورك مع أي موظف — أضف كل موظف بكود ورمز <strong>PIN مؤقت (4 أرقام)</strong> ليدخل من موبايله الشخصي، وسيُطلب منه تلقائياً تغيير الـ PIN لرمز سري خاص به عند أول دخول.
                 </p>
+                <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:10px 12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;font-size:0.8rem;">
+                    <span style="color:#065f46;font-weight:700;">📱 رابط دخول الموظفين: <code dir="ltr">login.html?tab=employee&amp;store=${escM(p.merchant_code || '')}</code></span>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="copyEmployeePortalLink('${escM(p.merchant_code || '')}')">📋 نسخ الرابط للموظفين</button>
+                </div>
                 <form id="addCashierEmpForm" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:10px;margin-bottom:14px;background:#f8fafc;padding:12px;border-radius:12px;">
                     ${cmCode.show ? `
                     <div>
@@ -3459,7 +3509,7 @@ async function loadSettings() {
                         <input type="text" id="newEmpName" required class="form-control" placeholder="${escM(cmName.placeholder)}">
                     </div>
                     <div>
-                        <label style="font-size:0.76rem;font-weight:700;display:block;margin-bottom:3px;">${escM(cmPin.label)} <span style="color:#DC2626;">*</span></label>
+                        <label style="font-size:0.76rem;font-weight:700;display:block;margin-bottom:3px;">رمز PIN مؤقت (4 أرقام — يغيّره الموظف أول دخول) <span style="color:#DC2626;">*</span></label>
                         <input type="password" id="newEmpPin" required maxlength="4" pattern="\\d{4}" dir="ltr" class="form-control" placeholder="${escM(cmPin.placeholder)}">
                     </div>
                     ${cmBr.show ? `
@@ -3489,18 +3539,27 @@ async function loadSettings() {
                         <input type="checkbox" id="newEmpNotifyOwner" checked>
                         <span>${escM(cmNot.label)}</span>
                     </label>` : ''}
-                    <button type="submit" class="btn btn-primary btn-sm" style="grid-column:1 / -1;">+ إضافة موظف كاشير بـ PIN مشفر</button>
+                    <button type="submit" class="btn btn-primary btn-sm" style="grid-column:1 / -1;">+ إضافة موظف توثيق بـ PIN مؤقت مشفر</button>
                 </form>
 
                 <div style="display:grid;gap:8px;">
-                    ${cashiers.length === 0 ? '<p style="color:#64748b;font-size:0.85rem;">لا يوجد موظفو كاشير مضافون بعد.</p>' : cashiers.map(c => `
-                        <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+                    ${cashiers.length === 0 ? '<p style="color:#64748b;font-size:0.85rem;">لا يوجد موظفو توثيق مضافون بعد.</p>' : cashiers.map(c => `
+                        <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
                             <div>
-                                <strong>${escM(c.employee_code)}</strong> — ${escM(c.full_name)}
-                                ${c.employee_phone ? `<div style="font-size:0.75rem;color:#475569;" dir="ltr">📞 ${escM(c.employee_phone)}</div>` : ''}
-                                <div style="font-size:0.75rem;color:#64748b;">محاولات PIN الخاطئة: ${c.failed_pin_attempts}/5 ${c.max_tx_amount_limit ? `• سقف ${Number(c.max_tx_amount_limit)}` : ''} ${c.pin_locked_until ? '• 🔒 مقفل مؤقتاً' : ''}</div>
+                                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                    <strong>${escM(c.employee_code)}</strong> — ${escM(c.full_name)}
+                                    ${c.must_change_pin
+                                        ? '<span style="background:#fef3c7;color:#92400e;font-size:0.7rem;font-weight:800;padding:2px 7px;border-radius:999px;">🔐 بانتظار تعيين PIN سري</span>'
+                                        : '<span style="background:#dcfce7;color:#166534;font-size:0.7rem;font-weight:800;padding:2px 7px;border-radius:999px;">✅ PIN سري مفعّل</span>'}
+                                    ${c.session_active ? '<span style="background:#dbeafe;color:#1d4ed8;font-size:0.7rem;font-weight:800;padding:2px 7px;border-radius:999px;">🟢 وردية نشطة الآن</span>' : ''}
+                                </div>
+                                ${c.employee_phone ? `<div style="font-size:0.75rem;color:#475569;margin-top:2px;" dir="ltr">📞 ${escM(c.employee_phone)}</div>` : ''}
+                                <div style="font-size:0.75rem;color:#64748b;margin-top:2px;">محاولات PIN الخاطئة: ${c.failed_pin_attempts}/5 ${c.max_tx_amount_limit ? `• سقف ${Number(c.max_tx_amount_limit)}` : ''} ${c.pin_locked_until ? '• 🔒 مقفل مؤقتاً' : ''}</div>
                             </div>
-                            <button type="button" class="btn btn-outline btn-sm" onclick="toggleCashierEmployee('${c.id}')">${c.is_active ? 'إيقاف' : 'تفعيل وفك قفل'}</button>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                <button type="button" class="btn btn-outline btn-sm" onclick="resetCashierEmployeePin('${c.id}', '${escM(c.employee_code)}')">🔑 تصفير PIN</button>
+                                <button type="button" class="btn btn-outline btn-sm" onclick="toggleCashierEmployee('${c.id}')">${c.is_active ? 'إيقاف فوري' : 'تفعيل وفك قفل'}</button>
+                            </div>
                         </div>
                     `).join('')}
                 </div>
@@ -3755,7 +3814,125 @@ async function toggleCashierEmployee(empId) {
             employeeId: empId
         });
         await loadSettings();
+        swNotify('تم تحديث حالة الموظف وإنهاء جلسته النشطة إن تم إيقافه.', 'success');
     } catch (err) {
         swNotify(formatMerchantErrorMessage(err), 'error');
+    }
+}
+
+async function resetCashierEmployeePin(empId, empCode) {
+    const rawPin = await swPromptBox(
+        `🔑 تصفير PIN للموظف ${empCode}`,
+        'أدخل رمز PIN مؤقتاً جديداً (4 أرقام). ستُغلق جلسة الموظف الحالية فوراً ويُلزم باختيار رمز سري جديد عند دخوله القادم:',
+        '',
+        'مثال: 4829'
+    );
+    if (rawPin === null) return;
+    const cleanPin = String(rawPin || '').replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).trim();
+    if (!/^\d{4}$/.test(cleanPin)) {
+        swNotify('يجب إدخال رمز PIN مؤقت من 4 أرقام فقط.', 'error');
+        return;
+    }
+    try {
+        await window.SAWYAN.API.manageMerchantCashierAndSettings({
+            merchantId: currentMerchant.id,
+            action: 'reset_cashier_pin',
+            employeeId: empId,
+            employeePin: cleanPin
+        });
+        await loadSettings();
+        swNotify(`تم تصفير رمز PIN للموظف ${empCode} وإبطال جلسته القديمة وتوثيق العملية في سجل التدقيق.`, 'success');
+    } catch (err) {
+        swNotify(formatMerchantErrorMessage(err), 'error');
+    }
+}
+
+function copyEmployeePortalLink(merchantCode) {
+    const base = window.location.href.replace(/[^/]+(\?.*)?$/, '');
+    const url = `${base}login.html?tab=employee${merchantCode ? '&store=' + encodeURIComponent(merchantCode) : ''}`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(
+            () => swNotify('تم نسخ رابط دخول الموظفين — أرسله لكل موظف ليفتحه من موبايله الشخصي.', 'success'),
+            () => swNotify(url, 'info')
+        );
+    } else {
+        swNotify(url, 'info');
+    }
+}
+
+let _ownerPollTimer = null;
+let _ownerKnownPendingIds = new Set();
+let _ownerKnownEmpRejIds = new Set();
+let _ownerInitAlertDone = false;
+
+function _playOwnerGentleChime() {
+    try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        const ctx = new Ctx();
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(987.77, now);
+        gain.gain.setValueAtTime(0.14, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.26);
+    } catch (_e) {}
+}
+
+function _syncOwnerLiveAlertsAndPoll(bundle) {
+    if (!bundle) return;
+    const pends = Array.isArray(bundle.pending_transactions) ? bundle.pending_transactions : [];
+    const rejs = Array.isArray(bundle.recent_employee_rejections) ? bundle.recent_employee_rejections : [];
+    const nextPendIds = new Set(pends.map(t => t.id));
+    const nextRejIds = new Set(rejs.map(t => t.id));
+
+    if (_ownerInitAlertDone) {
+        const newPend = pends.filter(t => t.status === 'pending' && !_ownerKnownPendingIds.has(t.id));
+        if (newPend.length > 0) {
+            _playOwnerGentleChime();
+            swNotify(`🔔 وصل طلب توثيق جديد (${newPend[0].sw_short_code}) بمبلغ ${fmtMerchantMoney(newPend[0].total_amount, newPend[0].currency_code)}`, 'info');
+            if ('Notification' in window && Notification.permission === 'granted') {
+                try {
+                    new Notification(`🧾 طلب توثيق جديد — ${newPend[0].sw_short_code}`, {
+                        body: `${newPend[0].member_masked_name} • ${fmtMerchantMoney(newPend[0].total_amount, newPend[0].currency_code)}`,
+                        icon: '../shared/assets/sawyan-icon.svg'
+                    });
+                } catch (_e) {}
+            }
+            const pendPage = document.getElementById('pendingPage');
+            if (pendPage && pendPage.classList.contains('active')) {
+                loadPendingTransactions(true);
+            }
+        }
+        const newEmpRej = rejs.filter(r => !_ownerKnownEmpRejIds.has(r.id));
+        if (newEmpRej.length > 0) {
+            _playOwnerGentleChime();
+            swNotify(`⚠️ قام الموظف ${newEmpRej[0].employee_name || ''} برفض فاتورة (${newEmpRej[0].sw_short_code}) — يمكنك مراجعتها والتراجع خلال 48 ساعة.`, 'warning');
+            const pendPage = document.getElementById('pendingPage');
+            if (pendPage && pendPage.classList.contains('active')) {
+                loadPendingTransactions(true);
+            }
+        }
+    }
+
+    _ownerKnownPendingIds = nextPendIds;
+    _ownerKnownEmpRejIds = nextRejIds;
+    _ownerInitAlertDone = true;
+
+    const secs = Math.max(3, Math.min(120, Number(bundle?.verification_settings?.live_poll_interval_secs || 8)));
+    const ms = secs * 1000;
+    if (!_ownerPollTimer || _ownerPollTimer._ms !== ms) {
+        if (_ownerPollTimer) clearInterval(_ownerPollTimer);
+        _ownerPollTimer = setInterval(() => {
+            if (!document.hidden && currentMerchant && currentMerchant.id) {
+                refreshMerchantBundle('today', null);
+            }
+        }, ms);
+        _ownerPollTimer._ms = ms;
     }
 }

@@ -4,14 +4,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تسجيل الدخول - تاجر | SAWYAN</title>
+    <title>تسجيل الدخول - بوابة التاجر وموظفي التوثيق | SAWYAN</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     <link rel="manifest" href="../manifest.json">
     <link rel="icon" type="image/svg+xml" href="../shared/assets/sawyan-icon.svg">
-    <link rel="stylesheet" href="../shared/css/variables.css?v=20261121_launch">
-    <link rel="stylesheet" href="../shared/css/logo.css?v=20261121_launch">
-    <link rel="stylesheet" href="../shared/css/ui-feedback.css?v=20261121_launch">
-    <link rel="stylesheet" href="../member-dashboard/css/auth.css?v=20261121_launch">
+    <link rel="stylesheet" href="../shared/css/variables.css?v=20261121_launch_s14">
+    <link rel="stylesheet" href="../shared/css/logo.css?v=20261121_launch_s14">
+    <link rel="stylesheet" href="../shared/css/ui-feedback.css?v=20261121_launch_s14">
+    <link rel="stylesheet" href="../member-dashboard/css/auth.css?v=20261121_launch_s14">
+    <style>
+        .login-role-tabs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            background: #f1f5f9;
+            padding: 5px;
+            border-radius: 12px;
+            margin-bottom: 18px;
+        }
+        .login-role-tab {
+            border: none;
+            background: transparent;
+            color: #475569;
+            font-family: 'Tajawal', sans-serif;
+            font-weight: 800;
+            font-size: 0.9rem;
+            padding: 10px 8px;
+            border-radius: 9px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .login-role-tab.active {
+            background: #ffffff;
+            color: #0f2744;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+        }
+        .emp-security-note {
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            color: #065f46;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 0.8rem;
+            line-height: 1.55;
+            margin-bottom: 14px;
+            font-weight: 600;
+        }
+    </style>
 </head>
 
 <body>
@@ -27,70 +66,169 @@
         <div class="auth-card">
             <div id="logoContainer" class="logo-section" data-sawyan-logo="default"></div>
 
-            <h1>🏪 تسجيل الدخول — بوابة التاجر</h1>
-            <p class="subtitle">أدخل كود التاجر أو البريد الإلكتروني أو الهاتف المسجل</p>
+            <h1 id="loginPortalHeading">🏪 بوابة التاجر وموظفي التوثيق</h1>
+            <p class="subtitle" id="loginPortalSubtitle">اختر نوع الدخول: مالك المتجر أو موظف التوثيق من موبايله الشخصي</p>
 
-            <div id="demoMerchantLoginBox" style="display:none;margin:0 0 16px;padding:12px;border-radius:12px;background:#fffbeb;border:1.5px dashed #f59e0b;text-align:center;">
-                <p style="margin:0 0 8px;font-size:0.84rem;color:#92400e;font-weight:700;">🧪 متاح في الموقع الموازي للتجربة فقط (Schema: sawyan_demo)</p>
-                <div style="display:grid;gap:8px;">
-                    <button type="button" id="demoEgMerchantBtn" class="btn btn-outline btn-block" style="border-color:#d97706;color:#92400e;font-weight:800;">
-                        ⚡ دخول تجريبي — سوبر ماركت النخبة مصر (M-EG-001 • كاشير EMP-01 PIN: 2580)
-                    </button>
-                    <button type="button" id="demoTrMerchantBtn" class="btn btn-outline btn-block" style="border-color:#0284c7;color:#0369a1;font-weight:800;">
-                        ⚡ دخول تجريبي — مطعم إسطنبول الذهبي تركيا (M-TR-001)
-                    </button>
-                </div>
+            <div class="login-role-tabs" role="tablist" aria-label="نوع الدخول">
+                <button type="button" id="tabOwnerBtn" class="login-role-tab active" role="tab" aria-selected="true">🏪 دخول المالك</button>
+                <button type="button" id="tabEmployeeBtn" class="login-role-tab" role="tab" aria-selected="false">👨‍💼 دخول موظف</button>
             </div>
 
-            <form id="loginForm" class="auth-form">
-                <div class="form-group">
-                    <label>كود التاجر أو البريد الإلكتروني أو الهاتف</label>
-                    <input type="text" id="identifier" required class="form-control" placeholder="مثال: M-EG-001 أو email@domain.com">
+            <div id="sessionReasonNotice" style="display:none;background:#fffbeb;border:1.5px solid #f59e0b;color:#92400e;padding:10px 14px;border-radius:10px;font-size:0.84rem;font-weight:700;margin-bottom:14px;"></div>
+
+            <!-- لوحة دخول المالك -->
+            <div id="ownerLoginPanel">
+                <div id="demoMerchantLoginBox" style="display:none;margin:0 0 16px;padding:12px;border-radius:12px;background:#fffbeb;border:1.5px dashed #f59e0b;text-align:center;">
+                    <p style="margin:0 0 8px;font-size:0.84rem;color:#92400e;font-weight:700;">🧪 متاح في الموقع الموازي للتجربة فقط (Schema: sawyan_demo)</p>
+                    <div style="display:grid;gap:8px;">
+                        <button type="button" id="demoEgMerchantBtn" class="btn btn-outline btn-block" style="border-color:#d97706;color:#92400e;font-weight:800;">
+                            ⚡ دخول تجريبي (مالك) — سوبر ماركت النخبة مصر (M-EG-001)
+                        </button>
+                        <button type="button" id="demoTrMerchantBtn" class="btn btn-outline btn-block" style="border-color:#0284c7;color:#0369a1;font-weight:800;">
+                            ⚡ دخول تجريبي (مالك) — مطعم إسطنبول الذهبي تركيا (M-TR-001)
+                        </button>
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label>كلمة المرور (8 أحرف على الأقل)</label>
-                    <input type="password" id="password" required minlength="8" class="form-control" placeholder="أدخل كلمة المرور المشفرة">
+                <form id="loginForm" class="auth-form">
+                    <div class="form-group">
+                        <label>كود التاجر أو البريد الإلكتروني أو الهاتف</label>
+                        <input type="text" id="identifier" required class="form-control" placeholder="مثال: M-EG-001 أو email@domain.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label>كلمة المرور (8 أحرف على الأقل)</label>
+                        <input type="password" id="password" required minlength="8" class="form-control" placeholder="أدخل كلمة المرور المشفرة">
+                    </div>
+
+                    <div id="loginErrorBox" style="display:none;background:#fef2f2;border:1.5px solid #fecaca;color:#991b1b;padding:10px 14px;border-radius:10px;font-size:0.86rem;font-weight:700;margin-bottom:12px;"></div>
+                    <button type="submit" id="loginBtn" class="btn btn-primary btn-block">دخول لوحة التاجر وشاشة التوثيق</button>
+
+                    <div class="auth-footer">
+                        <p><a href="forgot-password.html" class="forgot-link">نسيت كلمة المرور؟</a></p>
+                        <p>ليس لديك حساب تاجر؟ <a href="register.html">سجل متجرك في 3 دقائق</a></p>
+                        <p style="margin-top: 1rem;"><a href="../index.html">← العودة للرئيسية</a></p>
+                    </div>
+                </form>
+            </div>
+
+            <!-- لوحة دخول الموظف (شاشة معزولة على موبايله الشخصي) -->
+            <div id="employeeLoginPanel" style="display:none;">
+                <div class="emp-security-note">
+                    🔒 <strong>شاشة موظف معزولة بالكامل:</strong> استقبل طلبات التوثيق الواردة لفرعك واعتمدها من موبايلك الشخصي دون كشف أرصدة أو إعدادات مالك المتجر.
                 </div>
 
-                <div id="loginErrorBox" style="display:none;background:#fef2f2;border:1.5px solid #fecaca;color:#991b1b;padding:10px 14px;border-radius:10px;font-size:0.86rem;font-weight:700;margin-bottom:12px;"></div>
-                <button type="submit" id="loginBtn" class="btn btn-primary btn-block">دخول لوحة التاجر ونقطة البيع</button>
-
-                <div class="auth-footer">
-                    <p><a href="forgot-password.html" class="forgot-link">نسيت كلمة المرور؟</a></p>
-                    <p>ليس لديك حساب تاجر؟ <a href="register.html">سجل متجرك في 3 دقائق</a></p>
-                    <p style="margin-top: 1rem;"><a href="../index.html">← العودة للرئيسية</a></p>
+                <div id="demoEmployeeLoginBox" style="display:none;margin:0 0 14px;padding:12px;border-radius:12px;background:#ecfdf5;border:1.5px dashed #10b981;text-align:center;">
+                    <p style="margin:0 0 8px;font-size:0.82rem;color:#065f46;font-weight:700;">🧪 دخول موظف تجريبي (Schema: sawyan_demo)</p>
+                    <button type="button" id="demoEgEmployeeBtn" class="btn btn-outline btn-block" style="border-color:#059669;color:#065f46;font-weight:800;">
+                        ⚡ دخول تجريبي (موظف) — M-EG-001 • EMP-01 • PIN: 2580
+                    </button>
                 </div>
-            </form>
+
+                <form id="employeeLoginForm" class="auth-form">
+                    <div class="form-group">
+                        <label>كود المتجر *</label>
+                        <input type="text" id="empMerchantCode" required dir="ltr" class="form-control" placeholder="مثال: M-EG-001">
+                    </div>
+
+                    <div class="form-group">
+                        <label>كود الموظف *</label>
+                        <input type="text" id="empCodeInput" required dir="ltr" class="form-control" placeholder="مثال: EMP-01">
+                    </div>
+
+                    <div class="form-group">
+                        <label>رمز الـ PIN السري (4 أرقام) *</label>
+                        <input type="password" id="empPinInput" required maxlength="4" inputmode="numeric" pattern="\d{4}" dir="ltr" class="form-control" placeholder="••••">
+                    </div>
+
+                    <div id="empLoginErrorBox" style="display:none;background:#fef2f2;border:1.5px solid #fecaca;color:#991b1b;padding:10px 14px;border-radius:10px;font-size:0.86rem;font-weight:700;margin-bottom:12px;"></div>
+                    <button type="submit" id="empLoginBtn" class="btn btn-primary btn-block">🔐 دخول شاشة التوثيق (الموظف)</button>
+
+                    <div class="auth-footer">
+                        <p style="font-size:0.8rem;color:#64748b;">نسيت الـ PIN؟ اطلب من مالك المتجر الضغط على «تصفير PIN» من إعدادات الموظفين.</p>
+                        <p style="margin-top: 0.75rem;"><a href="../index.html">← العودة للرئيسية</a></p>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
-    <script src="../shared/components/logo.js?v=20261121_launch"></script>
+    <script src="../shared/components/logo.js?v=20261121_launch_s14"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../shared/config/supabase.js?v=20261121_launch"></script>
-    <script src="../shared/api/sawyan-api.js?v=20261121_launch"></script>
-    <script src="../shared/components/ui-feedback.js?v=20261121_launch"></script>
+    <script src="../shared/config/supabase.js?v=20261121_launch_s14"></script>
+    <script src="../shared/api/sawyan-api.js?v=20261121_launch_s14"></script>
+    <script src="../shared/components/ui-feedback.js?v=20261121_launch_s14"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             if (window.SAWYAN && window.SAWYAN.Logo) {
                 document.getElementById('logoContainer').innerHTML = window.SAWYAN.Logo.full();
             }
 
-            function showErr(raw, extraPayload) {
-                const box = document.getElementById('loginErrorBox');
+            const tabOwnerBtn = document.getElementById('tabOwnerBtn');
+            const tabEmployeeBtn = document.getElementById('tabEmployeeBtn');
+            const ownerPanel = document.getElementById('ownerLoginPanel');
+            const empPanel = document.getElementById('employeeLoginPanel');
+            const reasonNotice = document.getElementById('sessionReasonNotice');
+
+            function switchRoleTab(role) {
+                const isEmp = role === 'employee';
+                tabOwnerBtn?.classList.toggle('active', !isEmp);
+                tabEmployeeBtn?.classList.toggle('active', isEmp);
+                tabOwnerBtn?.setAttribute('aria-selected', String(!isEmp));
+                tabEmployeeBtn?.setAttribute('aria-selected', String(isEmp));
+                if (ownerPanel) ownerPanel.style.display = isEmp ? 'none' : 'block';
+                if (empPanel) empPanel.style.display = isEmp ? 'block' : 'none';
+            }
+
+            tabOwnerBtn?.addEventListener('click', () => switchRoleTab('owner'));
+            tabEmployeeBtn?.addEventListener('click', () => switchRoleTab('employee'));
+
+            const qs = new URLSearchParams(window.location.search);
+            if (qs.get('tab') === 'employee') {
+                switchRoleTab('employee');
+                if (qs.get('store')) {
+                    const stIn = document.getElementById('empMerchantCode');
+                    if (stIn) stIn.value = qs.get('store');
+                }
+            }
+            const reasonCode = qs.get('reason') || '';
+            if (reasonCode && reasonNotice) {
+                const map = {
+                    locked: '🔒 تم قفل جلسة الموظف بنجاح — أدخل رمز الـ PIN لإعادة الفتح.',
+                    idle: '⏱️ تم قفل جلسة الموظف تلقائياً لعدم النشاط — أدخل رمز الـ PIN لاستئناف الوردية.',
+                    expired: '⏱️ انتهت مدة الوردية — سجّل الدخول برمز الـ PIN لبدء وردية جديدة.',
+                    revoked: '⚠️ تم إيقاف الجلسة أو تصفير الـ PIN من مالك المتجر — أدخل الرمز الجديد للدخول.'
+                };
+                if (map[reasonCode]) {
+                    reasonNotice.textContent = map[reasonCode];
+                    reasonNotice.style.display = 'block';
+                }
+            }
+
+            function showErr(raw, extraPayload, targetId) {
+                const box = document.getElementById(targetId || 'loginErrorBox');
                 const m = String(raw || (extraPayload && extraPayload.error_code) || '');
-                let msg = m || 'بيانات دخول التاجر غير صحيحة';
+                let msg = (window.SAWYAN && window.SAWYAN.UI && window.SAWYAN.UI.humanizeError)
+                    ? window.SAWYAN.UI.humanizeError(m)
+                    : (m || 'بيانات الدخول غير صحيحة');
                 if (m.includes('INVALID_MERCHANT_CREDENTIALS')) {
                     msg = 'بيانات دخول التاجر غير صحيحة — تأكد من كود التاجر أو البريد أو الهاتف وكلمة المرور.';
+                } else if (m.includes('MERCHANT_ACCOUNT_INACTIVE') || m.includes('MERCHANT_ACCOUNT_REJECTED') || m.includes('MERCHANT_ACCOUNT_BANNED')) {
+                    msg = 'حساب التاجر موقوف أو غير نشط حالياً — تواصل مع علاقات التجار عبر واتساب 905376744337+.';
+                } else if (m.includes('INVALID_EMPLOYEE_CREDENTIALS') && extraPayload && extraPayload.remaining_attempts !== undefined) {
+                    msg = `كود المتجر أو كود الموظف أو رمز الـ PIN غير صحيح (المحاولات المتبقية قبل القفل المؤقت: ${extraPayload.remaining_attempts}).`;
                 }
-                else if (m.includes('MERCHANT_ACCOUNT_INACTIVE') || m.includes('MERCHANT_ACCOUNT_REJECTED') || m.includes('MERCHANT_ACCOUNT_BANNED')) msg = 'حساب التاجر موقوف أو غير نشط حالياً — تواصل مع علاقات التجار عبر واتساب 905376744337+.';
-                else if (m.includes('WEAK_OR_DEFAULT_PASSWORD_REJECTED')) msg = 'كلمة المرور الافتراضية 123456 مرفوضة أمنياً.';
-                else if (m.includes('CREDENTIALS_REQUIRED')) msg = 'يرجى إدخال معرف التاجر وكلمة المرور.';
                 if (box) {
                     box.textContent = '❌ ' + msg;
                     box.style.display = 'block';
                 } else if (window.SAWYAN && window.SAWYAN.UI) {
                     window.SAWYAN.UI.toast('❌ ' + msg, 'error');
+                }
+            }
+
+            async function waitSupabase() {
+                for (let i = 0; i < 30 && (!window.SAWYAN || !window.SAWYAN.supabase); i++) {
+                    await new Promise(r => setTimeout(r, 100));
                 }
             }
 
@@ -103,22 +241,57 @@
                     btn.textContent = '⏳ جاري التحقق...';
                 }
                 try {
-                    for (let i = 0; i < 30 && (!window.SAWYAN || !window.SAWYAN.supabase); i++) {
-                        await new Promise(r => setTimeout(r, 100));
-                    }
+                    await waitSupabase();
                     const res = await window.SAWYAN.API.authenticateMerchantLogin(identifier, password);
                     if (!res || res.success !== true || !res.merchant) {
-                        showErr(res?.error_code || 'INVALID_MERCHANT_CREDENTIALS', res);
+                        showErr(res?.error_code || 'INVALID_MERCHANT_CREDENTIALS', res, 'loginErrorBox');
                         return;
                     }
                     window.SAWYAN.API.saveMerchantSession(res.merchant, res.session_token);
                     window.location.href = 'dashboard.html';
                 } catch (err) {
-                    showErr(err.message, err.payload);
+                    showErr(err.message, err.payload, 'loginErrorBox');
                 } finally {
                     if (btn) {
                         btn.disabled = false;
-                        btn.textContent = 'دخول لوحة التاجر ونقطة البيع';
+                        btn.textContent = 'دخول لوحة التاجر وشاشة التوثيق';
+                    }
+                }
+            }
+
+            async function performEmployeeLogin(merchantCode, employeeCode, pin) {
+                const btn = document.getElementById('empLoginBtn');
+                const box = document.getElementById('empLoginErrorBox');
+                if (box) { box.style.display = 'none'; box.textContent = ''; }
+                if (btn) {
+                    btn.disabled = true;
+                    btn.textContent = '⏳ جاري فتح شاشة التوثيق...';
+                }
+                try {
+                    await waitSupabase();
+                    const res = await window.SAWYAN.API.authenticateEmployeeLogin({
+                        merchantCode,
+                        employeeCode,
+                        pin
+                    });
+                    if (!res || res.success !== true || !res.employee) {
+                        showErr(res?.error_code || 'INVALID_EMPLOYEE_CREDENTIALS', res, 'empLoginErrorBox');
+                        return;
+                    }
+                    window.SAWYAN.API.saveEmployeeSession(res.employee, res.session_token, {
+                        must_change_pin: Boolean(res.must_change_pin),
+                        session_expires_at: res.session_expires_at,
+                        shift_hours: res.shift_hours,
+                        idle_timeout_mins: res.idle_timeout_mins,
+                        live_poll_interval_secs: res.live_poll_interval_secs
+                    });
+                    window.location.href = 'employee.html';
+                } catch (err) {
+                    showErr(err.message, err.payload, 'empLoginErrorBox');
+                } finally {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.textContent = '🔐 دخول شاشة التوثيق (الموظف)';
                     }
                 }
             }
@@ -126,10 +299,16 @@
             if (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.isDemoMode()) {
                 const box = document.getElementById('demoMerchantLoginBox');
                 if (box) box.style.display = 'block';
+                const empBox = document.getElementById('demoEmployeeLoginBox');
+                if (empBox) empBox.style.display = 'block';
                 document.getElementById('demoEgMerchantBtn')?.addEventListener('click', () => performMerchantLogin('M-EG-001', 'Demo@Merchant2026'));
                 document.getElementById('demoTrMerchantBtn')?.addEventListener('click', () => performMerchantLogin('M-TR-001', 'Demo@Merchant2026'));
-                if (new URLSearchParams(window.location.search).get('quick') === 'merchant') {
+                document.getElementById('demoEgEmployeeBtn')?.addEventListener('click', () => performEmployeeLogin('M-EG-001', 'EMP-01', '2580'));
+                if (qs.get('quick') === 'merchant') {
                     performMerchantLogin('M-EG-001', 'Demo@Merchant2026');
+                } else if (qs.get('quick') === 'employee') {
+                    switchRoleTab('employee');
+                    performEmployeeLogin('M-EG-001', 'EMP-01', '2580');
                 }
             }
 
@@ -138,6 +317,16 @@
                 await performMerchantLogin(
                     document.getElementById('identifier').value.trim(),
                     document.getElementById('password').value
+                );
+            });
+
+            document.getElementById('employeeLoginForm').addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const pinRaw = (document.getElementById('empPinInput').value || '').replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).trim();
+                await performEmployeeLogin(
+                    document.getElementById('empMerchantCode').value.trim(),
+                    document.getElementById('empCodeInput').value.trim(),
+                    pinRaw
                 );
             });
         });

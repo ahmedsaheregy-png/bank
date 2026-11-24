@@ -433,7 +433,17 @@
                 '<div><label style="font-size:0.76rem;font-weight:700;">عتبة سحب W05 ($)</label><input id="' + pfx + '_wht" type="number" step="10" min="1" value="' + Number(cur.wht_threshold_usd ?? 200) + '" class="form-control"></div>' +
                 '<div><label style="font-size:0.76rem;font-weight:700;">تهدئة W07 (ساعة)</label><input id="' + pfx + '_cd" type="number" step="1" min="0" value="' + Number(cur.withdrawal_cooldown_hours ?? 72) + '" class="form-control"></div>' +
                 '<div><label style="font-size:0.76rem;font-weight:700;">تاريخ السريان</label><select id="' + pfx + '_effmode" class="form-control"><option value="immediate">⚡ فوري (من اللحظة)</option><option value="next_month">📅 أول الشهر القادم</option></select></div>' +
-                '<div style="grid-column:1 / -1;"><label style="font-size:0.76rem;font-weight:700;">سبب التعديل الإلزامي لسجل التدقيق (>= 5 أحرف)</label><input id="' + pfx + '_reason" type="text" value="تحديث عتبات مخاطر التجار والحوكمة الحية" class="form-control"></div>' +
+                '<div style="grid-column:1 / -1;border-top:1.5px dashed #cbd5e1;padding-top:10px;margin-top:4px;"><strong style="font-size:0.86rem;color:#0f2744;">🧾 إعدادات التوثيق الموحّد وجلسات الموظفين والحماية (Stage 14 — قابلة للتعديل الفوري)</strong></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">مدة وردية الموظف القصوى (ساعات)</label><input id="' + pfx + '_eshift" type="number" step="1" min="1" max="72" value="' + Number(cur.employee_shift_hours ?? 8) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">مهلة خمول جلسة الموظف (دقائق)</label><input id="' + pfx + '_eidle" type="number" step="5" min="5" max="720" value="' + Number(cur.employee_idle_timeout_mins ?? 60) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">حد رفض بلا صورة لتفعيل الحماية (0=تعطيل)</label><input id="' + pfx + '_srej" type="number" step="1" min="0" max="50" value="' + Number(cur.spam_reject_threshold ?? 2) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">نافذة رصد الرفض (ساعات)</label><input id="' + pfx + '_swin" type="number" step="1" min="1" max="720" value="' + Number(cur.spam_reject_window_hours ?? 24) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">مدة إلزام الصورة المؤقت (ساعات)</label><input id="' + pfx + '_sreq" type="number" step="1" min="1" max="720" value="' + Number(cur.spam_require_receipt_hours ?? 24) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">أقصى طلبات معلّقة للعضو عند نفس المتجر</label><input id="' + pfx + '_maxp" type="number" step="1" min="1" max="20" value="' + Number(cur.max_pending_per_merchant ?? 2) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">معدل التحديث الحي للطلبات (ثوانٍ)</label><input id="' + pfx + '_poll" type="number" step="1" min="3" max="120" value="' + Number(cur.live_poll_interval_secs ?? 8) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">عتبة إعادة PIN للفواتير الكبيرة ($ • 0=معطّلة)</label><input id="' + pfx + '_repin" type="number" step="10" min="0" max="100000" value="' + Number(cur.employee_pin_reconfirm_usd ?? 0) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">طلبات العضو في العزل 10% (Soft Hold = 0)</label><select id="' + pfx + '_ziso" class="form-control"><option value="true"' + (cur.allow_zero_hold_in_isolation !== false ? ' selected' : '') + '>✅ مسموح (بدون حجز مؤقت)</option><option value="false"' + (cur.allow_zero_hold_in_isolation === false ? ' selected' : '') + '>🚫 ممنوع داخل العزل</option></select></div>' +
+                '<div style="grid-column:1 / -1;"><label style="font-size:0.76rem;font-weight:700;">سبب التعديل الإلزامي لسجل التدقيق (>= 5 أحرف)</label><input id="' + pfx + '_reason" type="text" value="تحديث عتبات مخاطر التجار والحوكمة وإعدادات التوثيق الحية" class="form-control"></div>' +
             '</div>' +
             '<button type="button" id="' + pfx + '_submitBtn" onclick="svSubmitMerchantRiskSettings(\'' + pfx + '\')" class="btn btn-primary">' + (founder ? '👑 حفظ وتطبيق فوري في PostgreSQL (صلاحية المؤسس)' : '📤 إرسال تعديل الإعدادات لطابور الاعتماد المزدوج (Maker)') + '</button>' +
         '</div>';
@@ -461,6 +471,15 @@
             const d4grace = Number(g('d4grace').value);
             const wht = Number(g('wht').value);
             const cd = Number(g('cd').value);
+            const eshift = Number(g('eshift')?.value ?? 8);
+            const eidle = Number(g('eidle')?.value ?? 60);
+            const srej = Number(g('srej')?.value ?? 2);
+            const swin = Number(g('swin')?.value ?? 24);
+            const sreq = Number(g('sreq')?.value ?? 24);
+            const maxp = Number(g('maxp')?.value ?? 2);
+            const poll = Number(g('poll')?.value ?? 8);
+            const repin = Number(g('repin')?.value ?? 0);
+            const ziso = String(g('ziso')?.value ?? 'true') !== 'false';
             const effMode = g('effmode').value;
             const reason = String(g('reason').value || '').trim();
 
@@ -517,6 +536,15 @@
                 d4_grace_hours: d4grace,
                 wht_threshold_usd: wht,
                 withdrawal_cooldown_hours: cd,
+                employee_shift_hours: Math.max(1, Math.min(72, Math.round(eshift || 8))),
+                employee_idle_timeout_mins: Math.max(5, Math.min(720, Math.round(eidle || 60))),
+                spam_reject_threshold: Math.max(0, Math.round(Number.isFinite(srej) ? srej : 2)),
+                spam_reject_window_hours: Math.max(1, Math.min(720, Math.round(swin || 24))),
+                spam_require_receipt_hours: Math.max(1, Math.min(720, Math.round(sreq || 24))),
+                max_pending_per_merchant: Math.max(1, Math.min(20, Math.round(maxp || 2))),
+                live_poll_interval_secs: Math.max(3, Math.min(120, Math.round(poll || 8))),
+                employee_pin_reconfirm_usd: Math.max(0, Number.isFinite(repin) ? repin : 0),
+                allow_zero_hold_in_isolation: ziso,
                 effective_from: effIso
             };
 

@@ -83,7 +83,13 @@
             return 'المتجر ما زال يستكمل بياناته التعاقدية قبل بدء استقبال الفواتير.';
         }
         if (m.includes('PENDING_LIMIT_REACHED') || m.includes('MAX_PENDING_LIMIT')) {
-            return 'لديك طلبان معلقان بالفعل لدى هذا المتجر — انتظر اعتماد التاجر أو ألغِ طلباً قديماً أولاً.';
+            return 'بلغت الحد الأقصى للطلبات المعلقة لدى هذا المتجر — انتظر اعتماد التاجر أو ألغِ طلباً قديماً أولاً.';
+        }
+        if (m.includes('SPAM_GUARD_RECEIPT_REQUIRED')) {
+            return 'يرجى إرفاق صورة الإيصال أو الفاتورة لهذا الطلب بعد تكرار رفض طلبات سابقة بدون صورة لدى هذا المتجر.';
+        }
+        if (m.includes('CASHIER_PIN_ONLY_ON_EMPLOYEE_OR_MERCHANT_DEVICE')) {
+            return 'توثيق رمز PIN يتم من جهاز التاجر أو الموظف فقط — أرسل طلب التوثيق وسيعتمده المتجر فوراً من موبايله.';
         }
         if (m.includes('SOFT_HOLD_CAP_EXCEEDED')) {
             return 'تجاوز الطلب السقف المؤقت للعمليات المعلقة لدى هذا المتجر حالياً.';
@@ -95,13 +101,43 @@
             return 'رقم مرجع الدفع المدخل مستخدم من قبل في عملية سابقة.';
         }
         if (m.includes('CASHIER_PIN_LOCKED') || m.includes('CASHIER_LOCKED')) {
-            return 'تم قفل التحقق برمز الكاشير لمدة 15 دقيقة بعد 5 محاولات غير صحيحة.';
+            return 'تم قفل التحقق برمز PIN لمدة 15 دقيقة بعد 5 محاولات غير صحيحة.';
         }
-        if (m.includes('INVALID_CASHIER_CREDENTIALS')) {
-            return 'كود موظف الكاشير أو رمز PIN غير صحيح — يمكنك التبديل لوضع إرسال الفاتورة بالصورة للتاجر.';
+        if (m.includes('INVALID_EMPLOYEE_CREDENTIALS') || m.includes('INVALID_CASHIER_CREDENTIALS') || m.includes('INVALID_CASHIER_PIN')) {
+            return 'كود المتجر أو كود الموظف أو رمز PIN غير صحيح — تحقق من البيانات وحاول مجدداً.';
         }
-        if (m.includes('SELF_PURCHASE_PIN_FORBIDDEN') || m.includes('CASHIER_COLLUSION')) {
-            return 'لا يمكن لموظف الكاشير اعتماد فاتورة لحسابه الشخصي باستخدام رمز الكاشير.';
+        if (m.includes('EMPLOYEE_CREDENTIALS_REQUIRED')) {
+            return 'يرجى إدخال كود المتجر وكود الموظف ورمز PIN المكوّن من 4 أرقام.';
+        }
+        if (m.includes('EMPLOYEE_ACCOUNT_INACTIVE')) {
+            return 'تم إيقاف حساب الموظف من قِبل مالك المتجر — يرجى مراجعة إدارة المتجر.';
+        }
+        if (m.includes('EMPLOYEE_SESSION_EXPIRED') || m.includes('UNAUTHORIZED_EMPLOYEE_SESSION')) {
+            return 'انتهت جلسة الوردية — يرجى تسجيل الدخول برمز PIN الخاص بك مجدداً.';
+        }
+        if (m.includes('EMPLOYEE_SESSION_IDLE_LOCKED')) {
+            return 'تم قفل جلسة الموظف تلقائياً لعدم النشاط — أدخل رمز PIN لإعادة الفتح.';
+        }
+        if (m.includes('EMPLOYEE_PIN_CHANGE_REQUIRED')) {
+            return 'يجب تغيير رمز الـ PIN المؤقت واختيار رمزك السري الخاص (4 أرقام) قبل متابعة العمل.';
+        }
+        if (m.includes('INVALID_CURRENT_PIN')) {
+            return 'رمز الـ PIN الحالي/المؤقت غير صحيح.';
+        }
+        if (m.includes('NEW_PIN_MUST_DIFFER_FROM_TEMP')) {
+            return 'يجب أن يكون رمز الـ PIN الجديد مختلفاً عن الرمز المؤقت الذي وضعه المالك.';
+        }
+        if (m.includes('TX_ALREADY_PROCESSED')) {
+            return 'تم البتّ في هذه الفاتورة بالفعل من قِبل المالك أو زميل آخر.';
+        }
+        if (m.includes('OWNER_OVERRIDE_WINDOW_48H_EXPIRED')) {
+            return 'انتهت مهلة الـ 48 ساعة للتراجع المباشر عن رفض الموظف.';
+        }
+        if (m.includes('CASHIER_TX_LIMIT_EXCEEDED')) {
+            return 'قيمة الفاتورة تتجاوز السقف الأقصى المسموح لك كمموظف — يرجى تحويل الاعتماد لمالك المتجر.';
+        }
+        if (m.includes('SELF_PURCHASE_PIN_FORBIDDEN') || m.includes('CASHIER_COLLUSION') || m.includes('CASHIER_SELF_APPROVAL_FORBIDDEN')) {
+            return 'لا يمكن للموظف اعتماد فاتورة لحسابه الشخصي (حظر التواطؤ الذاتي D25).';
         }
         if (m.includes('POSITIVE_TOPUP_AMOUNT_REQUIRED')) {
             return 'يرجى إدخال مبلغ شحن صحيح أكبر من صفر.';

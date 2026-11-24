@@ -25,6 +25,7 @@ INTERNAL_ONLY_FUNCTIONS = {
     "verify_member_session",
     "verify_merchant_session",
     "verify_admin_session",
+    "verify_cashier_session",
     "append_audit_log",
     "filter_academy_url_is_safe",
     "validate_attachment_data",

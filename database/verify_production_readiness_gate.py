@@ -138,9 +138,10 @@ def check_static_readiness():
         txt = adm_js.read_text(encoding="utf-8")
         must("localStorage.getItem('sawyan_admin')" not in txt and "localStorage.setItem('sawyan_admin')" not in txt, f"No localStorage sawyan_admin in {adm_js.relative_to(REPO_DIR).as_posix()}")
 
-    # Member purchase UX defaults to remote_pending
+    # Member purchase UX unified single flow (Stage 14 — zero cashier PIN on customer phone)
     mem_js = (REPO_DIR / "preview" / "member-dashboard" / "js" / "dashboard.js").read_text(encoding="utf-8")
-    must('<input type="hidden" id="mpModeInput" value="remote_pending">' in mem_js and "syncModeUi('remote_pending')" in mem_js, "openMemberPurchaseModal defaults cleanly to remote_pending")
+    must('<input type="hidden" id="mpModeInput" value="unified_pending">' in mem_js and "mpCashierPin" not in mem_js and "mpModeBtnInstant" not in mem_js, "openMemberPurchaseModal uses unified single flow with zero cashier PIN on customer phone")
+    must((REPO_DIR / "preview" / "merchant-dashboard" / "employee.html").is_file() and (REPO_DIR / "preview" / "merchant-dashboard" / "js" / "employee.js").is_file(), "Isolated employee personal-phone verification portal exists")
 
     # Zero native alert/confirm/prompt across member & merchant portals and contact page
     popup_targets = (

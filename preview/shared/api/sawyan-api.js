@@ -326,6 +326,43 @@
             } catch (e) {}
         },
 
+        // Isolated Employee Personal-Phone Session (zero access to merchant owner token)
+        getSavedEmployee() {
+            try {
+                const raw = localStorage.getItem(SawyanAPI._storageKey('sawyan_employee'));
+                return raw ? JSON.parse(raw) : null;
+            } catch (e) {
+                return null;
+            }
+        },
+
+        getEmployeeSessionToken() {
+            try {
+                return localStorage.getItem(SawyanAPI._storageKey('sawyan_employee_session_token')) || null;
+            } catch (e) {
+                return null;
+            }
+        },
+
+        saveEmployeeSession(employeeObj, sessionToken, meta = null) {
+            try {
+                if (employeeObj) {
+                    const merged = meta ? Object.assign({}, employeeObj, meta) : employeeObj;
+                    localStorage.setItem(SawyanAPI._storageKey('sawyan_employee'), JSON.stringify(merged));
+                }
+                if (sessionToken) {
+                    localStorage.setItem(SawyanAPI._storageKey('sawyan_employee_session_token'), sessionToken);
+                }
+            } catch (e) {}
+        },
+
+        clearEmployeeSession() {
+            try {
+                localStorage.removeItem(SawyanAPI._storageKey('sawyan_employee'));
+                localStorage.removeItem(SawyanAPI._storageKey('sawyan_employee_session_token'));
+            } catch (e) {}
+        },
+
         getSavedAdmin() {
             try {
                 const k = SawyanAPI._storageKey('sawyan_admin');
@@ -741,6 +778,86 @@
             return await callRpc('authenticate_merchant_login', {
                 p_identifier: String(identifier || '').trim(),
                 p_password: String(password || '')
+            });
+        },
+
+        async authenticateEmployeeLogin({ merchantCode, employeeCode, pin }) {
+            return await callRpc('authenticate_employee_login', {
+                p_merchant_code: String(merchantCode || '').trim(),
+                p_employee_code: String(employeeCode || '').trim(),
+                p_pin: String(pin || '').trim()
+            });
+        },
+
+        async employeeChangePin({ employeeId, currentPin, newPin, sessionToken = null }) {
+            const tok = sessionToken || SawyanAPI.getEmployeeSessionToken();
+            return await callRpc('employee_change_pin', {
+                p_employee_id: employeeId,
+                p_session_token: tok,
+                p_current_pin: String(currentPin || '').trim(),
+                p_new_pin: String(newPin || '').trim()
+            });
+        },
+
+        async employeeLockSession({ employeeId, sessionToken = null }) {
+            const tok = sessionToken || SawyanAPI.getEmployeeSessionToken();
+            return await callRpc('employee_lock_session', {
+                p_employee_id: employeeId,
+                p_session_token: tok
+            });
+        },
+
+        async getEmployeeVerificationBundle({ employeeId, sessionToken = null }) {
+            const tok = sessionToken || SawyanAPI.getEmployeeSessionToken();
+            return await callRpc('get_employee_verification_bundle', {
+                p_employee_id: employeeId,
+                p_session_token: tok
+            });
+        },
+
+        async employeeLookupMember({ employeeId, memberIdentifier, sessionToken = null }) {
+            const tok = sessionToken || SawyanAPI.getEmployeeSessionToken();
+            return await callRpc('employee_lookup_member', {
+                p_employee_id: employeeId,
+                p_session_token: tok,
+                p_member_identifier: String(memberIdentifier || '').trim()
+            });
+        },
+
+        async employeeDecidePendingTx({ employeeId, transactionId, decision, rejectionReason = null, reconfirmPin = null, sessionToken = null }) {
+            const tok = sessionToken || SawyanAPI.getEmployeeSessionToken();
+            return await callRpc('employee_decide_pending_tx', {
+                p_employee_id: employeeId,
+                p_session_token: tok,
+                p_transaction_id: transactionId,
+                p_decision: decision,
+                p_rejection_reason: rejectionReason,
+                p_reconfirm_pin: reconfirmPin || null
+            });
+        },
+
+        async employeeCreateVerificationTx({
+            employeeId,
+            memberCode,
+            amount,
+            paymentType = 'cash',
+            idempotencyKey = null,
+            uniquePaymentRef = null,
+            receiptMediaUrl = null,
+            reconfirmPin = null,
+            sessionToken = null
+        }) {
+            const tok = sessionToken || SawyanAPI.getEmployeeSessionToken();
+            return await callRpc('employee_create_verification_tx', {
+                p_employee_id: employeeId,
+                p_session_token: tok,
+                p_member_code: Number(memberCode),
+                p_amount: Number(amount),
+                p_payment_type: paymentType || 'cash',
+                p_idempotency_key: idempotencyKey || generateIdempotencyKey(),
+                p_unique_payment_ref: uniquePaymentRef || null,
+                p_receipt_media_url: receiptMediaUrl || null,
+                p_reconfirm_pin: reconfirmPin || null
             });
         },
 
