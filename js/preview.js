@@ -661,7 +661,7 @@
     }
 
     function initGeoModal() {
-        const openTriggers = [byId('openGeoBarBtn'), byId('navGeoPill')];
+        const openTriggers = [byId('navGeoPill')];
         openTriggers.forEach(function (el) {
             if (el) el.addEventListener('click', function () {
                 const inp = byId('geoModalSearchInput');

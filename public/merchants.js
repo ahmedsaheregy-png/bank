@@ -14,6 +14,7 @@
         sort: 'cashback',
         pendingRating: 5,
         activeMerchantId: null,
+        pendingUrlMerchant: '',
         extraMerchants: []
     };
 
@@ -455,6 +456,52 @@
             };
         }
 
+        const shareBtn = byId('modal-share-link-btn');
+        if (shareBtn) {
+            shareBtn.textContent = 'مشاركة رابط المتجر 🔗';
+            const shareUrlObj = new URL(window.location.pathname, window.location.origin);
+            shareUrlObj.searchParams.set('country', m.country || state.country || 'ALL');
+            shareUrlObj.searchParams.set('merchant', m.code || m.id);
+            const shareUrl = shareUrlObj.toString();
+
+            const fallbackCopy = function (text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand('copy'); } catch (_e) {}
+                document.body.removeChild(ta);
+            };
+
+            const notifyCopied = function () {
+                shareBtn.textContent = 'تم نسخ الرابط ✓';
+                setTimeout(function () { shareBtn.textContent = 'مشاركة رابط المتجر 🔗'; }, 2200);
+                if (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.toast === 'function') {
+                    window.SAWYAN.UI.toast('تم نسخ رابط المتجر للمشاركة', 'success');
+                }
+            };
+
+            shareBtn.onclick = function () {
+                if (navigator.share) {
+                    navigator.share({
+                        title: m.businessName + ' — SAWYAN',
+                        text: 'تسوّق من ' + m.businessName + ' عبر SAWYAN — عائدات فريقك ' + netRate + '%',
+                        url: shareUrl
+                    }).catch(function () {});
+                } else if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                    navigator.clipboard.writeText(shareUrl).then(notifyCopied).catch(function () {
+                        fallbackCopy(shareUrl);
+                        notifyCopied();
+                    });
+                } else {
+                    fallbackCopy(shareUrl);
+                    notifyCopied();
+                }
+            };
+        }
+
         renderModalReviews(m.id);
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
@@ -569,6 +616,9 @@
                     };
                 });
                 renderGrid();
+                if (state.pendingUrlMerchant && !state.activeMerchantId) {
+                    openMerchantModalById(state.pendingUrlMerchant);
+                }
             }
         } catch (e) {
             console.warn('Public merchants catalog fetch warning:', e.message);
@@ -584,6 +634,7 @@
         const urlCat = params.get('cat');
         const urlType = params.get('type');
         const urlMerchant = params.get('merchant') || (window.location.hash ? window.location.hash.slice(1) : '');
+        state.pendingUrlMerchant = urlMerchant;
 
         if (urlCountry && window.SAWYAN_GEO_CONFIG && window.SAWYAN_GEO_CONFIG[urlCountry]) {
             state.country = urlCountry;

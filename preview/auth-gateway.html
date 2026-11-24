@@ -164,6 +164,18 @@
             font-size: 1.1rem;
         }
 
+        .gateway-buttons .btn-outline {
+            background: #f8fafc;
+            color: #0f2744;
+            border: 1.5px solid #cbd5e1;
+            font-weight: 800;
+        }
+
+        .gateway-buttons .btn-outline:hover {
+            background: #eef2f7;
+            border-color: #94a3b8;
+        }
+
         .gateway-card.member .btn-primary {
             background: var(--gradient-secondary);
         }
@@ -250,8 +262,8 @@
     <section class="auth-gateway">
         <div class="gateway-container">
             <div class="gateway-header">
-                <h1>🚀 ابدأ رحلتك مع <span class="text-gradient">SAWYAN</span></h1>
-                <p>اختر نوع حسابك للمتابعة</p>
+                <h1 id="gatewayHeading">🚀 ابدأ رحلتك مع <span class="text-gradient">SAWYAN</span></h1>
+                <p id="gatewaySubtitle">اختر نوع حسابك للمتابعة</p>
             </div>
 
             <div class="gateway-cards">
@@ -269,11 +281,11 @@
                         <li>ربط فريق عالمي بلا حواجز جغرافية</li>
                     </ul>
 
-                    <div class="gateway-buttons">
-                        <a href="member-dashboard/register.html" class="btn btn-primary">
+                    <div class="gateway-buttons" id="memberGatewayButtons">
+                        <a href="member-dashboard/register.html" id="memberRegisterBtn" class="btn btn-primary">
                             ✨ تسجيل حساب جديد
                         </a>
-                        <a href="member-dashboard/login.html" class="btn btn-secondary">
+                        <a href="member-dashboard/login.html" id="memberLoginBtn" class="btn btn-secondary">
                             لدي حساب - تسجيل الدخول
                         </a>
                     </div>
@@ -283,22 +295,25 @@
                 <div class="gateway-card merchant">
                     <div class="gateway-icon">🏪</div>
                     <h2>تاجر / صاحب نشاط</h2>
-                    <p>زِد مبيعاتك واجذب عملاء جدد من خلال نظام الولاء الذكي</p>
+                    <p>ضاعف مبيعاتك دون المجازفة بمبالغ تُنفق على حملات تسويقية مجهولة المردود</p>
 
                     <ul class="gateway-features">
-                        <li>نظام ولاء متكامل</li>
-                        <li>إحصائيات مفصلة</li>
-                        <li>لوحة تحكم سهلة</li>
-                        <li>دعم متواصل</li>
-                        <li>تقارير المبيعات</li>
+                        <li>ادفع مقابل النتائج الفعلية فقط</li>
+                        <li>آلاف العملاء في انتظارك — نحن جيشك التسويقي القادم</li>
+                        <li>تفرغ لتطوير منتجك وخدماتك بدون رسوم اشتراك</li>
+                        <li>شاشة توثيق سريعة للمالك وبوابة معزولة لكل موظف كاشير</li>
+                        <li>شفافية محاسبية كاملة وتقارير مبيعات فورية</li>
                     </ul>
 
-                    <div class="gateway-buttons">
-                        <a href="merchant-dashboard/register.html" class="btn btn-primary">
+                    <div class="gateway-buttons" id="merchantGatewayButtons">
+                        <a href="merchant-dashboard/register.html" id="merchantRegisterBtn" class="btn btn-primary">
                             🏪 سجّل متجرك الآن
                         </a>
-                        <a href="merchant-dashboard/login.html" class="btn btn-secondary">
-                            لدي حساب - تسجيل الدخول
+                        <a href="merchant-dashboard/login.html" id="merchantLoginBtn" class="btn btn-secondary">
+                            لدي حساب تاجر - تسجيل الدخول
+                        </a>
+                        <a href="merchant-dashboard/login.html?tab=employee" id="merchantEmployeeLoginBtn" class="btn btn-outline">
+                            👨‍💼 دخول موظف الكاشير (بالموبايل)
                         </a>
                     </div>
                 </div>
@@ -326,6 +341,35 @@
                 document.querySelectorAll('a[href$="register.html"]').forEach(function (a) {
                     a.setAttribute('href', a.getAttribute('href') + q);
                 });
+            }
+            const mode = new URLSearchParams(window.location.search).get('mode');
+            if (mode === 'login') {
+                const headingEl = document.getElementById('gatewayHeading');
+                const subEl = document.getElementById('gatewaySubtitle');
+                if (headingEl) headingEl.innerHTML = '🔐 تسجيل الدخول إلى <span class="text-gradient">SAWYAN</span>';
+                if (subEl) subEl.textContent = 'اختر بوابتك للدخول المباشر — عضو، مالك متجر، أو موظف كاشير';
+
+                const memBox = document.getElementById('memberGatewayButtons');
+                const memLogin = document.getElementById('memberLoginBtn');
+                const memReg = document.getElementById('memberRegisterBtn');
+                if (memBox && memLogin && memReg) {
+                    memLogin.className = 'btn btn-primary';
+                    memReg.className = 'btn btn-secondary';
+                    memBox.insertBefore(memLogin, memReg);
+                }
+
+                const merchBox = document.getElementById('merchantGatewayButtons');
+                const merchLogin = document.getElementById('merchantLoginBtn');
+                const merchEmp = document.getElementById('merchantEmployeeLoginBtn');
+                const merchReg = document.getElementById('merchantRegisterBtn');
+                if (merchBox && merchLogin && merchEmp && merchReg) {
+                    merchLogin.className = 'btn btn-primary';
+                    merchEmp.className = 'btn btn-outline';
+                    merchReg.className = 'btn btn-secondary';
+                    merchBox.appendChild(merchLogin);
+                    merchBox.appendChild(merchEmp);
+                    merchBox.appendChild(merchReg);
+                }
             }
         });
     </script>

@@ -2555,18 +2555,6 @@ html:not([data-theme="dark"]) body {
     gap: 8px;
     flex-wrap: wrap;
 }
-.top-geo-change-btn {
-    background: rgba(255, 255, 255, 0.18);
-    color: #ffffff;
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    border-radius: 999px;
-    padding: 3px 12px;
-    font-size: 0.82rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-.top-geo-change-btn:hover { background: rgba(255, 255, 255, 0.3); }
 .top-trust-chips {
     display: flex;
     gap: 14px;
@@ -3463,7 +3451,6 @@ html:not([data-theme="dark"]) body {
         flex-wrap: nowrap !important;
         gap: 8px !important;
     }
-    .top-geo-change-btn,
     .top-trust-desktop-only {
         display: none !important;
     }

@@ -1882,6 +1882,7 @@
                     const raw = a.getAttribute('href') || '';
                     if (!raw || raw.startsWith('#') || raw.includes('/preview/')) return;
                     const u = new URL(raw, window.location.href);
+                    if (u.pathname.includes('/preview/')) return;
                     const parts = u.pathname.split('/');
                     const idxBank = parts.indexOf('bank');
                     let nextPath;
