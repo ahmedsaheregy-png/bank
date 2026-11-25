@@ -22,6 +22,15 @@
     <link rel="stylesheet" href="../shared/css/app-shell.css?v=20261121_launch">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        @media (max-width: 768px) {
+            .dashboard-header { min-height: 48px !important; max-height: 64px !important; padding: 6px 10px !important; flex-wrap: nowrap !important; gap: 6px !important; }
+            .dashboard-header h1 { font-size: 0.92rem !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; min-width: 0 !important; flex: 1 1 auto !important; }
+            .dashboard-header > div { flex-wrap: nowrap !important; flex-shrink: 0 !important; gap: 6px !important; }
+            .dashboard-header .sw-ctrl-btn, .dashboard-header .sawyan-ctrl-btn { padding: 4px 6px !important; font-size: 0.72rem !important; }
+            .dashboard-header .sawyan-font-btn, .dashboard-header .sw-font-btn { display: none !important; }
+        }
+    </style>
 </head>
 
 <body>
@@ -112,6 +121,8 @@
                         <button type="button" class="btn btn-outline" id="homeQuickQrBtn" onclick="openQuickMemberQrModal()" style="flex:1;min-width:140px;font-weight:800;">📲 كود هويتي للكاشير (QR)</button>
                     </div>
 
+                    <div id="memberHomeInteractiveDeck"></div>
+
                     <div class="stats-grid">
                         <div class="stat-card">
                             <div class="stat-icon">💰</div>
@@ -138,8 +149,6 @@
                             </div>
                         </div>
                     </div>
-
-                    <div id="memberHomeInteractiveDeck"></div>
 
                     <div class="qr-section qr-section-compact" data-spec-id="member-home-single-qr">
                         <div class="qr-compact-box" onclick="openQuickMemberQrModal()" title="اضغط للتكبير للكاشير">
@@ -263,20 +272,18 @@
     <script src="../shared/data/countries.js?v=20261121_launch_geo"></script>
     <script src="../shared/components/smart-search.js?v=20261121_launch_geo"></script>
     <script src="../shared/js/registration-engine.js?v=20261121_launch_geo"></script>
-    <script src="js/tree-studio.js?v=20261121_launch"></script>
-    <script src="js/dashboard.js?v=20261121_launch_s15"></script>
+    <script src="js/tree-studio.js?v=20261121_launch_s22"></script>
+    <script src="js/dashboard.js?v=20261121_launch_s22"></script>
     <script>
-        // تهيئة الإشعارات بعد تحميل البيانات
+        // تهيئة جرس الإشعارات فور جاهزية الصفحة دون تأخير race-condition
         document.addEventListener('DOMContentLoaded', function () {
-            setTimeout(() => {
-                const member = (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.getSavedMember()) || {};
-                if (member.id && window.SAWYAN && window.SAWYAN.Notifications) {
-                    window.SAWYAN.Notifications.init('member', member.id);
-                    if (window.__memberBundleCache && Array.isArray(window.__memberBundleCache.notifications)) {
-                        window.SAWYAN.Notifications.hydrateFromBundle(window.__memberBundleCache.notifications);
-                    }
+            const member = (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.getSavedMember()) || {};
+            if (member.id && window.SAWYAN && window.SAWYAN.Notifications) {
+                window.SAWYAN.Notifications.init('member', member.id);
+                if (window.__memberBundleCache && Array.isArray(window.__memberBundleCache.notifications)) {
+                    window.SAWYAN.Notifications.hydrateFromBundle(window.__memberBundleCache.notifications);
                 }
-            }, 900);
+            }
         });
     </script>
     <script src="../shared/js/app-shell.js?v=20261121_launch"></script>

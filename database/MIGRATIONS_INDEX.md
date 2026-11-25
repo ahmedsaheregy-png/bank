@@ -1,8 +1,8 @@
 # SAWYAN V3.0 — Canonical SQL Migrations & Function Ownership Registry
 
-- **Total Ordered SQL Files:** `27` (`01` → `26`)
-- **Total Distinct `sawyan.*` Functions:** `134`
-- **Functions Redefined Across Multiple Files:** `36` (always edit ONLY the Canonical Final Owner file or author a new numbered migration `27+`)
+- **Total Ordered SQL Files:** `31` (`01` → `30`)
+- **Total Distinct `sawyan.*` Functions:** `135`
+- **Functions Redefined Across Multiple Files:** `36` (always edit ONLY the Canonical Final Owner file or author a new numbered migration `31+`)
 
 ## 1. Ordered Migration Sequence
 | # | Migration File | Purpose |
@@ -36,7 +36,9 @@
 | 27 | `26_stage19_perf_topup_and_lifecycle_locks.sql` | Stage 19 Tree Hash-Join Optimization (zero N+1), Dashboard `12s` Timeout Guard, Configurable Optional-Proof Top-Up Policy (`REQUIRE_TOPUP_PROOF`) & Anti-Duplicate Guards |
 | 28 | `27_stage19_demo_full_lifecycle_simulator.sql` | Stage 19 `sawyan_demo`-Only Self-Rolling-Back 50-Member + 6-Merchant + Month-Close + Day-15 Payout + `0.00` Trial Balance Simulator |
 | 29 | `28_flash_offers_live_broadcast.sql` | Live Flash Offers Broadcast (`MerchantFlashOfferLive` to Members + Merchant Confirmation), Public Active Offers RPC (`get_public_active_flash_offers`) & Idempotent Backfill |
-| 30 | `29_stage20_pg_graphql_lock.sql` | Stage 20 Preventive Least-Privilege Lock: Revokes residual `anon` direct table grants on `sawyan_demo` operational tables (1:1 parity with `sawyan`) & locks `graphql_public.graphql` |
+| 30 | `29_stage20_pg_graphql_lock.sql` | Stage 20 Preventive Least-Privilege Lock: Revokes residual `anon` direct table grants on `sawyan_demo` operational tables (1:1 parity with `sawyan`), locks `graphql_public.graphql`, and sets `12s` timeout on `get_admin_full_tree` |
+| 31 | `30_perf_fk_indexes_and_public_rls_cleanup.sql` | Stage 22 Hot-Path FK Covering Indexes (42 B-tree indexes across `sawyan` & `sawyan_demo`) & Legacy `public.*` Permissive RLS Policy Cleanup |
+| 31 | `30_perf_fk_indexes_and_public_rls_cleanup.sql` | Stage 23 Hot-Path FK Indexes (42 B-tree covering indexes × 2 schemas = 84 indexes on tree, ledger, wallet, POS, disputes & settlement) + Drops 12 dead legacy `public.*` permissive RLS policies (`multiple_permissive_policies`: `120 → 0`) |
 
 ## 2. Redefined Function Canonical Ownership Table (Single Source of Truth)
 | Function (`sawyan.*`) | Definitions Count | Canonical Final Owner | Previous Files |

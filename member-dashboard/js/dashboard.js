@@ -525,7 +525,7 @@ function goToPage(page) {
     if (targetPage) targetPage.classList.add('active');
 
     const titleMap = {
-        home: 'لوحة التحكم الرئيسية',
+        home: 'لوحة العضو',
         myPending: 'طلباتي المعلقة',
         transactions: 'العمليات المكتملة والمراجعة',
         tree: 'الشجرة الدولية وتقارير الفريق',
@@ -868,21 +868,92 @@ function renderHomePage() {
                     <button type="button" class="btn btn-outline btn-sm" onclick="goToPage('tree')">🌳 استوديو الشجرة</button>
                </div>`);
 
+    const showNewMemberChecklist = txs.length === 0 && combinedNetUsd <= 0;
+    const newMemberChecklistHtml = !showNewMemberChecklist ? '' : `
+        <div style="background:#ffffff;border:1.5px solid #86efac;border-radius:16px;padding:14px 16px;margin:10px 0;box-shadow:0 3px 12px rgba(6,78,59,0.06);">
+            <div style="font-weight:900;font-size:0.96rem;color:#065f46;margin-bottom:8px;">🚀 ابدأ رحلتك في SAWYAN خلال 3 خطوات سريعة</div>
+            <div style="display:grid;gap:8px;font-size:0.83rem;">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 11px;">
+                    <span><strong>1.</strong> اختر متجراً شريكاً قريباً منك أو متجراً إلكترونياً معتمداً</span>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:4px 10px;font-size:0.76rem;" onclick="goToPage('merchants')">🏪 التجار حولي</button>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:8px 11px;">
+                    <span><strong>2.</strong> وثّق أول فاتورة شراء (بالـ QR أو برقم الفاتورة) لإضاءة هدفك الشهري</span>
+                    <button type="button" class="btn btn-primary btn-sm" style="padding:4px 10px;font-size:0.76rem;" onclick="openMemberPurchaseModal()">🧾 وثّق الآن</button>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 11px;">
+                    <span><strong>3.</strong> شارك رابط دعوتك مع معارفك لبناء شجرتك وتنمية عائداتك الشهرية</span>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:4px 10px;font-size:0.76rem;" onclick="goToPage('referrals')">🔗 رابط الدعوة</button>
+                </div>
+            </div>
+        </div>
+    `;
+
     homeEnhBox.innerHTML = `
+        <!-- 1. الصندوق الأبيض للهدف الشهري فوق الطيّة (إجابة: كم بقي لي لأتأهل؟) -->
+        <div class="target-box-card ${stateCls}" data-spec-id="member-home-target-box" style="background:#ffffff;border:1.5px solid #e2e8f0;border-top:4px solid ${stateBadgeBg};border-radius:16px;padding:16px 18px;margin:0 0 12px;box-shadow:0 4px 16px rgba(15,23,42,0.06);">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+                <strong style="font-size:1.05rem;color:#0f172a;">🎯 الهدف الشهري لشهر (${monthNum})</strong>
+                <div style="display:inline-flex;align-items:center;gap:7px;flex-wrap:wrap;">
+                    <span style="font-size:0.82rem;font-weight:800;color:#475569;">الحالة:</span>
+                    <span style="padding:4px 12px;border-radius:999px;font-size:0.8rem;font-weight:800;background:${stateBadgeBg};color:#ffffff;white-space:nowrap;">${stateBadgeText}</span>
+                </div>
+            </div>
+
+            <div style="height:12px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-bottom:10px;">
+                <div style="width:${pct}%;height:100%;background:${stateBadgeBg};border-radius:999px;transition:width 0.35s;"></div>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;font-size:0.94rem;color:#0f172a;">
+                <div>تم تحقيق <strong>${fmtBiDi(fmtLocalFromUsd(combinedNetUsd))}</strong> من <strong>${fmtBiDi(fmtLocalFromUsd(req))}</strong></div>
+                <span style="background:#f1f5f9;color:#0f172a;padding:2px 10px;border-radius:999px;font-size:0.82rem;font-weight:900;">${pct}%</span>
+            </div>
+
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:11px 13px;margin-bottom:10px;">
+                <div style="font-size:0.8rem;font-weight:800;color:#475569;margin-bottom:6px;">عبارة عن:</div>
+                <div style="display:grid;gap:5px;font-size:0.84rem;color:#1e293b;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <span>أ) هذا الشهر <small style="color:#64748b;">(ما دخل لخطة الدخل حتى اللحظة)</small>:</span>
+                        <strong>${fmtBiDi(fmtLocalFromUsd(monthUsd))}</strong>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <span>ب) مرحّل من أشهر سابقة <small style="color:#64748b;">(Carry On)</small>:</span>
+                        <strong>${fmtBiDi(fmtLocalFromUsd(carryUsd))}</strong>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px dashed #cbd5e1;padding-top:6px;margin-top:2px;">
+                        <span style="font-weight:800;color:${isQual ? '#047857' : '#b45309'};">باقي للتأهل:</span>
+                        <strong style="color:${isQual ? '#047857' : '#b45309'};">${isQual ? 'مكتمل 100% ✅' : fmtBiDi(fmtLocalFromUsd(remainingUsd))}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;">
+                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:9px 11px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                    <span style="font-size:0.8rem;font-weight:700;color:#166534;">🛒 إجمالي مشترياتك بهذا الشهر</span>
+                    <strong style="font-size:0.88rem;color:#064e3b;">${fmtBiDi(grossMonthFormatted)}</strong>
+                </div>
+                <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:9px 11px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                    <span style="font-size:0.8rem;font-weight:700;color:#1e40af;">📊 متوسط نسبة الهدف من المشتريات</span>
+                    <strong style="font-size:0.88rem;color:#1e3a8a;">${avgPctFormatted}</strong>
+                </div>
+            </div>
+        </div>
+
         ${queuedOrPendTxs.length > 0 ? `
-            <div style="background:#fef2f2;border:1.5px solid #f87171;border-radius:14px;padding:13px 16px;margin:12px 0;color:#7f1d1d;">
+            <div style="background:#fef2f2;border:1.5px solid #f87171;border-radius:14px;padding:11px 14px;margin:10px 0;color:#7f1d1d;">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
                     <div>
-                        <strong style="font-size:0.94rem;display:block;">⏸️ لديك ${queuedOrPendTxs.length} فاتورة محفوظة بانتظار شحن أو اعتماد التاجر</strong>
-                        <div style="font-size:0.8rem;margin-top:3px;line-height:1.55;">
-                            ${queuedOrPendTxs.slice(0, 3).map(qt => `<code>${esc(qt.sw_short_code)}</code> — <b>${esc(qt.merchant_name)}</b> (${Number(qt.total_amount || 0).toFixed(2)} ${esc(qt.currency_code || '')})`).join(' • ')}
-                            <br>تُغذّى قيمة خطة الدخل داخل هدفك الشهري تلقائياً فور شحن التاجر أو اعتماد العملية.
+                        <strong style="font-size:0.9rem;display:block;">⏸️ لديك ${queuedOrPendTxs.length} فاتورة محفوظة بانتظار اعتماد التاجر</strong>
+                        <div style="font-size:0.79rem;margin-top:3px;line-height:1.55;">
+                            ${queuedOrPendTxs.slice(0, 3).map(qt => `<code dir="ltr">${esc(qt.sw_short_code)}</code> — <b>${esc(qt.merchant_name)}</b> (<span dir="ltr" style="white-space:nowrap;">${Number(qt.total_amount || 0).toFixed(2)} ${esc(qt.currency_code || '')}</span>)`).join(' • ')}
                         </div>
                     </div>
-                    <button type="button" onclick="goToPage('myPending')" style="background:#b91c1c;color:#fff;border:none;padding:7px 14px;border-radius:8px;font-weight:800;font-size:0.8rem;cursor:pointer;white-space:nowrap;">⏳ عرض طلباتي المعلقة</button>
+                    <button type="button" onclick="goToPage('myPending')" style="background:#b91c1c;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-weight:800;font-size:0.78rem;cursor:pointer;white-space:nowrap;">⏳ عرض طلباتي المعلقة</button>
                 </div>
             </div>
         ` : ''}
+
+        ${newMemberChecklistHtml}
 
         <!-- شريط العروض الترويجية والحملات الحصرية النشطة (يظهر فقط عند وجود عرض حي) -->
         <div id="memberHomeFlashOffersSlot" style="display:none;"></div>
@@ -894,55 +965,6 @@ function renderHomePage() {
             <span style="font-weight:${isReviewPhase ? '900' : '600'};color:${isReviewPhase ? '#1d4ed8' : '#475569'};">${isReviewPhase ? '🔵' : '⚪'} 1–14 الشهر التالي: المراجعة والمطابقة</span>
             <span style="color:#94a3b8;">←</span>
             <span style="font-weight:${isPayoutDay ? '900' : '600'};color:${isPayoutDay ? '#047857' : '#475569'};">${isPayoutDay ? '💰' : '📅'} يوم 15: إتاحة صرف الأرباح</span>
-        </div>
-
-        <!-- 1. الصندوق الأبيض للهدف الشهري (إجابة: كم بقي لي لأتأهل؟) -->
-        <div class="target-box-card ${stateCls}" data-spec-id="member-home-target-box" style="background:#ffffff;border:1.5px solid #e2e8f0;border-top:4px solid ${stateBadgeBg};border-radius:16px;padding:18px;margin:12px 0;box-shadow:0 4px 16px rgba(15,23,42,0.06);">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
-                <strong style="font-size:1.08rem;color:#0f172a;">🎯 الهدف الشهري لشهر (${monthNum})</strong>
-                <div style="display:inline-flex;align-items:center;gap:7px;flex-wrap:wrap;">
-                    <span style="font-size:0.84rem;font-weight:800;color:#475569;">الحالة:</span>
-                    <span style="padding:4px 12px;border-radius:999px;font-size:0.82rem;font-weight:800;background:${stateBadgeBg};color:#ffffff;white-space:nowrap;">${stateBadgeText}</span>
-                </div>
-            </div>
-
-            <div style="height:12px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-bottom:10px;">
-                <div style="width:${pct}%;height:100%;background:${stateBadgeBg};border-radius:999px;transition:width 0.35s;"></div>
-            </div>
-
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;font-size:0.95rem;color:#0f172a;">
-                <div>تم تحقيق <strong>${fmtBiDi(fmtLocalFromUsd(combinedNetUsd))}</strong> من <strong>${fmtBiDi(fmtLocalFromUsd(req))}</strong></div>
-                <span style="background:#f1f5f9;color:#0f172a;padding:2px 10px;border-radius:999px;font-size:0.82rem;font-weight:900;">${pct}%</span>
-            </div>
-
-            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:12px;">
-                <div style="font-size:0.82rem;font-weight:800;color:#475569;margin-bottom:8px;">عبارة عن:</div>
-                <div style="display:grid;gap:6px;font-size:0.86rem;color:#1e293b;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
-                        <span>أ) هذا الشهر <small style="color:#64748b;">(ما دخل لخطة الدخل حتى اللحظة)</small>:</span>
-                        <strong>${fmtBiDi(fmtLocalFromUsd(monthUsd))}</strong>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
-                        <span>ب) مرحّل من أشهر سابقة <small style="color:#64748b;">(Carry On)</small>:</span>
-                        <strong>${fmtBiDi(fmtLocalFromUsd(carryUsd))}</strong>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px dashed #cbd5e1;padding-top:7px;margin-top:2px;">
-                        <span style="font-weight:800;color:${isQual ? '#047857' : '#b45309'};">باقي للتأهل:</span>
-                        <strong style="color:${isQual ? '#047857' : '#b45309'};">${isQual ? 'مكتمل 100% ✅' : fmtBiDi(fmtLocalFromUsd(remainingUsd))}</strong>
-                    </div>
-                </div>
-            </div>
-
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
-                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
-                    <span style="font-size:0.81rem;font-weight:700;color:#166534;">🛒 إجمالي مشترياتك بهذا الشهر</span>
-                    <strong style="font-size:0.9rem;color:#064e3b;">${fmtBiDi(grossMonthFormatted)}</strong>
-                </div>
-                <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
-                    <span style="font-size:0.81rem;font-weight:700;color:#1e40af;">📊 متوسط نسبة الهدف من المشتريات</span>
-                    <strong style="font-size:0.9rem;color:#1e3a8a;">${avgPctFormatted}</strong>
-                </div>
-            </div>
         </div>
 
         <!-- 1.5 خطوة اليوم + نبض شجرتي (إجابة سؤالي: ماذا أفعل اليوم؟ + ما الجديد في شجرتي؟) -->
@@ -1026,12 +1048,12 @@ function renderHomePage() {
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
                 <div>
                     <strong style="font-size:0.98rem;color:#0f172a;display:block;">📡 رادار متابعة فريقك (القريبون من التأهل)</strong>
-                    <div style="font-size:0.78rem;color:#64748b;margin-top:2px;">يعرض أعضاء فريقك في نطاق عمولتك (2Me–11Me) الذين بدأوا الشراء هذا الشهر (البرتقاليون أولاً ثم الخضر) لمتابعتهم وتشجيعهم بضغطة زر.</div>
+                    <div style="font-size:0.78rem;color:#64748b;margin-top:2px;">يعرض أعضاء فريقك ضمن أول 10 أجيال في نطاق عمولتك الذين بدأوا الشراء هذا الشهر (القريبون من التأهل أولاً ثم المؤهلون) لتشجيعهم بضغطة زر.</div>
                 </div>
                 <button type="button" onclick="goToPage('tree')" class="btn btn-outline btn-sm" style="padding:4px 11px;font-size:0.76rem;white-space:nowrap;">عرض الشجرة كاملة</button>
             </div>
             ${teamRadar.length === 0
-                ? `<div style="padding:12px;background:#f8fafc;border-radius:10px;color:#64748b;font-size:0.83rem;">لا يوجد أعضاء بدأوا الشراء ضمن نطاق 2Me–11Me هذا الشهر حتى الآن.</div>`
+                ? `<div style="padding:12px;background:#f8fafc;border-radius:10px;color:#64748b;font-size:0.83rem;">لا يوجد أعضاء بدأوا الشراء ضمن أول 10 أجيال في شجرتك هذا الشهر حتى الآن.</div>`
                 : `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:8px;">
                     ${teamRadar.map(n => {
                         const wa = n.phone_visible && n.phone ? String(n.phone).replace(/\D/g, '') : '';
@@ -1275,7 +1297,7 @@ function loadAllTransactions() {
         <h2>💳 العمليات المكتملة والفواتير الموثقة (${txs.length})</h2>
 
         <div data-spec-id="member-tx-d5-banner" style="background:#fff7ed;border:1.5px solid #fb923c;border-radius:14px;padding:12px 16px;margin:12px 0;font-size:0.84rem;color:#9a3412;">
-            🔒 <strong>قاعدة الإقفال والمراجعة الدستورية (D5):</strong> جميع الفواتير تخضع لنافذة <strong>14 يوماً</strong> لمصافحة المرتجع عبر OTP/الموافقة قبل اعتماد الإقفال وصرف يوم <strong>15</strong> نهائياً بلا استرداد سلبي على الأعضاء.
+            🔒 <strong>قاعدة المراجعة والإقفال الشهري:</strong> جميع الفواتير تخضع لنافذة <strong>14 يوماً</strong> لمصافحة المرتجع عبر رمز التحقق أو الموافقة قبل اعتماد الإقفال وصرف يوم <strong>15</strong> نهائياً بلا أي خصم سلبي على الأعضاء.
         </div>
 
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
@@ -1800,7 +1822,7 @@ function loadTree() {
                     <button type="button" class="lens-pill-btn ${treeUiState.viewMode === 'cards' ? 'active' : ''}" onclick="setTreeViewMode('cards')">🪪 بطاقات</button>
                 </div>
                 <button type="button" data-spec-id="member-tree-orange-filter" class="lens-pill-btn ${treeUiState.orangeOnly ? 'active' : ''}" style="${treeUiState.orangeOnly ? 'background:#f59e0b;color:#0f172a;border-color:#fde047;' : 'border-color:#f59e0b;color:#fde68a;'}" onclick="toggleTreeOrangeFilter()">
-                    🟠 إبراز البرتقالي (2Me–11Me)
+                    🟠 إبراز القريبين من التأهل
                 </button>
             </div>
             <div style="width:100%;display:flex;gap:12px;flex-wrap:wrap;font-size:0.74rem;color:#cbd5e1;padding-top:6px;border-top:1px solid rgba(255,255,255,0.1);">
@@ -1925,7 +1947,7 @@ function loadTree() {
         <!-- رادار القائد التخصصي للأجيال الـ 10 (N01/N02 + W09b) -->
         <div data-spec-id="member-tree-leader-radar" style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:14px;padding:14px 16px;margin:16px 0;">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-                <strong style="color:#92400e;">🔥 رادار القائد المتخصص للـ 10 أجيال (2Me–11Me — نسب الإنجاز فقط)</strong>
+                <strong style="color:#92400e;">🔥 رادار متابعة أول 10 أجيال (نسب الإنجاز فقط)</strong>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;">
                     <button type="button" class="lens-pill-btn ${treeUiState.radarMode === 'near_target_50_99' ? 'active' : ''}" onclick="loadInlineLeaderRadar('near_target_50_99')">🔥 50%–99%</button>
                     <button type="button" class="lens-pill-btn ${treeUiState.radarMode === 'zero_activity_new' ? 'active' : ''}" onclick="loadInlineLeaderRadar('zero_activity_new')">🆕 بدون شراء</button>
@@ -2179,7 +2201,7 @@ window.openTreeNodeDetailModal = function (memberCode) {
                 <strong>${fmtUsd(node.node_actual_share_usd)}</strong> (متوقع: ${fmtUsd(node.node_expected_share_usd)})
             </div>
         </div>
-        ${isSelfModal ? '<div style="text-align:center;color:#065f46;background:#ecfdf5;border:1px solid #a7f3d0;padding:8px;border-radius:10px;font-size:0.84rem;font-weight:700;">👑 هذه عقدتك الشخصية في قمة شجرتك — يمكنك متابعة فريقك من الدوائر أدناه</div>' : (wa ? `<a href="https://wa.me/${wa}" target="_blank" class="btn btn-primary btn-block" style="text-align:center;">💬 مراسلة العضو عبر واتساب (${esc(node.phone)})</a>` : '<div style="text-align:center;color:#64748b;font-size:0.82rem;">🔒 رقم الهاتف محجوب دستورياً خارج نطاق 2Me–11Me (القرار D26)</div>')}
+        ${isSelfModal ? '<div style="text-align:center;color:#065f46;background:#ecfdf5;border:1px solid #a7f3d0;padding:8px;border-radius:10px;font-size:0.84rem;font-weight:700;">👑 هذه عقدتك الشخصية في قمة شجرتك — يمكنك متابعة فريقك من الدوائر أدناه</div>' : (wa ? `<a href="https://wa.me/${wa}" target="_blank" class="btn btn-primary btn-block" style="text-align:center;">💬 مراسلة العضو عبر واتساب (${esc(node.phone)})</a>` : '<div style="text-align:center;color:#64748b;font-size:0.82rem;">🔒 رقم الهاتف محمي للخصوصية (متاح فقط لأول 10 أجيال مباشرة في شجرتك)</div>')}
     `;
     modal.style.display = 'flex';
 };
@@ -2328,18 +2350,42 @@ function loadWalletDetails() {
                 <h3>📋 سجل حركات المحفظة (${wTxs.length}) ${archive.length ? `• الإقفالات الشهرية (${archive.length})` : ''}</h3>
                 ${wTxs.length === 0 ? '<p class="empty-state">لا توجد حركات مالية مسجلة حتى الآن.</p>' : `
                     <div style="display:grid;gap:8px;">
-                        ${wTxs.map(t => `
-                            <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center;">
+                        ${wTxs.map(t => {
+                            const typeLabels = {
+                                commission_credit: '💰 عمولة شهرية معتمدة',
+                                monthly_payout: '💰 صرف أرباح شهرية',
+                                surplus_credit: '✨ حصة فائض القمة',
+                                withdrawal: '💸 طلب سحب أرباح',
+                                withdrawal_fee: '🏦 رسوم تحويل بنكي',
+                                refund: '↩️ تسوية واسترداد',
+                                reversal: '↩️ عكس قيد',
+                                s03_release: '🔓 تحرير فائض سقف شهري',
+                                adjustment: '⚖️ تسوية محاسبية'
+                            };
+                            const statusLabels = {
+                                completed: 'مكتملة ✅',
+                                approved: 'معتمدة ✅',
+                                paid: 'تم الصرف ✅',
+                                pending: 'قيد المراجعة ⏳',
+                                processing: 'قيد التنفيذ ⏳',
+                                rejected: 'مرفوضة ❌',
+                                cancelled: 'ملغاة ❌',
+                                failed: 'فشلت ❌'
+                            };
+                            const tLabel = typeLabels[String(t.transaction_type || '').toLowerCase()] || esc(t.transaction_type || 'حركة مالية');
+                            const sLabel = statusLabels[String(t.status || '').toLowerCase()] || esc(t.status || '');
+                            return `
+                            <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
                                 <div>
-                                    <strong>${esc(t.transaction_type)}</strong>
-                                    <div style="font-size:0.78rem;color:#64748b;">${new Date(t.created_at).toLocaleString(getMemLocale())} • ${esc(t.status)}</div>
+                                    <strong>${tLabel}</strong>
+                                    <div style="font-size:0.78rem;color:#64748b;">${new Date(t.created_at).toLocaleString(getMemLocale())} • ${sLabel}</div>
                                 </div>
                                 <div style="text-align:left;">
-                                    <strong style="color:${t.transaction_type === 'withdrawal' ? '#dc2626' : '#047857'};">${esc(fmtLocalFromUsd(t.amount_usd))}</strong>
-                                    <div style="font-size:0.75rem;color:#64748b;">${fmtUsd(t.amount_usd)}</div>
+                                    <strong style="color:${t.transaction_type === 'withdrawal' ? '#dc2626' : '#047857'};" dir="ltr">${esc(fmtLocalFromUsd(t.amount_usd))}</strong>
+                                    <div style="font-size:0.75rem;color:#64748b;" dir="ltr">${fmtUsd(t.amount_usd)}</div>
                                 </div>
-                            </div>
-                        `).join('')}
+                            </div>`;
+                        }).join('')}
                     </div>
                 `}
             </div>
@@ -3928,11 +3974,11 @@ async function renderMemberProfileCompletionBanner() {
     if (!banner) {
         banner = document.createElement('div');
         banner.id = 'memberProfileCompletionBanner';
-        const quickBar = document.getElementById('memberHomeQuickCashierBar');
-        if (quickBar && quickBar.parentNode === host) {
-            host.insertBefore(banner, quickBar.nextSibling);
+        const statsGrid = host.querySelector('.stats-grid');
+        if (statsGrid && statsGrid.parentNode === host) {
+            host.insertBefore(banner, statsGrid);
         } else {
-            host.insertBefore(banner, host.firstChild);
+            host.appendChild(banner);
         }
     }
 

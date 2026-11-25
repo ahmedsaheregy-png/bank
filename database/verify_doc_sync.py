@@ -100,6 +100,25 @@ def main():
             if kw not in html_txt:
                 failures.append(f"{label} missing synced keyword `{kw}`; run `database/sync_docs_html.py`")
 
+    # 3b. Verify UNCERTAIN_REVIEW.html & tools/living-docs/ viewer mirrors stay fresh with Markdown sources
+    uncertain_md_path = os.path.join(DOCS_DIR, "بنود_غير_متأكد_للمراجعة.md")
+    uncertain_html_path = os.path.join(DOCS_DIR, "UNCERTAIN_REVIEW.html")
+    if os.path.exists(uncertain_md_path) and os.path.exists(uncertain_html_path):
+        if os.path.getmtime(uncertain_html_path) + 2.0 < os.path.getmtime(uncertain_md_path):
+            failures.append("UNCERTAIN_REVIEW.html is older than بنود_غير_متأكد_للمراجعة.md; run `database/sync_docs_html.py`")
+
+    living_dir = os.path.join(REPO_DIR, "tools", "living-docs")
+    if os.path.isdir(living_dir):
+        for md_p, viewer_fn in [
+            (const_md_path, "doc1_site_operations.html"),
+            (tech_md_path, "doc3_technical_specs.html"),
+            (uncertain_md_path, "doc4_uncertain_review.html"),
+        ]:
+            vp = os.path.join(living_dir, viewer_fn)
+            if os.path.exists(md_p) and os.path.exists(vp):
+                if os.path.getmtime(vp) + 2.0 < os.path.getmtime(md_p):
+                    failures.append(f"tools/living-docs/{viewer_fn} is older than its Markdown source; run `database/sync_docs_html.py`")
+
     # 4. Verify all CONSTITUTION_V2.html TOC anchor links resolve to valid DOM ids
     ec_idx = const_html.find('id="editable-content"')
     if ec_idx == -1:

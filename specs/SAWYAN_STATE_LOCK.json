@@ -10,6 +10,6 @@
   "frozen_items": [
     "OFFLINE_TOTP_MEMBER_QR_60S"
   ],
-  "last_full_audit_verified_at": "2026-11-25T03:50:00Z",
-  "notes": "strict_parity_enabled becomes true upon completing Phase 1 & Phase 2 and binds Stop Hook + Zero-Defect Gate to full D29/D30 visual & spec parity. Stages 10-20 sealed (incl. Live Flash Offers Broadcast in 28_flash_offers_live_broadcast.sql). Stage 21 (Merchant Portal mobile anti-bloat action bar + 1-tap POS CTA + WhatsApp store share, full jargon purge, pending_topup_requests step-2 bug fix, RTL & .sawyan-font-btn mobile header fix, 29_stage20_pg_graphql_lock.sql least-privilege parity, and cross-schema registration_field_configs parity monitor) sealed 2026-11-25."
+  "last_full_audit_verified_at": "2026-11-25T06:05:00Z",
+  "notes": "strict_parity_enabled becomes true upon completing Phase 1 & Phase 2 and binds Stop Hook + Zero-Defect Gate to full D29/D30 visual & spec parity. Stages 10-21 sealed. Stage 22 (Uncertain Review Register Item #7 for merchant balance terminology & legal review, Member Portal mobile single-row header + Monthly Target Box above-the-fold + conditional Day-1 3-step onboarding + Arabic wallet history localization + member jargon purge, and Merchant KPI caption alignment) sealed 2026-11-25."
 }

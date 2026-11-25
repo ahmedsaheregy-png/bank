@@ -314,7 +314,7 @@
         const slice = filtered.slice(start, start + STATE.tablePageSize);
 
         wrap.innerHTML =
-            '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>العضو</th><th>الدولة</th><th>الجيل</th><th>التقدم</th><th>التواصل (D26)</th><th>استكشاف</th></tr></thead><tbody>' +
+            '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>العضو</th><th>الدولة</th><th>الجيل</th><th>التقدم</th><th>التواصل</th><th>استكشاف</th></tr></thead><tbody>' +
             (slice.length === 0
                 ? '<tr><td colspan="6" style="text-align:center;color:#64748b;padding:18px;">لا توجد نتائج مطابقة في هذا الفرع</td></tr>'
                 : slice.map(function (n) {

@@ -80,7 +80,7 @@
         if (!box) {
             box = document.createElement('div');
             box.id = 'sawyanAdminLiveToast';
-            box.style.cssText = 'position:fixed;bottom:22px;left:22px;z-index:10050;max-width:440px;padding:12px 16px;border-radius:12px;font-family:Tajawal,sans-serif;font-weight:800;font-size:0.88rem;box-shadow:0 10px 28px rgba(15,23,42,0.28);transition:opacity 0.25s;';
+            box.style.cssText = 'position:fixed;bottom:78px;left:16px;right:16px;z-index:10050;max-width:440px;padding:12px 16px;border-radius:12px;font-family:Tajawal,sans-serif;font-weight:800;font-size:0.88rem;box-shadow:0 10px 28px rgba(15,23,42,0.28);transition:opacity 0.25s;pointer-events:none;';
             document.body.appendChild(box);
         }
         box.style.background = isError ? '#991b1b' : '#065f46';

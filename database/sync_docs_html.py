@@ -5,6 +5,7 @@ while preserving 100% of each template's <head>, toolbar, TOC anchors, and JS.
 Pure Python stdlib (zero external pip dependencies).
 """
 
+import datetime
 import html
 import os
 import re
@@ -13,8 +14,9 @@ import sys
 DB_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_DIR = os.path.dirname(DB_DIR)
 DOCS_DIR = os.path.join(REPO_DIR, "docs")
+LIVING_DOCS_DIR = os.path.join(REPO_DIR, "tools", "living-docs")
 
-SYNC_DATE = "2026-11-24"
+SYNC_DATE = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
 
 CODE_STYLE = (
     "background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; "
@@ -459,11 +461,33 @@ def main():
         os.path.join(DOCS_DIR, "CONSTITUTION_V2.html"),
         use_constitution_anchors=True,
     )
+    uncertain_md = os.path.join(DOCS_DIR, "بنود_غير_متأكد_للمراجعة.md")
+    uncertain_html = os.path.join(DOCS_DIR, "UNCERTAIN_REVIEW.html")
+    r3 = None
+    if os.path.exists(uncertain_md) and os.path.exists(uncertain_html):
+        r3 = sync_template_html(uncertain_md, uncertain_html, use_constitution_anchors=False)
+
     sync_portal_hub_html(os.path.join(DOCS_DIR, "PROJECT_DOCUMENTATION.html"))
 
     print(f"[DOC HTML SYNC OK] TECHNICAL_SPECS.html ({r1['bytes']:,} bytes)")
     print(f"[DOC HTML SYNC OK] CONSTITUTION_V2.html ({r2['bytes']:,} bytes)")
+    if r3:
+        print(f"[DOC HTML SYNC OK] UNCERTAIN_REVIEW.html ({r3['bytes']:,} bytes)")
     print("[DOC HTML SYNC OK] PROJECT_DOCUMENTATION.html date & summary refreshed")
+
+    # Sync web living-docs viewer copies (`tools/living-docs/doc1..4.html`) preserving each template shell
+    living_pairs = [
+        ("وصف_الموقع_البناء_2.md", "doc1_site_operations.html", True),
+        ("الملف_التقني_للمطورين.md", "doc3_technical_specs.html", False),
+        ("بنود_غير_متأكد_للمراجعة.md", "doc4_uncertain_review.html", False),
+    ]
+    if os.path.isdir(LIVING_DOCS_DIR):
+        for md_name, html_name, use_anchors in living_pairs:
+            src_md = os.path.join(DOCS_DIR, md_name)
+            dst_html = os.path.join(LIVING_DOCS_DIR, html_name)
+            if os.path.exists(src_md) and os.path.exists(dst_html):
+                rl = sync_template_html(src_md, dst_html, use_constitution_anchors=use_anchors)
+                print(f"[LIVING-DOCS SYNC OK] tools/living-docs/{html_name} ({rl['bytes']:,} bytes)")
 
     if "--no-backup" not in sys.argv:
         try:

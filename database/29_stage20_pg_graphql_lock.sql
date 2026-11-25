@@ -43,3 +43,15 @@ EXCEPTION WHEN insufficient_privilege THEN
     RAISE NOTICE 'graphql_public.graphql owned by supabase_admin; skipped function-level revoke';
 END;
 $$;
+
+-- Protect get_admin_full_tree from anon's 3s default PostgREST timeout on both schemas
+DO $$
+BEGIN
+    IF to_regprocedure('sawyan.get_admin_full_tree(uuid,text,bigint,character,character,integer)') IS NOT NULL THEN
+        EXECUTE 'ALTER FUNCTION sawyan.get_admin_full_tree(uuid, text, bigint, character, character, integer) SET statement_timeout = ''12s''';
+    END IF;
+    IF to_regprocedure('sawyan_demo.get_admin_full_tree(uuid,text,bigint,character,character,integer)') IS NOT NULL THEN
+        EXECUTE 'ALTER FUNCTION sawyan_demo.get_admin_full_tree(uuid, text, bigint, character, character, integer) SET statement_timeout = ''12s''';
+    END IF;
+END;
+$$;
