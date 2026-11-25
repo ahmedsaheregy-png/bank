@@ -197,7 +197,20 @@
             : '';
 
         if (byId('merchantsGeoBanner')) {
-            byId('merchantsGeoBanner').innerHTML = `${cfg.flag} النطاق النشط: <strong>${escapeHtml(cfg.name + cityLabel)}</strong> (${escapeHtml(cfg.currencyCode)})`;
+            const svgFlag = (cfg.code && cfg.code !== 'ALL' && cfg.code !== 'PIONEER' && window.SAWYAN && window.SAWYAN.Flags && typeof window.SAWYAN.Flags.svg === 'function')
+                ? window.SAWYAN.Flags.svg(cfg.code, 16)
+                : escapeHtml(cfg.flag || '🌍');
+            byId('merchantsGeoBanner').innerHTML = `${svgFlag} النطاق النشط: <strong>${escapeHtml(cfg.name + cityLabel)}</strong> (${escapeHtml(cfg.currencyCode)})`;
+        }
+        const extraBtn = byId('mobileExtraFiltersToggle');
+        const extraGrp = byId('extraFiltersGroup');
+        if (extraBtn && extraGrp && !extraBtn.dataset.bound) {
+            extraBtn.dataset.bound = '1';
+            extraBtn.addEventListener('click', function () {
+                const isOpen = extraGrp.classList.toggle('open');
+                extraBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                extraBtn.textContent = isOpen ? '⚙️ إخفاء خيارات النوع والترتيب ▴' : '⚙️ نوع المتجر والترتيب ▾';
+            });
         }
 
         const geoQuery = `?country=${encodeURIComponent(cfg.code)}` + (state.city !== 'all' ? `&city=${encodeURIComponent(state.city)}` : '');

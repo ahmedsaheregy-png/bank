@@ -710,19 +710,20 @@
     function renderLiveParamsTab(s, adm) {
         var ro = !adm || adm.role === 'auditor';
         var dis = ro ? ' disabled' : '';
+        var hlp = function (k) { return window.svHelpBtn ? window.svHelpBtn(k) : ''; };
         var fields = [
-            { id: 'company_percent', label: 'نسبة الخزانة من العمولة العامة (%)', val: s.company_percent ?? 25, step: '0.5', min: '0', max: '100' },
-            { id: 'numerical_stopper_s01', label: 'الستوبر العددي S01 (الأجيال المؤهلة)', val: s.numerical_stopper_s01 ?? 11, step: '1', min: '2', max: '30' },
-            { id: 'upline_ceiling_s02', label: 'سقف التوزيع صعوداً S02 (إجمالي الحصص)', val: s.upline_ceiling_s02 ?? 11, step: '1', min: '2', max: '30' },
-            { id: 'monthly_target_usd', label: 'الهدف الشهري المرجعي ($)', val: s.monthly_target_usd ?? 24.75, step: '0.25', min: '0.25', max: '10000' },
-            { id: 'payout_day', label: 'يوم صرف العمولات من الشهر التالي (W01)', val: s.payout_day ?? 15, step: '1', min: '2', max: '28' },
-            { id: 'merchant_warn1_pct', label: 'عتبة التنبيه الأول لرصيد التاجر (%)', val: s.merchant_warn1_pct ?? 30, step: '1', min: '1', max: '99' },
-            { id: 'merchant_warn2_pct', label: 'عتبة الإنذار الأخير لرصيد التاجر (%)', val: s.merchant_warn2_pct ?? 20, step: '1', min: '1', max: '99' },
-            { id: 'merchant_isolate_pct', label: 'عتبة العزل الوقائي لرصيد التاجر (%)', val: s.merchant_isolate_pct ?? 10, step: '0.5', min: '0.5', max: '99' },
-            { id: 'unsecured_queue_cap', label: 'سقف طابور ما بعد النفاد (فاتورة)', val: s.unsecured_queue_cap ?? 3, step: '1', min: '0', max: '100' },
-            { id: 'unconfirmed_soft_hold_cap_pct', label: 'سقف الحجز المؤقت Soft Hold (%)', val: s.unconfirmed_soft_hold_cap_pct ?? 20, step: '1', min: '1', max: '100' },
-            { id: 'withdrawal_cooldown_hours', label: 'فترة تهدئة تغيير وسيلة السحب (ساعة — W07)', val: s.withdrawal_cooldown_hours ?? 72, step: '1', min: '0', max: '720' },
-            { id: 'dormancy_months', label: 'مدة خمول الرصيد قبل المراجعة (شهر — 0 بلا حد)', val: s.dormancy_months ?? 0, step: '1', min: '0', max: '240' }
+            { id: 'company_percent', label: 'نسبة الخزانة من العمولة العامة (%)', val: s.company_percent ?? 25, step: '0.5', min: '0', max: '100', help: '' },
+            { id: 'numerical_stopper_s01', label: 'حد الأجيال المؤهلة في الشجرة', val: s.numerical_stopper_s01 ?? 11, step: '1', min: '2', max: '30', help: 'numerical_stopper' },
+            { id: 'upline_ceiling_s02', label: 'سقف التوزيع صعوداً (إجمالي الحصص)', val: s.upline_ceiling_s02 ?? 11, step: '1', min: '2', max: '30', help: 'upline_ceiling' },
+            { id: 'monthly_target_usd', label: 'الهدف الشهري المرجعي ($)', val: s.monthly_target_usd ?? 24.75, step: '0.25', min: '0.25', max: '10000', help: '' },
+            { id: 'payout_day', label: 'يوم صرف العمولات من الشهر التالي', val: s.payout_day ?? 15, step: '1', min: '2', max: '28', help: 'monthly_close' },
+            { id: 'merchant_warn1_pct', label: 'عتبة التنبيه الأول لرصيد التاجر (%)', val: s.merchant_warn1_pct ?? 30, step: '1', min: '1', max: '99', help: '' },
+            { id: 'merchant_warn2_pct', label: 'عتبة الإنذار الأخير لرصيد التاجر (%)', val: s.merchant_warn2_pct ?? 20, step: '1', min: '1', max: '99', help: '' },
+            { id: 'merchant_isolate_pct', label: 'عتبة العزل الوقائي لرصيد التاجر (%)', val: s.merchant_isolate_pct ?? 10, step: '0.5', min: '0.5', max: '99', help: 'isolate_pct_override' },
+            { id: 'unsecured_queue_cap', label: 'سقف فواتير ما بعد النفاد (فاتورة)', val: s.unsecured_queue_cap ?? 3, step: '1', min: '0', max: '100', help: 'unsecured_queue_cap' },
+            { id: 'unconfirmed_soft_hold_cap_pct', label: 'سقف الحجز المؤقت للمعلقات (%)', val: s.unconfirmed_soft_hold_cap_pct ?? 20, step: '1', min: '1', max: '100', help: 'soft_hold_cap' },
+            { id: 'withdrawal_cooldown_hours', label: 'فترة أمان تغيير وسيلة السحب (ساعة)', val: s.withdrawal_cooldown_hours ?? 72, step: '1', min: '0', max: '720', help: 'withdrawal_cooldown' },
+            { id: 'dormancy_months', label: 'مدة خمول الرصيد قبل المراجعة (شهر — 0 بلا حد)', val: s.dormancy_months ?? 0, step: '1', min: '0', max: '240', help: '' }
         ];
         var merCard = (typeof window.renderLiveMerchantRiskSettingsCard === 'function')
             ? '<div id="svLiveMerSettingsMount" style="margin-top:14px;">' + window.renderLiveMerchantRiskSettingsCard('scMer') + '</div>'
@@ -730,13 +731,13 @@
 
         return '<div class="sc-card">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">' +
-                '<div style="font-weight:900;font-size:1rem;">⚙️ معاملات النواة الحية في PostgreSQL (`sawyan.settings`)</div>' +
+                '<div style="font-weight:900;font-size:1rem;">⚙️ معاملات النظام المالية الحية ' + hlp('dual_approval') + '</div>' +
                 '<span class="sc-chip" style="background:#d1fae5;color:#065f46;">سارٍ منذ: ' + esc(String(s.effective_from || '').slice(0, 10) || 'الآن') + '</span>' +
             '</div>' +
             '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;">' +
                 fields.map(function (f) {
                     return '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;">' +
-                        '<label for="liveSet_' + f.id + '" style="display:block;font-size:0.78rem;font-weight:800;color:#334155;margin-bottom:6px;">' + esc(f.label) + '</label>' +
+                        '<label for="liveSet_' + f.id + '" style="display:block;font-size:0.78rem;font-weight:800;color:#334155;margin-bottom:6px;">' + esc(f.label) + (f.help ? ' ' + hlp(f.help) : '') + '</label>' +
                         '<input type="number" id="liveSet_' + f.id + '" value="' + esc(f.val) + '" step="' + f.step + '" min="' + f.min + '" max="' + f.max + '"' + dis + ' style="width:100%;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:8px;font-family:Poppins,Tajawal,sans-serif;font-weight:700;">' +
                     '</div>';
                 }).join('') +
@@ -747,7 +748,7 @@
                     '<input type="text" id="liveSetReason"' + dis + ' placeholder="مثال: تحديث السياسة المالية للشهر القادم..." style="width:100%;padding:9px 10px;border:1.5px solid #cbd5e1;border-radius:8px;font-family:Tajawal,sans-serif;">' +
                 '</div>' +
                 '<div>' +
-                    '<label for="liveSetEff" class="sc-help" style="display:block;margin-bottom:4px;">تاريخ السريان (Bitemporal D28)</label>' +
+                    '<label for="liveSetEff" class="sc-help" style="display:block;margin-bottom:4px;">تاريخ السريان (أثر مستقبلي غير رجعي)</label>' +
                     '<select id="liveSetEff"' + dis + ' style="width:100%;padding:9px 10px;border:1.5px solid #cbd5e1;border-radius:8px;font-family:Tajawal,sans-serif;font-weight:700;">' +
                         '<option value="' + nextMonthFirst(0) + 'T00:00:00Z">' + nextMonthFirst(0) + ' (أول الشهر القادم)</option>' +
                         (isFounderSession() ? '<option value="NOW">تطبيق فوري الآن (صلاحية المؤسس)</option>' : '') +
@@ -756,9 +757,9 @@
             '</div>' +
             '<div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
                 '<button type="button" class="sc-btn p"' + dis + ' onclick="scLiveSaveSettings()">' +
-                    (isFounderSession() ? '👑 حفظ وتفعيل في PostgreSQL فوراً' : '📤 إرسال طلب تعديل للاعتماد المزدوج (Maker–Checker)') +
+                    (isFounderSession() ? '👑 حفظ وتفعيل في قاعدة البيانات فوراً' : '📤 إرسال طلب التعديل للمراجعة المزدوجة') +
                 '</button>' +
-                (ro ? '<span class="sc-err">دور المدقق للقراءة فقط (RBAC Auditor Lock).</span>' : '') +
+                (ro ? '<span class="sc-err">دور المدقق المستقل للقراءة فقط.</span>' : '') +
             '</div>' +
         '</div>' + merCard;
     }
@@ -771,8 +772,8 @@
         var anyOn = KILL.some(function (k) { return Boolean(sw[k[0]]); });
 
         return '<div class="sc-card" style="border:2px solid ' + (anyOn ? '#dc2626' : '#cbd5e1') + ';">' +
-            '<div style="font-weight:900;color:#b91c1c;font-size:1rem;margin-bottom:4px;">🚨 مفاتيح الإيقاف الطارئ الحية (PostgreSQL Break-Glass)</div>' +
-            '<div class="sc-help" style="margin-bottom:10px;">تُحفظ مباشرة في <code>sawyan.settings.operational_kill_switches</code> وتُسجَّل في سلسلة التدقيق غير القابلة للمحو <code>sawyan.audit_logs</code>.</div>' +
+            '<div style="font-weight:900;color:#b91c1c;font-size:1rem;margin-bottom:4px;">🚨 مفاتيح الإيقاف الطارئ الحية</div>' +
+            '<div class="sc-help" style="margin-bottom:10px;">تُحفظ التغييرات فوراً في قاعدة البيانات وتُوثّق تلقائياً في سجل التدقيق الجنائي غير القابل للمحو.</div>' +
             '<div style="margin-bottom:12px;">' +
                 '<label for="liveKillReason" class="sc-help" style="display:block;margin-bottom:4px;">السبب الإلزامي للإجراء الطارئ (≥ 5 أحرف قبل الضغط على أي مفتاح)</label>' +
                 '<input type="text" id="liveKillReason"' + (ro ? ' disabled' : '') + ' placeholder="أدخل سبب الإيقاف أو الاستئناف الطارئ..." style="width:100%;padding:9px 10px;border:1.5px solid #fca5a5;border-radius:8px;font-family:Tajawal,sans-serif;">' +
@@ -781,8 +782,7 @@
                 var on = Boolean(sw[k[0]]);
                 return '<div class="sc-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">' +
                     '<div class="sc-lab">' + esc(k[1]) +
-                        ' <code style="font-size:0.74rem;color:#64748b;">(' + k[0] + ')</code>' +
-                        (on ? '<span class="sc-chip" style="background:#fee2e2;color:#b91c1c;">⛔ موقوف في القاعدة الحية</span>' : '<span class="sc-chip" style="background:#d1fae5;color:#065f46;">🟢 يعمل طبيعياً</span>') +
+                        (on ? ' <span class="sc-chip" style="background:#fee2e2;color:#b91c1c;">⛔ موقوف حالياً</span>' : ' <span class="sc-chip" style="background:#d1fae5;color:#065f46;">🟢 يعمل طبيعياً</span>') +
                     '</div>' +
                     '<button type="button" class="sc-btn ' + (on ? 'p' : 'd') + '"' + (ro ? ' disabled' : '') + ' onclick="scLiveToggleKill(\'' + k[0] + '\',' + (!on) + ')">' + (on ? '✅ استئناف التشغيل' : '🚨 إيقاف طارئ فوري') + '</button>' +
                 '</div>';
@@ -792,9 +792,9 @@
             var reqProof = Boolean(sw.REQUIRE_TOPUP_PROOF);
             return '<div class="sc-card" style="border:1.5px solid #cbd5e1;margin-top:12px;">' +
                 '<div style="font-weight:900;color:#0f172a;font-size:0.96rem;margin-bottom:4px;">💳 سياسة توثيق شحن رصيد التجار (قابل للتبديل الفوري)</div>' +
-                '<div class="sc-help" style="margin-bottom:10px;">يمكن للتاجر مؤقتاً إشعار المالية بالشحن بالمبلغ فقط دون إلزام برفع مستند أو رقم مرجع؛ وعند التفعيل يصبح إدخال رقم مرجع التحويل أو صورة الإيصال إلزامياً في الواجهة وقاعدة البيانات.</div>' +
+                '<div class="sc-help" style="margin-bottom:10px;">يمكن للتاجر مؤقتاً إشعار المالية بالشحن بالمبلغ فقط دون إلزام برفع مستند أو رقم مرجع؛ وعند التفعيل يصبح إدخال رقم مرجع التحويل أو صورة الإيصال إلزامياً.</div>' +
                 '<div class="sc-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">' +
-                    '<div class="sc-lab">إلزام مرجع الحوالة أو صورة الإيصال عند الشحن <code style="font-size:0.74rem;color:#64748b;">(REQUIRE_TOPUP_PROOF)</code>' +
+                    '<div class="sc-lab">إلزام مرجع الحوالة أو صورة الإيصال عند الشحن ' +
                         (reqProof
                             ? '<span class="sc-chip" style="background:#dbeafe;color:#1e40af;">🔒 إلزامي حالياً</span>'
                             : '<span class="sc-chip" style="background:#fef3c7;color:#92400e;">🟡 اختياري مؤقتاً (إشعار بالمبلغ فقط)</span>') +
@@ -810,12 +810,13 @@
             fetchLive2faPolicy(false);
         }
         var founder = isFounderSession();
+        var roleArMap = { founder: 'المؤسس السيادي', super_admin: 'المؤسس السيادي', finance: 'المدير المالي', approver: 'مدير الاعتماد', auditor: 'مدقق مستقل', compliance: 'مدير الامتثال', support: 'الدعم الفني', operations: 'العمليات' };
         if (LIVE_2FA_STATE.loading) {
-            return '<div class="sc-card"><div class="sc-help">⏳ جارٍ تحميل سجل المصادقة الثنائية الحية من PostgreSQL...</div></div>';
+            return '<div class="sc-card"><div class="sc-help">⏳ جارٍ تحميل سجل المصادقة الثنائية الحية من قاعدة البيانات...</div></div>';
         }
         if (LIVE_2FA_STATE.error) {
             return '<div class="sc-card" style="border:1.5px solid #f59e0b;background:#fffbeb;">' +
-                '<div style="font-weight:900;color:#92400e;margin-bottom:6px;">⚠️ إدارة سياسة المصادقة الثنائية بانتظار تطبيق ملف التحديث الأمني <code>21_phase0_security_hardening.sql</code></div>' +
+                '<div style="font-weight:900;color:#92400e;margin-bottom:6px;">⚠️ تعذر تحميل سياسة المصادقة الثنائية حالياً</div>' +
                 '<div class="sc-help">' + esc(LIVE_2FA_STATE.error) + '</div>' +
                 '<button type="button" class="sc-btn g" style="margin-top:8px;" onclick="scLiveRefresh2fa()">🔄 إعادة المحاولة</button>' +
             '</div>';
@@ -824,18 +825,18 @@
         return '<div class="sc-card">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">' +
                 '<div>' +
-                    '<div style="font-weight:900;font-size:1rem;">🔐 المصادقة الثنائية الحقيقية (RFC 6238 TOTP) واستثناءات الحسابات السيادية</div>' +
-                    '<div class="sc-help">جميع موظفي الإدارة ملزمون بالمصادقة الثنائية الحقيقية، بينما تُستثنى الحسابات السيادية بقرار حصري من المؤسس السيادي.</div>' +
+                    '<div style="font-weight:900;font-size:1rem;">🔐 المصادقة الثنائية للموظفين واستثناءات الحسابات السيادية</div>' +
+                    '<div class="sc-help">جميع موظفي الإدارة ملزمون بالمصادقة الثنائية عبر تطبيق التحقق، بينما تُستثنى الحسابات السيادية بقرار حصري من المؤسس.</div>' +
                 '</div>' +
                 '<button type="button" class="sc-btn g" onclick="scLiveRefresh2fa()">🔄 تحديث</button>' +
             '</div>' +
-            '<div style="overflow-x:auto;"><table class="sc-tbl"><thead><tr><th>الإداري</th><th>الدور</th><th>حالة 2FA</th><th>التطبيق</th>' + (founder ? '<th>إجراءات المؤسس السيادي</th>' : '') + '</tr></thead><tbody>' +
+            '<div style="overflow-x:auto;"><table class="sc-tbl"><thead><tr><th>الإداري</th><th>الدور</th><th>حالة المصادقة الثنائية</th><th>التطبيق</th>' + (founder ? '<th>إجراءات المؤسس</th>' : '') + '</tr></thead><tbody>' +
                 (list.length === 0 ? '<tr><td colspan="5">لا توجد حسابات إدارية</td></tr>' : list.map(function (a) {
                     var badge = a.is_sovereign_founder
                         ? '<span class="sc-chip" style="background:#fef3c7;color:#92400e;">👑 مؤسس سيادي (معفى دائماً)</span>'
                         : (a.is_2fa_exempt
-                            ? '<span class="sc-chip" style="background:#dbeafe;color:#1e40af;">🛡️ حساب سيادي (معفى من 2FA)</span>'
-                            : '<span class="sc-chip" style="background:#d1fae5;color:#065f46;">🔐 2FA إلزامي (RFC 6238)</span>');
+                            ? '<span class="sc-chip" style="background:#dbeafe;color:#1e40af;">🛡️ حساب سيادي (معفى)</span>'
+                            : '<span class="sc-chip" style="background:#d1fae5;color:#065f46;">🔐 مصادقة ثنائية إلزامية</span>');
                     var appSt = a.is_2fa_exempt
                         ? '— (معفى)'
                         : (a.totp_enrolled ? '✅ مربوط ومؤكَّد' : '⏳ بانتظار الربط عند أول دخول');
@@ -846,7 +847,7 @@
                         } else {
                             actions = '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
                                 '<button type="button" class="sc-btn ' + (a.is_2fa_exempt ? 'd' : 'b') + '" style="padding:5px 10px;font-size:0.75rem;" onclick="scLiveSet2faExempt(\'' + a.id + '\',' + (!a.is_2fa_exempt) + ')">' +
-                                    (a.is_2fa_exempt ? '🔐 إلزام 2FA' : '🛡️ إعفاء سيادي') +
+                                    (a.is_2fa_exempt ? '🔐 إلزام المصادقة' : '🛡️ إعفاء سيادي') +
                                 '</button>' +
                                 (a.totp_enrolled ? '<button type="button" class="sc-btn g" style="padding:5px 10px;font-size:0.75rem;" onclick="scLiveResetTotp(\'' + a.id + '\')">🔄 إعادة ضبط الجهاز</button>' : '') +
                             '</div>';
@@ -854,7 +855,7 @@
                     }
                     return '<tr>' +
                         '<td><b>' + esc(a.full_name) + '</b><div class="sc-help">' + esc(a.email) + '</div></td>' +
-                        '<td>' + esc(a.role) + (a.is_active ? '' : ' <span class="sc-chip" style="background:#fee2e2;color:#991b1b;">موقوف</span>') + '</td>' +
+                        '<td>' + esc(roleArMap[a.role] || a.role) + (a.is_active ? '' : ' <span class="sc-chip" style="background:#fee2e2;color:#991b1b;">موقوف</span>') + '</td>' +
                         '<td>' + badge + '</td>' +
                         '<td>' + appSt + '</td>' +
                         (founder ? '<td>' + actions + '</td>' : '') +

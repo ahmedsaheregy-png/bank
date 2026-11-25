@@ -281,6 +281,134 @@ html[data-theme="dark"] .sawyan-ctrl-icon-btn {
     color: #f1f5f9;
 }
 
+/* Comprehensive Stage 27 Dark Mode Overrides for Inline-Styled Dashboard Cards & Tables */
+html[data-theme="dark"] .page,
+html[data-theme="dark"] .main-content,
+html[data-theme="dark"] .content-area {
+    background-color: #0b1220 !important;
+    color: #f1f5f9 !important;
+}
+
+html[data-theme="dark"] .dashboard-header h1,
+html[data-theme="dark"] .dashboard-header #pageTitle,
+html[data-theme="dark"] .page h1,
+html[data-theme="dark"] .page h2,
+html[data-theme="dark"] .page h3,
+html[data-theme="dark"] .page h4,
+html[data-theme="dark"] .section-title {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .page div[style*="background:#fff"],
+html[data-theme="dark"] .page div[style*="background: #fff"],
+html[data-theme="dark"] .page div[style*="background:#ffffff"],
+html[data-theme="dark"] .page div[style*="background: #ffffff"],
+html[data-theme="dark"] .page div[style*="background:white"],
+html[data-theme="dark"] .page div[style*="background: white"],
+html[data-theme="dark"] .page div[style*="background:#f8fafc"],
+html[data-theme="dark"] .page div[style*="background: #f8fafc"],
+html[data-theme="dark"] .page div[style*="background:#f1f5f9"],
+html[data-theme="dark"] .page div[style*="background: #f1f5f9"],
+html[data-theme="dark"] .page form[style*="background:#fff"],
+html[data-theme="dark"] .page form[style*="background: #fff"],
+html[data-theme="dark"] .page form[style*="background:#ffffff"],
+html[data-theme="dark"] .page form[style*="background:white"],
+html[data-theme="dark"] .modal-box,
+html[data-theme="dark"] .modal-dialog,
+html[data-theme="dark"] .more-menu,
+html[data-theme="dark"] .sw-ui-modal,
+html[data-theme="dark"] .sw-dialog-card,
+html[data-theme="dark"] #sawyanHelpPopoverModal > div {
+    background: #111c30 !important;
+    color: #f1f5f9 !important;
+    border-color: #24324a !important;
+}
+
+html[data-theme="dark"] .page div[style*="background:#ecfdf5"],
+html[data-theme="dark"] .page div[style*="background:#f0fdf4"],
+html[data-theme="dark"] .page div[style*="background: #ecfdf5"],
+html[data-theme="dark"] .page div[style*="background: #f0fdf4"] {
+    background: rgba(16, 185, 129, 0.14) !important;
+    border-color: #065f46 !important;
+    color: #d1fae5 !important;
+}
+
+html[data-theme="dark"] .page div[style*="background:#fffbeb"],
+html[data-theme="dark"] .page div[style*="background:#fff7ed"],
+html[data-theme="dark"] .page div[style*="background:#fef3c7"],
+html[data-theme="dark"] .page div[style*="background: #fffbeb"],
+html[data-theme="dark"] .page div[style*="background: #fff7ed"] {
+    background: rgba(245, 158, 11, 0.14) !important;
+    border-color: #92400e !important;
+    color: #fef3c7 !important;
+}
+
+html[data-theme="dark"] .page div[style*="background:#eff6ff"],
+html[data-theme="dark"] .page div[style*="background: #eff6ff"] {
+    background: rgba(59, 130, 246, 0.14) !important;
+    border-color: #1e40af !important;
+    color: #dbeafe !important;
+}
+
+html[data-theme="dark"] .page div[style*="background:#fef2f2"],
+html[data-theme="dark"] .page div[style*="background:#fff1f2"],
+html[data-theme="dark"] .page div[style*="background: #fef2f2"] {
+    background: rgba(239, 68, 68, 0.15) !important;
+    border-color: #991b1b !important;
+    color: #fecaca !important;
+}
+
+html[data-theme="dark"] .page [style*="color:#0f172a"],
+html[data-theme="dark"] .page [style*="color: #0f172a"],
+html[data-theme="dark"] .page [style*="color:#1e293b"],
+html[data-theme="dark"] .page [style*="color: #1e293b"],
+html[data-theme="dark"] .page [style*="color:#0f2744"],
+html[data-theme="dark"] .page [style*="color:#334155"],
+html[data-theme="dark"] .page [style*="color: #334155"] {
+    color: #f1f5f9 !important;
+}
+
+html[data-theme="dark"] .page [style*="color:#475569"],
+html[data-theme="dark"] .page [style*="color: #475569"],
+html[data-theme="dark"] .page [style*="color:#64748b"],
+html[data-theme="dark"] .page [style*="color: #64748b"] {
+    color: #cbd5e1 !important;
+}
+
+html[data-theme="dark"] .btn-outline,
+html[data-theme="dark"] .btn-secondary,
+html[data-theme="dark"] .lens-pill-btn:not(.active),
+html[data-theme="dark"] .filter-tab:not(.active) {
+    background: #1e293b !important;
+    color: #f1f5f9 !important;
+    border-color: #334155 !important;
+}
+
+html[data-theme="dark"] .data-table,
+html[data-theme="dark"] .data-table tbody tr {
+    background-color: #111c30 !important;
+    color: #e2e8f0 !important;
+}
+
+html[data-theme="dark"] .data-table tbody tr:hover {
+    background-color: #18253c !important;
+}
+
+html[data-theme="dark"] .data-table thead {
+    background: #162238 !important;
+}
+
+html[data-theme="dark"] .sv-help-trigger {
+    background: #1e293b !important;
+    color: #6ee7b7 !important;
+    border-color: #059669 !important;
+}
+
+html[data-theme="dark"] code {
+    background: #1e293b !important;
+    color: #6ee7b7 !important;
+}
+
 @media (max-width: 768px) {
     .sawyan-global-controls {
         gap: 4px !important;

@@ -79,7 +79,7 @@
         const l = SUPPORTED.includes(lang) ? lang : 'ar';
         if (CACHE[l]) return CACHE[l];
         try {
-            const resp = await fetch(BASE_URL + l + '.json?v=20261121_launch', { cache: 'force-cache' });
+            const resp = await fetch(BASE_URL + l + '.json?v=20261121_launch_s27', { cache: 'default' });
             if (resp.ok) {
                 CACHE[l] = await resp.json();
                 return CACHE[l];
@@ -93,6 +93,106 @@
         document.documentElement.setAttribute('lang', lang);
         document.documentElement.setAttribute('dir', m.dir);
         document.documentElement.dataset.sawyanLang = lang;
+    }
+
+    const ORIG_TEXT_MAP = new WeakMap();
+    const ORIG_PLACEHOLDER_MAP = new WeakMap();
+    let _phraseObserver = null;
+    let _phraseTimer = null;
+    let _translating = false;
+
+    function lookupCuratedPhrase(rawStr, phrases) {
+        if (!phrases || !rawStr) return null;
+        const trimmed = rawStr.trim();
+        if (!trimmed || trimmed.length > 140) return null;
+        if (Object.prototype.hasOwnProperty.call(phrases, trimmed)) {
+            return rawStr.replace(trimmed, phrases[trimmed]);
+        }
+        // Preserve leading emoji/symbol + optional trailing numeric counter like "(3)" or "←"
+        const m = trimmed.match(/^([^\u0600-\u06FFa-zA-Z0-9]{1,4}\s*)?(.+?)(\s*\(\d+\)|\s*[▾▴←→↗])?$/);
+        if (m) {
+            const pre = m[1] || '';
+            const core = (m[2] || '').trim();
+            const suf = m[3] || '';
+            if (core && Object.prototype.hasOwnProperty.call(phrases, core)) {
+                return rawStr.replace(trimmed, pre + phrases[core] + suf);
+            }
+        }
+        return null;
+    }
+
+    function translateCuratedPhrases() {
+        if (_translating || !document.body) return;
+        _translating = true;
+        try {
+            const phrases = (CACHE[currentLang] && CACHE[currentLang].phrases) || null;
+            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+                acceptNode: function (node) {
+                    const p = node.parentElement;
+                    if (!p) return NodeFilter.FILTER_REJECT;
+                    const tag = p.tagName;
+                    if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'CODE' || tag === 'PRE' || tag === 'NOSCRIPT') {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+                    if (p.closest('[data-i18n], [data-i18n-skip], .sawyan-lang-switcher, .sawyan-brand-mark')) {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+                    if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            });
+            const nodes = [];
+            let cur;
+            while ((cur = walker.nextNode())) nodes.push(cur);
+
+            for (let i = 0; i < nodes.length; i++) {
+                const n = nodes[i];
+                if (currentLang === 'ar') {
+                    if (ORIG_TEXT_MAP.has(n)) {
+                        const orig = ORIG_TEXT_MAP.get(n);
+                        if (n.nodeValue !== orig) n.nodeValue = orig;
+                    }
+                } else if (phrases) {
+                    const base = ORIG_TEXT_MAP.has(n) ? ORIG_TEXT_MAP.get(n) : n.nodeValue;
+                    const tr = lookupCuratedPhrase(base, phrases);
+                    if (tr && tr !== n.nodeValue) {
+                        if (!ORIG_TEXT_MAP.has(n)) ORIG_TEXT_MAP.set(n, base);
+                        n.nodeValue = tr;
+                    }
+                }
+            }
+
+            // Translate placeholders cleanly
+            document.querySelectorAll('input[placeholder], textarea[placeholder]').forEach(function (inp) {
+                if (inp.hasAttribute('data-i18n-placeholder')) return;
+                if (currentLang === 'ar') {
+                    if (ORIG_PLACEHOLDER_MAP.has(inp)) {
+                        inp.setAttribute('placeholder', ORIG_PLACEHOLDER_MAP.get(inp));
+                    }
+                } else if (phrases) {
+                    const basePh = ORIG_PLACEHOLDER_MAP.has(inp) ? ORIG_PLACEHOLDER_MAP.get(inp) : inp.getAttribute('placeholder');
+                    const trPh = lookupCuratedPhrase(basePh, phrases);
+                    if (trPh) {
+                        if (!ORIG_PLACEHOLDER_MAP.has(inp)) ORIG_PLACEHOLDER_MAP.set(inp, basePh);
+                        inp.setAttribute('placeholder', trPh);
+                    }
+                }
+            });
+        } finally {
+            _translating = false;
+        }
+    }
+
+    function ensurePhraseObserver() {
+        if (_phraseObserver || !document.body || typeof MutationObserver === 'undefined') return;
+        _phraseObserver = new MutationObserver(function () {
+            if (currentLang === 'ar' || _translating) return;
+            clearTimeout(_phraseTimer);
+            _phraseTimer = setTimeout(function () {
+                translateDom();
+            }, 140);
+        });
+        _phraseObserver.observe(document.body, { childList: true, subtree: true });
     }
 
     function translateDom() {
@@ -118,6 +218,8 @@
             const tr = getNested(CACHE[currentLang], key);
             if (tr !== undefined) el.setAttribute('aria-label', tr);
         });
+        translateCuratedPhrases();
+        ensurePhraseObserver();
         // Update active state on all mounted language buttons
         document.querySelectorAll('.sawyan-lang-btn').forEach(function (btn) {
             const active = btn.getAttribute('data-lang') === currentLang;

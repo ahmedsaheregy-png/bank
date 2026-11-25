@@ -118,10 +118,17 @@ def attach_error_collectors(page, label, errors_out):
     def _on_console(msg):
         if msg.type == "error":
             t = msg.text or ""
-            # Ignore external CDN/font/tile noise if offline, fail on any local JS/RPC error
-            if "tile.openstreetmap.org" in t or "fonts.googleapis.com" in t or "favicon" in t:
+            loc = ""
+            try:
+                loc = (msg.location or {}).get("url", "") or ""
+            except Exception:
+                loc = ""
+            hay = f"{t} {loc}"
+            # Ignore external CDN/font/tile noise if offline/throttled, fail on any local JS/RPC error
+            if "tile.openstreetmap.org" in hay or "fonts.googleapis.com" in hay or "favicon" in hay:
                 return
-            errors_out.append(f"[{label}] console.error: {t}")
+            suffix = f" ({loc})" if loc else ""
+            errors_out.append(f"[{label}] console.error: {t}{suffix}")
     page.on("console", _on_console)
 
 

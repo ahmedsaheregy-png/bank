@@ -282,6 +282,13 @@
         alertModal,
         confirmModal,
         promptModal,
+        alert: (opts) => alertModal(typeof opts === 'string' ? { message: opts } : opts),
+        confirm: (opts) => confirmModal(
+            typeof opts === 'string'
+                ? { message: opts }
+                : { ...(opts || {}), danger: Boolean(opts && (opts.danger || opts.tone === 'danger')) }
+        ),
+        prompt: (opts) => promptModal(typeof opts === 'string' ? { message: opts } : opts),
         humanizeError
     };
 })();

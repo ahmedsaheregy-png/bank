@@ -925,21 +925,10 @@
     }
     window.SAWYAN_MATCH_MEMBER = matchMemberFilter;
     let _memLoadSeq = 0;
-    window.loadMembers = async function (q, filterKey) {
+    let _lastMembersCache = null;
+    function renderMembersPage(q, allList) {
         const page = document.getElementById('membersPage');
         if (!page) return;
-        const mySeq = ++_memLoadSeq;
-        if (filterKey !== undefined) {
-            _activeMemberFilter = filterKey;
-        } else if (window._pendingMemberFilter) {
-            _activeMemberFilter = window._pendingMemberFilter;
-            window._pendingMemberFilter = null;
-        }
-        const res = await window.SAWYAN.API.adminSearchAndReplyOps({ action: 'search', entity: 'members', query: q || '' });
-        if (mySeq !== _memLoadSeq) return;
-        const allList = res.results || [];
-        _LIVE_MEMBERS_MAP.clear();
-        allList.forEach(function (m) { if (m && m.id) _LIVE_MEMBERS_MAP.set(String(m.id), m); });
         const list = allList.filter(function (m) { return matchMemberFilter(m, _activeMemberFilter); });
         const memFilterDefs = [
             ['all', 'الكل'],
@@ -950,7 +939,7 @@
         const memFilterBar = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">' + memFilterDefs.map(function (fd) {
             const cnt = allList.filter(function (m) { return matchMemberFilter(m, fd[0]); }).length;
             const act = _activeMemberFilter === fd[0];
-            return '<button type="button" data-mem-filter="' + fd[0] + '" onclick="loadMembers(document.getElementById(\'svLiveMemSearch\').value,\'' + fd[0] + '\')" style="padding:5px 11px;border-radius:999px;font-size:0.76rem;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;border:1.5px solid ' + (act ? '#0f766e' : '#cbd5e1') + ';background:' + (act ? '#0f766e' : '#ffffff') + ';color:' + (act ? '#ffffff' : '#334155') + ';">' + esc(fd[1]) + ' (' + cnt + ')</button>';
+            return '<button type="button" data-mem-filter="' + fd[0] + '" onclick="svFilterMembers(\'' + fd[0] + '\')" style="padding:5px 11px;border-radius:999px;font-size:0.76rem;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;border:1.5px solid ' + (act ? '#0f766e' : '#cbd5e1') + ';background:' + (act ? '#0f766e' : '#ffffff') + ';color:' + (act ? '#ffffff' : '#334155') + ';">' + esc(fd[1]) + ' (' + cnt + ')</button>';
         }).join('') + '</div>';
         const kycStatusAr = { verified: 'موثق ✅', pending: 'بانتظار المراجعة ⏳', rejected: 'مرفوض ❌', unsubmitted: 'غير مرفوع' };
         page.innerHTML =
@@ -989,7 +978,35 @@
                     }).join('')) +
                     '</tbody></table>' +
                 '</div>';
-        };
+    }
+    window.svFilterMembers = function (fk) {
+        const q = (document.getElementById('svLiveMemSearch') || {}).value || '';
+        _activeMemberFilter = fk || 'all';
+        if (_lastMembersCache && _lastMembersCache.q === q) {
+            renderMembersPage(q, _lastMembersCache.allList);
+            return;
+        }
+        window.loadMembers(q, _activeMemberFilter);
+    };
+    window.loadMembers = async function (q, filterKey) {
+        const page = document.getElementById('membersPage');
+        if (!page) return;
+        const mySeq = ++_memLoadSeq;
+        if (filterKey !== undefined) {
+            _activeMemberFilter = filterKey;
+        } else if (window._pendingMemberFilter) {
+            _activeMemberFilter = window._pendingMemberFilter;
+            window._pendingMemberFilter = null;
+        }
+        const queryStr = q || '';
+        const res = await window.SAWYAN.API.adminSearchAndReplyOps({ action: 'search', entity: 'members', query: queryStr });
+        if (mySeq !== _memLoadSeq) return;
+        const allList = res.results || [];
+        _LIVE_MEMBERS_MAP.clear();
+        allList.forEach(function (m) { if (m && m.id) _LIVE_MEMBERS_MAP.set(String(m.id), m); });
+        _lastMembersCache = { q: queryStr, allList: allList };
+        renderMembersPage(queryStr, allList);
+    };
 
         window.svOpenLiveKycModal = function (mOrId) {
             const m = (typeof mOrId === 'string') ? _LIVE_MEMBERS_MAP.get(mOrId) : mOrId;
@@ -1001,7 +1018,7 @@
                 : (ks.document_preview ? '<div style="margin-top:8px;">' + renderAdmThumb(ks.document_preview, '🪪 وثيقة الهوية — ' + esc(m.full_name)) + '</div>' : '');
             const mvMediaHtml = mv
                 ? (mv.document_redacted
-                    ? '<div style="margin:6px 0;padding:8px 10px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;color:#991b1b;font-size:0.78rem;font-weight:700;">🔒 مستند الإقامة محجوب لحماية الصلاحيات (KYC RBAC).</div>'
+                    ? '<div style="margin:6px 0;padding:8px 10px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;color:#991b1b;font-size:0.78rem;font-weight:700;">🔒 مستند الإقامة محجوب لحماية الصلاحيات الإدارية.</div>'
                     : (mv.document_preview ? '<div style="margin:8px 0;">' + renderAdmThumb(mv.document_preview, '✈️ مستند الإقامة — ' + esc(mv.target_country_code)) + '</div>' : ''))
                 : '';
 
@@ -1015,7 +1032,7 @@
                     '</div>' +
                     '<input id="svKycRevNote" type="text" placeholder="ملاحظة للمشترك (مثلاً: تم التحقق من تطابق الاسم الرباعي)" class="form-control">' +
                     '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-                        '<button type="button" class="btn btn-primary" onclick="svDecideLiveKyc(\'' + m.id + '\',\'kyc\',\'verified\')">✅ اعتماد وتوثيق الهوية (KYC)</button>' +
+                        '<button type="button" class="btn btn-primary" onclick="svDecideLiveKyc(\'' + m.id + '\',\'kyc\',\'verified\')">✅ اعتماد وتوثيق الهوية</button>' +
                         '<button type="button" class="btn btn-danger" onclick="svDecideLiveKyc(\'' + m.id + '\',\'kyc\',\'rejected\')">❌ رفض المستند مع إرسال السبب</button>' +
                     '</div>' +
                     (mv && mv.status === 'pending_review'
@@ -1043,6 +1060,20 @@
 
         window.svToggleMemberBan = async function (memberId, ban) {
             try {
+                const mem = _LIVE_MEMBERS_MAP.get(String(memberId)) || {};
+                const memLabel = mem.full_name ? (mem.full_name + ' (#' + (mem.member_code || '') + ')') : 'هذا العضو';
+                const confirmed = (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.confirm === 'function')
+                    ? await window.SAWYAN.UI.confirm({
+                        title: ban ? '⛔ تأكيد الحظر النهائي للعضو' : 'تأكيد فك الحظر عن العضو',
+                        message: ban
+                            ? ('هل تؤكد الحظر النهائي لحساب العضو «' + memLabel + '» وإيقاف دخوله؟')
+                            : ('هل تؤكد إعادة تفعيل وفك الحظر عن حساب العضو «' + memLabel + '»؟'),
+                        confirmText: ban ? 'نعم، حظر نهائي' : 'نعم، فك الحظر',
+                        cancelText: 'تراجع وإلغاء',
+                        tone: ban ? 'danger' : 'primary'
+                    })
+                    : false;
+                if (!confirmed) return;
                 await window.SAWYAN.API.adminOperationalDecision({ domain: 'member_tombstone', recordId: memberId, decision: ban ? 'ban' : 'unban' });
                 toast(ban ? 'تم حظر الحساب نهائياً.' : 'تم فك الحظر عن الحساب.', false);
                 await window.loadMembers();
@@ -1051,25 +1082,10 @@
 
         // Override Merchants Screen with Live 3-Axis Lifecycle Filter + Clickable Rows + Quick Actions + [؟] Help
         let _merLoadSeq = 0;
-        window.loadMerchants = async function (q, filterKey) {
+        let _lastMerchantsCache = null;
+        function renderMerchantsPage(q, allList, proofs) {
             const page = document.getElementById('merchantsPage');
             if (!page) return;
-            const mySeq = ++_merLoadSeq;
-            if (filterKey !== undefined) {
-                _activeMerchantFilter = filterKey;
-            } else if (window._pendingMerchantFilter) {
-                _activeMerchantFilter = window._pendingMerchantFilter;
-                window._pendingMerchantFilter = null;
-            }
-            const [res, proofsRes] = await Promise.all([
-                window.SAWYAN.API.adminSearchAndReplyOps({ action: 'search', entity: 'merchants', query: q || '' }),
-                window.SAWYAN.API.adminSearchAndReplyOps({ action: 'search', entity: 'bank_topup_proofs' })
-            ]);
-            if (mySeq !== _merLoadSeq) return;
-            const allList = res.results || [];
-            const proofs = proofsRes.results || [];
-            _LIVE_MERCHANTS_MAP.clear();
-            allList.forEach(function (m) { if (m && m.id) _LIVE_MERCHANTS_MAP.set(String(m.id), m); });
             const list = allList.filter(function (m) { return matchMerchantFilter(m, _activeMerchantFilter); });
             const filterDefs = [
                 ['all', 'الكل'],
@@ -1086,7 +1102,7 @@
             const filterBarHtml = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">' + filterDefs.map(function (fd) {
                 const cnt = allList.filter(function (m) { return matchMerchantFilter(m, fd[0]); }).length;
                 const active = _activeMerchantFilter === fd[0];
-                return '<button type="button" data-mer-filter="' + fd[0] + '" onclick="loadMerchants(document.getElementById(\'svLiveMerSearch\').value,\'' + fd[0] + '\')" style="padding:5px 11px;border-radius:999px;font-size:0.76rem;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;border:1.5px solid ' + (active ? '#0f766e' : '#cbd5e1') + ';background:' + (active ? '#0f766e' : '#ffffff') + ';color:' + (active ? '#ffffff' : '#334155') + ';">' + esc(fd[1]) + ' (' + cnt + ')</button>';
+                return '<button type="button" data-mer-filter="' + fd[0] + '" onclick="svFilterMerchants(\'' + fd[0] + '\')" style="padding:5px 11px;border-radius:999px;font-size:0.76rem;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;border:1.5px solid ' + (active ? '#0f766e' : '#cbd5e1') + ';background:' + (active ? '#0f766e' : '#ffffff') + ';color:' + (active ? '#ffffff' : '#334155') + ';">' + esc(fd[1]) + ' (' + cnt + ')</button>';
             }).join('') + '</div>';
 
             const pendingProofs = proofs.filter(function (pr) { return pr.event_name !== 'MerchantBankTopupProofProcessed'; });
@@ -1112,7 +1128,7 @@
                     '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
                         '<input id="svLiveMerSearch" type="text" value="' + esc(q || '') + '" placeholder="ابحث بكود التاجر أو الاسم أو الهاتف..." class="form-control" style="width:min(100%,240px);">' +
                         '<button type="button" class="btn btn-primary" onclick="loadMerchants(document.getElementById(\'svLiveMerSearch\').value)">🔎 بحث سيرفري</button>' +
-                        (_activeMerchantFilter !== 'all' ? '<button type="button" class="btn btn-outline" onclick="loadMerchants(\'\',\'all\')">🔄 عرض كل التجار (' + allList.length + ')</button>' : '') +
+                        (_activeMerchantFilter !== 'all' ? '<button type="button" class="btn btn-outline" onclick="svFilterMerchants(\'all\')">🔄 عرض كل التجار (' + allList.length + ')</button>' : '') +
                     '</div>' +
                 '</div>' +
                 filterBarHtml +
@@ -1182,6 +1198,38 @@
                     }).join('')) +
                     '</tbody></table>' +
                 '</div>';
+        }
+        window.svFilterMerchants = function (fk) {
+            const q = (document.getElementById('svLiveMerSearch') || {}).value || '';
+            _activeMerchantFilter = fk || 'all';
+            if (_lastMerchantsCache && _lastMerchantsCache.q === q) {
+                renderMerchantsPage(q, _lastMerchantsCache.allList, _lastMerchantsCache.proofs);
+                return;
+            }
+            window.loadMerchants(q, _activeMerchantFilter);
+        };
+        window.loadMerchants = async function (q, filterKey) {
+            const page = document.getElementById('merchantsPage');
+            if (!page) return;
+            const mySeq = ++_merLoadSeq;
+            if (filterKey !== undefined) {
+                _activeMerchantFilter = filterKey;
+            } else if (window._pendingMerchantFilter) {
+                _activeMerchantFilter = window._pendingMerchantFilter;
+                window._pendingMerchantFilter = null;
+            }
+            const queryStr = q || '';
+            const [res, proofsRes] = await Promise.all([
+                window.SAWYAN.API.adminSearchAndReplyOps({ action: 'search', entity: 'merchants', query: queryStr }),
+                window.SAWYAN.API.adminSearchAndReplyOps({ action: 'search', entity: 'bank_topup_proofs' })
+            ]);
+            if (mySeq !== _merLoadSeq) return;
+            const allList = res.results || [];
+            const proofs = proofsRes.results || [];
+            _LIVE_MERCHANTS_MAP.clear();
+            allList.forEach(function (m) { if (m && m.id) _LIVE_MERCHANTS_MAP.set(String(m.id), m); });
+            _lastMerchantsCache = { q: queryStr, allList: allList, proofs: proofs };
+            renderMerchantsPage(queryStr, allList, proofs);
         };
 
         window.svQuickMerchantAction = async function (merchantId, actType) {

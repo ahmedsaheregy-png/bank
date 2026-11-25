@@ -265,6 +265,9 @@ async function refreshMerchantBundle(shiftFilter = 'today', branchId = null) {
         }
         renderLiveHomeStats();
         _syncOwnerLiveAlertsAndPoll(merchantBundle);
+        if (currentMerchant?.id && window.SAWYAN?.API?.recordDeviceFraudFingerprint) {
+            window.SAWYAN.API.recordDeviceFraudFingerprint({ actorType: 'merchant', actorId: currentMerchant.id });
+        }
         return merchantBundle;
     } catch (err) {
         console.error('Merchant bundle error:', err);
@@ -283,9 +286,18 @@ async function loadStats() {
     }
 }
 
+function getMerLocale() {
+    const lang = (window.SAWYAN && window.SAWYAN.I18n && typeof window.SAWYAN.I18n.getLang === 'function')
+        ? window.SAWYAN.I18n.getLang()
+        : (document.documentElement.lang || 'ar');
+    return lang === 'en' ? 'en-US' : (lang === 'tr' ? 'tr-TR' : 'ar-EG');
+}
+
 function fmtMerchantMoney(val, curr) {
     const c = curr || merchantBundle?.profile?.currency_code || merchantData?.currency_code || 'EGP';
-    return `${Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${c}`;
+    const raw = Number(val || 0);
+    const n = Math.abs(raw) < 0.005 ? 0 : raw;
+    return `${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${c}`;
 }
 
 function getMerchantFifoBannerHtml(p, pendingList) {
@@ -625,8 +637,8 @@ function renderMerchantLifecycleAndD4Cards() {
         d4BannerTitle = `🔔 تنبيه مسائي: تبقى نحو ${minsToClose} دقيقة على إغلاق دورة السداد اليوم`;
     }
 
-    const closeTxt = p.d4_cycle_close_at ? new Date(p.d4_cycle_close_at).toLocaleString('ar-EG') : '—';
-    const graceTxt = p.d4_grace_due_at ? new Date(p.d4_grace_due_at).toLocaleString('ar-EG') : '—';
+    const closeTxt = p.d4_cycle_close_at ? new Date(p.d4_cycle_close_at).toLocaleString(getMerLocale()) : '—';
+    const graceTxt = p.d4_grace_due_at ? new Date(p.d4_grace_due_at).toLocaleString(getMerLocale()) : '—';
     d4Box.innerHTML = `
         <div style="background:${d4BannerBg};border:2px solid ${d4BannerBorder};border-radius:14px;padding:13px 16px;margin-bottom:14px;">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
@@ -670,7 +682,10 @@ function renderLiveHomeStats() {
         ].filter(Boolean).join(' • ');
         todayTransEl.textContent = `${p.today_completed_count || 0} عمليات مكتملة اليوم` + (extra ? ` • ${extra}` : '');
     }
-    if (commsDueEl) commsDueEl.textContent = '-' + fmtMerchantMoney(p.today_commission_local, curr);
+    if (commsDueEl) {
+        const tc = Number(p.today_commission_local || 0);
+        commsDueEl.textContent = (tc > 0.004 ? '-' : '') + fmtMerchantMoney(Math.abs(tc), curr);
+    }
     if (todayNetEl) todayNetEl.textContent = fmtMerchantMoney(p.today_merchant_net_local, curr);
     if (prepaidEl) {
         const cashBal = Number(p.actual_cash_balance || 0);
@@ -935,7 +950,7 @@ function showPage(page) {
         scan: 'إنشاء عملية توثيق',
         qrScanner: 'توثيق بالـ QR أو كود العضو',
         transactions: 'العمليات المكتملة وتقفيل الوردية',
-        financial: 'الموقف المالي والفواتير الضريبية B2B',
+        financial: 'الموقف المالي والفواتير الضريبية المزدوجة',
         settings: 'الإعدادات وموظفو التوثيق'
     };
     const tEl = document.getElementById('pageTitle');
@@ -1051,7 +1066,7 @@ function loadFinancialReport() {
         <!-- 2. بطاقات إحصائيات الشهر الحالي السريعة -->
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap:14px; margin-bottom:16px;">
             <div style="background:white; border:1px solid #cbd5e1; border-radius:12px; padding:14px 18px; text-align:center;">
-                <div style="font-size:0.78rem; color:#64748b; font-weight:700;">إجمالي مبيعات الدورة الحالية (Gross GMV)</div>
+                <div style="font-size:0.78rem; color:#64748b; font-weight:700;">إجمالي مبيعات الدورة الحالية</div>
                 <div id="finGrossGmvCard" style="font-size:1.35rem; font-weight:900; color:#0f172a; margin-top:4px;">0.00 ج.م</div>
             </div>
             <div style="background:white; border:1px solid #cbd5e1; border-radius:12px; padding:14px 18px; text-align:center;">
@@ -1074,7 +1089,7 @@ function loadFinancialReport() {
                 🔋 سجل عمليات شحن الرصيد (كم مرة وبكم؟)
             </button>
             <button id="finTabBtn3" onclick="switchFinancialTab(3)" style="background:transparent; border:none; border-bottom:3px solid transparent; color:#64748b; font-weight:700; font-size:0.9rem; padding:8px 16px; cursor:pointer; font-family:'Tajawal';">
-                📅 الفواتير الضريبية والتسويات (B2B)
+                📅 الفواتير الضريبية والتسويات الشهرية
             </button>
         </div>
 
@@ -1124,7 +1139,7 @@ function loadFinancialReport() {
         <!-- التبويب 3: الفواتير الضريبية المزدوجة والتسويات -->
         <div id="finTabContent3" style="display:none;">
             <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:12px; padding:16px; text-align:center; color:#64748b;">
-                جاري تحميل الفواتير الضريبية المزدوجة B2B من قاعدة البيانات...
+                جاري تحميل الفواتير الضريبية المزدوجة من قاعدة البيانات...
             </div>
         </div>
         </div>

@@ -3543,3 +3543,150 @@ section[id] {
     .promo-caption-box h3 { font-size: 0.98rem; margin-bottom: 5px; }
     .promo-caption-box p { font-size: 0.8rem; color: #cbd5e1; }
 }
+
+/* =====================================================================
+   STAGE 25/27: 2-Tier Clean Mobile Header, 680px Pill Stability & Photo Badges
+   ===================================================================== */
+.top-bar-mobile-controls {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    width: 100%;
+}
+
+.portal-nav .nav-cta .btn,
+.preview-nav .nav-cta .btn,
+.mobile-quick-join {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+}
+
+.geo-pill-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.geo-pill-btn svg {
+    display: inline-block;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+    .preview-nav .sawyan-font-btn {
+        display: none !important;
+    }
+    .preview-nav .nav-cta .btn {
+        padding: 7px 12px !important;
+        font-size: 0.82rem !important;
+        border-radius: 999px !important;
+    }
+}
+
+@media (max-width: 640px) {
+    .top-geo-trust-bar .top-geo-status {
+        display: none !important;
+    }
+    .top-bar-mobile-controls {
+        display: flex !important;
+        padding: 2px 0;
+    }
+    .top-bar-mobile-controls .geo-pill-btn {
+        background: rgba(255, 255, 255, 0.16) !important;
+        border: 1px solid rgba(255, 255, 255, 0.34) !important;
+        color: #ffffff !important;
+        padding: 4px 10px !important;
+        font-size: 0.76rem !important;
+        max-width: 175px !important;
+        border-radius: 999px !important;
+    }
+    .top-bar-mobile-controls .geo-pill-btn #navGeoLabel {
+        max-width: 120px !important;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: #ffffff !important;
+    }
+    .top-bar-mobile-controls .theme-toggle {
+        position: static !important;
+        width: 28px !important;
+        height: 28px !important;
+        border-radius: 999px !important;
+        background: rgba(255, 255, 255, 0.16) !important;
+        border: 1px solid rgba(255, 255, 255, 0.32) !important;
+        color: #ffffff !important;
+        font-size: 0.85rem !important;
+        box-shadow: none !important;
+        margin-inline-start: auto;
+    }
+    .top-bar-mobile-controls .sawyan-lang-switcher {
+        background: rgba(255, 255, 255, 0.14) !important;
+        border-color: rgba(255, 255, 255, 0.28) !important;
+    }
+    .top-bar-mobile-controls .sawyan-lang-btn {
+        padding: 2px 5px !important;
+        min-height: 22px !important;
+    }
+    .top-bar-mobile-controls .sawyan-font-btn {
+        display: none !important;
+    }
+    .portal-nav .nav-content {
+        justify-content: space-between !important;
+        gap: 10px !important;
+        min-height: 54px;
+    }
+    .portal-nav .nav-right-controls {
+        gap: 10px !important;
+        flex-shrink: 0 !important;
+    }
+    .portal-nav .mobile-quick-join {
+        padding: 7px 14px !important;
+        font-size: 0.82rem !important;
+        border-radius: 999px !important;
+        background: linear-gradient(135deg, #10b981, #059669) !important;
+        color: #ffffff !important;
+        font-weight: 800 !important;
+    }
+    .portal-nav .mobile-menu-btn {
+        width: 34px !important;
+        height: 34px !important;
+        padding: 5px !important;
+    }
+}
+
+/* Sleek corner badge on featured merchant cards (never covers photo) */
+.merchant-image-container {
+    position: relative;
+    overflow: hidden;
+}
+.merchant-image-container .merchant-overlay {
+    position: absolute !important;
+    inset: auto 0 0 0 !important;
+    height: auto !important;
+    background: linear-gradient(180deg, transparent 0%, rgba(15, 23, 42, 0.72) 100%) !important;
+    padding: 22px 10px 8px !important;
+    display: flex !important;
+    align-items: flex-end !important;
+    justify-content: flex-start !important;
+}
+.merchant-image-container .merchant-overlay-content {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    max-width: 100% !important;
+}
+.merchant-image-container .merchant-cashback-badge {
+    background: rgba(6, 95, 70, 0.94) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(110, 231, 183, 0.55) !important;
+    padding: 3px 10px !important;
+    border-radius: 999px !important;
+    font-size: 0.74rem !important;
+    font-weight: 800 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}

@@ -246,9 +246,37 @@
             const curr = document.documentElement.getAttribute('data-theme') || 'light';
             const next = curr === 'dark' ? 'light' : 'dark';
             document.documentElement.setAttribute('data-theme', next);
-            try { localStorage.setItem('sawyan-theme', next); } catch (e) {}
+            try {
+                localStorage.setItem('sawyan-theme', next);
+                localStorage.setItem('sawyan_theme', next);
+            } catch (e) {}
             syncIcon();
         });
+
+        // Stage 25 Responsive 2-Tier Header: dock geo+theme+lang into emerald top bar on <=640px
+        const mq = window.matchMedia('(max-width: 640px)');
+        function syncMobileHeaderDock() {
+            const topSlot = byId('topBarMobileControls');
+            const navRight = document.querySelector('.preview-nav .nav-right-controls');
+            const geoBtn = byId('navGeoPill');
+            const themeEl = byId('themeToggleBtn');
+            const globalCtrl = document.querySelector('.sawyan-global-controls');
+            if (!topSlot || !navRight) return;
+            if (mq.matches) {
+                if (geoBtn && geoBtn.parentElement !== topSlot) topSlot.appendChild(geoBtn);
+                if (themeEl && themeEl.parentElement !== topSlot) topSlot.appendChild(themeEl);
+                if (globalCtrl && globalCtrl.parentElement !== topSlot) topSlot.appendChild(globalCtrl);
+            } else {
+                const anchor = byId('mobileQuickJoinBtn') || navRight.querySelector('.nav-cta');
+                if (geoBtn && geoBtn.parentElement !== navRight) navRight.insertBefore(geoBtn, navRight.firstChild);
+                if (themeEl && themeEl.parentElement !== navRight) navRight.insertBefore(themeEl, anchor || null);
+                if (globalCtrl && globalCtrl.parentElement !== navRight) navRight.appendChild(globalCtrl);
+            }
+        }
+        syncMobileHeaderDock();
+        setTimeout(syncMobileHeaderDock, 150);
+        if (typeof mq.addEventListener === 'function') mq.addEventListener('change', syncMobileHeaderDock);
+        else if (typeof mq.addListener === 'function') mq.addListener(syncMobileHeaderDock);
     }
 
     function initMobileMenu() {
@@ -557,17 +585,20 @@
 
         const cityLabel = validCity !== 'all' ? ` — ${cities[validCity]}` : '';
         const scopeText = `${cfg.name}${cityLabel}`;
+        const svgFlag = (cfg.code && cfg.code !== 'ALL' && cfg.code !== 'PIONEER' && window.SAWYAN && window.SAWYAN.Flags && typeof window.SAWYAN.Flags.svg === 'function')
+            ? window.SAWYAN.Flags.svg(cfg.code, 16)
+            : escapeHtml(cfg.flag || '🌍');
 
         if (byId('topGeoBadge')) {
             const hint = SOURCE_LABELS[currentGeo.source] || '';
-            byId('topGeoBadge').innerHTML = `${cfg.flag} تتصفح حالياً: <strong>${escapeHtml(scopeText)}</strong> <span style="opacity:0.88; font-size:0.78rem;">(${escapeHtml(hint)} • ${escapeHtml(cfg.currencyCode)})</span>`;
+            byId('topGeoBadge').innerHTML = `${svgFlag} تتصفح حالياً: <strong>${escapeHtml(scopeText)}</strong> <span style="opacity:0.88; font-size:0.78rem;">(${escapeHtml(hint)} • ${escapeHtml(cfg.currencyCode)})</span>`;
         }
-        if (byId('navGeoFlag')) byId('navGeoFlag').textContent = cfg.flag;
+        if (byId('navGeoFlag')) byId('navGeoFlag').innerHTML = svgFlag;
         if (byId('navGeoLabel')) {
             byId('navGeoLabel').textContent = validCity !== 'all' ? `${cfg.name}: ${cities[validCity]}` : cfg.name;
         }
         if (byId('heroGeoBadge')) {
-            byId('heroGeoBadge').innerHTML = `<span>${cfg.flag}</span><span>نطاق التصفح: ${escapeHtml(scopeText)} — العملة: ${escapeHtml(cfg.currencyCode)}</span>`;
+            byId('heroGeoBadge').innerHTML = `<span>${svgFlag}</span><span>نطاق التصفح: ${escapeHtml(scopeText)} — العملة: ${escapeHtml(cfg.currencyCode)}</span>`;
         }
         if (byId('heroSearchCountryLabel')) byId('heroSearchCountryLabel').textContent = cfg.isGlobal ? 'العالم' : cfg.name;
 

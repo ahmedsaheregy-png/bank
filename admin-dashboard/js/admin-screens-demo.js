@@ -856,9 +856,20 @@
         if (!sD && !eD) return true;
         if (!isoVal) return false;
         var dayStr = String(isoVal).slice(0, 10);
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(dayStr)) return true;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dayStr)) return false;
         if (sD && dayStr < sD) return false;
         if (eD && dayStr > eD) return false;
+        return true;
+    }
+    function isPeriodOverlappingRange(periodYm, sD, eD) {
+        if (!sD && !eD) return true;
+        var m = String(periodYm || '').match(/^(\d{4})-(\d{2})$/);
+        if (!m) return false;
+        var pStart = m[1] + '-' + m[2] + '-01';
+        var lastDay = new Date(Number(m[1]), Number(m[2]), 0).getDate();
+        var pEnd = m[1] + '-' + m[2] + '-' + String(lastDay).padStart(2, '0');
+        if (sD && pEnd < sD) return false;
+        if (eD && pStart > eD) return false;
         return true;
     }
     function buildFilteredReports(sD, eD) {
@@ -868,15 +879,22 @@
         var ctrs = Array.isArray(b.countries) ? b.countries : [];
         var zd = b.zero_discrepancy || {};
         var kp = b.kpis || {};
+        var periodYm = String(kp.period_ym || new Date().toISOString().slice(0, 7));
+        var periodFallbackIso = periodYm + '-01';
+        var rangeOverlapsActivePeriod = isPeriodOverlappingRange(periodYm, sD, eD);
         var txStAr = { completed: 'مكتملة ✅', pending: 'معلقة للمراجعة ⏳', awaiting_merchant_topup: 'بانتظار شحن التاجر ⏸️', reversed: 'مسترجعة ↩️', rejected: 'مرفوضة ❌' };
 
         var filteredTxs = rawTxs.filter(function (t) { return isIsoInDateRange(t.completed_at || t.created_at, sD, eD); });
+        var txMemberIds = new Set(filteredTxs.map(function (t) { return String(t.member_id || t.member_code || ''); }));
         var filteredMems = rawMems.filter(function (m) {
-            if (!m.created_at) return true;
-            return isIsoInDateRange(m.created_at, sD, eD);
+            var mIso = m.created_at || m.joined_at || m.registered_at || (rangeOverlapsActivePeriod ? periodFallbackIso : '');
+            if (isIsoInDateRange(mIso, sD, eD)) return true;
+            if (txMemberIds.has(String(m.id || '')) || txMemberIds.has(String(m.member_code || ''))) return true;
+            return false;
         });
         var completedFiltered = filteredTxs.filter(function (t) { return t.status === 'completed'; });
         var pendingFiltered = filteredTxs.filter(function (t) { return t.status === 'pending' || t.status === 'awaiting_merchant_topup'; });
+        var hasRangeActivity = filteredTxs.length > 0 || filteredMems.length > 0 || rangeOverlapsActivePeriod;
 
         OFFICIAL_REPORTS.tree.rows = filteredMems.map(function (m) {
             return [
@@ -890,7 +908,7 @@
             ];
         });
 
-        OFFICIAL_REPORTS.carryon.rows = rawMems.filter(function (m) { return Number(m.member_code) > 0; }).map(function (m) {
+        OFFICIAL_REPORTS.carryon.rows = filteredMems.filter(function (m) { return Number(m.member_code) > 0; }).map(function (m) {
             return [
                 (m.full_name || ('عضو #' + Number(m.member_code))) + ' (#' + Number(m.member_code) + ')',
                 m.residency_country_code || 'EG',
@@ -913,29 +931,36 @@
             ];
         });
 
-        OFFICIAL_REPORTS.international.rows = ctrs.map(function (c) {
+        var txByCountry = {};
+        completedFiltered.forEach(function (t) {
+            var cc = String(t.country_code || t.residency_country_code || '').toUpperCase();
+            if (cc) txByCountry[cc] = (txByCountry[cc] || 0) + 1;
+        });
+        OFFICIAL_REPORTS.international.rows = hasRangeActivity ? ctrs.map(function (c) {
             var cname = (c.country_name_i18n && (c.country_name_i18n.ar || c.country_name_i18n.en)) || c.country_code;
+            var cc = String(c.country_code || '').toUpperCase();
+            var periodTxCount = (sD || eD) ? Number(txByCountry[cc] || 0) : Number(c.completed_tx_count || 0);
             return [
                 cname + ' (' + c.country_code + ')',
                 String(Number(c.active_merchants_count || 0)),
-                String(Number(c.completed_tx_count || 0)),
+                String(periodTxCount),
                 fmt(c.admin_fx_rate || 1) + ' ' + (c.currency_code || '') + ' / $',
                 fmt(c.monthly_target_usd || 24.75) + ' $',
                 c.is_active ? '🟢 نشطة ومفعلة' : '⚪ غير نشطة'
             ];
-        });
+        }) : [];
 
-        OFFICIAL_REPORTS.reconciliation.rows = [
+        OFFICIAL_REPORTS.reconciliation.rows = hasRangeActivity ? [
             ['توازن القيد المزدوج العام', fmt(zd.total_debit_usd || 0) + ' $ (مدين)', fmt(zd.total_credit_usd || 0) + ' $ (دائن)', fmt(zd.ledger_diff_usd || 0) + ' $', zd.is_zero_discrepancy_intact ? '✅ مطابق 100%' : '⛔ خلل'],
             ['حصة الخزانة مقابل وعاء خطة الدخل', fmt(kp.treasury_revenue_usd || 0) + ' $ خزانة', fmt(kp.plan_pool_liability_usd || 0) + ' $ خطة', fmt0(zd.pool_mismatch_count || 0) + ' فوارق', Number(zd.pool_mismatch_count || 0) === 0 ? '✅ مطابق 100%' : '⛔ خلل'],
             ['إجمالي أرصدة التجار المشحونة', fmt(kp.merchant_prepaid_float_usd || 0) + ' $', 'صافي أرصدة الشحن الحية', '0.00 $', '✅ مطابق 100%']
-        ];
+        ] : [];
 
-        OFFICIAL_REPORTS.audit.rows = [
+        OFFICIAL_REPORTS.audit.rows = hasRangeActivity ? [
             ['فواتير مكتملة ضمن الفترة المختارة', String(completedFiltered.length), 'من إجمالي ' + Number(kp.transactions_completed || 0) + ' فاتورة بالدورة', 'القيد المزدوج المتوازن'],
             ['فواتير معلقة أو بانتظار الشحن ضمن الفترة', String(pendingFiltered.length), 'بانتظار التأكيد أو شحن رصيد التاجر', 'ضوابط الرصيد والائتمان'],
             ['فروق التقريب العشرية', fmt(kp.rounding_4301_usd || 0, 4) + ' $', 'تدوير Decimal دقيق لحساب فروق التقريب', 'دقة الكسور العشرية']
-        ];
+        ] : [];
     }
     window.generateReport = async function () {
         upgradeReportsSelect();
@@ -1091,8 +1116,8 @@
         return '<div style="display:grid;gap:16px;">' +
             '<div style="background:white;border:1.5px solid #cbd5e1;border-radius:14px;padding:18px;">' +
                 '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">' +
-                    '<div><h3 style="margin:0;">🚨 طابور الاشتباه وكشف التواطؤ (Red Team Controls — P1-13)</h3><div style="font-size:0.8rem;color:#64748b;">يرصد الفواتير الوهمية الدوارة، تضارب المالك والعضو، تكرار الأجهزة، وصد QR الأوفلاين</div></div>' +
-                    badgeProp('P1-13 + Red Team') +
+                    '<div><h3 style="margin:0;">🚨 طابور الاشتباه وكشف التواطؤ ' + (window.svHelpBtn ? window.svHelpBtn('spam_guard') : '') + '</h3><div style="font-size:0.8rem;color:#64748b;">يرصد الفواتير الوهمية الدوارة، تضارب المالك والعضو، تكرار الأجهزة، وصد رموز الاستجابة غير الصالحة</div></div>' +
+                    badgeProp('رقابة ذكية') +
                 '</div>' +
                 OPS.fraudQueue.map(function (f) {
                     var res = f.status === 'cleared' ? '🟢 تم التحقق والتبرئة' : f.status === 'frozen' ? '⛔ حساب مجمّد للتحقيق' : f.status === 'blocked_auto' ? '🛡️ تم الصد تلقائياً' : '🔴 بانتظار قرار الرقابة';
@@ -1106,8 +1131,8 @@
             '</div>' +
             '<div style="background:white;border:1.5px solid #3b82f6;border-radius:14px;padding:18px;">' +
                 '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">' +
-                    '<div><h3 style="margin:0;color:#1e3a8a;">🔍 محاكي أداة الفحص السريع للمرتجع عند التاجر (Quick Return Lookup — باب 6 بند 3)</h3><div style="font-size:0.78rem;color:#64748b;">إذا جاء زبون لإرجاع بضاعة نقداً وأنكر أنه عضو بسويا، يكتب التاجر المبلغ ليكتشف خلال اليومين هل عليه عمولة موثقة أم لا</div></div>' +
-                    badgeProp('بند 6.3 غير المحسوم') +
+                    '<div><h3 style="margin:0;color:#1e3a8a;">🔍 أداة الفحص السريع للمرتجع عند التاجر</h3><div style="font-size:0.78rem;color:#64748b;">إذا جاء زبون لإرجاع بضاعة نقداً وأنكر أنه عضو بسويا، يكتب التاجر المبلغ ليكتشف خلال اليومين هل عليه عمولة موثقة أم لا</div></div>' +
+                    badgeProp('فحص المرتجعات') +
                 '</div>' +
                 '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">' +
                     '<input id="qrlAmt" type="number" value="500" placeholder="مبلغ المرتجع (مثلاً 500 أو 1250 أو 340)" style="flex:1;min-width:190px;padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px;">' +
@@ -1121,15 +1146,15 @@
     function renderFxTab() {
         return '<div style="background:white;border:1.5px solid #cbd5e1;border-radius:14px;padding:18px;">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">' +
-                '<div><h3 style="margin:0;">💱 غرفة أسعار الصرف الشهرية وإعادة التقييم (P0-5 • D8 • X01–X04)</h3><div style="font-size:0.8rem;color:#64748b;">تُعتمد الأسعار قبل بداية الشهر، وأي انحراف &gt;10% عن الشهر السابق يطلق تحذير اعتماد أعلى</div></div>' +
-                badgeProp('P0-5 + D8') +
+                '<div><h3 style="margin:0;">💱 غرفة أسعار الصرف الشهرية وإعادة التقييم ' + (window.svHelpBtn ? window.svHelpBtn('country_gate') : '') + '</h3><div style="font-size:0.8rem;color:#64748b;">تُعتمد الأسعار قبل بداية الشهر، وأي انحراف &gt;10% عن الشهر السابق يطلق تحذير اعتماد أعلى</div></div>' +
+                badgeProp('أسعار الصرف') +
             '</div>' +
-            '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>الدولة</th><th>السعر المعتمد (نوفمبر)</th><th>مقترح الشهر القادم (ديسمبر)</th><th>نسبة الانحراف (X02)</th><th>المصدر المرجعي (X03)</th><th>إجراء</th></tr></thead><tbody>' +
+            '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>الدولة</th><th>السعر المعتمد</th><th>مقترح الشهر القادم</th><th>نسبة الانحراف</th><th>المصدر المرجعي</th><th>إجراء</th></tr></thead><tbody>' +
             OPS.fxRates.map(function (r, idx) {
                 var dev = r.curRate ? (((r.nextDraft - r.curRate) / r.curRate) * 100) : 0;
                 var warn = Math.abs(dev) > 10;
                 return '<tr>' +
-                    '<td data-label="الدولة"><b>' + esc(r.country) + ' (' + esc(r.cur) + ')</b><div>' + (r.locked ? '🔒 مقفول لشهر نوفمبر' : '🔓 مفتوح') + '</div></td>' +
+                    '<td data-label="الدولة"><b>' + esc(r.country) + ' (' + esc(r.cur) + ')</b><div>' + (r.locked ? '🔒 مقفول للشهر الحالي' : '🔓 مفتوح') + '</div></td>' +
                     '<td data-label="السعر المعتمد"><b>1$ = ' + fmt(r.curRate) + ' ' + esc(r.cur) + '</b></td>' +
                     '<td data-label="مقترح الشهر القادم"><input type="number" step="0.05" value="' + r.nextDraft + '" onchange="govFxDraft(' + idx + ',this.value)" style="width:110px;padding:6px;border:1px solid #cbd5e1;border-radius:6px;"></td>' +
                     '<td data-label="الانحراف"><span style="font-weight:800;color:' + (warn ? '#dc2626' : '#059669') + ';">' + (dev >= 0 ? '+' : '') + dev.toFixed(1) + '% ' + (warn ? '⚠️ يتجاوز 10% — اعتماد أعلى!' : '✅ طبيعي') + '</span></td>' +
@@ -1149,29 +1174,29 @@
                 var nameAr = (c.country_name_i18n && (c.country_name_i18n.ar || c.country_name_i18n.en)) || c.country_code;
                 return '<tr>' +
                     '<td data-label="الدولة"><b>' + esc(nameAr) + ' (' + esc(c.country_code) + ')</b></td>' +
-                    '<td data-label="T06">' + Number(c.active_merchants_count || 0) + ' تاجر • ' + Number(c.completed_tx_count || 0) + ' عملية</td>' +
-                    '<td data-label="D18">' + (c.legal_opinion_verified ? '✅ موثق ومعتمد' : '⏳ قيد الاستيفاء') + '</td>' +
-                    '<td data-label="D19">VAT ' + Number(c.vat_rate || 0) + '% • WHT ' + Number(c.wht_rate || 0) + '%</td>' +
-                    '<td data-label="الحكم">' + (c.is_active ? '<span class="badge badge-success">🟢 دولة نشطة</span>' : '<span class="badge badge-danger">⛔ غير مفعلة (D13)</span>') + '</td>' +
+                    '<td data-label="التجار والعمليات">' + Number(c.active_merchants_count || 0) + ' تاجر • ' + Number(c.completed_tx_count || 0) + ' عملية</td>' +
+                    '<td data-label="الرأي القانوني">' + (c.legal_opinion_verified ? '✅ موثق ومعتمد' : '⏳ قيد الاستيفاء') + '</td>' +
+                    '<td data-label="الضرائب">قيمة مضافة ' + Number(c.vat_rate || 0) + '% • استقطاع ' + Number(c.wht_rate || 0) + '%</td>' +
+                    '<td data-label="الحكم">' + (c.is_active ? '<span class="badge badge-success">🟢 دولة نشطة</span>' : '<span class="badge badge-danger">⛔ غير مفعّلة بعد</span>') + '</td>' +
                 '</tr>';
             }).join('');
         return '<div style="display:grid;gap:16px;">' +
             '<div style="background:white;border:1.5px solid #cbd5e1;border-radius:14px;padding:18px;">' +
                 '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">' +
-                    '<div><h3 style="margin:0;">🌍 بوابة جاهزية الدول والامتثال القانوني والضريبي (P0-4 • D13 • D18 • D19)</h3><div style="font-size:0.8rem;color:#64748b;">تُقرأ القيم مباشرةً من جدول الدول في PostgreSQL</div></div>' +
-                    badgeProp('D13 + D18 + D19') +
+                    '<div><h3 style="margin:0;">🌍 بوابة جاهزية الدول والامتثال القانوني والضريبي ' + (window.svHelpBtn ? window.svHelpBtn('country_gate') : '') + '</h3><div style="font-size:0.8rem;color:#64748b;">تُقرأ القيم مباشرةً من سجل الدول المعتمد في قاعدة البيانات</div></div>' +
+                    badgeProp('امتثال الدول') +
                 '</div>' +
-                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>الدولة</th><th>التجار والعمليات (T06)</th><th>الرأي القانوني (D18)</th><th>الضرائب VAT/WHT (D19)</th><th>الحكم التلقائي للبوابة</th></tr></thead><tbody>' +
+                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>الدولة</th><th>التجار والعمليات</th><th>الرأي القانوني</th><th>الضرائب المحلية</th><th>الحكم التلقائي للبوابة</th></tr></thead><tbody>' +
                 countryRows +
                 '</tbody></table></div>' +
             '</div>' +
             '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;">' +
                 '<div style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:16px;">' +
-                    '<h3 style="margin:0 0 8px 0;font-size:0.98rem;">📢 إشعار التأثير المسبق (P1-20 — مهلة 30 يوماً)</h3>' +
-                    '<p style="font-size:0.82rem;color:#475569;margin-bottom:8px;">أي تعديل معلمات مالية مستقبلي يمر إلزامياً عبر طابور Maker–Checker ويُطبق بأثر أمامي غير رجعي (D28).</p>' +
+                    '<h3 style="margin:0 0 8px 0;font-size:0.98rem;">📢 إشعار التأثير المسبق (مهلة 30 يوماً) ' + (window.svHelpBtn ? window.svHelpBtn('dual_approval') : '') + '</h3>' +
+                    '<p style="font-size:0.82rem;color:#475569;margin-bottom:8px;">أي تعديل للمعايير المالية يمر إلزامياً عبر المراجعة المزدوجة ويُطبق بأثر مستقبلي غير رجعي لحماية التوازنات القائمة.</p>' +
                 '</div>' +
                 '<div style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:16px;">' +
-                    '<h3 style="margin:0 0 8px 0;font-size:0.98rem;">🔐 سجل التدقيق والخصوصية PDPL الحية</h3>' +
+                    '<h3 style="margin:0 0 8px 0;font-size:0.98rem;">🔐 سجل التدقيق وحماية الخصوصية</h3>' +
                     (OPS.privacyLogs.length === 0
                         ? '<div style="color:#64748b;font-size:0.82rem;">لا توجد سجلات تدقيق إضافية محملة بعد.</div>'
                         : OPS.privacyLogs.map(function (p) {
@@ -1192,7 +1217,7 @@
         page.innerHTML =
             '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">' +
                 '<div><div style="font-size:1.15rem;font-weight:900;color:#0f172a;">🛡️ وحدات الرقابة والإقفال والامتثال المحاسبي</div><div style="font-size:0.8rem;color:#64748b;">ربط مباشر بمعالج الإقفال والمطابقة الصفرية وغرفة الصرف وبوابة الدول من قاعدة البيانات</div></div>' +
-                badgeProp('حوكمة V3.1') +
+                badgeProp('حوكمة مالية حية') +
             '</div>' + govNavHtml() + body;
     }
 
@@ -1200,7 +1225,7 @@
     window.govAdvanceClose = function () {
         if (OPS.reconDiffInjected) { uiNotify('الإقفال محظور لوجود فرق محاسبي!', 'error'); return; }
         if (OPS.closeStep < 6) { OPS.closeStep++; saveOps(); renderGovernanceOps(); }
-        else { uiNotify('✅ اكتملت مراحل الإقفال الشهري الست وصرف يوم 15 والقفل النهائي (Hard Lock).', 'success'); }
+        else { uiNotify('✅ اكتملت مراحل الإقفال الشهري الست واعتماد الصرف والقفل النهائي.', 'success'); }
     };
     window.govResetClose = function () { OPS.closeStep = 1; OPS.breakGlassOpenUntil = null; OPS.breakGlassReason = ''; saveOps(); renderGovernanceOps(); };
     window.govBreakGlassReopen = async function () {
@@ -1454,7 +1479,7 @@
                     memberName: m.full_name || ('عضو #' + Number(m.member_code)),
                     month: periodLabel,
                     excessUsd: Number(m.s03_suspense_usd || 0),
-                    sources: 'رصيد معلق S03',
+                    sources: 'رصيد فائض الحد الشهري',
                     status: 'pending_decision',
                     note: 'بانتظار مراجعة الإدارة المالية'
                 };
@@ -1467,73 +1492,14 @@
                 actor: l.actor_type || 'admin',
                 target: l.table_name || '',
                 scope: l.action || '',
-                consent: '✅ موثق في سلسلة SHA-256'
+                consent: '✅ موثق في سجل التدقيق المحمي'
             };
         });
 
-        // تحديث منظومة التقارير الرسمية الستة من حزمة PostgreSQL الحية
-        OFFICIAL_REPORTS.tree.rows = rawMems.slice(0, 30).map(function (m) {
-            return [
-                '#' + Number(m.member_code),
-                m.full_name || ('عضو #' + Number(m.member_code)),
-                m.residency_country_code || 'EG',
-                Number(m.member_code) === 0 ? '—' : ('#' + Number(m.sponsor_code || 0)),
-                Number(m.member_code) === 0 ? '—' : ('#' + Number(m.parent_code || 0)),
-                m.placement_side === 'left' ? 'يسار' : (m.placement_side === 'right' ? 'يمين' : 'الجذر'),
-                'ج' + Number(m.generation_in_tree || 0)
-            ];
-        });
-
-        OFFICIAL_REPORTS.carryon.rows = OPS.members.slice(0, 30).map(function (m) {
-            var rawM = rawMems.filter(function (x) { return x.id === m.id; })[0] || {};
-            return [
-                m.name + ' (' + m.code + ')',
-                m.country,
-                fmt(rawM.carry_on_in_usd || 0),
-                fmt(rawM.current_purchases_usd || 0),
-                fmt(rawM.carry_on_out_usd || 0),
-                rawM.is_qualified_period ? '🟢 مؤهل' : '🟠 قيد التجميع'
-            ];
-        });
-
-        var txStAr = { completed: 'مكتملة ✅', pending: 'معلقة للمراجعة ⏳', awaiting_merchant_topup: 'بانتظار شحن التاجر ⏸️', reversed: 'مسترجعة ↩️', rejected: 'مرفوضة ❌' };
-        OFFICIAL_REPORTS.commissions.rows = rawTxs.slice(0, 30).map(function (t) {
-            return [
-                t.sw_short_code || t.id,
-                (t.member_name || '') + ' (#' + Number(t.member_code || 0) + ')',
-                t.merchant_name || '',
-                fmt(t.total_amount) + ' ' + (t.currency_code || ''),
-                fmt(t.commission_amount),
-                fmt(t.income_plan_share_usd) + ' $',
-                txStAr[t.status] || t.status
-            ];
-        });
-
-        OFFICIAL_REPORTS.international.rows = ctrs.map(function (c) {
-            var cname = (c.country_name_i18n && (c.country_name_i18n.ar || c.country_name_i18n.en)) || c.country_code;
-            return [
-                cname + ' (' + c.country_code + ')',
-                String(Number(c.active_merchants_count || 0)),
-                String(Number(c.completed_tx_count || 0)),
-                fmt(c.admin_fx_rate || 1) + ' ' + (c.currency_code || '') + ' / $',
-                fmt(c.monthly_target_usd || 24.75) + ' $',
-                c.is_active ? '🟢 نشطة ومفعلة' : '⚪ غير نشطة'
-            ];
-        });
-
-        var zd = bundle.zero_discrepancy || {};
-        var kp = bundle.kpis || {};
-        OFFICIAL_REPORTS.reconciliation.rows = [
-            ['توازن القيد المزدوج العام', fmt(zd.total_debit_usd || 0) + ' $ (مدين)', fmt(zd.total_credit_usd || 0) + ' $ (دائن)', fmt(zd.ledger_diff_usd || 0) + ' $', zd.is_zero_discrepancy_intact ? '✅ مطابق 100%' : '⛔ خلل'],
-            ['حصة الخزانة مقابل وعاء خطة الدخل', fmt(kp.treasury_revenue_usd || 0) + ' $ خزانة', fmt(kp.plan_pool_liability_usd || 0) + ' $ خطة', fmt0(zd.pool_mismatch_count || 0) + ' فوارق', Number(zd.pool_mismatch_count || 0) === 0 ? '✅ مطابق 100%' : '⛔ خلل'],
-            ['إجمالي أرصدة التجار المشحونة', fmt(kp.merchant_prepaid_float_usd || 0) + ' $', 'صافي أرصدة الشحن الحية', '0.00 $', '✅ مطابق 100%']
-        ];
-
-        OFFICIAL_REPORTS.audit.rows = [
-            ['فواتير مكتملة', String(Number(kp.transactions_completed || 0)), 'مقيدة بدفتر الأستاذ المزدوج', 'القيد المزدوج المتوازن'],
-            ['فواتير معلقة أو بانتظار شحن التاجر', String(Number(kp.transactions_pending || 0)), 'بانتظار التأكيد أو شحن رصيد التاجر', 'ضوابط الرصيد والائتمان'],
-            ['فروق التقريب العشرية', fmt(kp.rounding_4301_usd || 0, 4) + ' $', 'تدوير Decimal دقيق لحساب فروق التقريب', 'دقة الكسور العشرية']
-        ];
+        // تحديث منظومة التقارير الرسمية الستة من حزمة PostgreSQL الحية عبر المصدر الموحد
+        var curSD = (document.getElementById('reportStartDate') || {}).value || '';
+        var curED = (document.getElementById('reportEndDate') || {}).value || '';
+        buildFilteredReports(curSD, curED);
 
         var activePageEl = document.querySelector('.page.active');
         if (activePageEl) {

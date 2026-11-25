@@ -11,9 +11,11 @@
     <meta property="og:type" content="website">
     <meta property="og:locale" content="ar_AR">
     <meta property="og:url" content="https://sawyan.global/">
-    <meta property="og:image" content="https://sawyan.global/shared/assets/icon-512.png">
+    <meta property="og:image" content="https://sawyan.global/assets/og-share-card.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image" content="https://sawyan.global/shared/assets/icon-512.png">
+    <meta name="twitter:image" content="https://sawyan.global/assets/og-share-card.jpg">
     <link rel="canonical" href="https://sawyan.global/">
     <script type="application/ld+json">
     {
@@ -46,20 +48,21 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/preview.css?v=20261121_launch_ui2">
-    <link rel="stylesheet" href="css/bidi-support.css?v=20261121_launch">
+    <link rel="stylesheet" href="css/preview.css?v=20261121_launch_s27">
+    <link rel="stylesheet" href="css/bidi-support.css?v=20261121_launch_s27">
     <link rel="stylesheet" href="shared/css/logo.css?v=20261121_launch_ui2">
     <link rel="stylesheet" href="shared/css/smart-search.css?v=20261121_launch_geo">
 </head>
 <body>
 
-    <!-- 1. Top Smart Geo & Trust Strip (Ultra-Slim 1-Row on Mobile) -->
+    <!-- 1. Top Smart Geo & Trust Strip (Ultra-Slim 1-Row; Hosts Geo+Theme+Lang on Mobile) -->
     <div class="top-geo-trust-bar" data-spec-id="public-geo-trust-bar" role="region" aria-label="نطاق التصفح الجغرافي والثقة">
         <div class="container top-bar-flex">
             <div class="top-geo-status">
                 <span class="top-trust-primary">✅ صفر مخاطرة، صفر رأس مال</span>
                 <span id="topGeoBadge" class="top-trust-desktop-only">🌍 تتصفح حالياً: <strong>عرض كل الدول العالمية</strong></span>
             </div>
+            <div id="topBarMobileControls" class="top-bar-mobile-controls"></div>
             <div class="top-trust-chips">
                 <span class="top-trust-desktop-only">🏛️ مبني على المشتريات اليومية الفعلية</span>
             </div>
@@ -624,15 +627,15 @@
     </footer>
 
     <script src="shared/components/flags.js?v=20261121_launch"></script>
-    <script src="shared/i18n/i18n.js?v=20261121_launch"></script>
+    <script src="shared/i18n/i18n.js?v=20261121_launch_s27"></script>
     <script src="shared/components/logo.js?v=20261121_launch_ui2"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="shared/config/supabase.js?v=20261121_launch_ui2"></script>
-    <script src="shared/api/sawyan-api.js?v=20261121_launch_ui2"></script>
+    <script src="shared/api/sawyan-api.js?v=20261121_launch_s27"></script>
     <script src="shared/data/countries.js?v=20261121_launch_geo"></script>
     <script src="shared/components/smart-search.js?v=20261121_launch_geo"></script>
     <script src="js/demo-data.js?v=20261121_launch_ui2"></script>
     <script src="shared/js/push-manager.js?v=20261121_launch_s15"></script>
-    <script src="js/preview.js?v=20261121_launch_geo"></script>
+    <script src="js/preview.js?v=20261121_launch_s27"></script>
 </body>
 </html>

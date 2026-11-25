@@ -350,12 +350,20 @@
         const k = LIVE_BUNDLE.kpis || {};
         const zd = LIVE_BUNDLE.zero_discrepancy || {};
         const schemaName = window.SAWYAN && window.SAWYAN.API ? window.SAWYAN.API.getActiveSchema() : 'sawyan';
+        const fmtUsdS = function (v) {
+            const n = Number(v || 0);
+            if (Math.abs(n) < 0.005) return '$0.00';
+            return (n < 0 ? '-$' : '$') + fmt2(Math.abs(n));
+        };
+        const commTotalUsd = (k.commission_usd_completed !== undefined && k.commission_usd_completed !== null)
+            ? Number(k.commission_usd_completed)
+            : (Number(k.treasury_revenue_usd || 0) + Number(k.plan_pool_liability_usd || 0));
 
         strip.innerHTML =
             '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;">' +
                 '<div>' +
-                    '<span style="background:#10b981;color:#052e16;font-weight:900;font-size:0.74rem;padding:2px 9px;border-radius:999px;margin-left:8px;">LIVE DB: ' + esc(schemaName) + '</span>' +
-                    '<b style="font-size:0.98rem;">القراءة الحية المباشرة من دفتر الأستاذ المزدوج وحوكمة PostgreSQL V3.0</b>' +
+                    '<span style="background:#10b981;color:#052e16;font-weight:900;font-size:0.74rem;padding:2px 9px;border-radius:999px;margin-left:8px;">متصل بالقاعدة الحية: ' + esc(schemaName) + '</span>' +
+                    '<b style="font-size:0.98rem;">القراءة الحية المباشرة من دفتر الأستاذ المزدوج والحوكمة المالية</b>' +
                 '</div>' +
                 '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
                     '<button type="button" onclick="openSovereignLivePage(\'mc\')" style="background:#fbbf24;color:#0f172a;border:none;padding:6px 13px;border-radius:8px;font-family:Tajawal,sans-serif;font-weight:900;font-size:0.82rem;cursor:pointer;">⚡ فتح مركز الحوكمة الحية والاعتماد المزدوج (' + Number(k.pending_mc_requests || 0) + ' معلق)</button>' +
@@ -366,8 +374,8 @@
                 '<div class="admin-live-kpi-cell" style="background:rgba(255,255,255,0.08);padding:9px 12px;border-radius:10px;min-width:0;overflow:hidden;"><div style="font-size:0.75rem;color:#cbd5e1;">👥 الأعضاء بالقاعدة</div><b style="display:block;margin-top:3px;font-size:0.96rem;" dir="ltr">' + Number(k.members_total || 0) + ' (+ #0)</b></div>' +
                 '<div class="admin-live-kpi-cell" style="background:rgba(255,255,255,0.08);padding:9px 12px;border-radius:10px;min-width:0;overflow:hidden;"><div style="font-size:0.75rem;color:#cbd5e1;">🏪 التجار النشطون</div><b style="display:block;margin-top:3px;font-size:0.96rem;" dir="ltr">' + Number(k.merchants_active || 0) + ' / ' + Number(k.merchants_total || 0) + '</b></div>' +
                 '<div class="admin-live-kpi-cell" style="background:rgba(255,255,255,0.08);padding:9px 12px;border-radius:10px;min-width:0;overflow:hidden;"><div style="font-size:0.75rem;color:#cbd5e1;">💳 فواتير مكتملة</div><b style="display:block;margin-top:3px;font-size:0.96rem;" dir="ltr">' + Number(k.transactions_completed || 0) + '</b></div>' +
-                '<div class="admin-live-kpi-cell" style="background:rgba(255,255,255,0.08);padding:9px 12px;border-radius:10px;min-width:0;overflow:hidden;"><div style="font-size:0.75rem;color:#cbd5e1;">🏦 صافي الخزانة</div><b style="display:block;margin-top:3px;font-size:0.96rem;" dir="ltr">$' + fmt2(k.treasury_revenue_usd) + '</b></div>' +
-                '<div class="admin-live-kpi-cell" style="background:rgba(255,255,255,0.08);padding:9px 12px;border-radius:10px;min-width:0;overflow:hidden;"><div style="font-size:0.75rem;color:#cbd5e1;">🎯 رصيد وعاء خطة الدخل</div><b style="display:block;margin-top:3px;font-size:0.96rem;" dir="ltr">$' + fmt2(k.plan_pool_liability_usd) + '</b></div>' +
+                '<div class="admin-live-kpi-cell" style="background:rgba(255,255,255,0.08);padding:9px 12px;border-radius:10px;min-width:0;overflow:hidden;"><div style="font-size:0.75rem;color:#cbd5e1;">🏦 صافي الخزانة</div><b style="display:block;margin-top:3px;font-size:0.96rem;" dir="ltr">' + fmtUsdS(k.treasury_revenue_usd) + '</b></div>' +
+                '<div class="admin-live-kpi-cell" style="background:rgba(255,255,255,0.08);padding:9px 12px;border-radius:10px;min-width:0;overflow:hidden;"><div style="font-size:0.75rem;color:#cbd5e1;">🎯 رصيد وعاء خطة الدخل</div><b style="display:block;margin-top:3px;font-size:0.96rem;" dir="ltr">' + fmtUsdS(k.plan_pool_liability_usd) + '</b></div>' +
                 '<div class="admin-live-kpi-cell" style="background:rgba(255,255,255,0.08);padding:9px 12px;border-radius:10px;min-width:0;overflow:hidden;"><div style="font-size:0.75rem;color:#cbd5e1;">⚖️ المطابقة الصفرية</div><b style="display:block;margin-top:3px;font-size:0.94rem;color:' + (zd.is_zero_discrepancy_intact ? '#6ee7b7' : '#fca5a5') + ';">' + (zd.is_zero_discrepancy_intact ? '✅ فرق $0.00' : '⛔ خلل!') + '</b></div>' +
             '</div>';
 
@@ -380,7 +388,7 @@
         if (elMemb) elMemb.textContent = Number(k.members_total || 0);
         if (elMerch) elMerch.textContent = Number(k.merchants_total || 0);
         if (elTx) elTx.textContent = Number(k.transactions_completed || k.transactions_total || 0);
-        if (elComm) elComm.textContent = fmt2(k.commission_local_completed || 0) + ' ج.م';
+        if (elComm) elComm.textContent = fmtUsdS(commTotalUsd);
 
         if (elAct) {
             const acts = LIVE_BUNDLE.recent_activity || [];
@@ -452,35 +460,36 @@
         const cur = getActiveGlobalSettings();
         const adm = (LIVE_BUNDLE && LIVE_BUNDLE.admin) || window.currentAdmin || {};
         const founder = isSovereignFounder(adm);
+        const hlp = function (k) { return window.svHelpBtn ? window.svHelpBtn(k) : ''; };
         if (!cur || (!cur.id && !LIVE_BUNDLE)) {
             return '<div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:14px;padding:14px;margin-bottom:14px;font-weight:700;color:#92400e;">⏳ جاري مزامنة عتبات ومخاطر التجار الحية من قاعدة البيانات...</div>';
         }
         return '<div style="background:#ffffff;border:1.5px solid #0f766e;border-radius:14px;padding:16px;margin-bottom:14px;">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">' +
                 '<div>' +
-                    '<h3 style="margin:0;font-size:1rem;color:#0f172a;">🏪 ضبط عتبات ومخاطر التجار الحية في PostgreSQL (`sawyan.settings`)</h3>' +
-                    '<div style="font-size:0.78rem;color:#64748b;">الإعدادات الحية الفعلية السارية حالياً — تعدل سلوك المبيعات، طابور انتظار الشحن (يقبل 0)، مهل التقييد والتصعيد، وعتبات السحب.</div>' +
+                    '<h3 style="margin:0;font-size:1rem;color:#0f172a;">🏪 ضبط عتبات ومخاطر التجار الحية ' + hlp('isolate_pct_override') + '</h3>' +
+                    '<div style="font-size:0.78rem;color:#64748b;">الإعدادات الفعلية السارية حالياً — تتحكم في المبيعات، طابور انتظار الشحن (يقبل 0)، مهل التقييد والتصعيد، وعتبات السحب.</div>' +
                 '</div>' +
-                '<span class="badge badge-success">LIVE • ساري من: ' + esc(String(cur.effective_from || '').slice(0, 10)) + '</span>' +
+                '<span class="badge badge-success">ساري من: ' + esc(String(cur.effective_from || '').slice(0, 10)) + '</span>' +
             '</div>' +
             '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,175px),1fr));gap:10px;margin-bottom:10px;">' +
                 '<div><label style="font-size:0.76rem;font-weight:700;">عتبة التنبيه الأول (%)</label><input id="' + pfx + '_warn1" type="number" step="0.5" min="2" max="99" value="' + Number(cur.merchant_warn1_pct ?? 30) + '" class="form-control"></div>' +
                 '<div><label style="font-size:0.76rem;font-weight:700;">عتبة الإنذار الأخير (%)</label><input id="' + pfx + '_warn2" type="number" step="0.5" min="1" max="98" value="' + Number(cur.merchant_warn2_pct ?? 20) + '" class="form-control"></div>' +
-                '<div><label style="font-size:0.76rem;font-weight:700;">عتبة العزل الوقائي (%)</label><input id="' + pfx + '_iso" type="number" step="0.5" min="0.5" max="97" value="' + Number(cur.merchant_isolate_pct ?? 10) + '" class="form-control"></div>' +
-                '<div><label style="font-size:0.76rem;font-weight:700;">فواتير ما بعد النفاد (0=قفل فوري)</label><input id="' + pfx + '_qcap" type="number" step="1" min="0" max="50" value="' + Number(cur.unsecured_queue_cap ?? 3) + '" class="form-control"></div>' +
-                '<div><label style="font-size:0.76rem;font-weight:700;">سقف الحجز المؤقت للمعلقات (%)</label><input id="' + pfx + '_hold" type="number" step="1" min="1" max="100" value="' + Number(cur.unconfirmed_soft_hold_cap_pct ?? 20) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">عتبة العزل الوقائي (%) ' + hlp('isolate_pct_override') + '</label><input id="' + pfx + '_iso" type="number" step="0.5" min="0.5" max="97" value="' + Number(cur.merchant_isolate_pct ?? 10) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">فواتير ما بعد النفاد (0=قفل فوري) ' + hlp('unsecured_queue_cap') + '</label><input id="' + pfx + '_qcap" type="number" step="1" min="0" max="50" value="' + Number(cur.unsecured_queue_cap ?? 3) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">سقف الحجز المؤقت للمعلقات (%) ' + hlp('soft_hold_cap') + '</label><input id="' + pfx + '_hold" type="number" step="1" min="1" max="100" value="' + Number(cur.unconfirmed_soft_hold_cap_pct ?? 20) + '" class="form-control"></div>' +
                 '<div><label style="font-size:0.76rem;font-weight:700;">مهلة السداد قبل تعليق الامتثال (أيام)</label><input id="' + pfx + '_fdef" type="number" step="1" min="1" max="90" value="' + Number(cur.fifo_default_days ?? 14) + '" class="form-control"></div>' +
-                '<div><label style="font-size:0.76rem;font-weight:700;">مهلة رد التاجر على المعلق (ساعة)</label><input id="' + pfx + '_psla" type="number" step="1" min="1" max="720" value="' + Number(cur.pending_sla_hours ?? 48) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">مهلة رد التاجر على المعلق (ساعة) ' + hlp('pending_sla') + '</label><input id="' + pfx + '_psla" type="number" step="1" min="1" max="720" value="' + Number(cur.pending_sla_hours ?? 48) + '" class="form-control"></div>' +
                 '<div><label style="font-size:0.76rem;font-weight:700;">إنذار/تقييد المعلق المتأخر (30 يوماً)</label><div style="display:flex;gap:4px;"><input id="' + pfx + '_wesc" type="number" min="1" value="' + Number(cur.warn_escalated_tx_30d ?? 3) + '" class="form-control" title="إنذار"><input id="' + pfx + '_resc" type="number" min="1" value="' + Number(cur.restrict_escalated_tx_30d ?? 5) + '" class="form-control" title="تقييد درجة 2"></div></div>' +
                 '<div><label style="font-size:0.76rem;font-weight:700;">إنذار/تقييد النزاع الخاسر (30 يوماً)</label><div style="display:flex;gap:4px;"><input id="' + pfx + '_wdis" type="number" min="1" value="' + Number(cur.warn_lost_disputes_30d ?? 2) + '" class="form-control" title="إنذار"><input id="' + pfx + '_rdis" type="number" min="1" value="' + Number(cur.restrict_lost_disputes_30d ?? 3) + '" class="form-control" title="تقييد درجة 2"></div></div>' +
                 '<div><label style="font-size:0.76rem;font-weight:700;">إنذار/تقييد الشكوى الموثقة (30 يوماً)</label><div style="display:flex;gap:4px;"><input id="' + pfx + '_wcmp" type="number" min="1" value="' + Number(cur.warn_verified_complaints_30d ?? 2) + '" class="form-control" title="إنذار"><input id="' + pfx + '_rcmp" type="number" min="1" value="' + Number(cur.restrict_verified_complaints_30d ?? 3) + '" class="form-control" title="تقييد درجة 2"></div></div>' +
-                '<div><label style="font-size:0.76rem;font-weight:700;">مدة دورة تسوية الائتمان (أيام)</label><input id="' + pfx + '_d4days" type="number" step="1" min="1" max="90" value="' + Number(cur.d4_cycle_days ?? 1) + '" class="form-control"></div>' +
-                '<div><label style="font-size:0.76rem;font-weight:700;">ساعة إغلاق دورة الائتمان</label><input id="' + pfx + '_d4cutoff" type="time" value="' + esc(String(cur.d4_cycle_cutoff_time || '23:59').slice(0, 5)) + '" class="form-control"></div>' +
-                '<div><label style="font-size:0.76rem;font-weight:700;">مهلة سداد الائتمان بعد الإغلاق (ساعة)</label><input id="' + pfx + '_d4grace" type="number" step="0.5" min="0" max="168" value="' + Number(cur.d4_grace_hours ?? 2) + '" class="form-control"></div>' +
-                '<div><label style="font-size:0.76rem;font-weight:700;">عتبة المراجعة المزدوجة للسحب ($)</label><input id="' + pfx + '_wht" type="number" step="any" min="1" value="' + Number(cur.wht_threshold_usd ?? 200) + '" class="form-control" dir="ltr"></div>' +
-                '<div><label style="font-size:0.76rem;font-weight:700;">فترة أمان تعديل حساب السحب (ساعة)</label><input id="' + pfx + '_cd" type="number" step="1" min="0" value="' + Number(cur.withdrawal_cooldown_hours ?? 72) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">مدة دورة تسوية الائتمان (أيام) ' + hlp('credit_cycle_days') + '</label><input id="' + pfx + '_d4days" type="number" step="1" min="1" max="90" value="' + Number(cur.d4_cycle_days ?? 1) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">ساعة إغلاق دورة الائتمان ' + hlp('credit_cutoff_time') + '</label><input id="' + pfx + '_d4cutoff" type="time" value="' + esc(String(cur.d4_cycle_cutoff_time || '23:59').slice(0, 5)) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">مهلة سداد الائتمان بعد الإغلاق (ساعة) ' + hlp('credit_grace_hours') + '</label><input id="' + pfx + '_d4grace" type="number" step="0.5" min="0" max="168" value="' + Number(cur.d4_grace_hours ?? 2) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">عتبة المراجعة المزدوجة للسحب ($) ' + hlp('withdrawal_dual_threshold') + '</label><input id="' + pfx + '_wht" type="number" step="any" min="1" value="' + Number(cur.wht_threshold_usd ?? 200) + '" class="form-control" dir="ltr"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">فترة أمان تعديل حساب السحب (ساعة) ' + hlp('withdrawal_cooldown') + '</label><input id="' + pfx + '_cd" type="number" step="1" min="0" value="' + Number(cur.withdrawal_cooldown_hours ?? 72) + '" class="form-control"></div>' +
                 '<div><label style="font-size:0.76rem;font-weight:700;">تاريخ السريان</label><select id="' + pfx + '_effmode" class="form-control"><option value="immediate">⚡ فوري (من اللحظة)</option><option value="next_month">📅 أول الشهر القادم</option></select></div>' +
-                '<div style="grid-column:1 / -1;border-top:1.5px dashed #cbd5e1;padding-top:10px;margin-top:4px;"><strong style="font-size:0.86rem;color:#0f2744;">🧾 إعدادات التوثيق الموحّد وجلسات الموظفين والحماية (Stage 14 — قابلة للتعديل الفوري)</strong></div>' +
+                '<div style="grid-column:1 / -1;border-top:1.5px dashed #cbd5e1;padding-top:10px;margin-top:4px;"><strong style="font-size:0.86rem;color:#0f2744;">🧾 إعدادات التوثيق الموحّد وجلسات الموظفين والحماية ضد الإزعاج ' + hlp('spam_guard') + '</strong></div>' +
                 '<div><label style="font-size:0.76rem;font-weight:700;">مدة وردية الموظف القصوى (ساعات)</label><input id="' + pfx + '_eshift" type="number" step="1" min="1" max="72" value="' + Number(cur.employee_shift_hours ?? 8) + '" class="form-control"></div>' +
                 '<div><label style="font-size:0.76rem;font-weight:700;">مهلة خمول جلسة الموظف (دقائق)</label><input id="' + pfx + '_eidle" type="number" step="1" min="5" max="720" value="' + Number(cur.employee_idle_timeout_mins ?? 60) + '" class="form-control" dir="ltr"></div>' +
                 '<div><label style="font-size:0.76rem;font-weight:700;">حد رفض بلا صورة لتفعيل الحماية (0=تعطيل)</label><input id="' + pfx + '_srej" type="number" step="1" min="0" max="50" value="' + Number(cur.spam_reject_threshold ?? 2) + '" class="form-control"></div>' +
@@ -488,11 +497,11 @@
                 '<div><label style="font-size:0.76rem;font-weight:700;">مدة إلزام الصورة المؤقت (ساعات)</label><input id="' + pfx + '_sreq" type="number" step="1" min="1" max="720" value="' + Number(cur.spam_require_receipt_hours ?? 24) + '" class="form-control"></div>' +
                 '<div><label style="font-size:0.76rem;font-weight:700;">أقصى طلبات معلّقة للعضو عند نفس المتجر</label><input id="' + pfx + '_maxp" type="number" step="1" min="1" max="20" value="' + Number(cur.max_pending_per_merchant ?? 2) + '" class="form-control"></div>' +
                 '<div><label style="font-size:0.76rem;font-weight:700;">معدل التحديث الحي للطلبات (ثوانٍ)</label><input id="' + pfx + '_poll" type="number" step="1" min="3" max="120" value="' + Number(cur.live_poll_interval_secs ?? 8) + '" class="form-control"></div>' +
-                '<div><label style="font-size:0.76rem;font-weight:700;">عتبة إعادة PIN للفواتير الكبيرة ($ • 0=معطّلة)</label><input id="' + pfx + '_repin" type="number" step="any" min="0" max="100000" value="' + Number(cur.employee_pin_reconfirm_usd ?? 0) + '" class="form-control" dir="ltr"></div>' +
-                '<div><label style="font-size:0.76rem;font-weight:700;">طلبات العضو في العزل 10% (Soft Hold = 0)</label><select id="' + pfx + '_ziso" class="form-control"><option value="true"' + (cur.allow_zero_hold_in_isolation !== false ? ' selected' : '') + '>✅ مسموح (بدون حجز مؤقت)</option><option value="false"' + (cur.allow_zero_hold_in_isolation === false ? ' selected' : '') + '>🚫 ممنوع داخل العزل</option></select></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">عتبة إعادة رمز الموظف للفواتير الكبيرة ($ • 0=معطّلة)</label><input id="' + pfx + '_repin" type="number" step="any" min="0" max="100000" value="' + Number(cur.employee_pin_reconfirm_usd ?? 0) + '" class="form-control" dir="ltr"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">طلبات العضو أثناء العزل الوقائي (بدون حجز مؤقت)</label><select id="' + pfx + '_ziso" class="form-control"><option value="true"' + (cur.allow_zero_hold_in_isolation !== false ? ' selected' : '') + '>✅ مسموح (بدون حجز مؤقت)</option><option value="false"' + (cur.allow_zero_hold_in_isolation === false ? ' selected' : '') + '>🚫 ممنوع داخل العزل</option></select></div>' +
                 '<div style="grid-column:1 / -1;"><label style="font-size:0.76rem;font-weight:700;">سبب التعديل الإلزامي لسجل التدقيق (>= 5 أحرف)</label><input id="' + pfx + '_reason" type="text" value="تحديث عتبات مخاطر التجار والحوكمة وإعدادات التوثيق الحية" class="form-control"></div>' +
             '</div>' +
-            '<button type="button" id="' + pfx + '_submitBtn" onclick="svSubmitMerchantRiskSettings(\'' + pfx + '\')" class="btn btn-primary">' + (founder ? '👑 حفظ وتطبيق فوري في PostgreSQL (صلاحية المؤسس)' : '📤 إرسال تعديل الإعدادات لطابور الاعتماد المزدوج (Maker)') + '</button>' +
+            '<button type="button" id="' + pfx + '_submitBtn" onclick="svSubmitMerchantRiskSettings(\'' + pfx + '\')" class="btn btn-primary">' + (founder ? '👑 حفظ وتطبيق فوري في قاعدة البيانات (صلاحية المؤسس)' : '📤 إرسال التعديل لطابور المراجعة المزدوجة') + '</button>' +
         '</div>';
     };
 
@@ -543,15 +552,15 @@
                 return;
             }
             if (!Number.isInteger(d4days) || d4days < 1 || d4days > 90) {
-                showToast('مدة دورة ائتمان D4 يجب أن تكون بين 1 و 90 يوماً.', true);
+                showToast('مدة دورة تسوية الحد الائتماني يجب أن تكون بين 1 و 90 يوماً.', true);
                 return;
             }
             if (!/^\d{2}:\d{2}(:\d{2})?$/.test(d4cut)) {
-                showToast('يرجى تحديد وقت إغلاق دورة D4 بصيغة صالحة (HH:MM).', true);
+                showToast('يرجى تحديد ساعة إغلاق دورة الائتمان بصيغة صالحة (HH:MM).', true);
                 return;
             }
             if (!Number.isFinite(d4grace) || d4grace < 0 || d4grace > 168) {
-                showToast('مهلة سداد D4 بعد الإغلاق يجب أن تكون بين 0 و 168 ساعة.', true);
+                showToast('مهلة سداد الائتمان بعد الإغلاق يجب أن تكون بين 0 و 168 ساعة.', true);
                 return;
             }
             if (reason.length < 5) {
@@ -603,8 +612,8 @@
                 reason: reason
             });
             showToast(res && res.sovereign_auto_executed
-                ? '👑 تم حفظ وتفعيل عتبات ومخاطر التجار الحية في PostgreSQL!'
-                : ('📤 تم تسجيل طلب Maker (#' + String(res.request_id || '').slice(0, 8) + '). انتقل لدور Checker لاعتماده.'), false);
+                ? '👑 تم حفظ وتفعيل عتبات ومخاطر التجار الحية في قاعدة البيانات!'
+                : ('📤 تم تسجيل طلب التعديل (#' + String(res.request_id || '').slice(0, 8) + '). انتقل إلى مدير ثانٍ للمراجعة والاعتماد.'), false);
             await refreshSovereignBundle(false);
         } catch (err) {
             showToast(err.message, true);
@@ -615,30 +624,42 @@
     function renderLiveMakerCheckerTab() {
         const list = LIVE_BUNDLE.maker_checker_queue || [];
         const adm = LIVE_BUNDLE.admin || {};
+        const hlp = function (k) { return window.svHelpBtn ? window.svHelpBtn(k) : ''; };
+        const mcStatusAr = { pending: 'قيد المراجعة', approved: 'معتمد ومنفّذ', rejected: 'مرفوض' };
+        const mcActionAr = {
+            BITEMPORAL_SETTINGS_UPDATE: 'تحديث إعدادات النظام',
+            COUNTRY_GATE_ACTIVATE: 'تفعيل دولة جديدة',
+            COUNTRY_GATE_UPDATE: 'تعديل إعدادات دولة',
+            PARTNER_REGISTER: 'تسجيل شريك استثماري',
+            BREAK_GLASS_UNLOCK: 'فتح استثنائي لقفل الشهر',
+            MERCHANT_CREDIT_LIMIT: 'تعديل سقف ائتماني لتاجر'
+        };
         return '<div style="display:grid;gap:14px;">' +
             window.renderLiveMerchantRiskSettingsCard('liveMc') +
 
             '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
-                '<h3 style="margin:0 0 10px 0;font-size:1rem;color:#0f172a;">📋 سجل طلبات الاعتماد المزدوج في PostgreSQL (`maker_checker_requests`)</h3>' +
-                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>النوع</th><th>الكيان / الهدف</th><th>المُنشئ (Maker)</th><th>المُعتمِد (Checker)</th><th>السبب</th><th>الحالة</th><th>قرار الاعتماد</th></tr></thead><tbody>' +
+                '<h3 style="margin:0 0 10px 0;font-size:1rem;color:#0f172a;">📋 سجل طلبات المراجعة المزدوجة الحية ' + hlp('dual_approval') + '</h3>' +
+                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>نوع القرار</th><th>النطاق</th><th>مُقدّم الطلب</th><th>المُعتمِد</th><th>السبب</th><th>الحالة</th><th>قرار الاعتماد</th></tr></thead><tbody>' +
                 (list.length === 0 ? '<tr><td colspan="7" class="empty-state">لا توجد طلبات مسجلة</td></tr>' : list.map(function (r) {
                     const founder = isSovereignFounder(adm);
                     const isSelf = (r.maker_admin_id === adm.id) && !founder;
                     const canDecide = r.status === 'pending' && (founder || adm.role === 'approver' || adm.role === 'finance');
+                    const actLbl = mcActionAr[r.action_type] || r.action_type;
+                    const stLbl = mcStatusAr[r.status] || r.status;
                     return '<tr>' +
-                        '<td><b>' + esc(r.action_type) + '</b></td>' +
+                        '<td><b>' + esc(actLbl) + '</b></td>' +
                         '<td>' + esc(r.target_entity) + ' / <code>' + esc(r.target_id) + '</code></td>' +
-                        '<td>' + esc(r.maker_name) + ' <small>(' + esc(r.maker_role) + ')</small></td>' +
+                        '<td>' + esc(r.maker_name) + ' <small>(' + esc(roleLabel(r.maker_role)) + ')</small></td>' +
                         '<td>' + esc(r.checker_name || '—') + '</td>' +
                         '<td>' + esc(r.reason) + '</td>' +
-                        '<td><span class="badge ' + (r.status === 'approved' ? 'badge-success' : r.status === 'pending' ? 'badge-warning' : 'badge-danger') + '">' + esc(r.status) + '</span></td>' +
+                        '<td><span class="badge ' + (r.status === 'approved' ? 'badge-success' : r.status === 'pending' ? 'badge-warning' : 'badge-danger') + '">' + esc(stLbl) + '</span></td>' +
                         '<td>' +
                             (r.status === 'pending'
                                 ? (isSelf
                                     ? '<span style="font-size:0.75rem;color:#b45309;font-weight:800;">⏳ بانتظار مدير ثانٍ (محظور اعتماد طلبك)</span>'
                                     : (canDecide
                                         ? '<div style="display:flex;gap:5px;"><button type="button" class="btn-sm btn-success" onclick="svDecideMc(\'' + r.id + '\',\'approved\')">' + (founder ? '👑 اعتماد وتنفيذ سيادي فوري' : '✅ اعتماد وتنفيذ') + '</button><button type="button" class="btn-sm btn-danger" onclick="svDecideMc(\'' + r.id + '\',\'rejected\')">❌ رفض</button></div>'
-                                        : '<span style="font-size:0.75rem;color:#64748b;">يلزم دور Approver/Finance</span>'))
+                                        : '<span style="font-size:0.75rem;color:#64748b;">يلزم صلاحية الاعتماد أو المالية</span>'))
                                 : '—') +
                         '</td>' +
                     '</tr>';
@@ -648,30 +669,31 @@
         '</div>';
     }
 
-    // --- Tab 2: Live 6-Step Period Close + IAS 21 + Hard Lock / Break-Glass ---
+    // --- Tab 2: Live 6-Step Period Close + FX Revaluation + Final Lock ---
     function renderLivePeriodCloseTab() {
         const cycles = LIVE_BUNDLE.settlement_cycles || [];
         const defaultYm = (LIVE_BUNDLE.kpis && LIVE_BUNDLE.kpis.period_ym) || new Date().toISOString().slice(0, 7);
+        const hlp = function (k) { return window.svHelpBtn ? window.svHelpBtn(k) : ''; };
 
         return '<div style="display:grid;gap:14px;">' +
             '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
-                '<h3 style="margin:0 0 8px 0;font-size:1rem;color:#0f172a;">📅 تشغيل معالج الإقفال الشهري ذي الـ 6 خطوات على قاعدة البيانات (`settlement_cycles`)</h3>' +
-                '<p style="font-size:0.82rem;color:#475569;margin:0 0 12px 0;">١) ينفّذ المدير المالي (Maker) الخطوات 1–4 (فحص المطابقة الصفرية + المسح الصعودي Bottom-Up DAG + الهدف التعويضي D1 + قطع TRUNC 4301). ٢) يعتمد المدير الثاني (Checker ≠ Maker) الخطوتين 5–6 (قيد فرق العملة IAS 21 + عزل الستوبر المالي S03 + ترحيل المحافظ + القفل الصلب Hard Lock).</p>' +
+                '<h3 style="margin:0 0 8px 0;font-size:1rem;color:#0f172a;">📅 معالج الإقفال الشهري ذو الـ 6 خطوات ' + hlp('monthly_close') + '</h3>' +
+                '<p style="font-size:0.82rem;color:#475569;margin:0 0 12px 0;">١) يُعد المدير المالي الخطوات 1–4 (فحص المطابقة الصفرية + المسح الصعودي للشجرة + حساب الحصص والكسور). ٢) يعتمد مدير ثانٍ الخطوتين 5–6 (قيد فروق العملة + عزل السقف المالي الشهري + ترحيل أرصدة الأعضاء + القفل النهائي).</p>' +
                 '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:12px;">' +
-                    '<div><label style="font-size:0.78rem;font-weight:700;">الدولة</label><select id="svCloseCountrySelect" class="form-control"><option value="ALL">🌍 جميع الدول الجاهزة (ALL)</option><option value="EG">🇪🇬 مصر (EG)</option><option value="TR">🇹🇷 تركيا (TR)</option></select></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:700;">الدولة</label><select id="svCloseCountrySelect" class="form-control"><option value="ALL">🌍 جميع الدول الجاهزة</option><option value="EG">🇪🇬 مصر (EG)</option><option value="TR">🇹🇷 تركيا (TR)</option></select></div>' +
                     '<div><label style="font-size:0.78rem;font-weight:700;">الشهر المحاسبي (YYYY-MM)</label><input id="svClosePeriodInput" type="text" value="' + esc(defaultYm) + '" class="form-control"></div>' +
-                    '<div><label style="font-size:0.78rem;font-weight:700;">قيد إعادة تقييم العملة IAS 21 ($)</label><input id="svCloseIas21Input" type="number" step="0.01" value="0.00" class="form-control"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:700;">قيد فرق إعادة تقييم العملة ($)</label><input id="svCloseIas21Input" type="number" step="0.01" value="0.00" class="form-control"></div>' +
                 '</div>' +
                 '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-                    '<button type="button" id="svRunSteps14Btn" onclick="svExecClose(\'run_steps_1_to_4\')" class="btn btn-primary">⚙️ ١. تشغيل الخطوات 1–4 (إعداد المسودة والمطابقة — Maker)</button>' +
-                    '<button type="button" id="svRunSteps56Btn" onclick="svExecClose(\'finalize_steps_5_and_6\')" style="background:#059669;color:#ffffff;border:none;padding:10px 16px;border-radius:8px;font-family:Tajawal,sans-serif;font-weight:800;cursor:pointer;">🔒 ٢. اعتماد الخطوتين 5–6 وترحيل المحافظ + Hard Lock (Checker)</button>' +
-                    '<button type="button" onclick="svRequestBreakGlass()" style="background:#fff7ed;color:#c2410c;border:1.5px solid #fb923c;padding:10px 14px;border-radius:8px;font-family:Tajawal,sans-serif;font-weight:800;cursor:pointer;">🔓 طلب فتح استثنائي Break-Glass (ساعتان باعتماد مزدوج)</button>' +
+                    '<button type="button" id="svRunSteps14Btn" onclick="svExecClose(\'run_steps_1_to_4\')" class="btn btn-primary">⚙️ ١. تشغيل الخطوات 1–4 (إعداد المسودة والمطابقة)</button>' +
+                    '<button type="button" id="svRunSteps56Btn" onclick="svExecClose(\'finalize_steps_5_and_6\')" style="background:#059669;color:#ffffff;border:none;padding:10px 16px;border-radius:8px;font-family:Tajawal,sans-serif;font-weight:800;cursor:pointer;">🔒 ٢. اعتماد الخطوتين 5–6 وترحيل الأرباح والقفل النهائي</button>' +
+                    '<button type="button" onclick="svRequestBreakGlass()" style="background:#fff7ed;color:#c2410c;border:1.5px solid #fb923c;padding:10px 14px;border-radius:8px;font-family:Tajawal,sans-serif;font-weight:800;cursor:pointer;">🔓 طلب فتح استثنائي لقفل الشهر (ساعتان بمراجعة مزدوجة)</button>' +
                 '</div>' +
             '</div>' +
 
             '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
-                '<h3 style="margin:0 0 10px 0;font-size:1rem;color:#0f172a;">🗂️ دورات التسوية الشهرية المسجلة (`sawyan.settlement_cycles`)</h3>' +
-                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>الشهر</th><th>الدولة</th><th>الخطوة</th><th>المطابقة الصفرية</th><th>أوعية التوزيع</th><th>Maker</th><th>Checker</th><th>القفل الصلب</th></tr></thead><tbody>' +
+                '<h3 style="margin:0 0 10px 0;font-size:1rem;color:#0f172a;">🗂️ دورات التسوية الشهرية المسجلة</h3>' +
+                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>الشهر</th><th>الدولة</th><th>الخطوة</th><th>المطابقة الصفرية</th><th>أوعية التوزيع</th><th>مُعد الإقفال</th><th>المُعتمِد</th><th>القفل النهائي</th></tr></thead><tbody>' +
                 (cycles.length === 0 ? '<tr><td colspan="8" class="empty-state">لم تُنشأ دورة إقفال بعد لهذا النطاق</td></tr>' : cycles.map(function (c) {
                     return '<tr>' +
                         '<td><b>' + esc(c.period_ym) + '</b></td>' +
@@ -681,7 +703,7 @@
                         '<td>' + Number(c.pools_count || 0) + '</td>' +
                         '<td>' + esc(c.maker_name || '—') + '</td>' +
                         '<td>' + esc(c.checker_name || '—') + '</td>' +
-                        '<td>' + (c.is_hard_locked ? '<span class="badge badge-danger">🔒 مقفل صلباً</span>' : (c.break_glass_expires_at ? '<span class="badge badge-warning">🔓 Break-Glass</span>' : '<span class="badge badge-info">مفتوح</span>')) + '</td>' +
+                        '<td>' + (c.is_hard_locked ? '<span class="badge badge-danger">🔒 مقفل نهائياً</span>' : (c.break_glass_expires_at ? '<span class="badge badge-warning">🔓 فتح استثنائي مؤقت</span>' : '<span class="badge badge-info">مفتوح</span>')) + '</td>' +
                     '</tr>';
                 }).join('')) +
                 '</tbody></table></div>' +
@@ -689,20 +711,21 @@
         '</div>';
     }
 
-    // --- Tab 3: Live Country Gate D13 + Actuarial Stress-Test Simulator S06 ---
+    // --- Tab 3: Live Country Gate + Actuarial Stress-Test Simulator ---
     function renderLiveCountryAndActuarialTab() {
         const countries = LIVE_BUNDLE.countries || [];
         const gCfg = getGlobalStopperConfig();
         const actDefaultShare = calcUnitShareUsd(24.75, gCfg.s02);
         const actDefaultS03 = calcDefaultCountryStopperUsd(24.75, gCfg.s01, gCfg.s02);
+        const hlp = function (k) { return window.svHelpBtn ? window.svHelpBtn(k) : ''; };
         const simHtml = LAST_ACTUARIAL
             ? '<div style="background:#ecfdf5;border:1.5px solid #10b981;border-radius:12px;padding:12px 14px;margin-top:12px;font-size:0.84rem;color:#064e3b;">' +
-                '<b>📊 نتيجة اختبار الضغط الأكتواري الحي (`admin_run_actuarial_stress_test_s06`):</b> ' +
-                'حصة الفرد (TRUNC): <b>$' + fmt2(LAST_ACTUARIAL.unit_share_trunc_usd) + '</b> • ' +
-                'أقصى مقاعد S01: <b>' + Number(LAST_ACTUARIAL.max_binary_nodes_in_s01).toLocaleString('en-US') + '</b> • ' +
+                '<b>📊 نتيجة اختبار الملاءة المالية الحي:</b> ' +
+                'حصة الفرد المؤهل: <b>$' + fmt2(LAST_ACTUARIAL.unit_share_trunc_usd) + '</b> • ' +
+                'أقصى مقاعد للشجرة: <b>' + Number(LAST_ACTUARIAL.max_binary_nodes_in_s01).toLocaleString('en-US') + '</b> • ' +
                 'السقف النظري للشجرة: <b>$' + fmt2(LAST_ACTUARIAL.theoretical_full_tree_cap_usd) + '</b> • ' +
-                'السقف الفعلي بعد S03: <b>$' + fmt2(LAST_ACTUARIAL.effective_payout_cap_usd) + '</b> • ' +
-                'تدفق وعاء الـ 75%: <b>$' + fmt2(LAST_ACTUARIAL.stress_test_100pct_qualification.pool_75_inflow_usd) + '</b> • ' +
+                'السقف الشهري الفعلي: <b>$' + fmt2(LAST_ACTUARIAL.effective_payout_cap_usd) + '</b> • ' +
+                'تدفق وعاء خطة الدخل: <b>$' + fmt2(LAST_ACTUARIAL.stress_test_100pct_qualification.pool_75_inflow_usd) + '</b> • ' +
                 'أقصى التزام صرف: <b>$' + fmt2(LAST_ACTUARIAL.stress_test_100pct_qualification.worst_case_payout_liability_usd) + '</b> • ' +
                 'العجز الأكتواري: <b>$' + fmt2(LAST_ACTUARIAL.stress_test_100pct_qualification.net_pool_deficit_usd) + ' (' + esc(LAST_ACTUARIAL.stress_test_100pct_qualification.solvency_verdict) + ')</b>' +
               '</div>'
@@ -710,29 +733,29 @@
 
         return '<div style="display:grid;gap:14px;">' +
             '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
-                '<h3 style="margin:0 0 8px 0;font-size:1rem;color:#0f172a;">🧮 المحاكي الأكتواري واختبار الملاءة القصوى قبل تفعيل أي دولة (S06)</h3>' +
+                '<h3 style="margin:0 0 8px 0;font-size:1rem;color:#0f172a;">🧮 المحاكي المالي واختبار الملاءة قبل تفعيل أي دولة ' + hlp('financial_stopper') + '</h3>' +
                 '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;">' +
                     '<div><label style="font-size:0.78rem;font-weight:700;">رمز الدولة</label><input id="svActCountry" type="text" value="SA" maxlength="2" oninput="svOnActuarialCountryChange()" class="form-control"></div>' +
                     '<div><label style="font-size:0.78rem;font-weight:700;">الهدف الشهري ($)</label><input id="svActTarget" type="number" step="0.25" value="24.75" oninput="svSyncActuarialDerived(false)" class="form-control"></div>' +
-                    '<div><label style="font-size:0.78rem;font-weight:800;color:#047857;">حصة الفرد المؤهل (÷S02) ($)</label><input id="svActUnitShare" type="text" readonly value="' + actDefaultShare.toFixed(2) + '" class="form-control" style="background:#ecfdf5;border-color:#6ee7b7;color:#065f46;font-weight:900;"></div>' +
-                    '<div><label style="font-size:0.78rem;font-weight:700;">الستوبر العددي S01</label><input id="svActS01" type="number" value="' + gCfg.s01 + '" oninput="svSyncActuarialDerived(false)" class="form-control"></div>' +
-                    '<div><label style="font-size:0.78rem;font-weight:700;">السقف الصاعد S02</label><input id="svActS02" type="number" value="' + gCfg.s02 + '" oninput="svSyncActuarialDerived(false)" class="form-control"></div>' +
-                    '<div><label style="font-size:0.78rem;font-weight:700;display:flex;justify-content:space-between;align-items:center;"><span>الستوبر المالي S03 ($)</span><a href="#" onclick="svSyncActuarialDerived(true);return false;" style="font-size:0.7rem;color:#059669;text-decoration:underline;">↺ ديفولت</a></label><input id="svActS03" type="number" step="0.25" value="' + actDefaultS03.toFixed(2) + '" data-custom="0" oninput="this.dataset.custom=\'1\'" class="form-control"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:800;color:#047857;">حصة الفرد المؤهل ($)</label><input id="svActUnitShare" type="text" readonly value="' + actDefaultShare.toFixed(2) + '" class="form-control" style="background:#ecfdf5;border-color:#6ee7b7;color:#065f46;font-weight:900;"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:700;">حد الأجيال المؤهلة ' + hlp('numerical_stopper') + '</label><input id="svActS01" type="number" value="' + gCfg.s01 + '" oninput="svSyncActuarialDerived(false)" class="form-control"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:700;">سقف التوزيع صعوداً ' + hlp('upline_ceiling') + '</label><input id="svActS02" type="number" value="' + gCfg.s02 + '" oninput="svSyncActuarialDerived(false)" class="form-control"></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:700;display:flex;justify-content:space-between;align-items:center;"><span>السقف المالي الشهري ($) ' + hlp('financial_stopper') + '</span><a href="#" onclick="svSyncActuarialDerived(true);return false;" style="font-size:0.7rem;color:#059669;text-decoration:underline;">↺ الافتراضي</a></label><input id="svActS03" type="number" step="0.25" value="' + actDefaultS03.toFixed(2) + '" data-custom="0" oninput="this.dataset.custom=\'1\'" class="form-control"></div>' +
                     '<div><label style="font-size:0.78rem;font-weight:700;">حجم الشبكة المختبرة</label><input id="svActMembers" type="number" step="1" min="1" value="10000" class="form-control"></div>' +
                 '</div>' +
-                '<div style="margin-top:10px;"><button type="button" id="svRunActuarialBtn" onclick="svRunActuarial()" class="btn btn-primary">🧮 تشغيل اختبار الملاءة الأكتواري S06</button></div>' +
+                '<div style="margin-top:10px;"><button type="button" id="svRunActuarialBtn" onclick="svRunActuarial()" class="btn btn-primary">🧮 تشغيل اختبار الملاءة المالية</button></div>' +
                 simHtml +
             '</div>' +
 
             '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
                 '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">' +
                     '<div>' +
-                        '<h3 style="margin:0;font-size:1rem;color:#0f172a;">🌍 بوابة تفعيل وتخصيص مدخلات الدول (`sawyan.countries` — D13 / D18 / D19)</h3>' +
-                        '<div style="font-size:0.78rem;color:#64748b;margin-top:3px;">تحكّم كامل ومباشر في العملة، سعر الصرف الإداري، الهدف الشهري، حصة الفرد المؤهل (الهدف ÷ ' + gCfg.s02 + ')، ديفولت الستوبر المالي S03 (×' + gCfg.idealNodes.toLocaleString('en-US') + ')، الضرائب، ومواعيد الصرف لكل دولة.</div>' +
+                        '<h3 style="margin:0;font-size:1rem;color:#0f172a;">🌍 بوابة تفعيل وتخصيص مدخلات الدول ' + hlp('country_gate') + '</h3>' +
+                        '<div style="font-size:0.78rem;color:#64748b;margin-top:3px;">تحكّم كامل ومباشر في العملة، سعر الصرف الإداري، الهدف الشهري، حصة الفرد المؤهل (الهدف ÷ ' + gCfg.s02 + ')، السقف المالي الافتراضي (×' + gCfg.idealNodes.toLocaleString('en-US') + ')، الضرائب، ومواعيد الصرف لكل دولة.</div>' +
                     '</div>' +
                     '<button type="button" class="btn btn-primary" onclick="svOpenCountryEditModal(null)">➕ إضافة دولة جديدة للنظام</button>' +
                 '</div>' +
-                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>الدولة</th><th>العملة / سعر الصرف</th><th>الهدف الشهري / حصة الفرد / S03</th><th>ضرائب VAT / WHT</th><th>الصرف / المرتجعات</th><th>الرأي القانوني</th><th>التجار (الحد)</th><th>الحالة</th><th>إجراءات التعديل والحوكمة</th></tr></thead><tbody>' +
+                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>الدولة</th><th>العملة / سعر الصرف</th><th>الهدف / حصة الفرد / السقف الشهري</th><th>الضرائب المحلية</th><th>الصرف / المرتجعات</th><th>الرأي القانوني</th><th>التجار (الحد)</th><th>الحالة</th><th>إجراءات التعديل والحوكمة</th></tr></thead><tbody>' +
                 countries.map(function (c) {
                     const nameAr = (c.country_name_i18n && c.country_name_i18n.ar) || c.country_code;
                     const fx = Number(c.admin_fx_rate || 1);
@@ -754,9 +777,9 @@
                         '<td>' +
                             '<div>الهدف: <b>$' + fmt2(targetUsd) + '</b> <small style="color:#64748b;">(' + fmt2(localTarget) + ' ' + esc(c.currency_code) + ')</small></div>' +
                             '<div style="font-size:0.75rem;color:#047857;font-weight:800;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:6px;padding:2px 6px;margin:3px 0;display:inline-block;">💎 حصة الفرد (÷' + cS02 + '): <b>$' + fmt2(unitShareUsd) + '</b> <small>(' + fmt2(localShare) + ' ' + esc(c.currency_code) + ')</small></div>' +
-                            '<div style="font-size:0.74rem;color:#1e293b;">S03: <b>$' + fmt2(savedStopperUsd) + '</b> <small style="color:' + (isDefaultStopper ? '#059669' : '#b45309') + ';font-weight:700;">' + (isDefaultStopper ? '(ديفولت ×' + cNodes.toLocaleString('en-US') + ')' : '(مخصص • الديفولت $' + fmt2(defStopperUsd) + ')') + '</small></div>' +
+                            '<div style="font-size:0.74rem;color:#1e293b;">السقف الشهري: <b>$' + fmt2(savedStopperUsd) + '</b> <small style="color:' + (isDefaultStopper ? '#059669' : '#b45309') + ';font-weight:700;">' + (isDefaultStopper ? '(افتراضي ×' + cNodes.toLocaleString('en-US') + ')' : '(مخصص • الافتراضي $' + fmt2(defStopperUsd) + ')') + '</small></div>' +
                         '</td>' +
-                        '<td>VAT ' + Number(c.vat_rate || 0) + '%<br>WHT ' + Number(c.wht_rate || 0) + '%</td>' +
+                        '<td>قيمة مضافة ' + Number(c.vat_rate || 0) + '%<br>استقطاع ' + Number(c.wht_rate || 0) + '%</td>' +
                         '<td>يوم <b>' + Number(c.payout_day || 15) + '</b><div style="font-size:0.72rem;color:#64748b;">إغلاق مرتجع: يوم ' + Number(c.return_cutoff_day || 14) + '</div></td>' +
                         '<td>' + (c.legal_opinion_verified ? '✅ موثق (' + esc(c.local_terms_version) + ')' : '❌ غير موثق') + '</td>' +
                         '<td><b style="color:' + (merchOk ? '#059669' : '#dc2626') + ';">' + Number(c.active_merchants_count || 0) + ' / ' + Number(c.min_merchants_threshold || 1) + '</b></td>' +
@@ -765,7 +788,7 @@
                             '<button type="button" class="btn-sm" style="background:#0f172a;color:#ffffff;border:none;padding:5px 10px;border-radius:7px;font-family:Tajawal,sans-serif;font-weight:800;cursor:pointer;" onclick="svOpenCountryEditModal(\'' + esc(c.country_code) + '\')">⚙️ تعديل المدخلات</button>' +
                             '<button type="button" class="btn-sm" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:5px 9px;border-radius:7px;font-family:Tajawal,sans-serif;font-weight:800;cursor:pointer;" onclick="if(window.svQuickSelectCityCc){window.svQuickSelectCityCc(\'' + esc(c.country_code) + '\');window.openSovereignOpsCenter(\'cities\');}">🏙️ المدن</button>' +
                             (!c.is_active
-                                ? '<button type="button" class="btn-sm btn-primary" onclick="svSubmitCountryGate(\'' + esc(c.country_code) + '\')">' + (founder ? '👑 تفعيل فوري' : '📤 طلب تفعيل D13') + '</button>'
+                                ? '<button type="button" class="btn-sm btn-primary" onclick="svSubmitCountryGate(\'' + esc(c.country_code) + '\')">' + (founder ? '👑 تفعيل فوري' : '📤 طلب تفعيل الدولة') + '</button>'
                                 : (founder ? '<button type="button" class="btn-sm" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:5px 9px;border-radius:7px;font-family:Tajawal,sans-serif;font-weight:800;cursor:pointer;" onclick="svToggleCountryActive(\'' + esc(c.country_code) + '\',false)">⏸️ إيقاف</button>' : '<span style="font-size:0.74rem;color:#059669;font-weight:800;">مفعلة</span>')) +
                         '</div></td>' +
                     '</tr>';
@@ -775,23 +798,24 @@
         '</div>';
     }
 
-    // --- Tab 4: Corporate Partners Registry (D24 — Admin Dashboard Only!) ---
+    // --- Tab 4: Corporate Partners Registry (Admin Dashboard Only!) ---
     function renderLivePartnersTab() {
         const partners = LIVE_BUNDLE.partners || [];
+        const scopeAr = { country: 'دولة محددة', global: 'عالمي', sector_merchants: 'قطاع تجاري' };
         return '<div style="display:grid;gap:14px;">' +
             '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
-                '<h3 style="margin:0 0 6px 0;font-size:1rem;color:#0f172a;">🤝 سجل عقود شركاء الشركة الفعليين (`sawyan.partners` — القرار الدستوري D24)</h3>' +
-                '<p style="font-size:0.81rem;color:#475569;margin:0 0 12px 0;">تُدار حصص شركاء الشركة الاستثماريين حصراً من داخل لوحة الإدارة باعتماد مزدوج (Maker–Checker) من صافي إيراد الخزانة (25%) دون أي تسجيل علني ودون أي مساس بشجرة الأعضاء الثنائية أو وعاء الـ 75%.</p>' +
+                '<h3 style="margin:0 0 6px 0;font-size:1rem;color:#0f172a;">🤝 سجل عقود شركاء الشركة الفعليين</h3>' +
+                '<p style="font-size:0.81rem;color:#475569;margin:0 0 12px 0;">تُدار حصص شركاء الشركة الاستثماريين حصراً من داخل لوحة الإدارة بمراجعة مزدوجة من صافي إيراد الخزانة دون أي تسجيل علني ودون أي مساس بشجرة الأعضاء أو وعاء خطة الدخل.</p>' +
                 '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px;margin-bottom:10px;">' +
                     '<div><label style="font-size:0.78rem;font-weight:700;">كود الشريك</label><input id="svPtrCode" type="text" placeholder="PTR-TR-002" class="form-control"></div>' +
                     '<div><label style="font-size:0.78rem;font-weight:700;">اسم الكيان / الشريك</label><input id="svPtrName" type="text" placeholder="شركة الأناضول القابضة" class="form-control"></div>' +
                     '<div><label style="font-size:0.78rem;font-weight:700;">البريد الرسمي</label><input id="svPtrEmail" type="email" placeholder="corp@partner.com" class="form-control"></div>' +
                     '<div><label style="font-size:0.78rem;font-weight:700;">الهاتف</label><input id="svPtrPhone" type="text" placeholder="+905330001122" class="form-control"></div>' +
-                    '<div><label style="font-size:0.78rem;font-weight:700;">نطاق الشراكة</label><select id="svPtrScope" class="form-control"><option value="country">دولة محددة (country)</option><option value="global">عالمي (global)</option><option value="sector_merchants">قطاع تجاري (sector_merchants)</option></select></div>' +
+                    '<div><label style="font-size:0.78rem;font-weight:700;">نطاق الشراكة</label><select id="svPtrScope" class="form-control"><option value="country">دولة محددة</option><option value="global">عالمي</option><option value="sector_merchants">قطاع تجاري</option></select></div>' +
                     '<div><label style="font-size:0.78rem;font-weight:700;">نسبة المشاركة من الخزانة %</label><input id="svPtrShare" type="number" step="0.25" min="0.25" max="49" value="5.00" class="form-control"></div>' +
                     '<div><label style="font-size:0.78rem;font-weight:700;">مرجع العقد الموثق</label><input id="svPtrContract" type="text" placeholder="CONTRACT-SW-2026-09" class="form-control"></div>' +
                 '</div>' +
-                '<button type="button" id="svSubmitPartnerBtn" onclick="svSubmitPartnerD24()" class="btn btn-primary">' + (isSovereignFounder(LIVE_BUNDLE && LIVE_BUNDLE.admin) ? '👑 تسجيل واعتماد الشريك فوراً (D24)' : '📤 تقديم عقد شريك باعتماد مزدوج (Maker — D24)') + '</button>' +
+                '<button type="button" id="svSubmitPartnerBtn" onclick="svSubmitPartnerD24()" class="btn btn-primary">' + (isSovereignFounder(LIVE_BUNDLE && LIVE_BUNDLE.admin) ? '👑 تسجيل واعتماد الشريك فوراً' : '📤 تقديم عقد شريك للمراجعة المزدوجة') + '</button>' +
             '</div>' +
 
             '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
@@ -801,7 +825,7 @@
                     return '<tr>' +
                         '<td data-label="الكود"><b>' + esc(p.partner_code) + '</b></td>' +
                         '<td data-label="الشريك">' + esc(p.full_name) + '<br><small>' + esc(p.email) + '</small></td>' +
-                        '<td data-label="النطاق">' + esc(p.partnership_scope) + '</td>' +
+                        '<td data-label="النطاق">' + esc(scopeAr[p.partnership_scope] || p.partnership_scope) + '</td>' +
                         '<td data-label="أساس الاحتساب">' + esc(p.profit_basis) + '</td>' +
                         '<td data-label="النسبة %"><b>' + Number(p.profit_share_pct) + '%</b></td>' +
                         '<td data-label="مرجع العقد"><code>' + esc(p.contract_ref) + '</code></td>' +
@@ -818,27 +842,30 @@
         const zd = LIVE_BUNDLE.zero_discrepancy || {};
         const tb = zd.trial_balance || [];
         const logs = (LIVE_BUNDLE.audit_chain && LIVE_BUNDLE.audit_chain.recent_logs) || [];
+        const hlp = function (k) { return window.svHelpBtn ? window.svHelpBtn(k) : ''; };
 
         return '<div style="display:grid;gap:14px;">' +
             '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
-                '<h3 style="margin:0 0 10px 0;font-size:1rem;color:#0f172a;">⚖️ ميزان المراجعة الحي لدليل الحسابات الموحد (19 حساباً قياسياً — صفر مسؤولية خزانة D5 / D23)</h3>' +
+                '<h3 style="margin:0 0 10px 0;font-size:1rem;color:#0f172a;">⚖️ ميزان المراجعة الحي لدليل الحسابات الموحد ' + hlp('zero_discrepancy') + '</h3>' +
                 '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>كود الحساب</th><th>اسم الحساب المحاسبي</th><th>الطبيعة</th><th>إجمالي مدين ($)</th><th>إجمالي دائن ($)</th><th>الرصيد الصافي ($)</th></tr></thead><tbody>' +
                 tb.map(function (r) {
+                    const netV = Number(r.net_balance_usd || 0);
+                    const netStr = (netV < -0.004 ? '-$' : '$') + fmt2(Math.abs(netV));
                     return '<tr>' +
                         '<td data-label="كود الحساب"><b>' + esc(r.account_code) + '</b></td>' +
                         '<td data-label="اسم الحساب المحاسبي">' + esc(r.account_name_ar) + '</td>' +
-                        '<td data-label="الطبيعة">' + (r.normal_balance === 'D' ? 'مدين (Dr)' : 'دائن (Cr)') + '</td>' +
-                        '<td data-label="إجمالي مدين ($)">$' + fmt2(r.total_debit_usd) + '</td>' +
-                        '<td data-label="إجمالي دائن ($)">$' + fmt2(r.total_credit_usd) + '</td>' +
-                        '<td data-label="الرصيد الصافي ($)"><b>$' + fmt2(r.net_balance_usd) + '</b></td>' +
+                        '<td data-label="الطبيعة">' + (r.normal_balance === 'D' ? 'مدين' : 'دائن') + '</td>' +
+                        '<td data-label="إجمالي مدين ($)" dir="ltr">$' + fmt2(r.total_debit_usd) + '</td>' +
+                        '<td data-label="إجمالي دائن ($)" dir="ltr">$' + fmt2(r.total_credit_usd) + '</td>' +
+                        '<td data-label="الرصيد الصافي ($)" dir="ltr"><b>' + netStr + '</b></td>' +
                     '</tr>';
                 }).join('') +
                 '</tbody></table></div>' +
             '</div>' +
 
             '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
-                '<h3 style="margin:0 0 10px 0;font-size:1rem;color:#0f172a;">🔐 سجل التدقيق الجنائي غير القابل للمحو (`sawyan.audit_logs` — Append-Only Hash Chain)</h3>' +
-                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>#</th><th>الفاعل</th><th>الإجراء</th><th>الجدول / السجل</th><th>التوقيت</th><th>بصمة السطر SHA-256</th></tr></thead><tbody>' +
+                '<h3 style="margin:0 0 10px 0;font-size:1rem;color:#0f172a;">🔐 سجل التدقيق الجنائي غير القابل للمحو (سلسلة بصمة SHA-256)</h3>' +
+                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>#</th><th>الفاعل</th><th>الإجراء</th><th>الجدول / السجل</th><th>التوقيت</th><th>بصمة السطر</th></tr></thead><tbody>' +
                 (logs.length === 0 ? '<tr><td colspan="6" class="empty-state">لا توجد سجلات تدقيق بعد</td></tr>' : logs.slice(0, 15).map(function (l) {
                     return '<tr>' +
                         '<td data-label="#">' + Number(l.id) + '</td>' +
@@ -846,7 +873,7 @@
                         '<td data-label="الإجراء"><b>' + esc(l.action) + '</b></td>' +
                         '<td data-label="الجدول / السجل">' + esc(l.table_name) + ' / <code>' + esc(String(l.record_id).slice(0, 14)) + '</code></td>' +
                         '<td data-label="التوقيت">' + esc(String(l.recorded_at || '').slice(0, 19).replace('T', ' ')) + '</td>' +
-                        '<td data-label="بصمة السطر SHA-256"><code style="font-size:0.72rem;">' + esc(String(l.row_hash || '').slice(0, 18)) + '…</code></td>' +
+                        '<td data-label="بصمة السطر"><code style="font-size:0.72rem;">' + esc(String(l.row_hash || '').slice(0, 18)) + '…</code></td>' +
                     '</tr>';
                 }).join('')) +
                 '</tbody></table></div>' +
@@ -854,17 +881,35 @@
         '</div>';
     }
 
-    // --- Tab 6: Live Operational Governance (Disputes D6, Price Gouging S10, KYC D7) ---
+    // --- Tab 6: Live Operational Governance (Disputes, Price Gouging, Identity Verification) ---
     function renderLiveOpsTab() {
         const disputes = LIVE_BUNDLE.disputes || [];
         const gouging = LIVE_BUNDLE.price_gouging_reports || [];
         const fraud = LIVE_BUNDLE.fraud_signals || [];
         const members = (LIVE_BUNDLE.members || []).filter(function (m) { return Number(m.member_code) > 0; }).slice(0, 15);
+        const dispStAr = {
+            awaiting_merchant_friendly: 'بانتظار رد التاجر (مهلة 48 ساعة)',
+            escalated_to_admin: 'مُصعّد للتحكيم الإداري',
+            resolved_member: 'حُسم لصالح العضو',
+            resolved_member_clawback: 'حُسم لصالح العضو (عكس الفاتورة)',
+            resolved_merchant: 'حُسم لصالح التاجر',
+            resolved_merchant_force_return: 'فرض مرتجع وتجميد 30 يوماً',
+            resolved_merchant_malicious_claim: 'بلاغ كيدي وتجميد 30 يوماً'
+        };
+        const dispCatAr = {
+            general: 'نزاع عام / خدمة',
+            return_stalled: 'تعثر مرتجع',
+            pending_rejected: 'رفض فاتورة معلقة',
+            amount_mismatch: 'اختلاف قيمة الفاتورة'
+        };
+        const gougeStAr = { pending: 'قيد الفحص', verified_violation: 'مخالفة مؤكدة', dismissed: 'مرفوض' };
+        const fraudStAr = { open: 'مفتوح للتحقيق', cleared: 'تم التحقق والتبرئة', frozen: 'مجمّد', confirmed: 'مؤكد' };
+        const kycStAr = { verified: 'موثّق ✅', pending: 'قيد المراجعة ⏳', rejected: 'مرفوض ❌', unverified: 'غير موثّق' };
 
         return '<div style="display:grid;gap:14px;">' +
             '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
-                '<h3 style="margin:0 0 8px 0;font-size:1rem;color:#0f172a;">⚠️ تذاكر النزاعات الثلاثية الحية (`dispute_tickets` — D6 + فرز Option 1-A + Clawback D5)</h3>' +
-                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>الفاتورة</th><th>العضو</th><th>التاجر</th><th>التصنيف وفرز الصرف (1-أ)</th><th>السبب والإثبات</th><th>الحالة</th><th>حكم الإدارة</th></tr></thead><tbody>' +
+                '<h3 style="margin:0 0 8px 0;font-size:1rem;color:#0f172a;">⚠️ تذاكر النزاعات الثلاثية الحية والتحكيم المالي</h3>' +
+                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>الفاتورة</th><th>العضو</th><th>التاجر</th><th>التصنيف وأثر التأهل</th><th>السبب والإثبات</th><th>الحالة</th><th>حكم الإدارة</th></tr></thead><tbody>' +
                 (disputes.length === 0 ? '<tr><td colspan="7" class="empty-state">لا توجد نزاعات معلقة في القاعدة حالياً</td></tr>' : disputes.map(function (d) {
                     const open = d.status === 'awaiting_merchant_friendly' || d.status === 'escalated_to_admin';
                     const isBreak = Boolean(d.is_qualification_breaking);
@@ -889,9 +934,9 @@
                         '<td data-label="الفاتورة"><b>' + esc(d.sw_short_code) + '</b> (' + fmt2(d.total_amount) + ' ' + esc(d.currency_code) + ')' + (d.tx_country_code ? '<br><small>' + esc(d.tx_country_code) + ' • ' + esc(d.dispute_period_ym || '') + '</small>' : '') + '</td>' +
                         '<td data-label="العضو">#' + Number(d.member_code) + ' ' + esc(d.member_name) + '</td>' +
                         '<td data-label="التاجر">' + esc(d.merchant_name) + '</td>' +
-                        '<td data-label="التصنيف وفرز الصرف (1-أ)"><code>' + esc(d.dispute_category || 'general') + '</code><br>' + triageBadge + '</td>' +
+                        '<td data-label="التصنيف وأثر التأهل"><span class="badge badge-info">' + esc(dispCatAr[d.dispute_category] || d.dispute_category || 'عام') + '</span><br>' + triageBadge + '</td>' +
                         '<td data-label="السبب والإثبات">' + esc(d.dispute_reason) + evThumb + '</td>' +
-                        '<td data-label="الحالة"><span class="badge badge-warning">' + esc(d.status) + '</span></td>' +
+                        '<td data-label="الحالة"><span class="badge badge-warning">' + esc(dispStAr[d.status] || d.status) + '</span></td>' +
                         '<td data-label="حكم الإدارة">' + btns + '</td>' +
                     '</tr>';
                 }).join('')) +
@@ -899,10 +944,10 @@
             '</div>' +
 
             '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
-                '<h3 style="margin:0 0 8px 0;font-size:1rem;color:#0f172a;">🚨 بلاغات رفع الأسعار (`price_gouging_reports` — S10: 3 مخالفات = عزل فوري) وكاشف الغش الشبكي</h3>' +
+                '<h3 style="margin:0 0 8px 0;font-size:1rem;color:#0f172a;">🚨 بلاغات رفع الأسعار التمييزي (3 مخالفات = عزل فوري) وكاشف التلاعب الشبكي</h3>' +
                 '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>الفاتورة / الإشارة</th><th>التاجر</th><th>التفاصيل</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>' +
                 (gouging.length === 0 && fraud.length === 0
-                    ? '<tr><td colspan="5" class="empty-state">سجل المخالفات السعرية والغش الشبكي نظيف (0 بلاغات معلقة)</td></tr>'
+                    ? '<tr><td colspan="5" class="empty-state">سجل المخالفات السعرية والتلاعب الشبكي نظيف (0 بلاغات معلقة)</td></tr>'
                     : gouging.map(function (g) {
                         const up = window.SAWYAN && window.SAWYAN.ImageUpload;
                         const shThumb = (g.shelf_photo_url && up) ? up.renderThumbHtml(g.shelf_photo_url, '📸 سعر الرف') : '';
@@ -912,17 +957,19 @@
                             '<td data-label="الفاتورة / الإشارة">بلاغ سعر: <b>' + esc(g.sw_short_code) + '</b></td>' +
                             '<td data-label="التاجر">' + esc(g.merchant_name) + '</td>' +
                             '<td data-label="التفاصيل">معلن: ' + fmt2(g.declared_price) + ' ← مخصوم: <b>' + fmt2(g.charged_price) + '</b>' + thumbs + '</td>' +
-                            '<td data-label="الحالة">' + esc(g.verification_status) + '</td>' +
+                            '<td data-label="الحالة">' + esc(gougeStAr[g.verification_status] || g.verification_status) + '</td>' +
                             '<td data-label="إجراء">' + (g.verification_status === 'pending'
                                 ? '<button type="button" class="btn-sm btn-danger" onclick="svOpsAct(\'price_gouging\',\'' + g.id + '\',\'verified_violation\')">تأكيد المخالفة</button>'
                                 : '—') + '</td>' +
                         '</tr>';
                     }).concat(fraud.map(function (f) {
+                        const sigTypeAr = { shared_device_fingerprint: 'تطابق بصمة جهاز مشترك', shared_ip_cluster: 'تكتّل عنوان شبكة مشترك', shared_bank_account: 'حساب بنكي مشترك', end_of_month_2475_cluster: 'تكتّل فواتير نهاية الشهر', cashier_upline_collusion: 'تواطؤ كاشير وأب لاين', price_gouging_threshold_3: 'تجاوز حد مخالفات الأسعار (3)' };
+                        const sevAr = { low: 'منخفضة', medium: 'متوسطة', high: 'مرتفعة', critical: 'حرجة' };
                         return '<tr>' +
-                            '<td data-label="الفاتورة / الإشارة">إشارة غش: <b>' + esc(f.signal_type) + '</b> (' + esc(f.severity) + ')</td>' +
+                            '<td data-label="الفاتورة / الإشارة">إشارة اشتباه: <b>' + esc(sigTypeAr[f.signal_type] || f.signal_type) + '</b> (' + esc(sevAr[f.severity] || f.severity) + ')</td>' +
                             '<td data-label="التاجر">' + esc(f.merchant_name || 'شبكي') + '</td>' +
                             '<td data-label="التفاصيل"><code>' + esc(JSON.stringify(f.evidence_payload || {}).slice(0, 70)) + '</code></td>' +
-                            '<td data-label="الحالة">' + esc(f.status) + '</td>' +
+                            '<td data-label="الحالة">' + esc(fraudStAr[f.status] || f.status) + '</td>' +
                             '<td data-label="إجراء">' + (f.status === 'open'
                                 ? '<button type="button" class="btn-sm btn-primary" onclick="svOpsAct(\'fraud_signal\',\'' + f.id + '\',\'cleared\')">تبرئة بعد التحقيق</button>'
                                 : '—') + '</td>' +
@@ -932,19 +979,20 @@
             '</div>' +
 
             '<div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:16px;">' +
-                '<h3 style="margin:0 0 8px 0;font-size:1rem;color:#0f172a;">🪪 توثيق الهوية KYC وحظر Tombstone للأعضاء الحقيقيين في القاعدة (`sawyan.members`)</h3>' +
-                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>الكود</th><th>الاسم</th><th>الدولة</th><th>صندوق الشهر ($)</th><th>المحفظة ($)</th><th>حالة KYC</th><th>إجراءات حية</th></tr></thead><tbody>' +
+                '<h3 style="margin:0 0 8px 0;font-size:1rem;color:#0f172a;">🪪 توثيق الهوية وإجراءات الحظر النهائي للأعضاء</h3>' +
+                '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>الكود</th><th>الاسم</th><th>الدولة</th><th>صندوق الشهر ($)</th><th>المحفظة ($)</th><th>حالة الهوية</th><th>إجراءات حية</th></tr></thead><tbody>' +
                 (members.length === 0 ? '<tr><td colspan="7" class="empty-state">لا يوجد أعضاء بعد (بخلاف الجذر #0)</td></tr>' : members.map(function (m) {
                     return '<tr>' +
                         '<td data-label="الكود"><b>#' + Number(m.member_code) + '</b></td>' +
-                        '<td data-label="الاسم">' + esc(m.full_name) + (m.is_tombstone_banned ? ' <span class="badge badge-danger">Tombstone</span>' : '') + '</td>' +
+                        '<td data-label="الاسم">' + esc(m.full_name) + (m.is_tombstone_banned ? ' <span class="badge badge-danger">محظور نهائياً</span>' : '') + '</td>' +
                         '<td data-label="الدولة">' + esc(m.residency_country_code) + '</td>' +
                         '<td data-label="صندوق الشهر ($)">$' + fmt2(m.current_purchases_usd) + (m.is_qualified_period ? ' 🟢' : '') + '</td>' +
                         '<td data-label="المحفظة ($)">$' + fmt2(m.wallet_balance_usd) + '</td>' +
-                        '<td data-label="حالة KYC"><span class="badge ' + (m.kyc_status === 'verified' ? 'badge-success' : 'badge-warning') + '">' + esc(m.kyc_status) + '</span></td>' +
+                        '<td data-label="حالة الهوية"><span class="badge ' + (m.kyc_status === 'verified' ? 'badge-success' : 'badge-warning') + '">' + esc(kycStAr[m.kyc_status] || m.kyc_status || 'غير موثّق') + '</span></td>' +
                         '<td data-label="إجراءات حية"><div style="display:flex;gap:5px;">' +
-                            (m.kyc_status !== 'verified' ? '<button type="button" class="btn-sm btn-success" onclick="svOpsAct(\'member_kyc\',\'' + m.id + '\',\'verified\')">اعتماد KYC</button>' : '') +
-                            '<button type="button" class="btn-sm btn-warning" onclick="svOpsAct(\'member_tombstone\',\'' + m.id + '\',\'' + (m.is_tombstone_banned ? 'unban' : 'ban') + '\')">' + (m.is_tombstone_banned ? 'رفع الحجب' : 'حجب Tombstone') + '</button>' +
+                            (m.kyc_status !== 'verified' ? '<button type="button" class="btn-sm btn-success" onclick="svOpsAct(\'member_kyc\',\'' + m.id + '\',\'verified\')">اعتماد الهوية</button>' : '') +
+                            '<button type="button" class="btn-sm btn-warning" onclick="svOpsAct(\'member_tombstone\',\'' + m.id + '\',\'' + (m.is_tombstone_banned ? 'unban' : 'ban') + '\')">' + (m.is_tombstone_banned ? 'رفع الحظر' : 'حظر نهائي') + '</button>' +
+                            '<button type="button" class="btn-sm btn-danger" onclick="svGdprEraseMember(\'' + m.id + '\',' + Number(m.member_code) + ')">🗑️ محو خصوصية</button>' +
                         '</div></td>' +
                     '</tr>';
                 }).join('')) +
@@ -1008,6 +1056,29 @@
             await refreshSovereignBundle(false);
         } catch (err) {
             showToast(err.message, true);
+        }
+    };
+
+    window.svGdprEraseMember = async function (memberId, memberCode) {
+        try {
+            const ok = window.SAWYAN?.UI?.confirm
+                ? await window.SAWYAN.UI.confirm({
+                    title: '🗑️ تنفيذ محو وإخفاء البيانات الشخصية (GDPR / KVKK)',
+                    message: 'سيتم إخفاء جميع البيانات الشخصية للعضو #' + memberCode + ' نهائياً مع الاحتفاظ بالقيود المالية والفواتير الضريبية المجهّلة وفق القانون. لا يمكن التراجع عن هذا الإجراء. هل تريد المتابعة؟',
+                    confirmText: 'نعم، نفّذ محو الخصوصية',
+                    cancelText: 'تراجع',
+                    tone: 'danger'
+                })
+                : false;
+            if (!ok) return;
+            await window.SAWYAN.API.adminGdprPseudonymizeMember({
+                memberId: memberId,
+                reason: 'تنفيذ طلب محو خصوصية (GDPR/KVKK Art.17) من لوحة الحوكمة الحية'
+            });
+            showToast('تم تنفيذ محو وإخفاء البيانات الشخصية للعضو #' + memberCode + ' مع حفظ القيود المالية.', false);
+            await refreshSovereignBundle(false);
+        } catch (err) {
+            showToast(err.message || 'تعذر تنفيذ محو الخصوصية', true);
         }
     };
 

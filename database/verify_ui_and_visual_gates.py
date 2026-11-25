@@ -163,7 +163,7 @@ def inspect_layout_metrics(page):
             }
         });
         const headerOverlaps = [];
-        const hdr = document.querySelector('.dashboard-header');
+        const hdr = document.querySelector('.dashboard-header') || document.querySelector('.preview-nav .nav-container');
         if (hdr && window.getComputedStyle(hdr).display !== 'none') {
             const hItems = Array.from(hdr.children).filter(el => {
                 const st = window.getComputedStyle(el);
@@ -177,11 +177,18 @@ def inspect_layout_metrics(page):
                     const ix = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
                     const iy = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
                     if (ix * iy > 24) {
-                        headerOverlaps.push(`${hItems[i].id || hItems[i].tagName}<->${hItems[j].id || hItems[j].tagName}:${Math.round(ix * iy)}px2`);
+                        headerOverlaps.push(`${hItems[i].id || hItems[i].className || hItems[i].tagName}<->${hItems[j].id || hItems[j].className || hItems[j].tagName}:${Math.round(ix * iy)}px2`);
                     }
                 }
             }
         }
+        const oversizedMerchantBadges = [];
+        document.querySelectorAll('.merchant-card .merchant-cashback').forEach(badge => {
+            const r = badge.getBoundingClientRect();
+            if (r.height > 54) {
+                oversizedMerchantBadges.push(`${Math.round(r.width)}x${Math.round(r.height)}px`);
+            }
+        });
         const bannerCardIssues = [];
         const liveStrip = document.querySelector('[data-spec-id="admin-home-live-banner"] .admin-live-kpi-strip');
         if (liveStrip && liveStrip.offsetParent) {
@@ -210,7 +217,8 @@ def inspect_layout_metrics(page):
             emptyDataLabelsCount: emptyDataLabels.length,
             emptyDataLabelsSample: emptyDataLabels.slice(0, 3),
             headerOverlaps,
-            bannerCardIssues
+            bannerCardIssues,
+            oversizedMerchantBadges
         };
     }""")
 
@@ -429,7 +437,15 @@ def verify_portal_in_browser(context, base_url, portal_name, login_path, manifes
                 failures.append(
                     f"[{portal_name} @ {vp['width']}x{vp['height']}] Horizontal overflow scrollWidth={m['scrollWidth']} > {m['viewportWidth']}"
                 )
-        notes.append(f"[{portal_name}] Public portal checks clean across Desktop/Half/Mobile")
+            if m.get("headerOverlaps"):
+                failures.append(
+                    f"[{portal_name} @ {vp['width']}x{vp['height']}] Public navbar overlap detected: {m['headerOverlaps']}"
+                )
+            if m.get("oversizedMerchantBadges"):
+                failures.append(
+                    f"[{portal_name} @ {vp['width']}x{vp['height']}] Oversized .merchant-cashback badge(s) covering photo: {m['oversizedMerchantBadges'][:3]}"
+                )
+        notes.append(f"[{portal_name}] Public portal checks clean across Desktop/Half/Mobile (0 navbar overlap, 0 oversized badges)")
 
     if page_errors:
         failures.append(f"[{portal_name}] Uncaught JS pageerror(s): {page_errors[:5]}")
@@ -469,6 +485,7 @@ def main():
             checks = [
                 ("public_prod", "index.html", portals["public"]),
                 ("public_demo", "preview/index.html", portals["public"]),
+                ("public_merchants", "preview/public/merchants.html", {}),
                 ("member", "preview/member-dashboard/login.html?quick=member", portals["member"]),
                 ("merchant", "preview/merchant-dashboard/login.html?quick=merchant", portals["merchant"]),
                 ("admin", "preview/admin-dashboard/login.html?quick=founder", portals["admin"]),

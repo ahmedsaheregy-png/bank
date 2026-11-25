@@ -10,6 +10,6 @@
   "frozen_items": [
     "OFFLINE_TOTP_MEMBER_QR_60S"
   ],
-  "last_full_audit_verified_at": "2026-11-25T11:30:00Z",
-  "notes": "strict_parity_enabled becomes true upon completing Phase 1 & Phase 2 and binds Stop Hook + Zero-Defect Gate to full D29/D30 visual & spec parity. Stages 10-24 sealed. Stage 25 (Founder-locked 6-state constitutional tree colors [Green/Orange/White/DarkGray/Red + Out-of-Lens Transparency], compact circular Member Tree redesign in tree-studio.js, and live PostgreSQL upgrade 32_stage25_tree_rpc_9fields_and_stopper.sql with 9-field click inspector, relative Stopper-11 reserve detection & DB-enforced 10-upline phone/WhatsApp privacy) sealed 2026-11-25."
+  "last_full_audit_verified_at": "2026-11-25T12:15:00Z",
+  "notes": "strict_parity_enabled becomes true upon completing Phase 1 & Phase 2 and binds Stop Hook + Zero-Defect Gate to full D29/D30 visual & spec parity. Stages 10-25 sealed. Stage 27 (Bundle 1-3 + GDPR/S10 migration 33_stage27 + public-page surgical fixes on index.html mobile/680px header & public/merchants.html card photo badge, compact filter bar, mobile active-scope bar, unclipped city & search icon spacing + visual gate navbar/badge guard) verified 2026-11-25."
 }

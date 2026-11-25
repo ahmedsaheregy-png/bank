@@ -402,6 +402,13 @@
             else uiOverlay.remove();
             return true;
         }
+        const swDialog = document.querySelector('.sw-dialog-backdrop');
+        if (swDialog) {
+            const cancelBtn = swDialog.querySelector('.sw-btn-ghost');
+            if (cancelBtn) cancelBtn.click();
+            else swDialog.remove();
+            return true;
+        }
         const modalIds = [
             'sawyanHelpPopoverModal',
             'adminCmdKOverlay',

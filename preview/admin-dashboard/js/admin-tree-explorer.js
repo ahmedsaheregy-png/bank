@@ -841,7 +841,7 @@
             p.classList.toggle('active', p.id === 'networkTreePage');
         });
         const titleEl = document.getElementById('pageTitle');
-        if (titleEl) titleEl.textContent = '🌳 الشجرة الدولية الكاملة (دوائر)';
+        if (titleEl) titleEl.textContent = window.innerWidth <= 768 ? '🌳 الشجرة الكاملة' : '🌳 الشجرة الدولية الكاملة';
 
         await fetchAndRenderTree();
     };
@@ -959,7 +959,7 @@
                     `<div style="font-size:0.76rem;color:#78350f;margin-top:2px;">$${fmt2(node.box_accumulated_usd)} / $${fmt2(node.target_required_usd)}</div>` +
                 '</div>' +
                 '<div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:10px;">' +
-                    '<div style="color:#065f46;font-size:0.74rem;">💰 المحفظة وتوثيق KYC</div>' +
+                    '<div style="color:#065f46;font-size:0.74rem;">💰 المحفظة وتوثيق الهوية</div>' +
                     `<strong>$${fmt2(node.wallet_balance_usd)}</strong> <small>(أرباح: $${fmt2(node.total_earned_usd)})</small>` +
                     `<div style="margin-top:4px;">${kycBadgeHtml(node.kyc_status)}</div>` +
                 '</div>' +

@@ -1231,7 +1231,7 @@ function loadMyPendingRequests() {
                         <div style="background:#fff;border:1.5px solid ${t.status === 'awaiting_merchant_topup' ? '#ef4444' : '#f59e0b'};border-radius:14px;padding:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
                             <div>
                                 <strong style="font-size:1rem;">${esc(t.merchant_name)}</strong> (${esc(t.branch_name || 'الفرع الرئيسي')})
-                                <div style="font-size:0.84rem;color:#64748b;">الكود: <code>${esc(t.sw_short_code)}</code> • ${new Date(t.created_at).toLocaleString('ar-EG')}</div>
+                                <div style="font-size:0.84rem;color:#64748b;">الكود: <code>${esc(t.sw_short_code)}</code> • ${new Date(t.created_at).toLocaleString(getMemLocale())}</div>
                                 <div style="font-size:0.78rem;color:#334155;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                                     <span style="background:#f1f5f9;padding:2px 8px;border-radius:6px;font-weight:700;">${esc(fmtMemberPayTypeLabel(t.payment_type))}</span>
                                     ${t.unique_payment_ref ? `<span>مرجع: <code dir="ltr">${esc(t.unique_payment_ref)}</code></span>` : ''}
@@ -1358,7 +1358,7 @@ function loadAllTransactions() {
                                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
                                     <div>
                                         <strong>${esc(t.merchant_name)}</strong> — <small>${esc(t.branch_name)}</small>
-                                        <div style="font-size:0.82rem;color:#64748b;"><code>${esc(t.sw_short_code)}</code> • ${new Date(t.created_at).toLocaleString('ar-EG')}</div>
+                                        <div style="font-size:0.82rem;color:#64748b;"><code>${esc(t.sw_short_code)}</code> • ${new Date(t.created_at).toLocaleString(getMemLocale())}</div>
                                         <div style="font-size:0.76rem;color:#475569;margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                                             <span style="background:#f1f5f9;padding:2px 7px;border-radius:6px;font-weight:700;">${esc(fmtMemberPayTypeLabel(t.payment_type))}</span>
                                             ${t.unique_payment_ref ? `<span>مرجع: <code dir="ltr">${esc(t.unique_payment_ref)}</code></span>` : ''}
@@ -1375,9 +1375,10 @@ function loadAllTransactions() {
                                         ${thumb}
                                     </div>
                                     <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                        ${t.status === 'completed' ? `<button type="button" class="btn btn-primary btn-sm" onclick="openMemberDigitalReceiptModal('${esc(t.id)}')">🧾 إيصال رقمي</button>` : ''}
                                         ${t.status === 'completed' ? `<button type="button" class="btn btn-outline btn-sm" onclick="openReviewModal('${t.id}', '${esc(t.merchant_name)}')">⭐ تقييم</button>` : ''}
-                                        <button type="button" class="btn btn-outline btn-sm" onclick="openDisputeModal('${t.id}', '${esc(t.sw_short_code)}')">⚠️ نزاع ثلاثي (48h)</button>
-                                        <button type="button" class="btn btn-outline btn-sm" style="border-color:#dc2626;color:#dc2626;" onclick="openPriceGougingModal('${t.id}', '${esc(t.merchant_name)}', '${Number(t.total_amount).toFixed(2)}')">🚨 بلاغ رفع سعر (S10)</button>
+                                        <button type="button" class="btn btn-outline btn-sm" onclick="openDisputeModal('${t.id}', '${esc(t.sw_short_code)}')">⚠️ نزاع ثلاثي (48 ساعة)</button>
+                                        <button type="button" class="btn btn-outline btn-sm" style="border-color:#dc2626;color:#dc2626;" onclick="openPriceGougingModal('${t.id}', '${esc(t.merchant_name)}', '${Number(t.total_amount).toFixed(2)}')">🚨 بلاغ رفع سعر</button>
                                     </div>
                                 </div>
                             </div>`;
@@ -1388,27 +1389,73 @@ function loadAllTransactions() {
         ${disputes.length > 0 ? `
             <h3 style="margin-top:24px;">⚠️ تذاكر النزاعات المفتوحة (${disputes.length})</h3>
             <div style="display:grid;gap:8px;margin-top:8px;">
-                ${disputes.map(d => `
+                ${disputes.map(d => {
+                    const dispStMap = { awaiting_merchant_friendly: 'بانتظار رد التاجر (48 ساعة)', escalated_to_admin: 'مُصعّد للتحكيم الإداري', resolved_member: 'حُسم لصالحك', resolved_member_clawback: 'حُسم لصالحك (عكس الفاتورة)', resolved_merchant: 'حُسم لصالح التاجر', resolved_merchant_force_return: 'مرتجع إلزامي', resolved_merchant_malicious_claim: 'مغلق' };
+                    return `
                     <div style="background:#fff7ed;border:1px solid #fdba74;border-radius:10px;padding:12px;">
-                        <strong>${esc(d.merchant_name)}</strong> — <small>${esc(d.status)}</small>
+                        <strong>${esc(d.merchant_name)}</strong> — <small>${esc(dispStMap[d.status] || d.status)}</small>
                         <div style="font-size:0.85rem;color:#7c2d12;">${esc(d.dispute_reason)}</div>
-                    </div>
-                `).join('')}
+                    </div>`;
+                }).join('')}
             </div>
         ` : ''}
         ${gouging.length > 0 ? `
-            <h3 style="margin-top:20px;">🚨 بلاغات رادار رفع الأسعار S10 (${gouging.length})</h3>
+            <h3 style="margin-top:20px;">🚨 بلاغات رادار حماية الأسعار (${gouging.length})</h3>
             <div style="display:grid;gap:8px;margin-top:8px;">
-                ${gouging.map(g => `
+                ${gouging.map(g => {
+                    const gStMap = { pending: 'قيد الفحص الرقابي', verified_violation: 'مخالفة مؤكدة', dismissed: 'مغلق بعد الفحص' };
+                    return `
                     <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px;">
-                        <strong>${esc(g.merchant_name)}</strong> — <small>${esc(g.verification_status)}</small>
+                        <strong>${esc(g.merchant_name)}</strong> — <small>${esc(gStMap[g.verification_status] || g.verification_status)}</small>
                         <div style="font-size:0.84rem;color:#991b1b;">سعر الرف المعلن: ${Number(g.declared_price).toFixed(2)} | المحصّل: ${Number(g.charged_price).toFixed(2)}</div>
-                    </div>
-                `).join('')}
+                    </div>`;
+                }).join('')}
             </div>
         ` : ''}
     `;
 }
+
+window.openMemberDigitalReceiptModal = function (txId) {
+    const txs = (memberBundle && memberBundle.transactions) || [];
+    const t = txs.find(x => String(x.id) === String(txId));
+    if (!t) { swMemToast('لم يتم العثور على بيانات الإيصال.', 'warning'); return; }
+    const p = memberBundle?.profile || currentMember || {};
+    const shareLocal = Number(t.income_plan_share_local ?? t.expected_income_plan_share_local ?? 0);
+    const createdStr = t.created_at ? new Date(t.created_at).toLocaleString(getMemLocale()) : '—';
+    const receiptHtml = `
+        <div id="memberDigitalReceiptCard" style="background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);border:2px solid #059669;border-radius:16px;padding:18px;direction:rtl;color:#0f172a;">
+            <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px dashed #cbd5e1;padding-bottom:12px;margin-bottom:12px;">
+                <div>
+                    <div style="font-size:1.1rem;font-weight:900;color:#065f46;">🧾 إيصال استهلاك استثماري موثّق</div>
+                    <div style="font-size:0.78rem;color:#64748b;">منصة SAWYAN • شهادة توثيق رقمية معتمدة</div>
+                </div>
+                <span style="background:#d1fae5;color:#065f46;padding:4px 10px;border-radius:999px;font-size:0.78rem;font-weight:900;">✅ معتمد</span>
+            </div>
+            <div style="display:grid;gap:8px;font-size:0.86rem;">
+                <div style="display:flex;justify-content:space-between;"><span style="color:#64748b;">كود التوثيق:</span><strong dir="ltr">${esc(t.sw_short_code || '—')}</strong></div>
+                <div style="display:flex;justify-content:space-between;"><span style="color:#64748b;">التاريخ والوقت:</span><strong>${esc(createdStr)}</strong></div>
+                <div style="display:flex;justify-content:space-between;"><span style="color:#64748b;">المتجر والفرع:</span><strong>${esc(t.merchant_name)} ${t.branch_name ? '(' + esc(t.branch_name) + ')' : ''}</strong></div>
+                <div style="display:flex;justify-content:space-between;"><span style="color:#64748b;">العضو المشتري:</span><strong>#${esc(p.member_code || '')} ${esc(p.full_name || '')}</strong></div>
+                <div style="display:flex;justify-content:space-between;"><span style="color:#64748b;">وسيلة الدفع:</span><strong>${esc(fmtMemberPayTypeLabel(t.payment_type))}</strong></div>
+                <div style="border-top:1.5px dashed #cbd5e1;padding-top:8px;margin-top:4px;display:flex;justify-content:space-between;font-size:1rem;">
+                    <span style="font-weight:800;">إجمالي الفاتورة:</span>
+                    <strong style="color:#0f172a;" dir="ltr">${Number(t.total_amount || 0).toFixed(2)} ${esc(t.currency_code || '')}</strong>
+                </div>
+                <div style="background:#ecfdf5;border:1px solid #86efac;border-radius:10px;padding:10px;display:flex;justify-content:space-between;align-items:center;">
+                    <span style="color:#065f46;font-weight:800;">🎯 العائد المضاف لصندوق هدفك:</span>
+                    <strong style="color:#047857;font-size:1.05rem;" dir="ltr">+${shareLocal.toFixed(2)} ${esc(t.currency_code || '')}</strong>
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
+                <button type="button" class="btn btn-primary btn-sm" onclick="window.print()" style="flex:1;">🖨️ طباعة / حفظ PDF</button>
+                <a href="https://wa.me/?text=${encodeURIComponent('🧾 إيصال SAWYAN الموثق — المتجر: ' + (t.merchant_name || '') + ' | كود: ' + (t.sw_short_code || '') + ' | القيمة: ' + Number(t.total_amount || 0).toFixed(2) + ' ' + (t.currency_code || ''))}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="flex:1;text-align:center;">💬 مشاركة واتساب</a>
+            </div>
+        </div>
+    `;
+    openMemberModal(`🧾 الإيصال الرقمي — ${esc(t.sw_short_code)}`, receiptHtml, async (_f, close) => { close(); });
+    const subBtn = document.getElementById('sawyanModalSubmitBtn');
+    if (subBtn) subBtn.style.display = 'none';
+};
 
 window.setTxPeriodTab = function (period) {
     txFilterState.period = period;
@@ -1479,7 +1526,7 @@ function renderPendingReturnRequestsCard(anchorEl) {
                             ${otpCode ? `<div style="background:#ecfdf5;border:1px dashed #10b981;border-radius:8px;padding:8px 12px;font-size:0.86rem;color:#065f46;">🔐 رمز <strong>OTP</strong> لتزويد الكاشير عند الموافقة: <strong style="font-size:1.1rem;letter-spacing:3px;">${esc(otpCode)}</strong></div>` : ''}
                             <div id="retImpactBox_${esc(r.id)}" style="font-size:0.82rem;color:#334155;"></div>
                             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                                <button type="button" class="btn btn-outline btn-sm" onclick="svPreviewReturnImpact('${esc(r.transaction_id)}','${esc(r.id)}')">📊 معاينة الأثر على الهدف (S08)</button>
+                                <button type="button" class="btn btn-outline btn-sm" onclick="svPreviewReturnImpact('${esc(r.transaction_id)}','${esc(r.id)}')">📊 معاينة الأثر على الهدف</button>
                                 <button type="button" class="btn btn-primary btn-sm" onclick="svRespondReturnRequest('${esc(r.id)}','approve')">✅ موافقة وإلغاء الفاتورة</button>
                                 <button type="button" class="btn btn-outline btn-sm" style="border-color:#dc2626;color:#dc2626;" onclick="svRespondReturnRequest('${esc(r.id)}','reject')">❌ رفض المرتجع</button>
                             </div>
@@ -1524,7 +1571,7 @@ function openDisputeModal(txId, shortCode) {
     let disputeUp = null;
     openMemberModal(`⚠️ فتح تذكرة نزاع ثلاثي للفاتورة ${esc(shortCode)}`, `
         <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px;font-size:0.82rem;color:#9a3412;">
-            تُمنح مهلة حل ودي <strong>48 ساعة</strong> للتاجر قبل التصعيد التلقائي لفريق التحكيم (<code>D6</code>).
+            تُمنح مهلة حل ودي <strong>48 ساعة</strong> للتاجر قبل التصعيد التلقائي لفريق التحكيم الإداري.
         </div>
         <div>
             <label style="font-weight:700;font-size:0.88rem;">تصنيف النزاع *</label>
@@ -1573,9 +1620,9 @@ function openDisputeModal(txId, shortCode) {
 function openPriceGougingModal(txId, merchantName, txAmount) {
     let shelfUp = null;
     let recUp = null;
-    openMemberModal(`🚨 بلاغ رفع سعر تمييزي — ${esc(merchantName)} (S10)`, `
+    openMemberModal(`🚨 بلاغ رفع سعر تمييزي — ${esc(merchantName)}`, `
         <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:10px;font-size:0.82rem;color:#991b1b;">
-            يُحظر على التاجر رفع السعر على عضو SAWYAN مقارنة بالسعر المعلن للجمهور (<code>S10</code>). عند توثيق 3 بلاغات يُطلق النظام إشارة رقابية آلية.
+            يُحظر على التاجر رفع السعر على عضو SAWYAN مقارنة بالسعر المعلن للجمهور. عند توثيق 3 بلاغات يُطلق النظام إشارة رقابية آلية لحماية الأعضاء.
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:10px;">
             <div>
@@ -2558,6 +2605,9 @@ function renderMemberAcademyScreen() {
                         <div style="height:9px;background:rgba(255,255,255,0.18);border-radius:999px;overflow:hidden;margin-top:6px;">
                             <div style="height:100%;width:${Number(summary.completion_pct || 0)}%;background:linear-gradient(90deg,#10b981,#fbbf24);transition:width 0.3s;"></div>
                         </div>
+                        ${Number(summary.total_lessons || 0) > 0 && Number(summary.completion_pct || 0) >= 100
+                            ? `<button type="button" onclick="openMemberAcademyCertificateModal()" style="margin-top:8px;background:#fbbf24;color:#0f172a;border:none;border-radius:8px;padding:5px 12px;font-family:Tajawal,sans-serif;font-weight:900;font-size:0.78rem;cursor:pointer;">🏆 عرض شهادة الإتمام</button>`
+                            : (Number(summary.total_lessons || 0) > 0 ? `<div style="margin-top:5px;font-size:0.72rem;color:#a7f3d0;">🏆 أكمل جميع الدروس للحصول على شهادة الإتمام المعتمدة</div>` : '')}
                     </div>
                 </div>
             </div>
@@ -2680,6 +2730,32 @@ async function toggleMemberAcademyLessonComplete(lessonId, action) {
 window.selectMemberAcademyTrack = selectMemberAcademyTrack;
 window.openMemberAcademyPlayer = openMemberAcademyPlayer;
 window.toggleMemberAcademyLessonComplete = toggleMemberAcademyLessonComplete;
+
+window.openMemberAcademyCertificateModal = function () {
+    const p = memberBundle?.profile || currentMember || {};
+    const summary = memberAcademyState?.catalog?.summary || { completed_lessons: 0, total_lessons: 0 };
+    const dateStr = new Date().toLocaleDateString(getMemLocale(), { year: 'numeric', month: 'long', day: 'numeric' });
+    openMemberModal('🏆 شهادة إتمام أكاديمية SAWYAN', `
+        <div id="sawyanAcademyCertCard" style="background:linear-gradient(135deg,#064e3b 0%,#0f172a 100%);color:#ffffff;border:3px solid #fbbf24;border-radius:18px;padding:24px;text-align:center;position:relative;">
+            <div style="font-size:2.2rem;margin-bottom:6px;">🏆</div>
+            <div style="font-size:0.82rem;color:#fde68a;font-weight:800;letter-spacing:1px;">شهادة إتمام وتأهيل معتمدة — أكاديمية SAWYAN</div>
+            <h2 style="margin:12px 0 6px;font-size:1.45rem;color:#ffffff;">${esc(p.full_name || 'عضو SAWYAN')}</h2>
+            <div style="font-size:0.88rem;color:#a7f3d0;margin-bottom:14px;">كود العضوية الرسمي: <strong dir="ltr">#${esc(p.member_code || '')}</strong></div>
+            <p style="font-size:0.88rem;color:#e2e8f0;line-height:1.7;margin:0 auto 16px;max-width:460px;">
+                تشهد أكاديمية منصة SAWYAN بأن العضو المذكور أعلاه أتمّ بنجاح جميع مسارات التدريب المعتمدة (${Number(summary.completed_lessons || 0)} / ${Number(summary.total_lessons || 0)} درس) في ثقافة الاستهلاك الاستثماري وبناء الفريق.
+            </p>
+            <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,0.2);padding-top:12px;font-size:0.78rem;color:#cbd5e1;">
+                <span>📅 تاريخ الإصدار: ${esc(dateStr)}</span>
+                <span>🔐 رقم الشهادة: SW-ACAD-${esc(p.member_code || '0')}-${new Date().getFullYear()}</span>
+            </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+            <button type="button" class="btn btn-primary btn-sm" onclick="window.print()" style="flex:1;">🖨️ طباعة / حفظ الشهادة (PDF)</button>
+        </div>
+    `, async (_f, close) => { close(); });
+    const subBtn = document.getElementById('sawyanModalSubmitBtn');
+    if (subBtn) subBtn.style.display = 'none';
+};
 
 // ---------------------------------------------------------------------------
 // Screen 7 & 8: Nearby Merchants + Leaflet Map + Haversine + Google Maps + Path B Live Calc
@@ -3214,23 +3290,55 @@ async function loadFavorites() {
 }
 
 // ---------------------------------------------------------------------------
-// Screen 9: Field Mini CRM (Point 10 + Status Filters)
+// Screen 9: Field Mini CRM (5-Stage Pipeline + Status Filters)
 // ---------------------------------------------------------------------------
+const CRM_STAGES = [
+    { key: 'new', label: '🆕 جديد', bg: '#f1f5f9', color: '#334155' },
+    { key: 'contacted', label: '📞 تم التواصل', bg: '#eff6ff', color: '#1d4ed8' },
+    { key: 'interested', label: '⭐ مهتم', bg: '#fef3c7', color: '#92400e' },
+    { key: 'followup', label: '🔁 متابعة', bg: '#f3e8ff', color: '#6b21a8' },
+    { key: 'registered', label: '✅ مسجّل بالفعل', bg: '#d1fae5', color: '#065f46' }
+];
+function getCrmStageMap() {
+    try { return JSON.parse(localStorage.getItem('sawyan_crm_stages_' + (currentMember?.id || '0')) || '{}'); }
+    catch (_) { return {}; }
+}
+function getContactStage(c, stageMap) {
+    if (c.registered_member_id) return 'registered';
+    if (c.opted_out) return 'opted_out';
+    return (stageMap && stageMap[c.id]) || (c.last_reminded_at ? 'contacted' : 'new');
+}
+window.setCrmContactStage = function (contactId, stageKey) {
+    try {
+        const k = 'sawyan_crm_stages_' + (currentMember?.id || '0');
+        const map = getCrmStageMap();
+        map[contactId] = stageKey;
+        localStorage.setItem(k, JSON.stringify(map));
+    } catch (_) {}
+    loadCRM();
+};
+
 function loadCRM() {
     const page = document.getElementById('crmPage');
     if (!page || !memberBundle) return;
     const contacts = memberBundle.contacts || [];
+    const stageMap = getCrmStageMap();
+    const counts = { all: contacts.length, new: 0, contacted: 0, interested: 0, followup: 0, registered: 0, opted_out: 0 };
+    contacts.forEach(c => {
+        const st = getContactStage(c, stageMap);
+        if (counts[st] !== undefined) counts[st]++;
+    });
     const filtered = contacts.filter(c => {
-        if (crmFilterState === 'registered') return Boolean(c.registered_member_id);
+        const st = getContactStage(c, stageMap);
+        if (crmFilterState === 'all') return true;
         if (crmFilterState === 'pending') return !c.registered_member_id && !c.opted_out;
-        if (crmFilterState === 'opted_out') return Boolean(c.opted_out);
-        return true;
+        return st === crmFilterState;
     });
     const refLink = buildReferralUrl();
 
     page.innerHTML = `
         <div data-spec-id="member-crm-board">
-            <h2>📇 دفتر المعارف والدعوات</h2>
+            <h2>📇 دفتر المعارف ومسار الدعوات</h2>
             <form id="crmAddForm" style="background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:16px;margin:14px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;">
                 <input type="text" id="crmName" required class="form-control" placeholder="اسم الشخص المرشح *">
                 <input type="tel" id="crmPhone" class="form-control" placeholder="رقم الواتساب (+20...)">
@@ -3239,28 +3347,41 @@ function loadCRM() {
             </form>
             <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
                 ${[
-                    ['all', `الكل (${contacts.length})`],
-                    ['pending', '⏳ قيد المتابعة'],
-                    ['registered', '✅ مسجل بالفعل'],
-                    ['opted_out', '🔕 Opt-out']
+                    ['all', `الكل (${counts.all})`],
+                    ['new', `🆕 جديد (${counts.new})`],
+                    ['contacted', `📞 تم التواصل (${counts.contacted})`],
+                    ['interested', `⭐ مهتم (${counts.interested})`],
+                    ['followup', `🔁 متابعة (${counts.followup})`],
+                    ['registered', `✅ مسجل (${counts.registered})`],
+                    ['opted_out', `🔕 موقوف التذكير (${counts.opted_out})`]
                 ].map(([k, l]) => `<button type="button" class="lens-pill-btn ${crmFilterState === k ? 'active' : ''}" onclick="setCrmFilter('${k}')">${l}</button>`).join('')}
             </div>
-            ${filtered.length === 0 ? '<p class="empty-state">لا توجد جهات اتصال مطابقة حالياً.</p>' : `
+            ${filtered.length === 0 ? '<p class="empty-state">لا توجد جهات اتصال مطابقة لهذه المرحلة حالياً.</p>' : `
                 <div style="display:grid;gap:10px;">
                     ${filtered.map(c => {
                         const waNum = String(c.contact_phone_e164 || '').replace(/[^0-9]/g, '');
                         const waMsg = encodeURIComponent(`أهلاً ${c.contact_name}، أدعوك للانضمام معي في منصة SAWYAN عبر رابطي: ${refLink}`);
+                        const stKey = getContactStage(c, stageMap);
+                        const stMeta = CRM_STAGES.find(s => s.key === stKey) || CRM_STAGES[0];
                         return `
                             <div style="background:#fff;border:1px solid #cbd5e1;border-radius:12px;padding:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
                                 <div>
-                                    <strong>${esc(c.contact_name)}</strong>
-                                    ${c.registered_member_id ? '<span style="background:#d1fae5;color:#065f46;font-size:0.74rem;padding:2px 8px;border-radius:999px;font-weight:800;">✅ مسجل بالفعل</span>' : ''}
-                                    ${c.opted_out ? '<span style="background:#fee2e2;color:#991b1b;font-size:0.74rem;padding:2px 8px;border-radius:999px;font-weight:800;">🔕 غير راغب (Opt-out)</span>' : ''}
-                                    <div style="font-size:0.82rem;color:#64748b;">${esc(c.contact_phone_e164 || 'بدون هاتف')} • ${esc(c.notes || '')}</div>
+                                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                        <strong>${esc(c.contact_name)}</strong>
+                                        ${c.opted_out
+                                            ? '<span style="background:#fee2e2;color:#991b1b;font-size:0.74rem;padding:2px 8px;border-radius:999px;font-weight:800;">🔕 غير راغب بالتذكير</span>'
+                                            : `<span style="background:${stMeta.bg};color:${stMeta.color};font-size:0.74rem;padding:2px 8px;border-radius:999px;font-weight:800;">${stMeta.label}</span>`}
+                                    </div>
+                                    <div style="font-size:0.82rem;color:#64748b;margin-top:2px;">${esc(c.contact_phone_e164 || 'بدون هاتف')} • ${esc(c.notes || '')}</div>
                                 </div>
-                                <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                                    ${waNum && !c.opted_out ? `<a href="https://wa.me/${waNum}?text=${waMsg}" target="_blank" onclick="crmAction('mark_reminded','${c.id}')" class="btn btn-primary btn-sm">💬 دعوة واتساب</a>` : ''}
-                                    <button type="button" class="btn btn-outline btn-sm" onclick="crmAction('toggle_opt_out','${c.id}')">${c.opted_out ? 'تفعيل التذكير' : 'إيقاف (Opt-out)'}</button>
+                                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                                    ${!c.registered_member_id && !c.opted_out ? `
+                                        <select aria-label="مرحلة المتابعة" onchange="setCrmContactStage('${c.id}', this.value)" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.78rem;font-family:Tajawal,sans-serif;font-weight:700;">
+                                            ${CRM_STAGES.filter(s => s.key !== 'registered').map(s => `<option value="${s.key}" ${stKey === s.key ? 'selected' : ''}>${s.label}</option>`).join('')}
+                                        </select>
+                                    ` : ''}
+                                    ${waNum && !c.opted_out ? `<a href="https://wa.me/${waNum}?text=${waMsg}" target="_blank" onclick="setCrmContactStage('${c.id}','contacted');crmAction('mark_reminded','${c.id}')" class="btn btn-primary btn-sm">💬 دعوة واتساب</a>` : ''}
+                                    <button type="button" class="btn btn-outline btn-sm" onclick="crmAction('toggle_opt_out','${c.id}')">${c.opted_out ? 'تفعيل التذكير' : 'إيقاف التذكير'}</button>
                                     <button type="button" class="btn btn-outline btn-sm" onclick="crmAction('delete','${c.id}')">حذف</button>
                                 </div>
                             </div>
@@ -3634,7 +3755,7 @@ async function loadSettings() {
         <div class="member-settings-tabs" role="tablist">
             <button type="button" class="member-settings-tab-btn ${activeTab === 'profile' ? 'active' : ''}" data-set-tab="profile" onclick="switchMemberSettingsTab('profile')">👤 الملف الشخصي والموقع</button>
             <button type="button" class="member-settings-tab-btn ${activeTab === 'security' ? 'active' : ''}" data-set-tab="security" onclick="switchMemberSettingsTab('security')">🔐 الأمان وكلمة المرور</button>
-            <button type="button" class="member-settings-tab-btn ${activeTab === 'kyc' ? 'active' : ''}" data-set-tab="kyc" onclick="switchMemberSettingsTab('kyc')">🪪 الهوية (KYC) والدعم</button>
+            <button type="button" class="member-settings-tab-btn ${activeTab === 'kyc' ? 'active' : ''}" data-set-tab="kyc" onclick="switchMemberSettingsTab('kyc')">🪪 الهوية والخصوصية والدعم</button>
             <button type="button" class="member-settings-tab-btn ${activeTab === 'residency' ? 'active' : ''}" data-set-tab="residency" onclick="switchMemberSettingsTab('residency')">✈️ نقل دولة الإقامة</button>
         </div>
 
@@ -3768,6 +3889,14 @@ async function loadSettings() {
                 </div>
                 <div id="memberSupportTicketsListSlot"><p style="font-size:0.84rem;color:#64748b;margin:0;">جاري تحميل تذاكر الدعم...</p></div>
             </div>
+
+            <div data-spec-id="member-settings-gdpr-privacy" style="background:#fef2f2;border:1.5px solid #fecaca;border-radius:16px;padding:18px;margin-top:14px;">
+                <h3 style="margin:0 0 6px;font-size:0.98rem;color:#991b1b;">🔐 الخصوصية وحق محو البيانات الشخصية (GDPR / KVKK)</h3>
+                <p style="margin:0 0 10px;font-size:0.82rem;color:#7f1d1d;line-height:1.6;">
+                    يحق لك طلب إخفاء بياناتك الشخصية (الاسم، الهاتف، البريد، الوثائق) وفق قوانين حماية البيانات. يتم الاحتفاظ بالقيود المالية والفواتير الضريبية المجهّلة فقط وفق المدة القانونية الإلزامية.
+                </p>
+                <button type="button" class="btn btn-outline btn-sm" style="border-color:#dc2626;color:#dc2626;font-weight:800;" onclick="requestMemberGdprErasure()">🗑️ تقديم طلب محو وإخفاء بياناتي الشخصية</button>
+            </div>
         </div>
 
         <div class="member-settings-pane" data-pane="residency" style="display:${activeTab === 'residency' ? 'block' : 'none'};">
@@ -3779,7 +3908,7 @@ async function loadSettings() {
                     </div>
                     <span style="background:#ffffff;border:1px solid #f59e0b;color:#92400e;padding:4px 12px;border-radius:999px;font-weight:800;font-size:0.8rem;">🔒 قفل الشهر المفتوح</span>
                 </div>
-                ${moveReqs.length ? `<div style="margin-top:10px;background:#ffffff;border:1px solid #fcd34d;border-radius:10px;padding:10px;font-size:0.82rem;">✈️ طلب نقل إقامة مسجل إلى <strong>${esc(moveReqs[0].target_country_code)}</strong> — الحالة: <strong>${esc(moveReqs[0].status)}</strong> • يسري من: ${esc(String(moveReqs[0].effective_from || '').slice(0, 10))}</div>` : ''}
+                ${moveReqs.length ? `<div style="margin-top:10px;background:#ffffff;border:1px solid #fcd34d;border-radius:10px;padding:10px;font-size:0.82rem;">✈️ طلب نقل إقامة مسجل إلى <strong>${esc(moveReqs[0].target_country_code)}</strong> — الحالة: <strong>${esc(({ pending: 'قيد المراجعة', approved: 'معتمد', rejected: 'مرفوض' })[moveReqs[0].status] || moveReqs[0].status)}</strong> • يسري من: ${esc(String(moveReqs[0].effective_from || '').slice(0, 10))}</div>` : ''}
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:12px;align-items:end;">
                     <div>
                         <label for="setMoveTargetCountry" style="display:block;font-size:0.78rem;font-weight:800;color:#92400e;margin-bottom:4px;">1️⃣ دولة الإقامة الجديدة</label>
@@ -3825,7 +3954,7 @@ async function loadSettings() {
             ? '<p style="font-size:0.84rem;color:#64748b;margin:0;">لا توجد تذاكر دعم مفتوحة حتى الآن.</p>'
             : `<div style="display:grid;gap:8px;">${tickets.map(t => `
                 <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:10px;font-size:0.84rem;">
-                    <div><strong>${esc(t.ticket_ref)} — ${esc(t.subject)}</strong> <span class="badge">${esc(t.status)}</span></div>
+                    <div><strong>${esc(t.ticket_ref)} — ${esc(t.subject)}</strong> <span class="badge">${esc(({ open: 'مفتوحة', in_progress: 'قيد المتابعة', resolved: 'تم الحل', closed: 'مغلقة' })[t.status] || t.status)}</span></div>
                     <div style="color:#334155;margin-top:4px;">${esc(t.message_body)}</div>
                     ${t.admin_reply ? `<div style="margin-top:6px;background:#ecfdf5;color:#065f46;padding:6px 10px;border-radius:8px;"><strong>رد الإدارة:</strong> ${esc(t.admin_reply)}</div>` : ''}
                 </div>
@@ -4005,7 +4134,7 @@ window.submitSettingsKycUpload = async function () {
             documentNumber: document.getElementById('setKycDocNumber').value.trim(),
             documentImageData: imgData || null
         });
-        swMemToast('تم رفع مستند الهوية (KYC) للمراجعة بنجاح!', 'success');
+        swMemToast('تم رفع مستند الهوية الوطنية للمراجعة بنجاح!', 'success');
         await refreshDashboardBundle();
     } catch (err) {
         swMemToast(swMemErrText(err), 'error');
@@ -4192,6 +4321,25 @@ window.openMerchantComplaintModal = async function (preMerchantId = null, preMer
     }
 };
 
+window.requestMemberGdprErasure = async function () {
+    const ok = await swMemConfirm(
+        'تأكيد طلب محو البيانات الشخصية (GDPR / KVKK)',
+        'هل أنت متأكد من رغبتك في تقديم طلب إخفاء ومحو بياناتك الشخصية وإغلاق حسابك؟ سيتم التحقق أولاً من عدم وجود أرصدة معلقة قبل التنفيذ خلال 72 ساعة.',
+        true
+    );
+    if (!ok) return;
+    try {
+        const res = await window.SAWYAN.API.memberRequestGdprErasure({
+            memberId: currentMember.id,
+            reason: 'طلب إخفاء ومحو بيانات شخصية من داخل إعدادات العضو (GDPR/KVKK)'
+        });
+        swMemToast((res && res.message_ar) || 'تم تسجيل طلب محو البيانات الشخصية بنجاح لدى فريق الامتثال.', 'success');
+        await loadSettings();
+    } catch (err) {
+        swMemToast(swMemErrText(err), 'error');
+    }
+};
+
 window.submitMemberSupportTicket = async function () {
     const subj = document.getElementById('setSupSubject')?.value.trim();
     const body = document.getElementById('setSupBody')?.value.trim();
@@ -4292,6 +4440,9 @@ window.installMemberPwaApp = async function () {
 
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
+        if (currentMember?.id && window.SAWYAN?.API?.recordDeviceFraudFingerprint) {
+            window.SAWYAN.API.recordDeviceFraudFingerprint({ actorType: 'member', actorId: currentMember.id });
+        }
         if (currentMember?.id && window.SAWYAN?.Push) {
             window.SAWYAN.Push.syncIfAlreadyGranted({ actorType: 'member', actorId: currentMember.id }).then(() => _syncMemberPushUi());
             window.addEventListener('sawyan:pwa-install-ready', _syncMemberPushUi);

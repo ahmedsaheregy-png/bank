@@ -762,37 +762,246 @@
     margin-right: var(--spacing-xs);
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-    .filters-bar {
-        flex-direction: column;
-    }
+/* Responsive & Stage 25/27 Compact Above-the-Fold Overhaul */
+.page-header-compact {
+    padding: 16px 0 12px !important;
+    text-align: right;
+}
+.page-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.page-header-compact h1 {
+    font-size: clamp(1.35rem, 2.4vw, 1.85rem) !important;
+    margin-bottom: 2px !important;
+}
+.page-header-compact p {
+    font-size: 0.9rem !important;
+    margin: 0 !important;
+}
+.page-header-compact .merchants-count {
+    margin: 0 !important;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    padding: 5px 14px;
+    font-weight: 800;
+    color: #065f46;
+}
 
-    .search-box {
+.filters-section-compact {
+    padding: 10px 0 !important;
+}
+.filters-section-compact .filters-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+}
+.filters-section-compact .search-box {
+    flex: 1.5 1 210px;
+    min-width: 170px;
+}
+.filters-section-compact .search-box input {
+    padding: 8px 36px 8px 12px !important;
+    font-size: 0.88rem !important;
+    border-radius: 10px !important;
+}
+.geo-filter-pair {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1 1 auto;
+}
+.extra-filters-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1.2 1 auto;
+}
+.filters-section-compact .filter-select {
+    padding: 8px 10px !important;
+    font-size: 0.85rem !important;
+    border-radius: 10px !important;
+    min-width: 0;
+    flex: 1;
+}
+.mobile-extra-filters-btn {
+    display: none;
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #0f172a;
+    font-weight: 800;
+    font-size: 0.82rem;
+    cursor: pointer;
+    justify-content: space-between;
+    align-items: center;
+}
+.filters-section-compact .categories-pills {
+    margin-top: 8px !important;
+    justify-content: flex-start !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+    gap: 6px !important;
+}
+.filters-section-compact .categories-pills::-webkit-scrollbar { display: none; }
+.filters-section-compact .category-pill {
+    padding: 6px 12px !important;
+    font-size: 0.82rem !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+}
+
+.merchants-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+    gap: 18px;
+}
+
+/* Sleek floating corner badge uncovering 95% of store photo */
+.merchant-card .merchant-image {
+    position: relative !important;
+    overflow: hidden !important;
+    height: 162px !important;
+}
+.merchant-card .merchant-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.merchant-card .merchant-image img[src=''] {
+    display: none !important;
+}
+.merchant-card .merchant-cashback {
+    position: absolute !important;
+    top: auto !important;
+    bottom: 10px !important;
+    right: 10px !important;
+    left: auto !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: calc(100% - 20px) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    padding: 4px 10px !important;
+    background: rgba(6, 78, 59, 0.92) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(110, 231, 183, 0.55) !important;
+    backdrop-filter: blur(6px);
+    z-index: 4 !important;
+    font-size: 0.74rem !important;
+    font-weight: 800 !important;
+    border-radius: 999px !important;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.22) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+@media (max-width: 1120px) {
+    .filters-section-compact .filters-bar {
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 768px) {
+    .page-header-compact {
+        padding: 10px 0 8px !important;
+    }
+    .page-header-compact p {
+        display: none;
+    }
+    .filters-section-compact .filters-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+    }
+    .filters-section-compact .search-box {
+        width: 100%;
+        flex: none;
+    }
+    .geo-filter-pair {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 6px;
         width: 100%;
     }
-
+    .mobile-extra-filters-btn {
+        display: flex;
+    }
+    .extra-filters-group {
+        display: none;
+        flex-direction: column;
+        gap: 6px;
+        width: 100%;
+    }
+    .extra-filters-group.open {
+        display: flex;
+    }
     .merchant-modal-stats {
         grid-template-columns: 1fr;
     }
 }
- / *   H i d e   b r o k e n   o r   e m p t y   i m a g e s   * / 
- . m e r c h a n t - c a r d   . m e r c h a n t - i m a g e   i m g [ s r c = ' ' ]   { 
-         d i s p l a y :   n o n e   ! i m p o r t a n t ; 
- } 
-  
- 
- / *   F O R C E   F I X   f o r   B a d g e   S i z e   i s s u e   * / 
- . m e r c h a n t - c a r d   . m e r c h a n t - c a s h b a c k   { 
-         w i d t h :   a u t o   ! i m p o r t a n t ; 
-         h e i g h t :   a u t o   ! i m p o r t a n t ; 
-         d i s p l a y :   i n l i n e - b l o c k   ! i m p o r t a n t ; 
-         t o p :   1 0 p x   ! i m p o r t a n t ; 
-         r i g h t :   1 0 p x   ! i m p o r t a n t ; 
-         p a d d i n g :   2 p x   8 p x   ! i m p o r t a n t ; 
-         b a c k g r o u n d :   w h i t e   ! i m p o r t a n t ; 
-         z - i n d e x :   1 0 0   ! i m p o r t a n t ; 
-         f o n t - s i z e :   0 . 7 5 r e m   ! i m p o r t a n t ; 
-         b o r d e r - r a d i u s :   4 p x   ! i m p o r t a n t ; 
- }  
- 
+
+/* Dark Mode for Merchants Directory */
+[data-theme="dark"] .page-header,
+[data-theme="dark"] .section {
+    background: #0b1220 !important;
+}
+[data-theme="dark"] .page-header h1 { color: #f8fafc !important; }
+[data-theme="dark"] .page-header p { color: #cbd5e1 !important; }
+[data-theme="dark"] .filters-section,
+[data-theme="dark"] .merchant-card,
+[data-theme="dark"] .page-header-compact .merchants-count,
+[data-theme="dark"] .mobile-extra-filters-btn,
+[data-theme="dark"] .category-pill {
+    background: #111c30 !important;
+    color: #f1f5f9 !important;
+    border-color: #24324a !important;
+}
+[data-theme="dark"] .category-pill.active {
+    background: #059669 !important;
+    color: #ffffff !important;
+    border-color: #10b981 !important;
+}
+[data-theme="dark"] .merchant-card .merchant-name { color: #f8fafc !important; }
+[data-theme="dark"] .merchant-card p { color: #cbd5e1 !important; }
+
+
+/* Stage 26 Surgical Mobile Polish (merchants.html <= 768px / <= 640px):
+ * 1) Restore active geo scope inside .top-geo-trust-bar on merchants.html mobile (no blank green bar)
+ * 2) Prevent search icon overlap on placeholder & city text clipping ('القاهرة') inside 2-column pair
+ */
+@media (max-width: 768px) {
+    .filters-section-compact .search-box input {
+        padding-inline-start: 42px !important;
+        padding-inline-end: 12px !important;
+    }
+    .geo-filter-pair .sw-ss-prefix {
+        padding-inline-start: 7px !important;
+        font-size: 0.92rem !important;
+    }
+    .geo-filter-pair .sw-ss-input,
+    .geo-filter-pair .sw-ss-ghost {
+        padding-inline: 4px !important;
+        font-size: 0.84rem !important;
+    }
+}
+@media (max-width: 640px) {
+    .top-geo-trust-bar .top-geo-status {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        width: 100% !important;
+        font-size: 0.78rem !important;
+    }
+}

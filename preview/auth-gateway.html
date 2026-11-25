@@ -1,238 +1,344 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-theme="light">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ابدأ الآن - SAWYAN</title>
-    <meta name="description" content="سجّل أو سجّل دخول في منصة SAWYAN كمتسوق أو شريك أو تاجر">
+    <meta name="description" content="سجّل أو سجّل دخول في منصة SAWYAN كعضو متسوق أو تاجر شريك أو موظف كاشير">
+    <meta property="og:title" content="ابدأ الآن - SAWYAN">
+    <meta property="og:description" content="سجّل أو سجّل دخول في منصة SAWYAN كعضو متسوق أو تاجر شريك أو موظف كاشير">
+    <meta property="og:image" content="https://sawyan.global/assets/og-share-card.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://sawyan.global/assets/og-share-card.jpg">
+
+    <script>
+        (function () {
+            try {
+                var savedTheme = localStorage.getItem('sawyan_theme') || localStorage.getItem('sawyan-theme') || 'light';
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            } catch (e) {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
 
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/svg+xml" href="shared/assets/sawyan-icon.svg">
-    <link rel="stylesheet" href="css/preview.css?v=20261121_launch_ui2">
-    <link rel="stylesheet" href="css/bidi-support.css?v=20261121_launch">
+    <link rel="stylesheet" href="css/preview.css?v=20261121_launch_s27">
+    <link rel="stylesheet" href="css/bidi-support.css?v=20261121_launch_s27">
     <link rel="stylesheet" href="shared/css/logo.css?v=20261121_launch_ui2">
     <style>
-        *, *::before, *::after {
-            box-sizing: border-box;
-        }
-
-        html, body {
-            max-width: 100%;
-            overflow-x: hidden;
-        }
-
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { max-width: 100%; overflow-x: hidden; }
         body {
             background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #dbeafe 100%);
             min-height: 100vh;
         }
+        [data-theme="dark"] body {
+            background: linear-gradient(135deg, #0b1220 0%, #111c30 100%) !important;
+        }
+
+        .auth-nav-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
 
         .auth-gateway {
-            min-height: calc(100vh - 80px);
+            min-height: calc(100vh - 68px);
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: var(--spacing-2xl);
-            padding-top: 100px;
+            padding: 82px 20px 24px;
         }
 
         .gateway-container {
-            max-width: 900px;
+            max-width: 960px;
             width: 100%;
             min-width: 0;
         }
 
         .gateway-header {
             text-align: center;
-            margin-bottom: var(--spacing-2xl);
+            margin-bottom: 18px;
         }
 
         .gateway-header h1 {
-            font-size: 2.5rem;
+            font-size: clamp(1.45rem, 2.8vw, 2.05rem);
             color: var(--preview-primary-dark);
-            margin-bottom: var(--spacing-md);
+            margin-bottom: 6px;
         }
+        [data-theme="dark"] .gateway-header h1 { color: #f8fafc !important; }
 
         .gateway-header p {
-            font-size: 1.125rem;
+            font-size: 0.96rem;
             color: #64748b;
+            margin: 0;
+        }
+        [data-theme="dark"] .gateway-header p { color: #cbd5e1 !important; }
+
+        /* Mobile Instant 3-Role Switcher */
+        .mobile-role-switcher {
+            display: none;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 6px;
+            background: #e2e8f0;
+            padding: 4px;
+            border-radius: 14px;
+            margin-bottom: 14px;
+        }
+        [data-theme="dark"] .mobile-role-switcher { background: #1e293b; }
+        .mobile-role-tab {
+            border: none;
+            background: transparent;
+            color: #334155;
+            padding: 9px 6px;
+            border-radius: 10px;
+            font-family: 'Tajawal', sans-serif;
+            font-weight: 800;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        [data-theme="dark"] .mobile-role-tab { color: #cbd5e1; }
+        .mobile-role-tab.active {
+            background: #059669;
+            color: #ffffff;
+            box-shadow: 0 3px 10px rgba(5, 150, 105, 0.28);
         }
 
         .gateway-cards {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: var(--spacing-xl);
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+            align-items: stretch;
         }
 
         .gateway-card {
             background: #ffffff;
-            border-radius: var(--radius-xl);
-            padding: var(--spacing-2xl);
+            border-radius: 18px;
+            padding: 22px 22px 20px;
             text-align: center;
             border: 2px solid transparent;
-            transition: all 0.3s ease;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+            transition: all 0.25s ease;
+            box-shadow: 0 10px 32px rgba(15, 23, 42, 0.08);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        [data-theme="dark"] .gateway-card {
+            background: #111c30 !important;
+            border-color: #24324a;
         }
 
         .gateway-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12);
+            transform: translateY(-3px);
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
         }
 
-        .gateway-card.member {
-            border-top: 4px solid var(--preview-secondary);
-        }
-
-        .gateway-card.member:hover {
-            border-color: var(--preview-secondary);
-        }
-
-        .gateway-card.merchant {
-            border-top: 4px solid var(--preview-gold);
-        }
-
-        .gateway-card.merchant:hover {
-            border-color: var(--preview-gold);
-        }
+        .gateway-card.member { border-top: 4px solid var(--preview-secondary); }
+        .gateway-card.merchant { border-top: 4px solid var(--preview-gold); }
 
         .gateway-icon {
-            width: 100px;
-            height: 100px;
-            margin: 0 auto var(--spacing-xl);
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 12px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 3rem;
+            font-size: 2rem;
         }
-
-        .gateway-card.member .gateway-icon {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        }
-
-        .gateway-card.merchant .gateway-icon {
-            background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
-        }
+        .gateway-card.member .gateway-icon { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        .gateway-card.merchant .gateway-icon { background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); }
 
         .gateway-card h2 {
-            font-size: 1.75rem;
+            font-size: 1.38rem;
             color: var(--preview-primary-dark);
-            margin-bottom: var(--spacing-md);
+            margin-bottom: 6px;
         }
+        [data-theme="dark"] .gateway-card h2 { color: #f8fafc !important; }
 
         .gateway-card p {
             color: #64748b;
-            margin-bottom: var(--spacing-xl);
-            font-size: 1rem;
-            line-height: 1.7;
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+            line-height: 1.55;
         }
+        [data-theme="dark"] .gateway-card p { color: #cbd5e1 !important; }
 
         .gateway-features {
             list-style: none;
             text-align: right;
-            margin-bottom: var(--spacing-xl);
+            margin: 0 0 16px;
             padding: 0;
         }
+        html[dir="ltr"] .gateway-features { text-align: left; }
 
         .gateway-features li {
-            padding: var(--spacing-sm) 0;
-            color: #475569;
+            padding: 5px 0;
+            color: #334155;
+            font-size: 0.88rem;
             display: flex;
             align-items: center;
-            gap: var(--spacing-sm);
+            gap: 8px;
         }
+        [data-theme="dark"] .gateway-features li { color: #e2e8f0 !important; }
 
         .gateway-features li::before {
             content: '✓';
             color: var(--preview-secondary);
-            font-weight: bold;
+            font-weight: 900;
+            flex-shrink: 0;
         }
-
-        .gateway-card.merchant .gateway-features li::before {
-            color: var(--preview-gold);
-        }
+        .gateway-card.merchant .gateway-features li::before { color: #d97706; }
 
         .gateway-buttons {
             display: flex;
             flex-direction: column;
-            gap: var(--spacing-md);
+            gap: 9px;
         }
 
         .gateway-buttons .btn {
             width: 100%;
-            padding: var(--spacing-md) var(--spacing-xl);
-            font-size: 1.1rem;
-        }
-
-        .gateway-buttons .btn-outline {
-            background: #f8fafc;
-            color: #0f2744;
-            border: 1.5px solid #cbd5e1;
+            padding: 11px 16px;
+            font-size: 0.98rem;
             font-weight: 800;
         }
 
-        .gateway-buttons .btn-outline:hover {
-            background: #eef2f7;
-            border-color: #94a3b8;
-        }
+        .gateway-card.member .btn-primary { background: var(--gradient-secondary); color: #ffffff; }
+        .gateway-card.merchant .btn-primary { background: var(--gradient-gold); color: #0f172a; }
 
-        .gateway-card.member .btn-primary {
-            background: var(--gradient-secondary);
+        /* Horizontal Cashier Strip (Desktop) + Dedicated Mobile Card */
+        .cashier-gateway-bar {
+            margin-top: 14px;
+            background: linear-gradient(135deg, #0f2744 0%, #064e3b 100%);
+            color: #ffffff;
+            border-radius: 16px;
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            flex-wrap: wrap;
+            box-shadow: 0 10px 28px rgba(15, 39, 68, 0.16);
+            border: 1px solid rgba(52, 211, 153, 0.35);
         }
-
-        .gateway-card.merchant .btn-primary {
-            background: var(--gradient-gold);
-            color: #0f172a;
+        .cashier-bar-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            min-width: 220px;
         }
+        .cashier-bar-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 12px;
+            background: rgba(16, 185, 129, 0.22);
+            border: 1px solid rgba(110, 231, 183, 0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.45rem;
+            flex-shrink: 0;
+        }
+        .cashier-bar-info h3 {
+            margin: 0 0 2px;
+            font-size: 1rem;
+            color: #ffffff !important;
+        }
+        .cashier-bar-info p {
+            margin: 0;
+            font-size: 0.82rem;
+            color: #cbd5e1 !important;
+        }
+        .cashier-gateway-bar .btn {
+            background: #10b981;
+            color: #052e16;
+            border: none;
+            font-weight: 900;
+            padding: 10px 18px;
+            border-radius: 10px;
+            white-space: nowrap;
+        }
+        .cashier-gateway-bar .btn:hover { background: #34d399; }
 
         .gateway-footer {
             text-align: center;
-            margin-top: var(--spacing-2xl);
+            margin-top: 14px;
             color: #64748b;
+            font-size: 0.9rem;
         }
+        [data-theme="dark"] .gateway-footer { color: #cbd5e1; }
+        .gateway-footer a { color: #047857; font-weight: 800; }
+        [data-theme="dark"] .gateway-footer a { color: #34d399; }
 
-        .gateway-footer a {
-            color: var(--preview-primary);
-            font-weight: 600;
+        /* Fix closed mobile drawer visibility */
+        .mobile-menu:not(.active) {
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .mobile-menu-overlay:not(.active) {
+            visibility: hidden;
+            pointer-events: none;
         }
 
         @media (max-width: 768px) {
+            .auth-gateway {
+                padding: 72px 14px 20px;
+                align-items: flex-start;
+            }
+            .gateway-header {
+                margin-bottom: 12px;
+            }
+            .gateway-header p {
+                font-size: 0.84rem;
+            }
+            .mobile-role-switcher {
+                display: grid;
+            }
             .gateway-cards {
                 grid-template-columns: 1fr;
-                gap: 16px;
+                gap: 12px;
             }
-
             .gateway-card {
+                padding: 18px 16px;
+            }
+            .gateway-icon {
+                width: 52px;
+                height: 52px;
+                font-size: 1.65rem;
+                margin-bottom: 8px;
+            }
+            .gateway-card h2 { font-size: 1.2rem; }
+            .gateway-card p { font-size: 0.84rem; margin-bottom: 10px; }
+            .gateway-features { margin-bottom: 12px; }
+            .gateway-features li { font-size: 0.82rem; padding: 4px 0; }
+            .gateway-container[data-mobile-role="member"] .gateway-card.merchant,
+            .gateway-container[data-mobile-role="member"] .cashier-gateway-bar { display: none; }
+            .gateway-container[data-mobile-role="merchant"] .gateway-card.member,
+            .gateway-container[data-mobile-role="merchant"] .cashier-gateway-bar { display: none; }
+            .gateway-container[data-mobile-role="cashier"] .gateway-card.member,
+            .gateway-container[data-mobile-role="cashier"] .gateway-card.merchant { display: none; }
+            .cashier-gateway-bar {
+                flex-direction: column;
+                text-align: center;
                 padding: 20px 16px;
+            }
+            .cashier-bar-info {
+                flex-direction: column;
                 min-width: 0;
+            }
+            .cashier-gateway-bar .btn {
                 width: 100%;
-            }
-
-            .gateway-buttons .btn {
-                padding: 12px 14px;
-                font-size: 0.96rem;
-                white-space: normal;
-            }
-
-            .gateway-header h1 {
-                font-size: 1.55rem;
-            }
-
-            .auth-gateway {
-                padding: 16px;
-                padding-top: 84px;
-            }
-
-            .preview-nav .container,
-            .preview-nav .nav-content {
-                max-width: 100%;
-                padding-inline: 12px;
+                justify-content: center;
             }
         }
     </style>
@@ -240,25 +346,28 @@
 
 <body>
     <!-- Navigation -->
-    <nav class="preview-nav" id="navbar">
+    <nav class="preview-nav portal-nav" id="navbar">
         <div class="container">
             <div class="nav-content">
                 <a href="index.html" class="nav-logo sawyan-home-logo" id="navBrandLogo" data-sawyan-logo="default" aria-label="SAWYAN — الصفحة الرئيسية" title="العودة للصفحة الرئيسية">
                     <span style="font-weight:900; color:#047857;">SAWYAN</span>
                 </a>
 
-                <!-- Hamburger Menu Button للموبايل -->
-                <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileMenu()">
-                    <span class="hamburger-line"></span>
-                    <span class="hamburger-line"></span>
-                    <span class="hamburger-line"></span>
-                </button>
-
                 <ul class="nav-links" id="navLinks">
-                    <li><a href="index.html">الرئيسية</a></li>
-                    <li><a href="public/merchants.html">التجار</a></li>
+                    <li><a href="index.html" data-i18n="common.home">الرئيسية</a></li>
+                    <li><a href="public/merchants.html" data-i18n="public.nav_merchants">دليل المتاجر</a></li>
                     <li><a href="member-dashboard/login.html?quick=member">جرّب كعضو</a></li>
                 </ul>
+
+                <div class="nav-right-controls auth-nav-controls">
+                    <button type="button" class="theme-toggle" id="themeToggleBtn" aria-label="تبديل المظهر">🌙</button>
+                    <div id="sawyanGlobalControlsMount"></div>
+                    <button type="button" class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileMenu()" aria-label="القائمة">
+                        <span class="hamburger-line"></span>
+                        <span class="hamburger-line"></span>
+                        <span class="hamburger-line"></span>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -269,12 +378,12 @@
         <div class="mobile-menu" id="mobileMenu">
             <div class="mobile-menu-header">
                 <a href="index.html" class="mobile-menu-title sawyan-home-logo" data-sawyan-logo="default" data-sawyan-compact="1" aria-label="SAWYAN الرئيسية">SAWYAN</a>
-                <button class="mobile-menu-close" onclick="closeMobileMenu()">&times;</button>
+                <button type="button" class="mobile-menu-close" onclick="closeMobileMenu()" aria-label="إغلاق">&times;</button>
             </div>
             <div class="mobile-menu-links">
-                <a href="index.html">الرئيسية</a>
-                <a href="public/merchants.html">التجار</a>
-                <a href="member-dashboard/login.html?quick=member">جرّب كعضو</a>
+                <a href="index.html">🏠 الرئيسية</a>
+                <a href="public/merchants.html">🏪 دليل المتاجر</a>
+                <a href="member-dashboard/login.html?quick=member">👁️ جرّب كعضو</a>
             </div>
             <div class="mobile-menu-cta">
                 <a href="member-dashboard/register.html" class="btn btn-primary btn-block">تسجيل كعضو</a>
@@ -285,63 +394,81 @@
 
     <!-- Auth Gateway -->
     <section class="auth-gateway">
-        <div class="gateway-container">
+        <div class="gateway-container" id="gatewayContainer" data-mobile-role="member">
             <div class="gateway-header">
                 <h1 id="gatewayHeading">🚀 ابدأ رحلتك مع <span class="text-gradient">SAWYAN</span></h1>
-                <p id="gatewaySubtitle">اختر نوع حسابك للمتابعة</p>
+                <p id="gatewaySubtitle">اختر بوابتك للمتابعة — عضو متسوق، صاحب متجر، أو موظف كاشير</p>
+            </div>
+
+            <!-- Mobile 3-Role Instant Tab Switcher -->
+            <div class="mobile-role-switcher" role="tablist" aria-label="اختر نوع البوابة">
+                <button type="button" class="mobile-role-tab active" data-role="member" role="tab" aria-selected="true">👤 عضو / متسوق</button>
+                <button type="button" class="mobile-role-tab" data-role="merchant" role="tab" aria-selected="false">🏪 تاجر</button>
+                <button type="button" class="mobile-role-tab" data-role="cashier" role="tab" aria-selected="false">🧾 كاشير</button>
             </div>
 
             <div class="gateway-cards">
-                <!-- Member Card -->
+                <!-- Member Card (3 Crisp Balanced Bullets) -->
                 <div class="gateway-card member">
-                    <div class="gateway-icon">👤</div>
-                    <h2>عضو / متسوق</h2>
-                    <p>حوّل مشترياتك اليومية إلى أرباح حقيقية ضمن عالم الاستهلاك الاستثماري وشارك لبناء فريقك</p>
+                    <div>
+                        <div class="gateway-icon">👤</div>
+                        <h2>عضو / متسوق</h2>
+                        <p>حوّل مشترياتك اليومية إلى عائدات حقيقية تنمو كل شهر مجاناً بدون رأس مال</p>
 
-                    <ul class="gateway-features">
-                        <li>عائدات الاستهلاك الاستثماري لخطة الدخل بدون رسوم اشتراك</li>
-                        <li>محفظة إلكترونية وصندوق هدف شفاف</li>
-                        <li>QR Code شخصي لتوثيق الفواتير</li>
-                        <li>صرف منظم يوم 15 بعد مهلة مراجعة 14 يوماً</li>
-                        <li>ربط فريق عالمي بلا حواجز جغرافية</li>
-                    </ul>
+                        <ul class="gateway-features">
+                            <li>عضوية مجانية 100% وعائدات متنامية لخطة الدخل</li>
+                            <li>كود QR شخصي لتوثيق الفواتير وصندوق هدف شفاف</li>
+                            <li>بناء فريق عالمي وصرف منظم بعد فترة المراجعة</li>
+                        </ul>
+                    </div>
 
                     <div class="gateway-buttons" id="memberGatewayButtons">
                         <a href="member-dashboard/register.html" id="memberRegisterBtn" class="btn btn-primary">
-                            ✨ تسجيل حساب جديد
+                            ✨ تسجيل حساب عضو مجاناً
                         </a>
                         <a href="member-dashboard/login.html" id="memberLoginBtn" class="btn btn-secondary">
-                            لدي حساب - تسجيل الدخول
+                            لدي حساب عضو — تسجيل الدخول
                         </a>
                     </div>
                 </div>
 
-                <!-- Merchant Card -->
+                <!-- Merchant Card (3 Crisp Balanced Bullets) -->
                 <div class="gateway-card merchant">
-                    <div class="gateway-icon">🏪</div>
-                    <h2>تاجر / صاحب نشاط</h2>
-                    <p>ضاعف مبيعاتك دون المجازفة بمبالغ تُنفق على حملات تسويقية مجهولة المردود</p>
+                    <div>
+                        <div class="gateway-icon">🏪</div>
+                        <h2>تاجر / صاحب نشاط</h2>
+                        <p>ضاعف مبيعاتك بزبائن حقيقيين وادفع مقابل المبيعات الموثّقة فقط</p>
 
-                    <ul class="gateway-features">
-                        <li>ادفع مقابل النتائج الفعلية فقط</li>
-                        <li>آلاف العملاء في انتظارك — نحن جيشك التسويقي القادم</li>
-                        <li>تفرغ لتطوير منتجك وخدماتك بدون رسوم اشتراك</li>
-                        <li>شاشة توثيق سريعة للمالك وبوابة معزولة لكل موظف كاشير</li>
-                        <li>شفافية محاسبية كاملة وتقارير مبيعات فورية</li>
-                    </ul>
+                        <ul class="gateway-features">
+                            <li>بلا رسوم اشتراك شهرية — ادفع عند البيع الفعلي فقط</li>
+                            <li>ظهور فوري في دليل التجار أمام آلاف المتسوقين</li>
+                            <li>لوحة تحكم شاملة مع بوابة معزولة لكل موظف كاشير</li>
+                        </ul>
+                    </div>
 
                     <div class="gateway-buttons" id="merchantGatewayButtons">
                         <a href="merchant-dashboard/register.html" id="merchantRegisterBtn" class="btn btn-primary">
                             🏪 سجّل متجرك الآن
                         </a>
                         <a href="merchant-dashboard/login.html" id="merchantLoginBtn" class="btn btn-secondary">
-                            لدي حساب تاجر - تسجيل الدخول
-                        </a>
-                        <a href="merchant-dashboard/login.html?tab=employee" id="merchantEmployeeLoginBtn" class="btn btn-outline">
-                            👨‍💼 دخول موظف الكاشير (بالموبايل)
+                            لدي حساب تاجر — تسجيل الدخول
                         </a>
                     </div>
                 </div>
+            </div>
+
+            <!-- Horizontal Cashier Bar (Always Visible Above the Fold on Desktop, Dedicated Tab on Mobile) -->
+            <div class="cashier-gateway-bar" id="cashierGatewayBar">
+                <div class="cashier-bar-info">
+                    <div class="cashier-bar-icon">👨‍💼</div>
+                    <div>
+                        <h3>بوابة موظف الكاشير المعزولة (نقطة البيع)</h3>
+                        <p>دخول سريع ومستقل لموظف المحل لتوثيق فواتير الأعضاء بكود المتجر والرمز السري دون الوصول لبيانات المالك المالية.</p>
+                    </div>
+                </div>
+                <a href="merchant-dashboard/login.html?tab=employee" id="merchantEmployeeLoginBtn" class="btn">
+                    🧾 دخول موظف الكاشير ←
+                </a>
             </div>
 
             <div class="gateway-footer">
@@ -350,18 +477,34 @@
         </div>
     </section>
 
-    <script src="shared/components/logo.js?v=20261121_launch"></script>
+    <script src="shared/components/logo.js?v=20261121_launch_ui2"></script>
     <script src="shared/components/flags.js?v=20261121_launch"></script>
-    <script src="shared/i18n/i18n.js?v=20261121_launch"></script>
+    <script src="shared/i18n/i18n.js?v=20261121_launch_s27"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="shared/config/supabase.js?v=20261121_launch"></script>
-    <script src="shared/api/sawyan-api.js?v=20261121_launch"></script>
-    <script src="js/demo-data.js?v=20261121_launch"></script>
+    <script src="shared/config/supabase.js?v=20261121_launch_ui2"></script>
+    <script src="shared/api/sawyan-api.js?v=20261121_launch_s27"></script>
+    <script src="js/demo-data.js?v=20261121_launch_ui2"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            if (window.SAWYAN && window.SAWYAN.Logo && document.getElementById('navBrandLogo')) {
-                document.getElementById('navBrandLogo').innerHTML = window.SAWYAN.Logo.svg('default');
+            function syncBrandAndTheme() {
+                var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                var themeBtn = document.getElementById('themeToggleBtn');
+                if (themeBtn) themeBtn.textContent = isDark ? '☀️' : '🌙';
+                if (window.SAWYAN && window.SAWYAN.Logo && document.getElementById('navBrandLogo')) {
+                    document.getElementById('navBrandLogo').innerHTML = window.SAWYAN.Logo.svg(isDark ? 'light-on-dark' : 'default');
+                }
             }
+            syncBrandAndTheme();
+            var themeBtn = document.getElementById('themeToggleBtn');
+            if (themeBtn) {
+                themeBtn.addEventListener('click', function () {
+                    var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+                    document.documentElement.setAttribute('data-theme', next);
+                    try { localStorage.setItem('sawyan_theme', next); localStorage.setItem('sawyan-theme', next); } catch (e) {}
+                    syncBrandAndTheme();
+                });
+            }
+
             if (window.SAWYAN_GEO) {
                 var ctx = window.SAWYAN_GEO.detectInitial();
                 var q = '?country=' + encodeURIComponent(ctx.country) + (ctx.city && ctx.city !== 'all' ? '&city=' + encodeURIComponent(ctx.city) : '');
@@ -369,60 +512,68 @@
                     a.setAttribute('href', a.getAttribute('href') + q);
                 });
             }
-            const mode = new URLSearchParams(window.location.search).get('mode');
+
+            // Mobile 3-Role Tab Switcher
+            var gwBox = document.getElementById('gatewayContainer');
+            document.querySelectorAll('.mobile-role-tab').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var role = btn.getAttribute('data-role') || 'member';
+                    if (gwBox) gwBox.setAttribute('data-mobile-role', role);
+                    document.querySelectorAll('.mobile-role-tab').forEach(function (b) {
+                        var act = b === btn;
+                        b.classList.toggle('active', act);
+                        b.setAttribute('aria-selected', act ? 'true' : 'false');
+                    });
+                });
+            });
+
+            var params = new URLSearchParams(window.location.search);
+            var mode = params.get('mode');
+            var roleParam = params.get('role');
+            if (roleParam && ['member', 'merchant', 'cashier'].includes(roleParam)) {
+                var tab = document.querySelector('.mobile-role-tab[data-role="' + roleParam + '"]');
+                if (tab) tab.click();
+            }
             if (mode === 'login') {
-                const headingEl = document.getElementById('gatewayHeading');
-                const subEl = document.getElementById('gatewaySubtitle');
+                var headingEl = document.getElementById('gatewayHeading');
+                var subEl = document.getElementById('gatewaySubtitle');
                 if (headingEl) headingEl.innerHTML = '🔐 تسجيل الدخول إلى <span class="text-gradient">SAWYAN</span>';
                 if (subEl) subEl.textContent = 'اختر بوابتك للدخول المباشر — عضو، مالك متجر، أو موظف كاشير';
 
-                const memBox = document.getElementById('memberGatewayButtons');
-                const memLogin = document.getElementById('memberLoginBtn');
-                const memReg = document.getElementById('memberRegisterBtn');
+                var memBox = document.getElementById('memberGatewayButtons');
+                var memLogin = document.getElementById('memberLoginBtn');
+                var memReg = document.getElementById('memberRegisterBtn');
                 if (memBox && memLogin && memReg) {
                     memLogin.className = 'btn btn-primary';
                     memReg.className = 'btn btn-secondary';
                     memBox.insertBefore(memLogin, memReg);
                 }
 
-                const merchBox = document.getElementById('merchantGatewayButtons');
-                const merchLogin = document.getElementById('merchantLoginBtn');
-                const merchEmp = document.getElementById('merchantEmployeeLoginBtn');
-                const merchReg = document.getElementById('merchantRegisterBtn');
-                if (merchBox && merchLogin && merchEmp && merchReg) {
+                var merchBox = document.getElementById('merchantGatewayButtons');
+                var merchLogin = document.getElementById('merchantLoginBtn');
+                var merchReg = document.getElementById('merchantRegisterBtn');
+                if (merchBox && merchLogin && merchReg) {
                     merchLogin.className = 'btn btn-primary';
-                    merchEmp.className = 'btn btn-outline';
                     merchReg.className = 'btn btn-secondary';
-                    merchBox.appendChild(merchLogin);
-                    merchBox.appendChild(merchEmp);
-                    merchBox.appendChild(merchReg);
+                    merchBox.insertBefore(merchLogin, merchReg);
                 }
             }
         });
-    </script>
-    <script>
-        // Mobile Menu Functions
-        function toggleMobileMenu() {
-            const menu = document.getElementById('mobileMenu');
-            const overlay = document.getElementById('mobileMenuOverlay');
-            const btn = document.getElementById('mobileMenuBtn');
 
+        function toggleMobileMenu() {
+            var menu = document.getElementById('mobileMenu');
+            var overlay = document.getElementById('mobileMenuOverlay');
+            var btn = document.getElementById('mobileMenuBtn');
             menu.classList.toggle('active');
             overlay.classList.toggle('active');
             btn.classList.toggle('active');
-
-            if (menu.classList.contains('active')) {
-                document.body.style.overflow = 'hidden';
-            } else {
-                document.body.style.overflow = '';
-            }
+            document.body.style.overflow = menu.classList.contains('active') ? 'hidden' : '';
         }
 
         function closeMobileMenu() {
-            const menu = document.getElementById('mobileMenu');
-            const overlay = document.getElementById('mobileMenuOverlay');
-            const btn = document.getElementById('mobileMenuBtn');
-
+            var menu = document.getElementById('mobileMenu');
+            var overlay = document.getElementById('mobileMenuOverlay');
+            var btn = document.getElementById('mobileMenuBtn');
             menu.classList.remove('active');
             overlay.classList.remove('active');
             btn.classList.remove('active');

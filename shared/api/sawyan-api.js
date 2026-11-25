@@ -1965,6 +1965,58 @@
             });
         },
 
+        async adminGdprPseudonymizeMember({ memberId, reason = 'GDPR/KVKK Art.17 Erasure Request' }) {
+            const admin = SawyanAPI.getSavedAdmin();
+            if (!admin || !admin.id) throw new Error('ADMIN_SESSION_REQUIRED');
+            return await callRpc('gdpr_pseudonymize_member_data', {
+                p_admin_id: admin.id,
+                p_session_token: SawyanAPI.getAdminSessionToken(),
+                p_member_id: memberId,
+                p_reason: reason
+            });
+        },
+
+        async memberRequestGdprErasure({ memberId, reason = null, sessionToken = null }) {
+            const tok = sessionToken || SawyanAPI.getMemberSessionToken();
+            return await callRpc('member_request_gdpr_erasure', {
+                p_member_id: memberId,
+                p_session_token: tok,
+                p_reason: reason || 'طلب محو وإخفاء البيانات الشخصية (GDPR/KVKK)'
+            });
+        },
+
+        async recordDeviceFraudFingerprint({ actorType, actorId, sessionToken = null }) {
+            try {
+                if (!actorId || typeof window === 'undefined' || !window.crypto || !window.crypto.subtle) return null;
+                const tok = sessionToken || (actorType === 'merchant' ? SawyanAPI.getMerchantSessionToken() : SawyanAPI.getMemberSessionToken());
+                if (!tok) return null;
+                const sessKey = `sw_dfp_sent_${actorType}_${actorId}`;
+                if (sessionStorage.getItem(sessKey) === '1') return null;
+                const tz = (Intl && Intl.DateTimeFormat ? Intl.DateTimeFormat().resolvedOptions().timeZone : '') || '';
+                const ua = String(navigator.userAgent || '').slice(0, 110);
+                const seed = [
+                    navigator.platform || '',
+                    navigator.language || '',
+                    tz,
+                    String(window.screen ? `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}` : ''),
+                    String(navigator.hardwareConcurrency || '')
+                ].join('|');
+                const buf = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(seed));
+                const hex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+                sessionStorage.setItem(sessKey, '1');
+                return await callRpc('record_device_fraud_fingerprint', {
+                    p_actor_type: actorType,
+                    p_actor_id: actorId,
+                    p_session_token: tok,
+                    p_device_hash: hex,
+                    p_tz: tz,
+                    p_ua_short: ua
+                });
+            } catch (_e) {
+                return null;
+            }
+        },
+
         mountEnvironmentSwitchBar() {
             if (typeof document === 'undefined' || document.getElementById('sawyanEnvRibbon')) return;
             SawyanAPI.rewriteProductionDemoLinks();

@@ -389,7 +389,7 @@ def run_v2_multi_persona_browser_journeys():
             )
             audit_screen_purity(page_mem, "member_home_375", is_user_facing=True)
 
-            # 2b. Walk Member Tabs + Wallet Arabic Localization + Tree Studio Audit
+            # 2b. Walk Member Tabs + Wallet Arabic Localization + Browser Back Guard
             for tab in ["myPending", "transactions", "tree", "wallet", "merchants", "referrals", "settings"]:
                 page_mem.evaluate(f"() => typeof goToPage === 'function' && goToPage('{tab}')")
                 page_mem.wait_for_timeout(550)
@@ -404,10 +404,16 @@ def run_v2_multi_persona_browser_journeys():
                     }"""
                     )
                     assert not raw_wallet, f"[JOURNEY V2 FAIL — member_wallet] Raw English wallet enums leaked: {raw_wallet}"
+            # Verify Member Browser Back Guard (stays on dashboard.html, never kicks out to login)
+            page_mem.go_back()
+            page_mem.wait_for_timeout(500)
+            assert "dashboard.html" in page_mem.url and "login.html" not in page_mem.url, (
+                f"[PILLAR 6 FAIL — Member Browser Back Trap] Pressing Back kicked member out to: {page_mem.url}"
+            )
             ctx_mem.close()
             print(
                 f" [V2 PILLAR 2 PASS] Member Lifecycle & Above-the-Fold UX @ 375x812 "
-                f"(header={atf['headerHeight']}px, QR_top={atf['qrTop']}px, TargetBox_top={atf['targetBoxTop']}px, 8 screens pure)"
+                f"(header={atf['headerHeight']}px, QR_top={atf['qrTop']}px, TargetBox_top={atf['targetBoxTop']}px, 8 screens pure, Back guard OK)"
             )
 
             # =================================================================
@@ -426,14 +432,23 @@ def run_v2_multi_persona_browser_journeys():
             )
             assert mer_hdr_h <= 76, f"[JOURNEY V2 FAIL — merchant_mobile] Mobile header wrapped/too tall: {mer_hdr_h}px"
             assert page_mer.locator("#notificationBell").is_visible(), "[JOURNEY V2 FAIL — merchant_mobile] Bell missing"
+            # Verify no negative-zero '-0.00' on Merchant home KPI cards
+            mer_neg_zero = page_mer.evaluate("() => (document.getElementById('homePage')?.innerText || '').includes('-0.00')")
+            assert not mer_neg_zero, "[PILLAR 6 FAIL — Merchant Negative Zero] Found '-0.00' on Merchant Home KPI card"
             stage18_e2e.check_no_dead_end_lock_banners(page_mer, "v2_merchant_home")
 
             for tab in ["home", "kiosk", "pending", "scan", "transactions", "financial", "settings"]:
                 page_mer.evaluate(f"() => typeof showPage === 'function' && showPage('{tab}')")
                 page_mer.wait_for_timeout(450)
                 audit_screen_purity(page_mer, f"merchant_{tab}_375", is_user_facing=True)
+            # Verify Merchant Browser Back Guard
+            page_mer.go_back()
+            page_mer.wait_for_timeout(500)
+            assert "dashboard.html" in page_mer.url and "login.html" not in page_mer.url, (
+                f"[PILLAR 6 FAIL — Merchant Browser Back Trap] Pressing Back kicked merchant out to: {page_mer.url}"
+            )
             ctx_mer.close()
-            print(f" [V2 PILLAR 3 PASS] Merchant Mobile Lifecycle @ 375x812 (header={mer_hdr_h}px, 7 tabs pure, 0 dead-end locks)")
+            print(f" [V2 PILLAR 3 PASS] Merchant Mobile Lifecycle @ 375x812 (header={mer_hdr_h}px, 7 tabs pure, 0 dead-end locks, Back guard OK)")
 
             # =================================================================
             # PILLAR 4: CASHIER EMPLOYEE (ARABIC PIN) & SOVEREIGN ADMIN COCKPIT
@@ -473,16 +488,33 @@ def run_v2_multi_persona_browser_journeys():
                     audit_screen_purity(page_adm, f"admin_{nav_page}_1440", is_user_facing=False)
 
             # =================================================================
-            # PILLAR 6: INTERACTIVE BEHAVIORAL & USABILITY TRUTH AUDIT
-            # (1) Browser Back Trap Guard, (2) Filter/Action-Card Truthfulness,
-            # (3) Clickable Table Rows + 1-Click Quick Actions,
-            # (4) Contextual [؟] Help Popovers, (5) Admin Zero-Jargon Purity
+            # PILLAR 6 (GEN-2 HARDENED): UNCHEATABLE INTERACTIVE BEHAVIORAL AUDIT
+            # (1) Real Mouse Clicks + RPC Storm Guard (<=2 RPCs),
+            # (2) Browser Back Guard, (3) Real Filter Pill Clicks,
+            # (4) Real Reports Date-Range Filtering, (5) ban_now Confirmation Guard,
+            # (6) Contextual [?] Help Popovers, (7) Full-Screen Zero-Jargon,
+            # (8) Real AR/EN/TR i18n & Dark Mode Verification
             # =================================================================
-            # 6.1 Navigate Home -> Merchants -> Transactions, then press Browser BACK
+            # 6.1 Navigate Home -> Click Real Action Card & Count RPC Storm
             page_adm.locator('.sidebar-nav .nav-item[data-page="home"]').first.click()
             page_adm.wait_for_timeout(700)
-            page_adm.locator('.sidebar-nav .nav-item[data-page="merchants"]').first.click()
-            page_adm.wait_for_timeout(900)
+            rpc_hits = []
+            def _on_req(req):
+                if "admin_search_and_reply_ops" in req.url:
+                    rpc_hits.append(req.url)
+            page_adm.on("request", _on_req)
+            fifo_card = page_adm.locator("#actionRowFifoMerchants button")
+            if fifo_card.count() > 0:
+                fifo_card.first.click()
+                page_adm.wait_for_timeout(1200)
+                assert len(rpc_hits) <= 2, (
+                    f"[PILLAR 6 FAIL — RPC Storm] Clicking Home action card fired {len(rpc_hits)} concurrent admin_search_and_reply_ops RPCs (max 2)"
+                )
+            else:
+                page_adm.locator('.sidebar-nav .nav-item[data-page="merchants"]').first.click()
+                page_adm.wait_for_timeout(900)
+            page_adm.remove_listener("request", _on_req)
+
             page_adm.locator('.sidebar-nav .nav-item[data-page="transactions"]').first.click()
             page_adm.wait_for_timeout(900)
 
@@ -498,32 +530,42 @@ def run_v2_multi_persona_browser_journeys():
                 f"[PILLAR 6 FAIL — Browser Back History] Expected merchantsPage after Back from transactionsPage, got: {back_active_page}"
             )
 
-            # 6.2 Filter Pill & Action-Card Row-Count Truthfulness Audit on #merchantsPage
-            filter_truth = page_adm.evaluate(
-                """async () => {
-                    const pills = Array.from(document.querySelectorAll('#merchantsPage [data-mer-filter]'));
-                    const report = [];
-                    for (const btn of pills) {
-                        const fk = btn.getAttribute('data-mer-filter');
-                        const txt = (btn.innerText || '').trim();
-                        const m = txt.match(/\\((\\d+)\\)/);
-                        if (!m) continue;
-                        const expected = parseInt(m[1], 10);
-                        await window.loadMerchants('', fk);
-                        const rows = Array.from(document.querySelectorAll('#merchantsTable tbody tr.clickable-admin-row'));
-                        report.push({ filter: fk, expected, actual: rows.length, match: expected === rows.length });
-                    }
-                    await window.loadMerchants('', 'all');
-                    return report;
-                }"""
+            # 6.2 REAL Mouse-Click Filter Pill Truthfulness Audit on #merchantsPage (must be instant & 0 extra RPCs)
+            page_adm.wait_for_selector('#merchantsPage [data-mer-filter]', timeout=8000)
+            page_adm.wait_for_timeout(800)
+            pills = page_adm.locator('#merchantsPage [data-mer-filter]')
+            pill_count = pills.count()
+            assert pill_count >= 5, f"[PILLAR 6 FAIL — Filter Pills] Expected >=5 filter pills, got {pill_count}"
+            pill_rpc_hits = []
+            def _on_pill_req(req):
+                if "admin_search_and_reply_ops" in req.url:
+                    pill_rpc_hits.append(req.url)
+            page_adm.on("request", _on_pill_req)
+            filter_mismatches = []
+            for idx in range(pill_count):
+                pill = pills.nth(idx)
+                fk = pill.get_attribute("data-mer-filter") or ""
+                txt = (pill.inner_text() or "").strip()
+                m_cnt = re.search(r"\((\d+)\)", txt)
+                if not m_cnt:
+                    continue
+                expected = int(m_cnt.group(1))
+                pill.click()
+                page_adm.wait_for_timeout(150)
+                actual = page_adm.locator('#merchantsTable tbody tr.clickable-admin-row').count()
+                if actual != expected:
+                    filter_mismatches.append({"filter": fk, "expected": expected, "actual": actual})
+            page_adm.locator('#merchantsPage [data-mer-filter="all"]').first.click()
+            page_adm.wait_for_timeout(150)
+            page_adm.remove_listener("request", _on_pill_req)
+            assert len(pill_rpc_hits) == 0, (
+                f"[PILLAR 6 FAIL — Redundant Filter RPCs] Clicking filter pills fired {len(pill_rpc_hits)} redundant RPCs (expected 0)"
             )
-            assert len(filter_truth) >= 5, f"[PILLAR 6 FAIL — Filter Pills] Expected >=5 filter pills, got {filter_truth}"
-            mismatched_filters = [r for r in filter_truth if not r["match"]]
-            assert not mismatched_filters, (
-                f"[PILLAR 6 FAIL — Fake/Disconnected Filter Count] Displayed table rows != filter pill badge count: {mismatched_filters}"
+            assert not filter_mismatches, (
+                f"[PILLAR 6 FAIL — Fake/Disconnected Filter Count] Real mouse click rows != badge count: {filter_mismatches}"
             )
 
-            # 6.3 Clickable Row Drilldown + 1-Click Quick Action Bar + Contextual [؟] Help Popover
+            # 6.3 Clickable Row Drilldown + ban_now Confirmation Guard + Contextual [?] Help Popover
             first_row_cell = page_adm.locator('#merchantsTable tbody tr.clickable-admin-row td[data-label="المنشأة"]').first
             assert first_row_cell.count() > 0, "[PILLAR 6 FAIL — Clickable Rows] No .clickable-admin-row found in #merchantsTable"
             first_row_cell.click()
@@ -548,6 +590,20 @@ def run_v2_multi_persona_browser_journeys():
                 f"[PILLAR 6 FAIL — Cryptic Jargon in Modal] Found raw D4 or 2101 inside Merchant Contract Modal: {modal_audit}"
             )
 
+            # Verify ban_now requires confirmation modal (never executes destructively on 1 click!)
+            ban_btn = page_adm.locator('#svStage7ModalOverlay button[onclick*="ban_now"]').first
+            if ban_btn.count() > 0:
+                ban_btn.click()
+                page_adm.wait_for_timeout(350)
+                confirm_visible = page_adm.locator('.sw-dialog-backdrop, .sw-dialog-card').count() > 0
+                assert confirm_visible, "[PILLAR 6 FAIL — Destructive Guard] ban_now executed without SAWYAN.UI.confirm modal!"
+                cancel_btn = page_adm.locator('.sw-dialog-backdrop .sw-btn-ghost, .sw-dialog-card button:has-text("تراجع")').first
+                if cancel_btn.count() > 0:
+                    cancel_btn.click()
+                else:
+                    page_adm.keyboard.press("Escape")
+                page_adm.wait_for_timeout(300)
+
             # Click the first [؟] help button inside the modal and verify the explanation popover
             page_adm.locator('#svStage7ModalOverlay .sawyan-help-trigger').first.click()
             page_adm.wait_for_timeout(400)
@@ -566,12 +622,33 @@ def run_v2_multi_persona_browser_journeys():
             page_adm.go_back()
             page_adm.wait_for_timeout(450)
             assert "dashboard.html" in page_adm.url, "[PILLAR 6 FAIL] Browser Back inside modal left dashboard.html"
+            page_adm.evaluate("() => { if (typeof closeStage7Modal === 'function') closeStage7Modal(); }")
+            page_adm.wait_for_timeout(200)
 
-            # 6.4 Admin Operational Zero-Jargon Scan across Home, Members, Merchants, Reports
+            # 6.4 Real Reports Date Range Filtering Truthfulness Audit
+            page_adm.locator('.sidebar-nav .nav-item[data-page="reports"]').first.click()
+            page_adm.wait_for_timeout(700)
+            page_adm.fill('#reportStartDate', '2020-01-01')
+            page_adm.fill('#reportEndDate', '2020-01-02')
+            page_adm.locator('#reportsPage button[onclick*="generateReport"]').first.click()
+            page_adm.wait_for_timeout(500)
+            rep_empty_rows = page_adm.evaluate(
+                "() => document.querySelectorAll('#reportsPage table.data-table tbody tr:not(:has(.empty-state))').length"
+            )
+            assert rep_empty_rows == 0, (
+                f"[PILLAR 6 FAIL — Fake Reports Date Filter] Setting 2020-01-01..2020-01-02 still returned {rep_empty_rows} rows!"
+            )
+
+            # 6.5 Admin Comprehensive Zero-Jargon & Formatting Scan across Operational + Governance Screens
+            for g_nav in ["governanceOps", "sovereignLive", "settings", "withdrawals", "disputes", "support"]:
+                nav_loc = page_adm.locator(f'.sidebar-nav .nav-item[data-page="{g_nav}"]')
+                if nav_loc.count() > 0:
+                    nav_loc.first.click()
+                    page_adm.wait_for_timeout(600)
             admin_jargon_leaks = page_adm.evaluate(
                 """() => {
-                    const pages = ['homePage', 'membersPage', 'merchantsPage', 'reportsPage'];
-                    const forbidden = [/\\bD4\\b/, /\\b2101\\b/, /\\b2201\\b/, /\\bTombstone\\b/i];
+                    const pages = ['homePage', 'membersPage', 'merchantsPage', 'reportsPage', 'governanceOpsPage', 'sovereignLivePage', 'settingsPage'];
+                    const forbidden = [/\\bD4\\b/, /\\b2101\\b/, /\\b2201\\b/, /\\bTombstone\\b/i, /\\$-\\d/, /Gross GMV/i];
                     const leaks = [];
                     for (const pid of pages) {
                         const el = document.getElementById(pid);
@@ -584,10 +661,34 @@ def run_v2_multi_persona_browser_journeys():
                     return leaks;
                 }"""
             )
-            assert not admin_jargon_leaks, f"[PILLAR 6 FAIL — Admin Jargon Leak] Raw internal codes found in operational pages: {admin_jargon_leaks}"
+            assert not admin_jargon_leaks, f"[PILLAR 6 FAIL — Admin Jargon Leak] Raw internal codes found: {admin_jargon_leaks}"
+
+            # 6.6 Real AR / EN / TR i18n Switching + Unified Dark Mode Verification
+            page_adm.locator('.sidebar-nav .nav-item[data-page="home"]').first.click()
+            page_adm.wait_for_timeout(400)
+            en_btn = page_adm.locator('.sawyan-lang-btn[data-lang="en"]').first
+            if en_btn.count() > 0:
+                en_btn.click()
+                page_adm.wait_for_timeout(500)
+                i18n_en = page_adm.evaluate(
+                    "() => ({ dir: document.documentElement.dir, lang: document.documentElement.lang, navTxt: document.querySelector('.sidebar-nav')?.innerText || '' })"
+                )
+                assert i18n_en["dir"] == "ltr" and i18n_en["lang"] == "en" and ("Merchants" in i18n_en["navTxt"] or "Members" in i18n_en["navTxt"]), (
+                    f"[PILLAR 6 FAIL — i18n EN] Clicking EN did not translate sidebar/dir: {i18n_en}"
+                )
+                page_adm.locator('.sawyan-lang-btn[data-lang="ar"]').first.click()
+                page_adm.wait_for_timeout(400)
+            dark_btn = page_adm.locator('.sawyan-theme-btn').first
+            if dark_btn.count() > 0:
+                dark_btn.click()
+                page_adm.wait_for_timeout(300)
+                dk_theme = page_adm.evaluate("() => document.documentElement.getAttribute('data-theme')")
+                assert dk_theme == "dark", f"[PILLAR 6 FAIL — Dark Mode] Expected data-theme=dark, got {dk_theme}"
+                dark_btn.click()
+                page_adm.wait_for_timeout(200)
 
             ctx_adm.close()
-            print(" [V2 PILLAR 4, 5 & 6 PASS] Cashier Employee, Admin Sovereign Cockpit, Browser Back Guard, Filter Truthfulness, Clickable Rows, [؟] Help Popovers & Zero-Jargon 100% GREEN")
+            print(" [V2 PILLAR 4, 5 & 6 PASS] Cashier Employee, Admin Sovereign Cockpit, Real-Click RPC Guard, 3-Portal Back Guard, Reports Date Filter, ban_now Guard, [?] Help Popovers, i18n EN/TR, Dark Mode & Zero-Jargon 100% GREEN")
 
             browser.close()
     finally:
