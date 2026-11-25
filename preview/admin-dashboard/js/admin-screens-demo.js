@@ -851,8 +851,16 @@
     }
     window.generateReport = async function () {
         upgradeReportsSelect();
+        if (!LIVE_BUNDLE_REF && window.SAWYAN && window.SAWYAN.API && typeof window.SAWYAN.API.getAdminSovereignBundle === 'function') {
+            try {
+                const liveB = await window.SAWYAN.API.getAdminSovereignBundle();
+                if (liveB && typeof window.hydrateAdminOpsFromLiveBundle === 'function') {
+                    window.hydrateAdminOpsFromLiveBundle(liveB);
+                }
+            } catch (_) {}
+        }
         var sD = document.getElementById('reportStartDate').value || '2026-11-01';
-        var eD = document.getElementById('reportEndDate').value || '2026-11-14';
+        var eD = document.getElementById('reportEndDate').value || '2026-11-30';
         var typ = document.getElementById('reportType').value || 'all';
         var resDiv = document.getElementById('reportResults');
         if (!resDiv) return;
@@ -868,7 +876,7 @@
                 return '<div style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:16px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">' +
                     '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;"><h3 style="margin:0;color:#0f172a;font-size:1.02rem;">' + r.title + '</h3>' + badgeProp() + '</div>' +
                     '<div style="overflow-x:auto;"><table class="data-table"><thead><tr>' + r.headers.map(function (h) { return '<th>' + h + '</th>'; }).join('') + '</tr></thead><tbody>' +
-                    r.rows.map(function (row) { return '<tr>' + row.map(function (c, idx) { return '<td data-label="' + esc(r.headers[idx]) + '">' + esc(c) + '</td>'; }).join('') + '</tr>'; }).join('') +
+                    (r.rows.length === 0 ? '<tr><td colspan="' + r.headers.length + '" class="empty-state">لا توجد سجلات مسجلة في هذا التقرير حالياً</td></tr>' : r.rows.map(function (row) { return '<tr>' + row.map(function (c, idx) { return '<td data-label="' + esc(r.headers[idx]) + '">' + esc(c) + '</td>'; }).join('') + '</tr>'; }).join('')) +
                     '</tbody></table></div></div>';
             }).join('');
     };
@@ -1384,6 +1392,7 @@
             ];
         });
 
+        var txStAr = { completed: 'مكتملة ✅', pending: 'معلقة للمراجعة ⏳', awaiting_merchant_topup: 'بانتظار شحن التاجر ⏸️', reversed: 'مسترجعة ↩️', rejected: 'مرفوضة ❌' };
         OFFICIAL_REPORTS.commissions.rows = rawTxs.slice(0, 30).map(function (t) {
             return [
                 t.sw_short_code || t.id,
@@ -1392,7 +1401,7 @@
                 fmt(t.total_amount) + ' ' + (t.currency_code || ''),
                 fmt(t.commission_amount),
                 fmt(t.income_plan_share_usd) + ' $',
-                t.status
+                txStAr[t.status] || t.status
             ];
         });
 
@@ -1412,14 +1421,14 @@
         var kp = bundle.kpis || {};
         OFFICIAL_REPORTS.reconciliation.rows = [
             ['توازن القيد المزدوج العام', fmt(zd.total_debit_usd || 0) + ' $ (مدين)', fmt(zd.total_credit_usd || 0) + ' $ (دائن)', fmt(zd.ledger_diff_usd || 0) + ' $', zd.is_zero_discrepancy_intact ? '✅ مطابق 100%' : '⛔ خلل'],
-            ['خزانة (25%) وخطة الدخل (75%)', fmt(kp.treasury_revenue_usd || 0) + ' $ خزانة', fmt(kp.plan_pool_liability_usd || 0) + ' $ خطة', fmt0(zd.pool_mismatch_count || 0) + ' فوارق', Number(zd.pool_mismatch_count || 0) === 0 ? '✅ مطابق 100%' : '⛔ خلل'],
-            ['التزام الشحن المسبق (2101)', fmt(kp.merchant_prepaid_float_usd || 0) + ' $', 'صافي أرصدة الشحن الحية', '0.00 $', '✅ مطابق 100%']
+            ['حصة الخزانة مقابل وعاء خطة الدخل', fmt(kp.treasury_revenue_usd || 0) + ' $ خزانة', fmt(kp.plan_pool_liability_usd || 0) + ' $ خطة', fmt0(zd.pool_mismatch_count || 0) + ' فوارق', Number(zd.pool_mismatch_count || 0) === 0 ? '✅ مطابق 100%' : '⛔ خلل'],
+            ['إجمالي أرصدة التجار المشحونة', fmt(kp.merchant_prepaid_float_usd || 0) + ' $', 'صافي أرصدة الشحن الحية', '0.00 $', '✅ مطابق 100%']
         ];
 
         OFFICIAL_REPORTS.audit.rows = [
-            ['فواتير مكتملة', String(Number(kp.transactions_completed || 0)), 'مقيدة بدفتر الأستاذ المزدوج', 'D11 / Double-Entry'],
-            ['فواتير معلقة / FIFO', String(Number(kp.transactions_pending || 0)), 'بانتظار التأكيد أو شحن التاجر', 'D4 / FIFO'],
-            ['فروق التقريب العشرية (4301)', fmt(kp.rounding_4301_usd || 0, 4) + ' $', 'تدوير Decimal دقيق لحساب فروق التقريب', 'D11']
+            ['فواتير مكتملة', String(Number(kp.transactions_completed || 0)), 'مقيدة بدفتر الأستاذ المزدوج', 'القيد المزدوج المتوازن'],
+            ['فواتير معلقة أو بانتظار شحن التاجر', String(Number(kp.transactions_pending || 0)), 'بانتظار التأكيد أو شحن رصيد التاجر', 'ضوابط الرصيد والائتمان'],
+            ['فروق التقريب العشرية', fmt(kp.rounding_4301_usd || 0, 4) + ' $', 'تدوير Decimal دقيق لحساب فروق التقريب', 'دقة الكسور العشرية']
         ];
 
         var activePageEl = document.querySelector('.page.active');

@@ -366,8 +366,8 @@
                 '<div class="admin-live-kpi-cell" style="background:rgba(255,255,255,0.08);padding:9px 12px;border-radius:10px;min-width:0;overflow:hidden;"><div style="font-size:0.75rem;color:#cbd5e1;">👥 الأعضاء بالقاعدة</div><b style="display:block;margin-top:3px;font-size:0.96rem;" dir="ltr">' + Number(k.members_total || 0) + ' (+ #0)</b></div>' +
                 '<div class="admin-live-kpi-cell" style="background:rgba(255,255,255,0.08);padding:9px 12px;border-radius:10px;min-width:0;overflow:hidden;"><div style="font-size:0.75rem;color:#cbd5e1;">🏪 التجار النشطون</div><b style="display:block;margin-top:3px;font-size:0.96rem;" dir="ltr">' + Number(k.merchants_active || 0) + ' / ' + Number(k.merchants_total || 0) + '</b></div>' +
                 '<div class="admin-live-kpi-cell" style="background:rgba(255,255,255,0.08);padding:9px 12px;border-radius:10px;min-width:0;overflow:hidden;"><div style="font-size:0.75rem;color:#cbd5e1;">💳 فواتير مكتملة</div><b style="display:block;margin-top:3px;font-size:0.96rem;" dir="ltr">' + Number(k.transactions_completed || 0) + '</b></div>' +
-                '<div class="admin-live-kpi-cell" style="background:rgba(255,255,255,0.08);padding:9px 12px;border-radius:10px;min-width:0;overflow:hidden;"><div style="font-size:0.75rem;color:#cbd5e1;">🏦 صافي الخزانة (25%)</div><b style="display:block;margin-top:3px;font-size:0.96rem;" dir="ltr">$' + fmt2(k.treasury_revenue_usd) + '</b></div>' +
-                '<div class="admin-live-kpi-cell" style="background:rgba(255,255,255,0.08);padding:9px 12px;border-radius:10px;min-width:0;overflow:hidden;"><div style="font-size:0.75rem;color:#cbd5e1;">🎯 متبقي وعاء الخطة (2201)</div><b style="display:block;margin-top:3px;font-size:0.96rem;" dir="ltr">$' + fmt2(k.plan_pool_liability_usd) + '</b></div>' +
+                '<div class="admin-live-kpi-cell" style="background:rgba(255,255,255,0.08);padding:9px 12px;border-radius:10px;min-width:0;overflow:hidden;"><div style="font-size:0.75rem;color:#cbd5e1;">🏦 صافي الخزانة</div><b style="display:block;margin-top:3px;font-size:0.96rem;" dir="ltr">$' + fmt2(k.treasury_revenue_usd) + '</b></div>' +
+                '<div class="admin-live-kpi-cell" style="background:rgba(255,255,255,0.08);padding:9px 12px;border-radius:10px;min-width:0;overflow:hidden;"><div style="font-size:0.75rem;color:#cbd5e1;">🎯 رصيد وعاء خطة الدخل</div><b style="display:block;margin-top:3px;font-size:0.96rem;" dir="ltr">$' + fmt2(k.plan_pool_liability_usd) + '</b></div>' +
                 '<div class="admin-live-kpi-cell" style="background:rgba(255,255,255,0.08);padding:9px 12px;border-radius:10px;min-width:0;overflow:hidden;"><div style="font-size:0.75rem;color:#cbd5e1;">⚖️ المطابقة الصفرية</div><b style="display:block;margin-top:3px;font-size:0.94rem;color:' + (zd.is_zero_discrepancy_intact ? '#6ee7b7' : '#fca5a5') + ';">' + (zd.is_zero_discrepancy_intact ? '✅ فرق $0.00' : '⛔ خلل!') + '</b></div>' +
             '</div>';
 
@@ -404,12 +404,12 @@
         const isAuditor = adm.role === 'auditor';
 
         const tabs = [
-            ['mc', '✅ طابور Maker–Checker الحي (' + Number(k.pending_mc_requests || 0) + ')'],
-            ['close', '📅 الإقفال الشهري (6 خطوات + IAS 21 + Break-Glass)'],
-            ['country', '🌍 بوابة الدول D13 والمحاكي الأكتواري S06'],
-            ['partners', '🤝 شركاء الشركة الفعليون (D24 Corporate)'],
-            ['coa', '⚖️ ميزان المراجعة (22 حساب CoA) وسلسلة التدقيق'],
-            ['ops', '🛡️ النزاعات D6 • التلاعب S10 • الهوية KYC']
+            ['mc', '✅ طابور المراجعة المزدوجة الحي (' + Number(k.pending_mc_requests || 0) + ')'],
+            ['close', '📅 الإقفال الشهري وصرف العمولات (6 خطوات)'],
+            ['country', '🌍 بوابة الدول ومحاكاة الملاءة المالية'],
+            ['partners', '🤝 شركاء الشركة وحصص الأرباح'],
+            ['coa', '⚖️ ميزان المراجعة (22 حساباً) وسجل التدقيق'],
+            ['ops', '🛡️ النزاعات • بلاغات الأسعار • توثيق الهوية']
         ];
 
         container.innerHTML =
@@ -459,7 +459,7 @@
             '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">' +
                 '<div>' +
                     '<h3 style="margin:0;font-size:1rem;color:#0f172a;">🏪 ضبط عتبات ومخاطر التجار الحية في PostgreSQL (`sawyan.settings`)</h3>' +
-                    '<div style="font-size:0.78rem;color:#64748b;">الإعدادات الحية الفعلية السارية حالياً — تعدل سلوك المبيعات، طابور النفاد (M5 — يقبل 0)، مهل التقييد والتصعيد، وعتبات W05/W07.</div>' +
+                    '<div style="font-size:0.78rem;color:#64748b;">الإعدادات الحية الفعلية السارية حالياً — تعدل سلوك المبيعات، طابور انتظار الشحن (يقبل 0)، مهل التقييد والتصعيد، وعتبات السحب.</div>' +
                 '</div>' +
                 '<span class="badge badge-success">LIVE • ساري من: ' + esc(String(cur.effective_from || '').slice(0, 10)) + '</span>' +
             '</div>' +
@@ -467,18 +467,18 @@
                 '<div><label style="font-size:0.76rem;font-weight:700;">عتبة التنبيه الأول (%)</label><input id="' + pfx + '_warn1" type="number" step="0.5" min="2" max="99" value="' + Number(cur.merchant_warn1_pct ?? 30) + '" class="form-control"></div>' +
                 '<div><label style="font-size:0.76rem;font-weight:700;">عتبة الإنذار الأخير (%)</label><input id="' + pfx + '_warn2" type="number" step="0.5" min="1" max="98" value="' + Number(cur.merchant_warn2_pct ?? 20) + '" class="form-control"></div>' +
                 '<div><label style="font-size:0.76rem;font-weight:700;">عتبة العزل الوقائي (%)</label><input id="' + pfx + '_iso" type="number" step="0.5" min="0.5" max="97" value="' + Number(cur.merchant_isolate_pct ?? 10) + '" class="form-control"></div>' +
-                '<div><label style="font-size:0.76rem;font-weight:700;">فواتير ما بعد النفاد (M5 — 0=قفل فوري)</label><input id="' + pfx + '_qcap" type="number" step="1" min="0" max="50" value="' + Number(cur.unsecured_queue_cap ?? 3) + '" class="form-control"></div>' +
-                '<div><label style="font-size:0.76rem;font-weight:700;">سقف Soft Hold للمعلقات (%)</label><input id="' + pfx + '_hold" type="number" step="1" min="1" max="100" value="' + Number(cur.unconfirmed_soft_hold_cap_pct ?? 20) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">فواتير ما بعد النفاد (0=قفل فوري)</label><input id="' + pfx + '_qcap" type="number" step="1" min="0" max="50" value="' + Number(cur.unsecured_queue_cap ?? 3) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">سقف الحجز المؤقت للمعلقات (%)</label><input id="' + pfx + '_hold" type="number" step="1" min="1" max="100" value="' + Number(cur.unconfirmed_soft_hold_cap_pct ?? 20) + '" class="form-control"></div>' +
                 '<div><label style="font-size:0.76rem;font-weight:700;">مهلة السداد قبل تعليق الامتثال (أيام)</label><input id="' + pfx + '_fdef" type="number" step="1" min="1" max="90" value="' + Number(cur.fifo_default_days ?? 14) + '" class="form-control"></div>' +
                 '<div><label style="font-size:0.76rem;font-weight:700;">مهلة رد التاجر على المعلق (ساعة)</label><input id="' + pfx + '_psla" type="number" step="1" min="1" max="720" value="' + Number(cur.pending_sla_hours ?? 48) + '" class="form-control"></div>' +
-                '<div><label style="font-size:0.76rem;font-weight:700;">إنذار/تقييد المعلق المتأخر (30ي)</label><div style="display:flex;gap:4px;"><input id="' + pfx + '_wesc" type="number" min="1" value="' + Number(cur.warn_escalated_tx_30d ?? 3) + '" class="form-control" title="إنذار"><input id="' + pfx + '_resc" type="number" min="1" value="' + Number(cur.restrict_escalated_tx_30d ?? 5) + '" class="form-control" title="تقييد د2"></div></div>' +
-                '<div><label style="font-size:0.76rem;font-weight:700;">إنذار/تقييد النزاع الخاسر (30ي)</label><div style="display:flex;gap:4px;"><input id="' + pfx + '_wdis" type="number" min="1" value="' + Number(cur.warn_lost_disputes_30d ?? 2) + '" class="form-control" title="إنذار"><input id="' + pfx + '_rdis" type="number" min="1" value="' + Number(cur.restrict_lost_disputes_30d ?? 3) + '" class="form-control" title="تقييد د2"></div></div>' +
-                '<div><label style="font-size:0.76rem;font-weight:700;">إنذار/تقييد الشكوى الموثقة (30ي)</label><div style="display:flex;gap:4px;"><input id="' + pfx + '_wcmp" type="number" min="1" value="' + Number(cur.warn_verified_complaints_30d ?? 2) + '" class="form-control" title="إنذار"><input id="' + pfx + '_rcmp" type="number" min="1" value="' + Number(cur.restrict_verified_complaints_30d ?? 3) + '" class="form-control" title="تقييد د2"></div></div>' +
-                '<div><label style="font-size:0.76rem;font-weight:700;">مدة دورة ائتمان D4 (أيام)</label><input id="' + pfx + '_d4days" type="number" step="1" min="1" max="90" value="' + Number(cur.d4_cycle_days ?? 1) + '" class="form-control"></div>' +
-                '<div><label style="font-size:0.76rem;font-weight:700;">وقت إغلاق دورة D4</label><input id="' + pfx + '_d4cutoff" type="time" value="' + esc(String(cur.d4_cycle_cutoff_time || '23:59').slice(0, 5)) + '" class="form-control"></div>' +
-                '<div><label style="font-size:0.76rem;font-weight:700;">مهلة سداد D4 بعد الإغلاق (ساعة)</label><input id="' + pfx + '_d4grace" type="number" step="0.5" min="0" max="168" value="' + Number(cur.d4_grace_hours ?? 2) + '" class="form-control"></div>' +
-                '<div><label style="font-size:0.76rem;font-weight:700;">عتبة سحب W05 ($)</label><input id="' + pfx + '_wht" type="number" step="any" min="1" value="' + Number(cur.wht_threshold_usd ?? 200) + '" class="form-control" dir="ltr"></div>' +
-                '<div><label style="font-size:0.76rem;font-weight:700;">تهدئة W07 (ساعة)</label><input id="' + pfx + '_cd" type="number" step="1" min="0" value="' + Number(cur.withdrawal_cooldown_hours ?? 72) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">إنذار/تقييد المعلق المتأخر (30 يوماً)</label><div style="display:flex;gap:4px;"><input id="' + pfx + '_wesc" type="number" min="1" value="' + Number(cur.warn_escalated_tx_30d ?? 3) + '" class="form-control" title="إنذار"><input id="' + pfx + '_resc" type="number" min="1" value="' + Number(cur.restrict_escalated_tx_30d ?? 5) + '" class="form-control" title="تقييد درجة 2"></div></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">إنذار/تقييد النزاع الخاسر (30 يوماً)</label><div style="display:flex;gap:4px;"><input id="' + pfx + '_wdis" type="number" min="1" value="' + Number(cur.warn_lost_disputes_30d ?? 2) + '" class="form-control" title="إنذار"><input id="' + pfx + '_rdis" type="number" min="1" value="' + Number(cur.restrict_lost_disputes_30d ?? 3) + '" class="form-control" title="تقييد درجة 2"></div></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">إنذار/تقييد الشكوى الموثقة (30 يوماً)</label><div style="display:flex;gap:4px;"><input id="' + pfx + '_wcmp" type="number" min="1" value="' + Number(cur.warn_verified_complaints_30d ?? 2) + '" class="form-control" title="إنذار"><input id="' + pfx + '_rcmp" type="number" min="1" value="' + Number(cur.restrict_verified_complaints_30d ?? 3) + '" class="form-control" title="تقييد درجة 2"></div></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">مدة دورة تسوية الائتمان (أيام)</label><input id="' + pfx + '_d4days" type="number" step="1" min="1" max="90" value="' + Number(cur.d4_cycle_days ?? 1) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">ساعة إغلاق دورة الائتمان</label><input id="' + pfx + '_d4cutoff" type="time" value="' + esc(String(cur.d4_cycle_cutoff_time || '23:59').slice(0, 5)) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">مهلة سداد الائتمان بعد الإغلاق (ساعة)</label><input id="' + pfx + '_d4grace" type="number" step="0.5" min="0" max="168" value="' + Number(cur.d4_grace_hours ?? 2) + '" class="form-control"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">عتبة المراجعة المزدوجة للسحب ($)</label><input id="' + pfx + '_wht" type="number" step="any" min="1" value="' + Number(cur.wht_threshold_usd ?? 200) + '" class="form-control" dir="ltr"></div>' +
+                '<div><label style="font-size:0.76rem;font-weight:700;">فترة أمان تعديل حساب السحب (ساعة)</label><input id="' + pfx + '_cd" type="number" step="1" min="0" value="' + Number(cur.withdrawal_cooldown_hours ?? 72) + '" class="form-control"></div>' +
                 '<div><label style="font-size:0.76rem;font-weight:700;">تاريخ السريان</label><select id="' + pfx + '_effmode" class="form-control"><option value="immediate">⚡ فوري (من اللحظة)</option><option value="next_month">📅 أول الشهر القادم</option></select></div>' +
                 '<div style="grid-column:1 / -1;border-top:1.5px dashed #cbd5e1;padding-top:10px;margin-top:4px;"><strong style="font-size:0.86rem;color:#0f2744;">🧾 إعدادات التوثيق الموحّد وجلسات الموظفين والحماية (Stage 14 — قابلة للتعديل الفوري)</strong></div>' +
                 '<div><label style="font-size:0.76rem;font-weight:700;">مدة وردية الموظف القصوى (ساعات)</label><input id="' + pfx + '_eshift" type="number" step="1" min="1" max="72" value="' + Number(cur.employee_shift_hours ?? 8) + '" class="form-control"></div>' +

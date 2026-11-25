@@ -375,7 +375,7 @@ def run_v2_multi_persona_browser_journeys():
                     hasFlashApi: Boolean(window.SAWYAN && window.SAWYAN.API && typeof window.SAWYAN.API.getPublicActiveFlashOffers === 'function'),
                     hasBundleMath: Boolean(b.profile && b.tree_analytics && tbText.length > 10),
                     dbTeamCount: b.tree_analytics ? Number(b.tree_analytics.total_team_count || 0) : -1,
-                    dbTargetReqUsd: Number(tbData.target_required_usd || 0)
+                    dbTargetReqUsd: Number(tbData.target_required_usd || (b.profile && b.profile.monthly_target_usd) || 0)
                 };
             }"""
             )
@@ -471,8 +471,123 @@ def run_v2_multi_persona_browser_journeys():
                     nav.first.click()
                     page_adm.wait_for_timeout(1100)
                     audit_screen_purity(page_adm, f"admin_{nav_page}_1440", is_user_facing=False)
+
+            # =================================================================
+            # PILLAR 6: INTERACTIVE BEHAVIORAL & USABILITY TRUTH AUDIT
+            # (1) Browser Back Trap Guard, (2) Filter/Action-Card Truthfulness,
+            # (3) Clickable Table Rows + 1-Click Quick Actions,
+            # (4) Contextual [؟] Help Popovers, (5) Admin Zero-Jargon Purity
+            # =================================================================
+            # 6.1 Navigate Home -> Merchants -> Transactions, then press Browser BACK
+            page_adm.locator('.sidebar-nav .nav-item[data-page="home"]').first.click()
+            page_adm.wait_for_timeout(700)
+            page_adm.locator('.sidebar-nav .nav-item[data-page="merchants"]').first.click()
+            page_adm.wait_for_timeout(900)
+            page_adm.locator('.sidebar-nav .nav-item[data-page="transactions"]').first.click()
+            page_adm.wait_for_timeout(900)
+
+            page_adm.go_back()
+            page_adm.wait_for_timeout(600)
+            assert "dashboard.html" in page_adm.url and "login.html" not in page_adm.url, (
+                f"[PILLAR 6 FAIL — Browser Back Trap] Pressing Back kicked user out to: {page_adm.url}"
+            )
+            back_active_page = page_adm.evaluate(
+                "() => { const p = document.querySelector('.page.active'); return p ? p.id : ''; }"
+            )
+            assert back_active_page == "merchantsPage", (
+                f"[PILLAR 6 FAIL — Browser Back History] Expected merchantsPage after Back from transactionsPage, got: {back_active_page}"
+            )
+
+            # 6.2 Filter Pill & Action-Card Row-Count Truthfulness Audit on #merchantsPage
+            filter_truth = page_adm.evaluate(
+                """async () => {
+                    const pills = Array.from(document.querySelectorAll('#merchantsPage [data-mer-filter]'));
+                    const report = [];
+                    for (const btn of pills) {
+                        const fk = btn.getAttribute('data-mer-filter');
+                        const txt = (btn.innerText || '').trim();
+                        const m = txt.match(/\\((\\d+)\\)/);
+                        if (!m) continue;
+                        const expected = parseInt(m[1], 10);
+                        await window.loadMerchants('', fk);
+                        const rows = Array.from(document.querySelectorAll('#merchantsTable tbody tr.clickable-admin-row'));
+                        report.push({ filter: fk, expected, actual: rows.length, match: expected === rows.length });
+                    }
+                    await window.loadMerchants('', 'all');
+                    return report;
+                }"""
+            )
+            assert len(filter_truth) >= 5, f"[PILLAR 6 FAIL — Filter Pills] Expected >=5 filter pills, got {filter_truth}"
+            mismatched_filters = [r for r in filter_truth if not r["match"]]
+            assert not mismatched_filters, (
+                f"[PILLAR 6 FAIL — Fake/Disconnected Filter Count] Displayed table rows != filter pill badge count: {mismatched_filters}"
+            )
+
+            # 6.3 Clickable Row Drilldown + 1-Click Quick Action Bar + Contextual [؟] Help Popover
+            first_row_cell = page_adm.locator('#merchantsTable tbody tr.clickable-admin-row td[data-label="المنشأة"]').first
+            assert first_row_cell.count() > 0, "[PILLAR 6 FAIL — Clickable Rows] No .clickable-admin-row found in #merchantsTable"
+            first_row_cell.click()
+            page_adm.wait_for_timeout(700)
+
+            modal_audit = page_adm.evaluate(
+                """() => {
+                    const ov = document.getElementById('svStage7ModalOverlay');
+                    const open = Boolean(ov && getComputedStyle(ov).display !== 'none');
+                    const text = ov ? (ov.innerText || '') : '';
+                    const helpBtns = ov ? ov.querySelectorAll('.sawyan-help-trigger').length : 0;
+                    const quickBtns = ov ? ov.querySelectorAll('button[onclick*="svQuickMerchantAction"]').length : 0;
+                    const hasRawD4 = /\\bD4\\b/.test(text);
+                    const hasRaw2101 = /\\b2101\\b/.test(text);
+                    return { open, helpBtns, quickBtns, hasRawD4, hasRaw2101 };
+                }"""
+            )
+            assert modal_audit["open"], "[PILLAR 6 FAIL — Clickable Row] Clicking merchant row did not open Merchant Control Modal"
+            assert modal_audit["quickBtns"] >= 4, f"[PILLAR 6 FAIL — Quick Actions] Expected >=4 1-click quick action buttons, found {modal_audit['quickBtns']}"
+            assert modal_audit["helpBtns"] >= 6, f"[PILLAR 6 FAIL — Contextual Help] Expected >=6 [؟] help buttons in Merchant Modal, found {modal_audit['helpBtns']}"
+            assert not modal_audit["hasRawD4"] and not modal_audit["hasRaw2101"], (
+                f"[PILLAR 6 FAIL — Cryptic Jargon in Modal] Found raw D4 or 2101 inside Merchant Contract Modal: {modal_audit}"
+            )
+
+            # Click the first [؟] help button inside the modal and verify the explanation popover
+            page_adm.locator('#svStage7ModalOverlay .sawyan-help-trigger').first.click()
+            page_adm.wait_for_timeout(400)
+            help_pop = page_adm.evaluate(
+                """() => {
+                    const m = document.getElementById('sawyanHelpPopoverModal');
+                    if (!m) return { open: false, text: '' };
+                    return { open: true, text: m.innerText || '' };
+                }"""
+            )
+            assert help_pop["open"] and "ما وظيفة هذا البند؟" in help_pop["text"] and "مثال عملي بالأرقام" in help_pop["text"], (
+                f"[PILLAR 6 FAIL — Help Popover] Contextual [؟] popover did not render explanation & example: {help_pop}"
+            )
+
+            # Pressing Browser BACK while modal/popover is open must close the modal and stay on merchantsPage
+            page_adm.go_back()
+            page_adm.wait_for_timeout(450)
+            assert "dashboard.html" in page_adm.url, "[PILLAR 6 FAIL] Browser Back inside modal left dashboard.html"
+
+            # 6.4 Admin Operational Zero-Jargon Scan across Home, Members, Merchants, Reports
+            admin_jargon_leaks = page_adm.evaluate(
+                """() => {
+                    const pages = ['homePage', 'membersPage', 'merchantsPage', 'reportsPage'];
+                    const forbidden = [/\\bD4\\b/, /\\b2101\\b/, /\\b2201\\b/, /\\bTombstone\\b/i];
+                    const leaks = [];
+                    for (const pid of pages) {
+                        const el = document.getElementById(pid);
+                        if (!el) continue;
+                        const txt = el.innerText || '';
+                        for (const rx of forbidden) {
+                            if (rx.test(txt)) leaks.push(pid + ':' + rx.toString());
+                        }
+                    }
+                    return leaks;
+                }"""
+            )
+            assert not admin_jargon_leaks, f"[PILLAR 6 FAIL — Admin Jargon Leak] Raw internal codes found in operational pages: {admin_jargon_leaks}"
+
             ctx_adm.close()
-            print(" [V2 PILLAR 4 & 5 PASS] Cashier Employee, Admin Sovereign Cockpit (Bell, Ctrl+K, 6 hubs) & Constitutional Purity 100% GREEN")
+            print(" [V2 PILLAR 4, 5 & 6 PASS] Cashier Employee, Admin Sovereign Cockpit, Browser Back Guard, Filter Truthfulness, Clickable Rows, [؟] Help Popovers & Zero-Jargon 100% GREEN")
 
             browser.close()
     finally:

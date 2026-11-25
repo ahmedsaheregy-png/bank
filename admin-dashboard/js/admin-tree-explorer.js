@@ -977,7 +977,7 @@
                     : '') +
                 (!isRoot0 && !auditor
                     ? `<button type="button" class="btn btn-warning" onclick="closeStage7Modal && closeStage7Modal(); if (typeof svOpenUserPasswordResetModal === 'function') svOpenUserPasswordResetModal('member', '#${code}');">🔑 كلمة مرور مؤقتة</button>` +
-                      `<button type="button" class="btn ${node.is_tombstone_banned ? 'btn-success' : 'btn-danger'}" onclick="adminTreeToggleBan('${esc(node.id)}', ${!node.is_tombstone_banned})">${node.is_tombstone_banned ? '🔓 فك الحظر' : '⛔ حظر Tombstone'}</button>`
+                      `<button type="button" class="btn ${node.is_tombstone_banned ? 'btn-success' : 'btn-danger'}" onclick="adminTreeToggleBan('${esc(node.id)}', ${!node.is_tombstone_banned})">${node.is_tombstone_banned ? '🔓 فك الحظر' : '⛔ حظر نهائي'}</button>`
                     : '') +
             '</div>';
 
@@ -995,7 +995,7 @@
                 notes: 'قرار إداري من عارض الشجرة الكاملة'
             });
             if (typeof window.closeStage7Modal === 'function') window.closeStage7Modal();
-            toast(ban ? '⛔ تم تنفيذ الحظر (Tombstone) على الحساب.' : '🔓 تم فك الحظر بنجاح.', false);
+            toast(ban ? '⛔ تم تنفيذ الحظر النهائي على الحساب.' : '🔓 تم فك الحظر بنجاح.', false);
             await fetchAndRenderTree();
         } catch (err) {
             toast(err.message || 'تعذر تنفيذ القرار', true);
