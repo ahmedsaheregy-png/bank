@@ -10,6 +10,6 @@
   "frozen_items": [
     "OFFLINE_TOTP_MEMBER_QR_60S"
   ],
-  "last_full_audit_verified_at": "2026-11-25T22:35:00Z",
-  "notes": "strict_parity_enabled becomes true upon completing Phase 1 & Phase 2 and binds Stop Hook + Zero-Defect Gate to full D29/D30 visual & spec parity. Stages 10-29 sealed. Stage 30 (Global .btn-outline high-contrast fix in dashboard.css s30, Store Kit Sticker modal X/Close/Backdrop/Print-hide, universal 24-modal Escape+Backdrop+Back close engine in app-shell.js s30, and /sawyan-robot Pillar 7 Modal Escape & WCAG Contrast Gate) sealed 2026-11-25."
+  "last_full_audit_verified_at": "2026-11-25T23:00:00Z",
+  "notes": "strict_parity_enabled becomes true upon completing Phase 1 & Phase 2 and binds Stop Hook + Zero-Defect Gate to full D29/D30 visual & spec parity. Stages 10-30 sealed. Stage 31 (4-state bank top-up review workflow white/orange/green/red via admin_review_bank_topup_proof with mandatory merchant feedback & topup_proof_statuses in Financial tab, plus universal precision bell deep-link scrollAndHighlight + spotlight halo & bell top-clipping fix + Pillar 7B guard) sealed 2026-11-25."
 }

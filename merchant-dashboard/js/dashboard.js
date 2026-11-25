@@ -1116,6 +1116,7 @@ function loadFinancialReport() {
 
         <!-- التبويب 2: سجل عمليات شحن الرصيد السابقة -->
         <div id="finTabContent2" style="display:none;">
+            <div id="merchantTopupProofStatusBox" style="margin-bottom:14px;"></div>
             <div style="background:white; border:1px solid #cbd5e1; border-radius:12px; overflow:hidden;">
                 <table style="width:100%; border-collapse:collapse; text-align:right; font-size:0.84rem;">
                     <thead style="background:#f1f5f9; border-bottom:1.5px solid #cbd5e1; font-weight:800; color:#334155;">
@@ -2607,7 +2608,7 @@ async function loadPendingTransactions(skipRefresh = false) {
             <div style="font-size:0.82rem;color:#64748b;margin-top:4px;">كافة العمليات موثقة في الدفتر المحاسبي المزدوج — التحديث الحي يعمل تلقائياً.</div>
         </div>
     ` : pendingData.map(tx => `
-        <div style="background:white;border:1.5px solid ${tx.status === 'awaiting_merchant_topup' ? '#ef4444' : '#cbd5e1'};border-radius:14px;padding:16px;margin-bottom:14px;">
+        <div id="merPendingTx_${escM(tx.id)}" data-tx-id="${escM(tx.id)}" data-short-code="${escM(tx.sw_short_code || '')}" style="background:white;border:1.5px solid ${tx.status === 'awaiting_merchant_topup' ? '#ef4444' : '#cbd5e1'};border-radius:14px;padding:16px;margin-bottom:14px;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;border-bottom:1px solid #f1f5f9;padding-bottom:8px;flex-wrap:wrap;gap:8px;">
                 <div>
                     <div style="font-weight:900;font-size:1rem;color:#0f172a;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -3142,32 +3143,87 @@ loadFinancialReport = async function () {
     }
 
     const pendTopupsHost = document.getElementById('finPendingTopupsHost');
+    const proofStatuses = Array.isArray(merchantBundle?.topup_proof_statuses) ? merchantBundle.topup_proof_statuses : [];
     const pendTopups = Array.isArray(merchantBundle?.pending_topup_requests) ? merchantBundle.pending_topup_requests : [];
+    const _tpStatusMeta = (st) => {
+        if (st === 'approved') return { label: '🟢 تم', bg: '#dcfce7', color: '#047857', border: '#4ade80', cardBg: '#f0fdf4', cardBorder: '#86efac' };
+        if (st === 'rejected') return { label: '🔴 مرفوض', bg: '#fee2e2', color: '#b91c1c', border: '#f87171', cardBg: '#fef2f2', cardBorder: '#fca5a5' };
+        if (st === 'under_review') return { label: '🟠 قيد المراجعة', bg: '#ffedd5', color: '#c2410c', border: '#fb923c', cardBg: '#fff7ed', cardBorder: '#fdba74' };
+        return { label: '⚪ بانتظار الإدارة', bg: '#ffffff', color: '#334155', border: '#cbd5e1', cardBg: '#fffbeb', cardBorder: '#fde68a' };
+    };
+    const _helpTopupBtn = (window.svHelpBtn && typeof window.svHelpBtn === 'function') ? window.svHelpBtn('topup_proof_status') : '';
+    const _waFollowUrl = `https://wa.me/905376744337?text=${encodeURIComponent('مرحباً، أتابع طلب شحن رصيد متجر ' + (p.business_name || '') + ' (' + (p.merchant_code || '') + ')')}`;
+    const _renderProofCard = (tp, idPrefix) => {
+        const meta = _tpStatusMeta(tp.review_status);
+        const noteText = String(tp.admin_note || '').trim();
+        const noteBox = noteText ? `
+            <div style="margin-top:6px;padding:7px 10px;border-radius:8px;font-size:0.79rem;font-weight:700;background:${tp.review_status === 'rejected' ? '#fef2f2;color:#991b1b;border:1px solid #fecaca;' : (tp.review_status === 'under_review' ? '#fff7ed;color:#9a3412;border:1px solid #fed7aa;' : '#f0fdf4;color:#065f46;border:1px solid #bbf7d0;')}">
+                ${tp.review_status === 'rejected' ? '🔴 سبب الرفض من الإدارة: ' : (tp.review_status === 'under_review' ? '🟠 رد وملاحظة الإدارة: ' : '🟢 ملاحظة الإدارة: ')}${escM(noteText)}
+            </div>
+        ` : '';
+        return `
+            <div id="${idPrefix}${escM(tp.id)}" data-proof-id="${escM(tp.id)}" data-bank-ref="${escM(tp.bank_ref || '')}" style="background:#ffffff;border:1.5px solid ${meta.cardBorder};border-radius:10px;padding:10px 12px;font-size:0.84rem;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                    <div>
+                        <strong style="color:#0f172a;">+${fmtMerchantMoney(tp.amount_local ?? tp.amount, curr)}</strong>
+                        <span style="color:#64748b;margin:0 6px;">•</span>
+                        <span>مرجع التحويل: <code dir="ltr">${escM(tp.bank_ref || tp.payment_ref || '—')}</code></span>
+                        ${tp.receipt_note ? `<div style="font-size:0.76rem;color:#475569;margin-top:2px;">${escM(tp.receipt_note)}</div>` : ''}
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <span style="font-size:0.75rem;color:#64748b;">${tp.created_at ? new Date(tp.created_at).toLocaleString('ar-EG') : ''}</span>
+                        <span style="background:${meta.bg};color:${meta.color};border:1.5px solid ${meta.border};padding:3px 10px;border-radius:999px;font-size:0.75rem;font-weight:800;white-space:nowrap;">${meta.label}</span>
+                    </div>
+                </div>
+                ${noteBox}
+            </div>
+        `;
+    };
     if (pendTopupsHost) {
-        if (pendTopups.length === 0) {
-            pendTopupsHost.innerHTML = '';
-        } else {
+        const activeOrRejected = proofStatuses.filter(tp => tp.review_status === 'pending' || tp.review_status === 'under_review' || tp.review_status === 'rejected').slice(0, 6);
+        if (activeOrRejected.length > 0) {
+            pendTopupsHost.innerHTML = `
+                <div style="background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:14px;padding:14px 16px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+                        <strong style="color:#0f172a;font-size:0.95rem;display:flex;align-items:center;gap:6px;">🏦 متابعة طلبات الشحن البنكي (${activeOrRejected.length})${_helpTopupBtn}</strong>
+                        <a href="${_waFollowUrl}" target="_blank" rel="noopener" style="background:#16a34a;color:#fff;padding:5px 12px;border-radius:8px;font-size:0.78rem;font-weight:800;text-decoration:none;">💬 تواصل مع الإدارة عبر واتساب</a>
+                    </div>
+                    <div style="display:grid;gap:8px;">
+                        ${activeOrRejected.map(tp => _renderProofCard(tp, 'merTopupActive_')).join('')}
+                    </div>
+                </div>
+            `;
+        } else if (pendTopups.length > 0) {
             pendTopupsHost.innerHTML = `
                 <div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:14px;padding:14px 16px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
-                        <strong style="color:#92400e;font-size:0.96rem;">⏳ طلبات شحن رصيد قيد المراجعة لدى الإدارة المالية (${pendTopups.length})</strong>
-                        <a href="https://wa.me/905376744337?text=${encodeURIComponent('مرحباً، أتابع طلب شحن رصيد متجر ' + (p.business_name || '') + ' (' + (p.merchant_code || '') + ')')}" target="_blank" rel="noopener" style="background:#16a34a;color:#fff;padding:5px 12px;border-radius:8px;font-size:0.78rem;font-weight:800;text-decoration:none;">💬 متابعة عبر واتساب الدعم</a>
+                        <strong style="color:#92400e;font-size:0.96rem;">🏦 طلبات شحن رصيد بانتظار الإدارة (${pendTopups.length})${_helpTopupBtn}</strong>
+                        <a href="${_waFollowUrl}" target="_blank" rel="noopener" style="background:#16a34a;color:#fff;padding:5px 12px;border-radius:8px;font-size:0.78rem;font-weight:800;text-decoration:none;">💬 متابعة عبر واتساب الدعم</a>
                     </div>
                     <div style="display:grid;gap:8px;">
-                        ${pendTopups.map(pr => `
-                            <div style="background:#ffffff;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;font-size:0.84rem;">
-                                <div>
-                                    <strong style="color:#0f172a;">+${fmtMerchantMoney(pr.amount, curr)}</strong>
-                                    <span style="color:#64748b;margin:0 6px;">•</span>
-                                    <span>مرجع التحويل: <code dir="ltr">${escM(pr.payment_ref || '—')}</code></span>
-                                    ${pr.receipt_note ? `<div style="font-size:0.76rem;color:#475569;margin-top:2px;">${escM(pr.receipt_note)}</div>` : ''}
-                                </div>
-                                <div style="display:flex;align-items:center;gap:8px;">
-                                    <span style="font-size:0.75rem;color:#64748b;">${pr.created_at ? new Date(pr.created_at).toLocaleString('ar-EG') : ''}</span>
-                                    <span style="background:#fef3c7;color:#92400e;padding:3px 9px;border-radius:999px;font-size:0.75rem;font-weight:800;">⏳ بانتظار الاعتماد</span>
-                                </div>
-                            </div>
-                        `).join('')}
+                        ${pendTopups.map(pr => _renderProofCard({ ...pr, review_status: 'pending', amount_local: pr.amount, bank_ref: pr.payment_ref }, 'merTopupActive_')).join('')}
+                    </div>
+                </div>
+            `;
+        } else {
+            pendTopupsHost.innerHTML = '';
+        }
+    }
+    const proofTab2Box = document.getElementById('merchantTopupProofStatusBox');
+    if (proofTab2Box) {
+        if (proofStatuses.length === 0) {
+            proofTab2Box.innerHTML = '';
+        } else {
+            proofTab2Box.innerHTML = `
+                <div style="background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:12px;padding:12px 14px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+                        <strong style="color:#0f172a;font-size:0.9rem;display:flex;align-items:center;gap:6px;">📋 سجل إشعارات الشحن وردود الإدارة (${proofStatuses.length})${_helpTopupBtn}</strong>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:0.72rem;font-weight:800;color:#475569;">
+                            <span>⚪ بانتظار الإدارة</span><span>•</span><span>🟠 قيد المراجعة</span><span>•</span><span>🟢 تم</span><span>•</span><span>🔴 مرفوض</span>
+                        </div>
+                    </div>
+                    <div style="display:grid;gap:8px;">
+                        ${proofStatuses.map(tp => _renderProofCard(tp, 'merTopupProof_')).join('')}
                     </div>
                 </div>
             `;

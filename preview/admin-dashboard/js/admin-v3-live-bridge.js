@@ -1016,7 +1016,7 @@
         if (pending.length > 0) {
             container.innerHTML = pending.map(function (item) {
                 const p = item.payload || {};
-                return '<div style="background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:12px;padding:14px;margin-bottom:10px;">' +
+                return '<div id="admFlashOfferCard_' + esc(item.id) + '" data-offer-id="' + esc(item.id) + '" style="background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:12px;padding:14px;margin-bottom:10px;">' +
                     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
                         '<b>🏪 ' + esc(p.business_name || 'تاجر معتمد') + '</b>' +
                         '<span class="badge badge-warning">معلق بقاعدة البيانات</span>' +

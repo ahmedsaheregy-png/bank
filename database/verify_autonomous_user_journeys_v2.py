@@ -842,6 +842,73 @@ def run_v2_multi_persona_browser_journeys():
                 dark_btn.click()
                 page_adm.wait_for_timeout(200)
 
+            # 6.7 Stage 31 — Admin Bell Zero-Clipping & Precision Deep-Link Scroll/Highlight Guard
+            bell_btn = page_adm.locator('#notificationBell').first
+            if bell_btn.count() > 0:
+                page_adm.evaluate(
+                    """() => {
+                        const bun = window.__SAWYAN_ADMIN_LIVE_BUNDLE__ || {};
+                        const mers = Array.isArray(bun.merchants) ? bun.merchants : [];
+                        const m0 = mers[0] || {};
+                        if (window.SAWYAN && window.SAWYAN.Notifications && (!window.SAWYAN.Notifications.notifications || window.SAWYAN.Notifications.notifications.length === 0)) {
+                            window.SAWYAN.Notifications.hydrateFromBundle([{
+                                id: '00000000-0000-4000-8000-000000000031',
+                                event_name: 'NewMerchantRegistered',
+                                is_read: false,
+                                created_at: new Date().toISOString(),
+                                payload: {
+                                    merchant_id: m0.id || '',
+                                    merchant_code: m0.merchant_code || 'M-PROBE',
+                                    business_name: m0.business_name || 'Probe Merchant',
+                                    country_code: m0.country_code || 'EG',
+                                    deduction_percent: 10
+                                }
+                            }]);
+                        }
+                    }"""
+                )
+                bell_btn.click()
+                page_adm.wait_for_timeout(350)
+                bell_check = page_adm.evaluate(
+                    """() => {
+                        const dd = document.getElementById('notificationDropdown');
+                        const hdr = dd ? dd.querySelector('.notification-header') : null;
+                        const lst = document.getElementById('notificationList');
+                        const first = lst ? lst.querySelector('.notification-item') : null;
+                        if (!dd || getComputedStyle(dd).display === 'none') return { open: false };
+                        const hr = hdr ? hdr.getBoundingClientRect() : { bottom: 0 };
+                        const fr = first ? first.getBoundingClientRect() : null;
+                        return {
+                            open: true,
+                            itemCount: lst ? lst.querySelectorAll('.notification-item').length : 0,
+                            scrollTop: lst ? lst.scrollTop : -1,
+                            headerBottom: Math.round(hr.bottom),
+                            firstItemTop: fr ? Math.round(fr.top) : null,
+                            clippedTop: fr ? (fr.top < hr.bottom - 2) : false
+                        };
+                    }"""
+                )
+                assert bell_check.get("open"), f"[PILLAR 7B FAIL — Bell Open] Dropdown failed to open: {bell_check}"
+                assert bell_check.get("scrollTop") == 0 and not bell_check.get("clippedTop"), (
+                    f"[PILLAR 7B FAIL — Bell Top Clipping] First notification clipped under header: {bell_check}"
+                )
+                assert bell_check.get("itemCount", 0) > 0, f"[PILLAR 7B FAIL] Expected bell items > 0: {bell_check}"
+                page_adm.locator('#notificationList .notification-item').first.click()
+                page_adm.wait_for_timeout(1200)
+                deep_res = page_adm.evaluate(
+                    """() => {
+                        const dd = document.getElementById('notificationDropdown');
+                        const focused = document.querySelector('.sw-notif-spotlight, [data-notif-focused="1"]');
+                        return {
+                            dropdownClosed: !dd || getComputedStyle(dd).display === 'none',
+                            hasSpotlight: !!focused,
+                            focusedId: focused ? (focused.id || focused.tagName) : null
+                        };
+                    }"""
+                )
+                assert deep_res["dropdownClosed"], f"[PILLAR 7B FAIL — Bell Close] Dropdown remained open: {deep_res}"
+                assert deep_res["hasSpotlight"], f"[PILLAR 7B FAIL — Bell Deep-Link] Clicking notification did not highlight target element: {deep_res}"
+
             ctx_adm.close()
             print(" [V2 PILLAR 4, 5 & 6 PASS] Cashier Employee, Admin Sovereign Cockpit, Real-Click RPC Guard, 3-Portal Back Guard, Reports Date Filter, ban_now Guard, [?] Help Popovers, i18n EN/TR, Dark Mode & Zero-Jargon 100% GREEN")
 

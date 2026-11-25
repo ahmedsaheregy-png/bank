@@ -101,8 +101,22 @@ window.SAWYAN.Notifications = {
                 message: `${p.business_name || 'متجر'} (${p.merchant_code || ''}) — مبلغ ${p.amount_local ?? ''} • مرجع ${p.bank_ref || ''}`
             },
             MerchantBankTopupProofProcessed: {
-                title: '✅ تمت مطابقة وشحن رصيد متجر',
+                title: '🟢 تمت مطابقة وشحن رصيد متجر',
                 message: `${p.business_name || 'متجر'} (${p.merchant_code || ''}) — ${p.amount_local ?? ''}`
+            },
+            MerchantBankTopupUnderReview: {
+                title: '🟠 طلب شحن الرصيد قيد المراجعة',
+                message: p.admin_note
+                    ? `${p.business_name ? p.business_name + ' — ' : ''}ملاحظة الإدارة: ${p.admin_note}`
+                    : `${p.business_name || 'متجر'} (${p.merchant_code || ''}) — مبلغ ${p.amount_local ?? ''} • مرجع ${p.bank_ref || ''}`
+            },
+            MerchantBankTopupRejected: {
+                title: '🔴 تم رفض طلب شحن الرصيد',
+                message: `مبلغ ${p.amount_local ?? ''} ${p.currency_code || ''} (مرجع ${p.bank_ref || ''}) — السبب: ${p.reason || p.admin_note || 'يرجى مراجعة التفاصيل'}`
+            },
+            MerchantBankTopupProofRejected: {
+                title: '🔴 تم رفض إشعار شحن بنكي',
+                message: `${p.business_name || 'متجر'} (${p.merchant_code || ''}) — ${p.rejection_reason || p.admin_note || ''}`
             },
             MerchantFlashOfferPending: {
                 title: '🔥 إعلان ترويجي لتاجر بانتظار اعتمادك',
@@ -277,76 +291,279 @@ window.SAWYAN.Notifications = {
                 <div class="notification-content">
                     <div class="notification-title">${safeT}</div>
                     <div class="notification-message">${safeM}</div>
-                    <div class="notification-time">${this.formatTime(n.created_at)}</div>
+                    <div class="notification-time">
+                        <span>${this.formatTime(n.created_at)}</span>
+                        <span class="notification-jump-hint">انتقال للبند ↙</span>
+                    </div>
                 </div>
             </div>`;
         }).join('');
     },
 
+    _cssAttrEsc: function (val) {
+        return String(val === null || val === undefined ? '' : val).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    },
+
+    scrollAndHighlight: function (primarySelectors, fallbackSelectors, opts) {
+        const primaries = (Array.isArray(primarySelectors) ? primarySelectors : [primarySelectors]).filter(Boolean);
+        let fallbacks = [];
+        let options = opts || {};
+        if (Array.isArray(fallbackSelectors) || typeof fallbackSelectors === 'string' || typeof fallbackSelectors === 'function') {
+            fallbacks = (Array.isArray(fallbackSelectors) ? fallbackSelectors : [fallbackSelectors]).filter(Boolean);
+        } else if (fallbackSelectors && typeof fallbackSelectors === 'object') {
+            options = fallbackSelectors;
+        }
+        const maxWaitMs = Number(options.maxWaitMs || 3500);
+        const startedAt = Date.now();
+
+        if (this._activeDeepLinkTimer) {
+            clearTimeout(this._activeDeepLinkTimer);
+            this._activeDeepLinkTimer = null;
+        }
+        if (this._activeDeepLinkObserver) {
+            try { this._activeDeepLinkObserver.disconnect(); } catch (_e) {}
+            this._activeDeepLinkObserver = null;
+        }
+
+        const queryActive = (list) => {
+            for (let i = 0; i < list.length; i++) {
+                const sel = list[i];
+                let el = null;
+                try {
+                    el = typeof sel === 'function' ? sel() : document.querySelector(sel);
+                } catch (_e) { el = null; }
+                if (!el) continue;
+                const parentPage = el.closest('.page');
+                if (parentPage && !parentPage.classList.contains('active')) continue;
+                return el;
+            }
+            return null;
+        };
+
+        const applySpotlight = (el) => {
+            const det = el.closest('details');
+            if (det && !det.open) det.open = true;
+            try {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+            } catch (_e) {
+                try { el.scrollIntoView(true); } catch (_e2) {}
+            }
+            el.classList.remove('sw-notif-spotlight');
+            void el.offsetWidth;
+            el.classList.add('sw-notif-spotlight');
+            el.setAttribute('data-notif-focused', '1');
+            clearTimeout(el._swNotifSpotTimer);
+            el._swNotifSpotTimer = setTimeout(() => {
+                el.classList.remove('sw-notif-spotlight');
+                el.removeAttribute('data-notif-focused');
+            }, 3400);
+            if (typeof options.onFound === 'function') {
+                try { options.onFound(el); } catch (_e) {}
+            }
+        };
+
+        // Re-anchor spotlight if async page loader (e.g. loadMerchants) replaces innerHTML shortly after match
+        const watchReRender = (listToWatch) => {
+            const host = document.getElementById('contentArea') || document.querySelector('.main-content');
+            if (!host || typeof MutationObserver !== 'function') return;
+            const obs = new MutationObserver(() => {
+                const fresh = queryActive(listToWatch);
+                if (fresh && fresh.getAttribute('data-notif-focused') !== '1') {
+                    requestAnimationFrame(() => applySpotlight(fresh));
+                }
+            });
+            obs.observe(host, { childList: true, subtree: true });
+            this._activeDeepLinkObserver = obs;
+            setTimeout(() => {
+                try { obs.disconnect(); } catch (_e) {}
+                if (this._activeDeepLinkObserver === obs) this._activeDeepLinkObserver = null;
+            }, 2400);
+        };
+
+        const attempt = () => {
+            const primaryFound = primaries.length > 0 ? queryActive(primaries) : null;
+            if (primaryFound) {
+                requestAnimationFrame(() => applySpotlight(primaryFound));
+                watchReRender(primaries);
+                return;
+            }
+            const elapsed = Date.now() - startedAt;
+            if (primaries.length > 0 && elapsed < maxWaitMs) {
+                this._activeDeepLinkTimer = setTimeout(attempt, 120);
+                return;
+            }
+            const fbFound = fallbacks.length > 0 ? queryActive(fallbacks) : null;
+            if (fbFound) {
+                requestAnimationFrame(() => applySpotlight(fbFound));
+                watchReRender(fallbacks);
+                return;
+            }
+            if (elapsed < maxWaitMs) {
+                this._activeDeepLinkTimer = setTimeout(attempt, 120);
+            } else if (typeof options.onMiss === 'function') {
+                try { options.onMiss(); } catch (_e) {}
+            }
+        };
+
+        this._activeDeepLinkTimer = setTimeout(attempt, 80);
+    },
+
+    _navigateAdminPage: function (pageKey) {
+        const nav = document.querySelector('.sidebar-nav .nav-item[data-page="' + pageKey + '"]');
+        if (nav) {
+            nav.click();
+            return;
+        }
+        if (pageKey === 'sovereignLive' && typeof window.openSovereignLivePage === 'function') {
+            window.openSovereignLivePage('coa');
+        } else if (typeof window.goToPage === 'function') {
+            window.goToPage(pageKey);
+        } else if (typeof window.showPage === 'function') {
+            window.showPage(pageKey);
+        }
+    },
+
     handleNotificationClick: function (notificationId, eventName) {
         const notifObj = (this.notifications || []).find(n => n.id === notificationId) || null;
+        const p = (notifObj && notifObj.payload) || {};
         this.markAsRead(notificationId);
         const dropdown = document.getElementById('notificationDropdown');
         if (dropdown) dropdown.style.display = 'none';
+
         const ev = String(eventName || '');
+        const escA = (v) => this._cssAttrEsc(v);
+
         if (this.userType === 'admin') {
-            if (ev === 'NewMerchantRegistered' || ev.startsWith('MerchantBankTopup') || ev === 'MerchantComplianceAutoEscalated' || ev === 'AdminMerchantIsolatedFifoAlert') {
-                const nav = document.querySelector('.sidebar-nav .nav-item[data-page="merchants"]');
-                if (nav) nav.click();
-                else if (typeof window.showPage === 'function') window.showPage('merchants');
+            const merchId = p.merchant_id || (notifObj && notifObj.recipient_id) || '';
+            const bankRef = p.bank_ref || p.payment_ref || '';
+            const offerId = p.offer_id || notificationId || '';
+            const shortCode = p.sw_short_code || '';
+
+            if (ev.startsWith('MerchantBankTopup')) {
+                window._pendingMerchantFilter = 'all';
+                this._navigateAdminPage('merchants');
+                const primaries = [];
+                if (notificationId) primaries.push('#bankTopupProofRow_' + escA(notificationId));
+                if (bankRef) primaries.push('[data-bank-ref="' + escA(bankRef) + '"]');
+                const fallbacks = ['#adminBankTopupProofsBox'];
+                if (merchId) fallbacks.push('#admMerchantRow_' + escA(merchId));
+                fallbacks.push('#merchantsTable');
+                this.scrollAndHighlight(primaries, fallbacks);
+            } else if (ev === 'NewMerchantRegistered' || ev === 'MerchantComplianceAutoEscalated' || ev === 'AdminMerchantIsolatedFifoAlert') {
+                window._pendingMerchantFilter = 'all';
+                this._navigateAdminPage('merchants');
+                const primaries = [];
+                if (merchId) {
+                    primaries.push('#admMerchantRow_' + escA(merchId));
+                    primaries.push('tr[data-merchant-id="' + escA(merchId) + '"]');
+                }
+                this.scrollAndHighlight(primaries, ['#merchantsTable tbody tr:first-child', '#merchantsTable']);
             } else if (ev === 'MerchantFlashOfferPending') {
-                const nav = document.querySelector('.sidebar-nav .nav-item[data-page="home"]');
-                if (nav) nav.click();
-                else if (typeof window.goToPage === 'function') window.goToPage('home');
-                else if (typeof window.showPage === 'function') window.showPage('home');
-                setTimeout(() => {
-                    if (typeof window.scrollToPromoQueue === 'function') window.scrollToPromoQueue();
-                    else {
-                        const sec = document.getElementById('adminPromoModerationSection');
-                        if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
-                }, 180);
+                this._navigateAdminPage('home');
+                const primaries = [];
+                if (offerId) primaries.push('#admFlashOfferCard_' + escA(offerId));
+                if (notificationId) primaries.push('#admFlashOfferCard_' + escA(notificationId));
+                this.scrollAndHighlight(primaries, ['#adminPromoModerationSection']);
             } else if (ev === 'MemberWithdrawalRequested') {
-                const nav = document.querySelector('.sidebar-nav .nav-item[data-page="withdrawals"]');
-                if (nav) nav.click();
-                else if (typeof window.goToPage === 'function') window.goToPage('withdrawals');
+                this._navigateAdminPage('withdrawals');
+                const wId = p.wallet_tx_id || p.withdrawal_id || '';
+                const primaries = wId ? ['#admWithdrawalRow_' + escA(wId)] : [];
+                this.scrollAndHighlight(primaries, ['#withdrawalsPage tbody tr:first-child', '#withdrawalsPage']);
             } else if (ev === 'MemberGdprErasureRequested') {
-                const nav = document.querySelector('.sidebar-nav .nav-item[data-page="support"]');
-                if (nav) nav.click();
-                else if (typeof window.goToPage === 'function') window.goToPage('support');
+                this._navigateAdminPage('support');
+                const tId = p.ticket_id || '';
+                const primaries = tId ? ['#admTicketRow_' + escA(tId)] : [];
+                this.scrollAndHighlight(primaries, ['#supportPage tbody tr:first-child', '#supportPage']);
             } else if (ev === 'ZeroDiscrepancyBreachAutoHalt') {
-                const nav = document.querySelector('.sidebar-nav .nav-item[data-page="sovereignLive"]');
-                if (nav) nav.click();
-                else if (typeof window.openSovereignLiveDashboard === 'function') window.openSovereignLiveDashboard();
+                if (typeof window.openSovereignLivePage === 'function') {
+                    window.openSovereignLivePage('coa');
+                } else {
+                    this._navigateAdminPage('sovereignLive');
+                }
+                this.scrollAndHighlight(['#sovereignLivePage']);
             } else if (ev === 'MerchantComplaintFiled' || ev === 'DisputeTicketOpened') {
-                const nav = document.querySelector('.sidebar-nav .nav-item[data-page="disputes"]');
-                if (nav) nav.click();
-                else if (typeof window.showPage === 'function') window.showPage('disputes');
+                this._navigateAdminPage('disputes');
+                const dId = p.dispute_id || p.ticket_id || '';
+                const cId = p.complaint_id || '';
+                const primaries = [];
+                if (dId) primaries.push('#admDisputeRow_' + escA(dId));
+                if (cId) primaries.push('#admComplaintRow_' + escA(cId));
+                if (shortCode) primaries.push('#disputesPage tr[data-short-code="' + escA(shortCode) + '"]');
+                this.scrollAndHighlight(primaries, ['#disputesPage tbody tr:first-child', '#disputesPage']);
             } else {
-                const nav = document.querySelector('.sidebar-nav .nav-item[data-page="merchants"]');
-                if (nav) nav.click();
+                this._navigateAdminPage('merchants');
+                const primaries = merchId ? ['#admMerchantRow_' + escA(merchId)] : [];
+                this.scrollAndHighlight(primaries, ['#merchantsTable']);
             }
         } else if (this.userType === 'merchant') {
+            const proofId = p.proof_notif_id || '';
+            const bankRef = p.bank_ref || p.payment_ref || '';
+            const txId = p.transaction_id || '';
+            const shortCode = p.sw_short_code || '';
+
             if (ev === 'MerchantOnboardingApproved') {
-                if (notifObj && notifObj.payload && notifObj.payload.needs_topup && typeof window.openMerchantTopupModal === 'function') {
+                if (p.needs_topup && typeof window.openMerchantTopupModal === 'function') {
                     window.openMerchantTopupModal();
                 } else if (typeof window.showPage === 'function') {
                     window.showPage('home');
                 }
             } else if (ev === 'MerchantOnboardingUpdated') {
                 if (typeof window.showPage === 'function') window.showPage('settings');
+                this.scrollAndHighlight(['#settingsPage']);
             } else if (ev === 'PendingPurchaseRequested') {
                 if (typeof window.showPage === 'function') window.showPage('pending');
-            } else if (ev === 'MerchantTopupApproved' || ev === 'MerchantContractUpdated' || ev.startsWith('MerchantBalance') || ev.includes('Topup')) {
+                const primaries = [];
+                if (txId) primaries.push('#merPendingTx_' + escA(txId));
+                if (shortCode) primaries.push('#pendingList [data-short-code="' + escA(shortCode) + '"]');
+                this.scrollAndHighlight(primaries, ['#pendingList > div:first-child', '#pendingList']);
+            } else if (ev === 'MerchantTopupApproved' || ev === 'MerchantBankTopupUnderReview' || ev === 'MerchantBankTopupRejected' || ev === 'MerchantContractUpdated' || ev.startsWith('MerchantBalance') || ev.includes('Topup')) {
                 if (typeof window.showPage === 'function') window.showPage('financial');
+                const isTopupDecision = ev.includes('Topup');
+                if (isTopupDecision && typeof window.switchFinancialTab === 'function') {
+                    setTimeout(() => { try { window.switchFinancialTab(2); } catch (_e) {} }, 250);
+                }
+                const primaries = [];
+                if (proofId) {
+                    primaries.push('#merTopupActive_' + escA(proofId));
+                    primaries.push('#merTopupProof_' + escA(proofId));
+                }
+                if (bankRef) primaries.push('[data-bank-ref="' + escA(bankRef) + '"]');
+                this.scrollAndHighlight(primaries, ['#finPendingTopupsHost > div', '#merchantTopupProofStatusBox > div', '#finPrepaidHeroCard']);
+            } else if (ev === 'MerchantFlashOfferApproved' || ev === 'MerchantFlashOfferRejected') {
+                if (typeof window.showPage === 'function') window.showPage('home');
+                this.scrollAndHighlight(['#promoActionBtn'], ['#homePage']);
             } else if (ev === 'DisputeTicketOpened' || ev.startsWith('MerchantComplaint')) {
                 if (typeof window.openMerchantStage7Modal === 'function') window.openMerchantStage7Modal('support');
             }
         } else if (this.userType === 'member') {
-            if (ev === 'PendingPurchaseRequested' || ev.includes('Transaction') || ev === 'PendingInvoiceRejected') {
+            const txId = p.transaction_id || '';
+            const shortCode = p.sw_short_code || '';
+            const dispId = p.dispute_id || '';
+
+            if (ev === 'PendingPurchaseRequested' || ev === 'PendingInvoiceRejected') {
                 if (typeof window.goToPage === 'function') window.goToPage('myPending');
+                const primaries = [];
+                if (txId) primaries.push('#memPendingTx_' + escA(txId));
+                if (shortCode) primaries.push('#myPendingPage [data-short-code="' + escA(shortCode) + '"]');
+                this.scrollAndHighlight(primaries, ['[data-spec-id="member-pending-list"]']);
+            } else if (ev === 'TransactionCompleted' || ev === 'PendingInvoiceApprovedByOwnerOverride' || ev.includes('Transaction')) {
+                if (typeof window.goToPage === 'function') window.goToPage('transactions');
+                const primaries = [];
+                if (txId) primaries.push('#memTxCard_' + escA(txId));
+                if (shortCode) primaries.push('#transactionsPage [data-short-code="' + escA(shortCode) + '"]');
+                this.scrollAndHighlight(primaries, ['[data-spec-id="member-tx-list"]']);
+            } else if (ev === 'DisputeTicketOpened' || ev.startsWith('Dispute')) {
+                if (typeof window.goToPage === 'function') window.goToPage('transactions');
+                const primaries = [];
+                if (dispId) primaries.push('#memDisputeCard_' + escA(dispId));
+                if (shortCode) primaries.push('#transactionsPage [data-short-code="' + escA(shortCode) + '"]');
+                this.scrollAndHighlight(primaries, ['[data-spec-id="member-tx-list"]']);
             } else if (ev === 'OnMemberRegistered') {
                 if (typeof window.goToPage === 'function') window.goToPage('tree');
+                this.scrollAndHighlight(['#treeCanvas'], ['#treePage']);
+            } else if (ev === 'MerchantFlashOfferLive') {
+                if (typeof window.goToPage === 'function') window.goToPage('merchants');
+                this.scrollAndHighlight(['#merchantsPage']);
             }
         }
     },
@@ -360,7 +577,10 @@ window.SAWYAN.Notifications = {
             MerchantTopupApproved: '💳',
             MerchantBankTopupProofPending: '🏦',
             MerchantBankTopupSubmitted: '🏦',
-            MerchantBankTopupProofProcessed: '✅',
+            MerchantBankTopupUnderReview: '🟠',
+            MerchantBankTopupRejected: '🔴',
+            MerchantBankTopupProofRejected: '🔴',
+            MerchantBankTopupProofProcessed: '🟢',
             MerchantFlashOfferPending: '🔥',
             MemberWithdrawalRequested: '💸',
             MemberGdprErasureRequested: '🛡️',
@@ -401,7 +621,12 @@ window.SAWYAN.Notifications = {
     toggleDropdown: function () {
         const dropdown = document.getElementById('notificationDropdown');
         if (dropdown) {
-            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+            const isOpening = dropdown.style.display === 'none' || !dropdown.style.display;
+            dropdown.style.display = isOpening ? 'flex' : 'none';
+            if (isOpening) {
+                const list = document.getElementById('notificationList');
+                if (list) list.scrollTop = 0;
+            }
         }
     },
 
@@ -410,7 +635,8 @@ window.SAWYAN.Notifications = {
         this.unreadCount = this.notifications.filter(n => !n.is_read).length;
         this.updateBadge();
         this.renderList();
-        if (this.userType && this.userId && window.SAWYAN && window.SAWYAN.API && typeof window.SAWYAN.API.markActorNotificationsRead === 'function') {
+        const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(notificationId || ''));
+        if (isValidUuid && this.userType && this.userId && window.SAWYAN && window.SAWYAN.API && typeof window.SAWYAN.API.markActorNotificationsRead === 'function') {
             window.SAWYAN.API.markActorNotificationsRead({
                 actorType: this.userType,
                 actorId: this.userId,

@@ -1228,7 +1228,7 @@ function loadMyPendingRequests() {
                             ? window.SAWYAN.ImageUpload.renderThumbHtml(t.receipt_media_url, '🧾 إيصال ' + esc(t.sw_short_code))
                             : '';
                         return `
-                        <div style="background:#fff;border:1.5px solid ${t.status === 'awaiting_merchant_topup' ? '#ef4444' : '#f59e0b'};border-radius:14px;padding:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                        <div id="memPendingTx_${esc(t.id)}" data-tx-id="${esc(t.id)}" data-short-code="${esc(t.sw_short_code || '')}" style="background:#fff;border:1.5px solid ${t.status === 'awaiting_merchant_topup' ? '#ef4444' : '#f59e0b'};border-radius:14px;padding:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
                             <div>
                                 <strong style="font-size:1rem;">${esc(t.merchant_name)}</strong> (${esc(t.branch_name || 'الفرع الرئيسي')})
                                 <div style="font-size:0.84rem;color:#64748b;">الكود: <code>${esc(t.sw_short_code)}</code> • ${new Date(t.created_at).toLocaleString(getMemLocale())}</div>
@@ -1354,7 +1354,7 @@ function loadAllTransactions() {
                                 ? window.SAWYAN.ImageUpload.renderThumbHtml(t.receipt_media_url, '🧾 إيصال ' + esc(t.sw_short_code))
                                 : '';
                             return `
-                            <div style="background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:16px;">
+                            <div id="memTxCard_${esc(t.id)}" data-tx-id="${esc(t.id)}" data-short-code="${esc(t.sw_short_code || '')}" style="background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:16px;">
                                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
                                     <div>
                                         <strong>${esc(t.merchant_name)}</strong> — <small>${esc(t.branch_name)}</small>
@@ -1392,7 +1392,7 @@ function loadAllTransactions() {
                 ${disputes.map(d => {
                     const dispStMap = { awaiting_merchant_friendly: 'بانتظار رد التاجر (48 ساعة)', escalated_to_admin: 'مُصعّد للتحكيم الإداري', resolved_member: 'حُسم لصالحك', resolved_member_clawback: 'حُسم لصالحك (عكس الفاتورة)', resolved_merchant: 'حُسم لصالح التاجر', resolved_merchant_force_return: 'مرتجع إلزامي', resolved_merchant_malicious_claim: 'مغلق' };
                     return `
-                    <div style="background:#fff7ed;border:1px solid #fdba74;border-radius:10px;padding:12px;">
+                    <div id="memDisputeCard_${esc(d.id)}" data-dispute-id="${esc(d.id)}" style="background:#fff7ed;border:1px solid #fdba74;border-radius:10px;padding:12px;">
                         <strong>${esc(d.merchant_name)}</strong> — <small>${esc(dispStMap[d.status] || d.status)}</small>
                         <div style="font-size:0.85rem;color:#7c2d12;">${esc(d.dispute_reason)}</div>
                     </div>`;

@@ -1105,20 +1105,59 @@
                 return '<button type="button" data-mer-filter="' + fd[0] + '" onclick="svFilterMerchants(\'' + fd[0] + '\')" style="padding:5px 11px;border-radius:999px;font-size:0.76rem;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;border:1.5px solid ' + (active ? '#0f766e' : '#cbd5e1') + ';background:' + (active ? '#0f766e' : '#ffffff') + ';color:' + (active ? '#ffffff' : '#334155') + ';">' + esc(fd[1]) + ' (' + cnt + ')</button>';
             }).join('') + '</div>';
 
-            const pendingProofs = proofs.filter(function (pr) { return pr.event_name !== 'MerchantBankTopupProofProcessed'; });
-            const processedProofs = proofs.filter(function (pr) { return pr.event_name === 'MerchantBankTopupProofProcessed'; });
+            const activeProofs = proofs.filter(function (pr) {
+                return pr.event_name !== 'MerchantBankTopupProofProcessed' && pr.event_name !== 'MerchantBankTopupProofRejected';
+            });
+            const archivedProofs = proofs.filter(function (pr) {
+                return pr.event_name === 'MerchantBankTopupProofProcessed' || pr.event_name === 'MerchantBankTopupProofRejected';
+            });
+            const proofStatusMeta = function (evName) {
+                if (evName === 'MerchantBankTopupProofProcessed') {
+                    return { label: '🟢 تم', bg: '#dcfce7', color: '#047857', border: '#4ade80', rowBorder: '#86efac' };
+                }
+                if (evName === 'MerchantBankTopupProofRejected') {
+                    return { label: '🔴 مرفوض', bg: '#fee2e2', color: '#b91c1c', border: '#f87171', rowBorder: '#fca5a5' };
+                }
+                if (evName === 'MerchantBankTopupUnderReview') {
+                    return { label: '🟠 قيد المراجعة', bg: '#ffedd5', color: '#c2410c', border: '#fb923c', rowBorder: '#fb923c' };
+                }
+                return { label: '⚪ بانتظار الإدارة', bg: '#ffffff', color: '#334155', border: '#cbd5e1', rowBorder: '#fcd34d' };
+            };
             const renderProofRow = function (pr) {
                 const p = pr.payload || {};
-                const isDone = pr.event_name === 'MerchantBankTopupProofProcessed';
+                const st = proofStatusMeta(pr.event_name);
+                const isFinal = pr.event_name === 'MerchantBankTopupProofProcessed' || pr.event_name === 'MerchantBankTopupProofRejected';
                 const prThumb = renderAdmThumb(p.receipt_image_data, '🧾 إيصال شحن بنكي ' + esc(p.bank_ref || ''));
-                return '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;background:#fff;padding:10px;border-radius:10px;border:1px solid ' + (isDone ? '#86efac' : '#fcd34d') + ';margin-bottom:6px;">' +
-                    '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
+                const adminNote = String(p.admin_note || p.rejection_reason || '').trim();
+                const safeBiz = esc(p.business_name || 'متجر').replace(/'/g, '&#39;');
+                const safeRef = esc(p.bank_ref || '').replace(/'/g, '&#39;');
+                const statusBadge = '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:0.75rem;font-weight:800;white-space:nowrap;background:' + st.bg + ';color:' + st.color + ';border:1.5px solid ' + st.border + ';">' + st.label + '</span>';
+                const noteBox = adminNote
+                    ? '<div style="margin-top:6px;padding:6px 10px;border-radius:8px;font-size:0.76rem;font-weight:700;background:' + (pr.event_name === 'MerchantBankTopupProofRejected' ? '#fef2f2;color:#991b1b;border:1px solid #fecaca;' : '#fff7ed;color:#9a3412;border:1px solid #fed7aa;') + '">' +
+                        (pr.event_name === 'MerchantBankTopupProofRejected' ? '🔴 سبب الرفض المرسل للتاجر: ' : '🟠 ملاحظة الإدارة المرسلة للتاجر: ') + esc(adminNote) +
+                      '</div>'
+                    : '';
+                const actionHtml = isFinal
+                    ? statusBadge
+                    : '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">' +
+                        '<button type="button" class="btn-sm" data-topup-act="approved" style="background:#059669;color:#ffffff;border:1.5px solid #047857;font-weight:800;padding:6px 13px;border-radius:8px;cursor:pointer;font-family:Tajawal,sans-serif;white-space:nowrap;" onclick="svReviewBankTopup(\'' + pr.id + '\',\'approved\',\'' + safeBiz + '\',\'' + safeRef + '\',' + Number(p.amount_local || 0) + ')">✓ تم</button>' +
+                        '<button type="button" class="btn-sm" data-topup-act="under_review" style="background:#fff7ed;color:#c2410c;border:1.5px solid #fb923c;font-weight:800;padding:6px 12px;border-radius:8px;cursor:pointer;font-family:Tajawal,sans-serif;white-space:nowrap;" onclick="svReviewBankTopup(\'' + pr.id + '\',\'under_review\',\'' + safeBiz + '\',\'' + safeRef + '\',' + Number(p.amount_local || 0) + ')">🟠 قيد المراجعة</button>' +
+                        '<button type="button" class="btn-sm" data-topup-act="rejected" style="background:#fef2f2;color:#b91c1c;border:1.5px solid #f87171;font-weight:800;padding:6px 12px;border-radius:8px;cursor:pointer;font-family:Tajawal,sans-serif;white-space:nowrap;" onclick="svReviewBankTopup(\'' + pr.id + '\',\'rejected\',\'' + safeBiz + '\',\'' + safeRef + '\',' + Number(p.amount_local || 0) + ')">✕ رفض</button>' +
+                      '</div>';
+                return '<div id="bankTopupProofRow_' + esc(pr.id) + '" data-proof-id="' + esc(pr.id) + '" data-bank-ref="' + esc(p.bank_ref || '') + '" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:#fff;padding:11px 13px;border-radius:11px;border:1.5px solid ' + st.rowBorder + ';margin-bottom:8px;">' +
+                    '<div style="display:flex;align-items:flex-start;gap:10px;flex:1;min-width:240px;">' +
                         prThumb +
-                        '<div><b>' + esc(p.business_name) + ' (<span dir="ltr">' + esc(p.merchant_code) + '</span>)</b> • المبلغ: <b dir="ltr">' + fmt2(p.amount_local) + '</b> • مرجع البنك: <code dir="ltr">' + esc(p.bank_ref) + '</code>' + (p.receipt_note ? '<div style="font-size:0.75rem;color:#64748b;">' + esc(p.receipt_note) + '</div>' : '') + '</div>' +
+                        '<div style="min-width:0;flex:1;">' +
+                            '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+                                '<b>' + esc(p.business_name) + ' (<span dir="ltr">' + esc(p.merchant_code) + '</span>)</b>' +
+                                statusBadge +
+                            '</div>' +
+                            '<div style="font-size:0.84rem;color:#334155;margin-top:4px;">المبلغ: <b dir="ltr">' + fmt2(p.amount_local) + '</b> • مرجع البنك: <code dir="ltr">' + esc(p.bank_ref) + '</code></div>' +
+                            (p.receipt_note ? '<div style="font-size:0.75rem;color:#64748b;margin-top:2px;">ملاحظة التاجر: ' + esc(p.receipt_note) + '</div>' : '') +
+                            noteBox +
+                        '</div>' +
                     '</div>' +
-                    (isDone
-                        ? '<span class="badge badge-success">✅ تمت المطابقة والشحن</span>'
-                        : '<button type="button" class="btn-sm btn-success" onclick="svApproveBankTopup(\'' + esc(p.merchant_id || pr.merchant_id) + '\',' + Number(p.amount_local) + ',\'' + esc(p.bank_ref) + '\',\'' + pr.id + '\')">✅ مطابقة وشحن الرصيد وإصدار فاتورة ضريبية</button>') +
+                    actionHtml +
                 '</div>';
             };
 
@@ -1132,16 +1171,21 @@
                     '</div>' +
                 '</div>' +
                 filterBarHtml +
-                (pendingProofs.length > 0
-                    ? '<div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:14px;padding:14px;margin-bottom:12px;">' +
-                        '<h3 style="margin:0 0 8px 0;font-size:0.95rem;color:#92400e;">🏦 إشعارات تحويل بنكي لشحن رصيد التجار بانتظار المطابقة (' + pendingProofs.length + ')</h3>' +
-                        pendingProofs.map(renderProofRow).join('') +
+                (activeProofs.length > 0
+                    ? '<div id="adminBankTopupProofsBox" data-spec-id="admin-bank-topup-review-box" style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:14px;padding:14px;margin-bottom:12px;">' +
+                        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">' +
+                            '<h3 style="margin:0;font-size:0.95rem;color:#92400e;display:flex;align-items:center;gap:6px;">🏦 إشعارات شحن رصيد التجار بانتظار البت (' + activeProofs.length + ')' + helpBtn('topup_proof_status') + '</h3>' +
+                            '<div style="display:flex;gap:6px;flex-wrap:wrap;font-size:0.72rem;font-weight:800;color:#475569;">' +
+                                '<span>⚪ بانتظار الإدارة</span><span>•</span><span>🟠 قيد المراجعة</span><span>•</span><span>🟢 تم</span><span>•</span><span>🔴 مرفوض</span>' +
+                            '</div>' +
+                        '</div>' +
+                        activeProofs.map(renderProofRow).join('') +
                       '</div>'
                     : '') +
-                (processedProofs.length > 0
-                    ? '<details style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:10px 14px;margin-bottom:12px;">' +
-                        '<summary style="cursor:pointer;font-weight:800;font-size:0.85rem;color:#065f46;">✅ سجل إشعارات الشحن البنكي المعتمدة مؤخراً (' + processedProofs.length + ')</summary>' +
-                        '<div style="margin-top:8px;">' + processedProofs.map(renderProofRow).join('') + '</div>' +
+                (archivedProofs.length > 0
+                    ? '<details id="adminBankTopupArchiveDetails" style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:10px 14px;margin-bottom:12px;">' +
+                        '<summary style="cursor:pointer;font-weight:800;font-size:0.85rem;color:#334155;">📋 سجل إشعارات الشحن البنكي المحسومة (' + archivedProofs.length + ' — معتمد / مرفوض)</summary>' +
+                        '<div style="margin-top:8px;">' + archivedProofs.map(renderProofRow).join('') + '</div>' +
                       '</details>'
                     : '') +
                 '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px;overflow-x:auto;">' +
@@ -1175,7 +1219,7 @@
                             (Number(vc.open_complaints_count || 0) > 0 ? '<span style="font-size:0.7rem;color:#b91c1c;font-weight:800;white-space:nowrap;">📣 ' + Number(vc.open_complaints_count) + ' شكوى مفتوحة</span>' : '') +
                             (Number(vc.verified_price_gouging_count || 0) > 0 ? '<span style="font-size:0.7rem;color:#991b1b;font-weight:800;white-space:nowrap;">🚨 تلاعب أسعار: ' + Number(vc.verified_price_gouging_count) + '/3</span>' : '') +
                         '</div>';
-                        return '<tr class="clickable-admin-row" data-merchant-id="' + esc(m.id) + '" onclick="if(!event.target.closest(\'button,a,input\'))svOpenMerchantContractModal(\'' + esc(m.id) + '\')" style="cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background=\'#f0fdf4\'" onmouseout="this.style.background=\'\'" title="اضغط لفتح صفحة التحكم الكاملة بالتاجر">' +
+                        return '<tr id="admMerchantRow_' + esc(m.id) + '" class="clickable-admin-row" data-merchant-id="' + esc(m.id) + '" onclick="if(!event.target.closest(\'button,a,input\'))svOpenMerchantContractModal(\'' + esc(m.id) + '\')" style="cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background=\'#f0fdf4\'" onmouseout="this.style.background=\'\'" title="اضغط لفتح صفحة التحكم الكاملة بالتاجر">' +
                             '<td data-label="كود التاجر"><b dir="ltr" style="white-space:nowrap;display:inline-block;color:#0f766e;">' + esc(m.merchant_code) + '</b></td>' +
                             '<td data-label="المنشأة"><div style="display:flex;align-items:center;gap:8px;">' + logoThumb + '<div><b style="color:#0f766e;text-decoration:underline;font-size:0.95rem;">' + esc(m.business_name) + ' ↗</b><br><small dir="ltr" style="color:#64748b;unicode-bidi:embed;display:inline-block;white-space:nowrap;">' + esc(m.phone) + '</small></div></div></td>' +
                             '<td data-label="الدولة / الفئة"><span style="white-space:nowrap;font-weight:700;">' + esc(fmtCountryAr(m.country_code)) + '</span><div style="font-size:0.74rem;color:#64748b;">' + esc(fmtCategoryAr(m.category)) + '</div></td>' +
@@ -1524,7 +1568,67 @@
             } catch (err) { toast(err.message, true); }
         };
 
+        window.svReviewBankTopup = async function (notifId, decision, businessName, bankRef, amountLocal) {
+            try {
+                const label = (businessName || 'التاجر') + ' — ' + fmt2(amountLocal) + ' (مرجع ' + (bankRef || '-') + ')';
+                let note = null;
+                if (decision === 'approved') {
+                    const ok = window.SAWYAN?.UI?.confirm
+                        ? await window.SAWYAN.UI.confirm({
+                            title: '🟢 تأكيد مطابقة وشحن رصيد التاجر',
+                            message: 'هل تؤكد مطابقة التحويل لمتجر «' + label + '» وشحن الرصيد وإصدار الفاتورة الضريبية وإشعار التاجر فوراً؟',
+                            confirmText: '✓ تم — شحن الرصيد الآن',
+                            cancelText: 'تراجع',
+                            tone: 'primary'
+                        })
+                        : true;
+                    if (!ok) return;
+                } else if (decision === 'under_review') {
+                    note = window.SAWYAN?.UI?.prompt
+                        ? await window.SAWYAN.UI.prompt({
+                            title: '🟠 تحويل الطلب إلى «قيد المراجعة»',
+                            message: 'اكتب الملاحظة أو التفصيل المطلوب من التاجر («' + label + '») — سيصله إشعار فوري برسالتك:',
+                            defaultValue: 'جاري مطابقة التحويل مع البنك — يرجى تأكيد صورة الإيصال أو وقت التحويل'
+                        })
+                        : null;
+                    if (!note || note.trim().length < 3) {
+                        if (note !== null) toast('يرجى كتابة ملاحظة واضحة للتاجر (3 أحرف على الأقل).', true);
+                        return;
+                    }
+                } else if (decision === 'rejected') {
+                    note = window.SAWYAN?.UI?.prompt
+                        ? await window.SAWYAN.UI.prompt({
+                            title: '🔴 رفض إشعار التحويل البنكي',
+                            message: 'اكتب سبب رفض طلب الشحن لمتجر «' + label + '» — سيصل السبب للتاجر فوراً في جرسه وصفحته المالية:',
+                            defaultValue: 'لم يظهر التحويل في كشف البنك أو رقم المرجع غير مطابق — يرجى المراجعة وإعادة الإرسال'
+                        })
+                        : null;
+                    if (!note || note.trim().length < 3) {
+                        if (note !== null) toast('سبب الرفض إلزامي (3 أحرف على الأقل) ليصل واضحاً للتاجر.', true);
+                        return;
+                    }
+                }
+                await window.SAWYAN.API.adminReviewBankTopupProof({
+                    proofNotifId: notifId,
+                    decision: decision,
+                    adminNote: note ? note.trim() : null
+                });
+                window.closeStage7Modal();
+                const doneMsg = decision === 'approved'
+                    ? '🟢 تم شحن رصيد التاجر وتوليد الفاتورة الضريبية وإشعار التاجر بنجاح!'
+                    : (decision === 'under_review'
+                        ? '🟠 تم تحويل الطلب إلى «قيد المراجعة» وإرسال ملاحظتك للتاجر فوراً.'
+                        : '🔴 تم رفض الطلب وإرسال سبب الرفض للتاجر فوراً.');
+                toast(doneMsg, false);
+                if (typeof window.refreshSovereignBundle === 'function') await window.refreshSovereignBundle(false);
+                await window.loadMerchants((document.getElementById('svLiveMerSearch') || {}).value || '');
+            } catch (err) { toast(err.message, true); }
+        };
+
         window.svApproveBankTopup = async function (merchantId, amt, ref, notifId) {
+            if (notifId) {
+                return window.svReviewBankTopup(notifId, 'approved', '', ref, amt);
+            }
             try {
                 await window.SAWYAN.API.adminManageMerchantContract({
                     merchantId: merchantId,
@@ -1554,7 +1658,7 @@
                     (list.length === 0 ? '<tr><td colspan="5" class="empty-state">لا توجد طلبات سحب مسجلة حالياً</td></tr>' : list.map(function (w) {
                         const wdMeta = _WD_STATUS_AR[w.status] || [String(w.status || '—'), 'badge-warning'];
                         const dtStr = String(w.created_at || '').slice(0, 16).replace('T', ' ');
-                        return '<tr class="clickable-admin-row" style="cursor:pointer;" onclick="if(!event.target.closest(\'button,a\'))svOpenAdminDetailCard(\'💸 تفاصيل طلب السحب\',[[\'العضو\',\'' + esc((w.full_name || '') + ' (#' + Number(w.member_code || 0) + ')') + '\'],[\'المبلغ\',\'\$\'+\'' + fmt2(w.amount_usd) + '\'],[\'الحالة\',\'' + esc(wdMeta[0]) + '\'],[\'التوقيت\',\'' + esc(dtStr) + '\'],[\'مرجع التحويل\',\'' + esc(w.payout_ref || 'لم يصدر بعد') + '\']])">' +
+                        return '<tr id="admWithdrawalRow_' + esc(w.id) + '" class="clickable-admin-row" style="cursor:pointer;" onclick="if(!event.target.closest(\'button,a\'))svOpenAdminDetailCard(\'💸 تفاصيل طلب السحب\',[[\'العضو\',\'' + esc((w.full_name || '') + ' (#' + Number(w.member_code || 0) + ')') + '\'],[\'المبلغ\',\'\$\'+\'' + fmt2(w.amount_usd) + '\'],[\'الحالة\',\'' + esc(wdMeta[0]) + '\'],[\'التوقيت\',\'' + esc(dtStr) + '\'],[\'مرجع التحويل\',\'' + esc(w.payout_ref || 'لم يصدر بعد') + '\']])">' +
                             '<td data-label="العضو"><b style="color:#0f766e;text-decoration:underline;">' + esc(w.full_name) + ' (#' + Number(w.member_code) + ') ↗</b></td>' +
                             '<td data-label="المبلغ ($)"><b dir="ltr">$' + fmt2(w.amount_usd) + '</b></td>' +
                             '<td data-label="التوقيت" dir="ltr">' + esc(dtStr) + '</td>' +
@@ -1613,7 +1717,7 @@
                         const supSt = _SUP_STATUS_AR[t.status] || [String(t.status || '—'), 'badge-warning'];
                         const supCat = _SUP_CAT_AR[String(t.category || '').toLowerCase()] || (t.category || 'استفسار عام');
                         const reqTypeAr = t.requester_type === 'merchant' ? 'تاجر' : (t.requester_type === 'member' ? 'عضو' : 'زائر');
-                        return '<tr class="clickable-admin-row" style="cursor:pointer;" onclick="if(!event.target.closest(\'button,a\'))svReplySupportTicket(\'' + esc(t.id) + '\')" title="اضغط للرد على التذكرة">' +
+                        return '<tr id="admTicketRow_' + esc(t.id) + '" class="clickable-admin-row" style="cursor:pointer;" onclick="if(!event.target.closest(\'button,a\'))svReplySupportTicket(\'' + esc(t.id) + '\')" title="اضغط للرد على التذكرة">' +
                             '<td data-label="المرجع"><code dir="ltr" style="color:#0f766e;font-weight:800;">' + esc(t.ticket_ref) + ' ↗</code></td>' +
                             '<td data-label="المرسل"><b>' + esc(t.contact_name || reqTypeAr) + '</b><br><small>' + esc(t.contact_phone || t.contact_email || '') + '</small></td>' +
                             '<td data-label="التصنيف / الموضوع"><span class="badge badge-info">' + esc(supCat) + '</span><br><b>' + esc(t.subject || '') + '</b></td>' +
@@ -1738,7 +1842,7 @@
                                 ? '<button type="button" class="btn-sm btn-warning" title="عكس الفاتورة قبل صرف الشهر التالي" onclick="svAdminTxnDecision(\'' + t.id + '\',\'reverse_pre_payout\')">↩️ عكس (' + esc(revHint) + ')</button>'
                                 : '—');
                         const txDateStr = String(t.completed_at || t.created_at || '').slice(0, 16).replace('T', ' ');
-                        return '<tr class="clickable-admin-row" style="cursor:pointer;" title="اضغط لعرض تفاصيل الفاتورة كاملة" onclick="if(!event.target.closest(\'button,a,img\'))svOpenAdminDetailCard(\'🧾 تفاصيل الفاتورة ' + esc(t.sw_short_code) + '\',[[\'العضو\',\'#' + Number(t.member_code || 0) + ' ' + esc(t.member_name || '') + '\'],[\'التاجر\',\'' + esc(t.merchant_name || '') + '\'],[\'القيمة\',\'' + fmt2(t.total_amount) + ' ' + esc(t.currency_code || '') + '\'],[\'العمولة\',\'' + fmt2(t.commission_amount) + ' ' + esc(t.currency_code || '') + '\'],[\'الوسيلة\',\'' + esc(fmtAdmPayType(t.payment_type)) + '\'],[\'الحالة\',\'' + esc(stMeta[0]) + '\'],[\'التوقيت\',\'' + esc(txDateStr) + '\']])">' +
+                        return '<tr id="admTxRow_' + esc(t.id) + '" data-short-code="' + esc(t.sw_short_code || '') + '" class="clickable-admin-row" style="cursor:pointer;" title="اضغط لعرض تفاصيل الفاتورة كاملة" onclick="if(!event.target.closest(\'button,a,img\'))svOpenAdminDetailCard(\'🧾 تفاصيل الفاتورة ' + esc(t.sw_short_code) + '\',[[\'العضو\',\'#' + Number(t.member_code || 0) + ' ' + esc(t.member_name || '') + '\'],[\'التاجر\',\'' + esc(t.merchant_name || '') + '\'],[\'القيمة\',\'' + fmt2(t.total_amount) + ' ' + esc(t.currency_code || '') + '\'],[\'العمولة\',\'' + fmt2(t.commission_amount) + ' ' + esc(t.currency_code || '') + '\'],[\'الوسيلة\',\'' + esc(fmtAdmPayType(t.payment_type)) + '\'],[\'الحالة\',\'' + esc(stMeta[0]) + '\'],[\'التوقيت\',\'' + esc(txDateStr) + '\']])">' +
                             '<td data-label="كود الفاتورة"><code dir="ltr" style="font-weight:800;color:#0f766e;text-decoration:underline;white-space:nowrap;display:inline-block;">' + esc(t.sw_short_code) + ' ↗</code>' + (t.status === 'awaiting_merchant_topup' && t.fifo_seq ? '<div style="font-size:0.72rem;color:#b91c1c;font-weight:800;white-space:nowrap;">⏸️ طابور انتظار الشحن #' + Number(t.fifo_seq) + '</div>' : '') + '</td>' +
                             '<td data-label="العضو"><b>#' + Number(t.member_code || 0) + '</b> ' + esc(t.member_name || '') + (t.is_self_purchase_flag ? '<div style="margin-top:3px;"><span class="badge badge-danger" style="font-size:0.68rem;white-space:nowrap;">⚠️ شراء ذاتي (نفس المالك)</span></div>' : '') + '</td>' +
                             '<td data-label="التاجر والفرع"><b>' + esc(t.merchant_name || '') + '</b><div style="font-size:0.74rem;color:#64748b;">' + esc(t.branch_name || '') + ' • ' + esc(fmtCountryAr(t.country_code)) + '</div></td>' +
@@ -1869,7 +1973,7 @@
                             : 'تم الفصل';
                         const dStMeta = _DISP_STATUS_AR[d.status] || [String(d.status || '—'), open ? 'badge-warning' : 'badge-success'];
                         const dCatAr = _DISP_CAT_AR[String(d.dispute_category || 'general').toLowerCase()] || (d.dispute_category || 'نزاع عام');
-                        return '<tr class="clickable-admin-row" style="cursor:pointer;" onclick="if(!event.target.closest(\'button,a,img\'))svOpenAdminDetailCard(\'⚖️ تفاصيل النزاع ' + esc(d.sw_short_code) + '\',[[\'العضو\',\'#' + Number(d.member_code || 0) + ' ' + esc(d.member_name || '') + '\'],[\'التاجر\',\'' + esc(d.merchant_name || '') + '\'],[\'التصنيف\',\'' + esc(dCatAr) + '\'],[\'السبب\',\'' + esc(d.dispute_reason || '') + '\'],[\'الحالة\',\'' + esc(dStMeta[0]) + '\']])">' +
+                        return '<tr id="admDisputeRow_' + esc(d.id) + '" data-short-code="' + esc(d.sw_short_code || '') + '" class="clickable-admin-row" style="cursor:pointer;" onclick="if(!event.target.closest(\'button,a,img\'))svOpenAdminDetailCard(\'⚖️ تفاصيل النزاع ' + esc(d.sw_short_code) + '\',[[\'العضو\',\'#' + Number(d.member_code || 0) + ' ' + esc(d.member_name || '') + '\'],[\'التاجر\',\'' + esc(d.merchant_name || '') + '\'],[\'التصنيف\',\'' + esc(dCatAr) + '\'],[\'السبب\',\'' + esc(d.dispute_reason || '') + '\'],[\'الحالة\',\'' + esc(dStMeta[0]) + '\']])">' +
                             '<td data-label="الفاتورة"><code dir="ltr" style="color:#0f766e;font-weight:800;">' + esc(d.sw_short_code) + ' ↗</code><div style="font-size:0.74rem;color:#64748b;">' + fmt2(d.total_amount) + ' ' + esc(d.currency_code || '') + '</div></td>' +
                             '<td data-label="العضو">#' + Number(d.member_code || 0) + ' ' + esc(d.member_name || '') + '</td>' +
                             '<td data-label="التاجر">' + esc(d.merchant_name || '') + '</td>' +
@@ -1888,7 +1992,7 @@
                         const isOpen = cp.status === 'open';
                         const cpStMeta = _COMP_STATUS_AR[cp.status] || [String(cp.status || '—'), isOpen ? 'badge-warning' : 'badge-success'];
                         const cpThumb = renderAdmThumb(cp.evidence_url, '📎 إثبات شكوى ضد ' + esc(cp.merchant_name || ''));
-                        return '<tr class="clickable-admin-row" style="cursor:pointer;" onclick="if(!event.target.closest(\'button,a,img\'))svOpenAdminDetailCard(\'📣 تفاصيل شكوى ضد ' + esc(cp.merchant_name || '') + '\',[[\'المتجر\',\'' + esc(cp.merchant_name || '') + '\'],[\'العضو\',\'#' + Number(cp.member_code || 0) + ' ' + esc(cp.member_name || '') + '\'],[\'الموضوع\',\'' + esc(cp.subject || '') + '\'],[\'التفاصيل\',\'' + esc(cp.details || '') + '\'],[\'الحالة\',\'' + esc(cpStMeta[0]) + '\']])">' +
+                        return '<tr id="admComplaintRow_' + esc(cp.id) + '" class="clickable-admin-row" style="cursor:pointer;" onclick="if(!event.target.closest(\'button,a,img\'))svOpenAdminDetailCard(\'📣 تفاصيل شكوى ضد ' + esc(cp.merchant_name || '') + '\',[[\'المتجر\',\'' + esc(cp.merchant_name || '') + '\'],[\'العضو\',\'#' + Number(cp.member_code || 0) + ' ' + esc(cp.member_name || '') + '\'],[\'الموضوع\',\'' + esc(cp.subject || '') + '\'],[\'التفاصيل\',\'' + esc(cp.details || '') + '\'],[\'الحالة\',\'' + esc(cpStMeta[0]) + '\']])">' +
                             '<td data-label="المتجر"><b style="color:#0f766e;">' + esc(cp.merchant_name || '') + ' ↗</b><div style="font-size:0.74rem;color:#64748b;">' + esc(cp.merchant_code || '') + ' • ' + esc(fmtCountryAr(cp.country_code)) + '</div></td>' +
                             '<td data-label="العضو">#' + Number(cp.member_code || 0) + ' ' + esc(cp.member_name || '') + '</td>' +
                             '<td data-label="التصنيف والموضوع"><span class="badge badge-warning" style="font-size:0.7rem;">' + esc(compCatLabels[cp.category] || cp.category) + '</span><div style="font-weight:700;margin-top:3px;">' + esc(cp.subject || '') + '</div></td>' +

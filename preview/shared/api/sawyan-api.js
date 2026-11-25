@@ -1655,6 +1655,24 @@
             });
         },
 
+        async adminReviewBankTopupProof({
+            adminId = null,
+            sessionToken = null,
+            proofNotifId,
+            decision,
+            adminNote = null
+        }) {
+            const adm = adminId || (SawyanAPI.getSavedAdmin() && SawyanAPI.getSavedAdmin().id);
+            const tok = sessionToken || SawyanAPI.getAdminSessionToken();
+            return await callRpc('admin_review_bank_topup_proof', {
+                p_admin_id: adm,
+                p_session_token: tok,
+                p_proof_notif_id: proofNotifId,
+                p_decision: decision,
+                p_admin_note: adminNote
+            });
+        },
+
         async adminManageAcademyAndCategories({
             adminId = null,
             sessionToken = null,
