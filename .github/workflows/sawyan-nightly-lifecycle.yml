@@ -35,10 +35,10 @@ jobs:
       - name: Layer 2 — 5-Persona Interactive Browser E2E Gate
         run: python3 database/verify_e2e_persona_journeys.py
 
-      - name: Layer 3 & 4 — 50-Member + 6-Merchant + Day-15 Payout + 0.00 Accounting + Chaos E2E
+      - name: Layer 3 & 4 — Gen-2 Autonomous 5-Persona Journeys + 50-Member + 6-Merchant + Day-15 + Chaos E2E (/sawyan-robot)
         run: |
           if [ -n "${{ github.event.inputs.seed }}" ]; then
-            python3 database/verify_full_lifecycle_50_members_e2e.py --seed "${{ github.event.inputs.seed }}"
+            python3 database/verify_autonomous_user_journeys_v2.py --seed "${{ github.event.inputs.seed }}"
           else
-            python3 database/verify_full_lifecycle_50_members_e2e.py
+            python3 database/verify_autonomous_user_journeys_v2.py
           fi
