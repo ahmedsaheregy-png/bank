@@ -10,6 +10,6 @@
   "frozen_items": [
     "OFFLINE_TOTP_MEMBER_QR_60S"
   ],
-  "last_full_audit_verified_at": "2026-11-25T02:32:00Z",
-  "notes": "strict_parity_enabled becomes true upon completing Phase 1 & Phase 2 and binds Stop Hook + Zero-Defect Gate to full D29/D30 visual & spec parity. Stages 10-18 sealed. Stage 19 (Tree Hash-Join optimization + 12s dashboard timeout locks, configurable REQUIRE_TOPUP_PROOF optional-proof merchant top-up policy + anti-duplicate guards, sawyan-api read retry, self-rolling-back 50-member + 6-merchant + Day-15 payout + 0.00 accounting SQL simulator, Playwright Chaos E2E robot `verify_full_lifecycle_50_members_e2e.py`, and scheduled Nightly 24h + 6h Canary GitHub Actions workflows) sealed 2026-11-24."
+  "last_full_audit_verified_at": "2026-11-25T03:50:00Z",
+  "notes": "strict_parity_enabled becomes true upon completing Phase 1 & Phase 2 and binds Stop Hook + Zero-Defect Gate to full D29/D30 visual & spec parity. Stages 10-20 sealed (incl. Live Flash Offers Broadcast in 28_flash_offers_live_broadcast.sql). Stage 21 (Merchant Portal mobile anti-bloat action bar + 1-tap POS CTA + WhatsApp store share, full jargon purge, pending_topup_requests step-2 bug fix, RTL & .sawyan-font-btn mobile header fix, 29_stage20_pg_graphql_lock.sql least-privilege parity, and cross-schema registration_field_configs parity monitor) sealed 2026-11-25."
 }

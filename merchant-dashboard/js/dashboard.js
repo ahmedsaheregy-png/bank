@@ -349,6 +349,7 @@ function syncMerchantBalanceWarnings() {
     if (!p) return;
     const pendingList = merchantBundle?.pending_transactions || [];
     const html = getMerchantFifoBannerHtml(p, pendingList);
+    const isOnboardingOrUnfunded = ((p.onboarding_status || 'approved') !== 'approved') || (p.financial_status === 'unfunded');
     [
         { hostId: 'homePage', bannerId: 'merchantFifoIsolationBanner' },
         { hostId: 'scanPage', bannerId: 'scanFifoBalanceWarning' },
@@ -358,7 +359,8 @@ function syncMerchantBalanceWarnings() {
         const host = document.getElementById(hostId);
         if (!host) return;
         let box = document.getElementById(bannerId);
-        if (!html) {
+        // Prevent duplicating the red lock banner right above the 3-step activation card on homePage
+        if (!html || (hostId === 'homePage' && isOnboardingOrUnfunded)) {
             if (box) box.remove();
             return;
         }
@@ -395,6 +397,28 @@ window.toggleMerchantSelfPause = async function () {
     }
 };
 
+window.shareMerchantStoreWhatsApp = function () {
+    const p = merchantBundle?.profile || merchantData || {};
+    const storeName = p.business_name || 'متجرنا';
+    const storeCode = p.merchant_code || '';
+    const cityLine = p.city ? ` (${p.city})` : '';
+    const msg =
+        `🛍️ أهلاً بأعضاء SAWYAN!\n` +
+        `يسعدنا استقبالكم في «${storeName}»${cityLine} — متجر شريك معتمد في منصة SAWYAN` +
+        (storeCode ? ` (كود المتجر: ${storeCode})` : '') +
+        `.\n\n🧾 اطلب توثيق فاتورتك عند الكاشير فوراً للاستفادة من عائدات الاستهلاك الاستثماري وإغلاق هدفك الشهري بكل سهولة!`;
+    const url = 'https://wa.me/?text=' + encodeURIComponent(msg);
+    const win = window.open(url, '_blank', 'noopener');
+    if (!win) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(msg).catch(() => {});
+            swNotify('تم نسخ رسالة مشاركة المتجر — يمكنك لصقها مباشرة في واتساب.', 'success');
+        } else {
+            window.location.href = url;
+        }
+    }
+};
+
 function renderMerchantLifecycleAndD4Cards() {
     const p = merchantBundle?.profile;
     const homePage = document.getElementById('homePage');
@@ -402,6 +426,8 @@ function renderMerchantLifecycleAndD4Cards() {
 
     const acc = p.effective_access || {};
     const curr = p.currency_code || 'EGP';
+    const warn1Pct = Number(p.warn1_pct || 30);
+    const warn2Pct = Number(p.warn2_pct || 20);
     const onbLabels = {
         draft_incomplete: '⚠️ مسودة غير مكتملة',
         needs_correction: '✏️ مطلوب استيفاء وتصحيح',
@@ -409,33 +435,36 @@ function renderMerchantLifecycleAndD4Cards() {
         rejected: '🚫 مرفوض إدارياً'
     };
     const finLabels = {
-        unfunded: '⚪ غير مموّل (شحن 0)',
-        healthy_green: '🟢 سليم (> ' + Number(p.warn1_pct || 30) + '%)',
-        warning_yellow: '🟡 تنبيه مبكر (<= ' + Number(p.warn1_pct || 30) + '%)',
-        warning_red: '🟠 إنذار حرج (<= ' + Number(p.warn2_pct || 20) + '%)',
-        isolated_low_balance: '🔴 معزول منخفض الرصيد (كاشير فقط)',
-        depleted_fifo_grace: '⏸️ نافد بمهلة طابور FIFO (' + Number(p.fifo_queue_count || 0) + '/' + Number(p.effective_queue_cap ?? 3) + ')',
-        locked_queue_full: '🔒 مقفل لامتلاء الطابور / نفاد D4'
+        unfunded: '⚪ بانتظار شحن الرصيد الافتتاحي',
+        healthy_green: `🟢 سليم — أعلى من ${warn1Pct}%`,
+        warning_yellow: `🟡 تنبيه مبكر — ${warn1Pct}% فأقل`,
+        warning_red: `🟠 إنذار حرج — ${warn2Pct}% فأقل`,
+        isolated_low_balance: '🔴 مخفي مؤقتاً لانخفاض الرصيد (التوثيق متاح)',
+        depleted_fifo_grace: '⏸️ فواتير بانتظار شحن الرصيد (' + Number(p.fifo_queue_count || 0) + '/' + Number(p.effective_queue_cap ?? 3) + ')',
+        locked_queue_full: '🔒 توثيق الفواتير متوقف لحين شحن الرصيد أو السداد'
     };
     const govLabels = {
         good_standing: '🟢 سليم ممتثل',
-        probation_warning: '🟡 تحت المراقبة (د1)',
-        restricted_no_reject: '🟠 تقييد د2 (بلا رفض يدوي)',
+        probation_warning: '🟡 تنبيه التزام (ملاحظة أولى)',
+        restricted_no_reject: '🟠 تقييد تشغيلي (الرفض عبر الإدارة)',
         paused_by_merchant: '⏸️ إجازة بطلب التاجر',
         paused_by_admin: '⏸️ موقوف إدارياً',
         suspended_compliance: '🔴 تعليق امتثال (' + Number(p.overdue_days || 0) + 'ي)',
-        banned_permanent: '🚫 حظر نهائي (D3)'
+        banned_permanent: '🚫 إيقاف نهائي للحساب'
     };
 
     const isApprovedOnb = (p.onboarding_status || 'approved') === 'approved';
     const isUnfunded = p.financial_status === 'unfunded';
     const canSelfPause = isApprovedOnb && !isUnfunded && ['good_standing', 'probation_warning', 'paused_by_merchant'].includes(p.governance_status || 'good_standing');
     const isSelfPaused = p.governance_status === 'paused_by_merchant';
-    const pendTopups = Array.isArray(merchantBundle?.pending_topups) ? merchantBundle.pending_topups : [];
+    const pendTopups = Array.isArray(merchantBundle?.pending_topup_requests)
+        ? merchantBundle.pending_topup_requests
+        : (Array.isArray(merchantBundle?.pending_topups) ? merchantBundle.pending_topups : []);
+    const requireTopupProof = Boolean(merchantBundle?.verification_settings?.require_topup_proof);
     const accessModeAr = {
         full: 'نشط ومفعّل',
         complete_profile_only: 'استكمال البيانات',
-        topup_only: 'وضع الشحن والسداد',
+        topup_only: 'شحن الرصيد والسداد',
         appeal_and_repay_only: 'مراجعة وسداد',
         blocked: 'الحساب موقوف'
     }[acc.portal_access_mode || 'full'] || (acc.portal_access_mode || 'full');
@@ -449,12 +478,17 @@ function renderMerchantLifecycleAndD4Cards() {
     }
 
     const reasonText = p.hide_reason_ar || p.pos_lock_reason_ar || (p.onboarding_status === 'needs_correction' ? p.onboarding_notes : '') || '';
+    const safeCap = Math.max(0, Number(p.safe_sales_capacity || 0));
+
     if (!isApprovedOnb || isUnfunded) {
         const step1Done = isApprovedOnb;
         const step2PendingReview = pendTopups.length > 0;
+        const step2Instruction = requireTopupProof
+            ? 'حوّل مبلغ شحن الرصيد لحساب SAWYAN البنكي وأرفق رقم المرجع أو الإيصال (أو اطلب بيانات الحساب بضغطة واتساب) — يفتح الكاشير ويظهر متجرك للأعضاء فور المطابقة.'
+            : 'حوّل مبلغ شحن الرصيد لحساب SAWYAN البنكي ثم أرسل إشعاراً بالمبلغ من الزر أدناه (بدون الحاجة لمستند مؤقتاً) — يفتح الكاشير ويظهر متجرك للأعضاء فور اعتماد المالية.';
         const step2Html = step2PendingReview
             ? `<div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:10px;padding:10px 12px;">
-                    <div style="font-weight:900;color:#92400e;font-size:0.86rem;">⏳ 2. طلب الشحن قيد المراجعة لدى المالية (${pendTopups.length})</div>
+                    <div style="font-weight:900;color:#92400e;font-size:0.86rem;">⏳ 2. طلب شحن الرصيد قيد المراجعة لدى المالية (${pendTopups.length})</div>
                     <div style="font-size:0.79rem;color:#78350f;margin-top:3px;">تم استلام إشعار تحويلك — بمجرد تأكيد المالية يُفعّل متجرك ويظهر في الدليل تلقائياً.</div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
                         <button type="button" onclick="showPage('financial')" class="btn btn-sm" style="background:#fff;border:1.5px solid #d97706;color:#92400e;font-weight:800;">📊 متابعة حالة الطلب</button>
@@ -463,7 +497,7 @@ function renderMerchantLifecycleAndD4Cards() {
                </div>`
             : `<div style="background:${step1Done ? '#ecfdf5' : '#f8fafc'};border:2px solid ${step1Done ? '#10b981' : '#cbd5e1'};border-radius:10px;padding:12px;">
                     <div style="font-weight:900;color:${step1Done ? '#065f46' : '#334155'};font-size:0.88rem;">${step1Done ? '👉 2. الخطوة المطلوبة الآن: اشحن رصيدك الافتتاحي' : '2. شحن الرصيد الافتتاحي'}</div>
-                    <div style="font-size:0.8rem;color:#334155;margin-top:4px;line-height:1.55;">حوّل مبلغ الشحن لحساب SAWYAN البنكي وأرفق الإيصال (أو اطلب بيانات الحساب بضغطة واتساب) — يفتح الكاشير ويظهر متجرك للأعضاء فور المطابقة.</div>
+                    <div style="font-size:0.8rem;color:#334155;margin-top:4px;line-height:1.55;">${step2Instruction}</div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
                         <button type="button" onclick="openMerchantTopupModal()" class="btn btn-primary" style="background:#059669;border-color:#047857;font-weight:900;font-size:0.88rem;padding:9px 18px;">💳 اشحن رصيدك الآن</button>
                         <button type="button" onclick="showPage('financial')" class="btn btn-outline btn-sm" style="font-weight:800;">📊 صفحة المالية</button>
@@ -489,40 +523,70 @@ function renderMerchantLifecycleAndD4Cards() {
                     </div>
                     ${step2Html}
                     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:9px 12px;font-size:0.8rem;color:#475569;">
-                        <strong>🔓 3. الظهور في دليل الأعضاء وفتح الكاشير:</strong> يُفتح تلقائياً فور تأكيد المالية لطلب الشحن دون أي خطوات إضافية.
+                        <strong>🔓 3. الظهور في دليل الأعضاء وفتح الكاشير:</strong> يُفتح تلقائياً فور تأكيد المالية لطلب شحن الرصيد دون أي خطوات إضافية.
                     </div>
                 </div>
             </div>
         `;
     } else {
-        lcBox.innerHTML = `
-            <div style="background:#ffffff;border:1.5px solid ${acc.is_visible_on_radar ? '#10b981' : (acc.can_accept_pos ? '#f59e0b' : '#ef4444')};border-radius:14px;padding:14px 16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(15,23,42,0.04);">
-                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:8px;">
-                    <div style="font-weight:900;font-size:0.95rem;color:#0f172a;">🧭 حالة المتجر والتشغيل (${escM(accessModeAr)})</div>
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-                        <span style="padding:3px 9px;border-radius:999px;font-size:0.75rem;font-weight:800;background:${acc.is_visible_on_radar ? '#d1fae5' : '#fee2e2'};color:${acc.is_visible_on_radar ? '#065f46' : '#991b1b'};">${acc.is_visible_on_radar ? '🟢 ظاهر بالدليل والرادار' : '🔴 مخفي عن الدليل'}</span>
-                        <span style="padding:3px 9px;border-radius:999px;font-size:0.75rem;font-weight:800;background:${acc.can_accept_pos ? '#d1fae5' : '#fee2e2'};color:${acc.can_accept_pos ? '#065f46' : '#991b1b'};">${acc.can_accept_pos ? '🟢 الكاشير مفتوح' : '🔒 الكاشير مغلق'}</span>
-                        <button type="button" onclick="openMerchantTopupModal()" class="btn btn-sm" style="background:#059669;color:#fff;border:none;padding:4px 10px;font-size:0.76rem;font-weight:800;border-radius:8px;cursor:pointer;">💳 شحن الرصيد</button>
-                        ${canSelfPause ? `<button type="button" onclick="toggleMerchantSelfPause()" class="btn btn-sm" style="background:${isSelfPaused ? '#059669' : '#f1f5f9'};color:${isSelfPaused ? '#fff' : '#334155'};border:1px solid #cbd5e1;padding:4px 10px;font-size:0.76rem;font-weight:800;border-radius:8px;cursor:pointer;">${isSelfPaused ? '▶️ إنهاء الإجازة وتفعيل المتجر' : '⏸️ وضع إجازة / إغلاق مؤقت'}</button>` : ''}
+        const isHealthyActive =
+            p.financial_status === 'healthy_green' &&
+            (p.governance_status || 'good_standing') === 'good_standing' &&
+            acc.is_visible_on_radar !== false &&
+            acc.can_accept_pos !== false &&
+            !reasonText;
+
+        if (isHealthyActive) {
+            lcBox.innerHTML = `
+                <div data-spec-id="merchant-active-action-bar" style="background:#ffffff;border:1.5px solid #a7f3d0;border-radius:14px;padding:12px 14px;margin-bottom:14px;box-shadow:0 3px 10px rgba(6,78,59,0.06);display:grid;gap:9px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <span style="padding:3px 10px;border-radius:999px;font-size:0.78rem;font-weight:900;background:#d1fae5;color:#065f46;">🟢 المتجر نشط وظاهر</span>
+                            <span style="font-size:0.78rem;font-weight:800;color:#334155;">تغطية المبيعات: حتى <strong style="color:#047857;display:inline-block;" dir="ltr">${fmtMerchantMoney(safeCap, curr)}</strong></span>
+                        </div>
+                        <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;">
+                            <button type="button" onclick="openMerchantTopupModal()" class="btn btn-sm" style="background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7;padding:5px 8px;font-size:0.74rem;font-weight:800;border-radius:8px;cursor:pointer;white-space:nowrap;">💳 شحن الرصيد</button>
+                            <button type="button" onclick="shareMerchantStoreWhatsApp()" class="btn btn-sm" style="background:#f0fdf4;color:#15803d;border:1px solid #86efac;padding:5px 8px;font-size:0.74rem;font-weight:800;border-radius:8px;cursor:pointer;white-space:nowrap;">📲 شارك متجرك</button>
+                            ${canSelfPause ? `<button type="button" onclick="toggleMerchantSelfPause()" class="btn btn-sm" style="background:#f8fafc;color:#475569;border:1px solid #cbd5e1;padding:5px 8px;font-size:0.74rem;font-weight:800;border-radius:8px;cursor:pointer;white-space:nowrap;">⏸️ إجازة</button>` : ''}
+                        </div>
                     </div>
+                    <button type="button" onclick="showPage('kiosk')" style="width:100%;background:linear-gradient(135deg,#059669,#047857);color:#ffffff;border:none;border-radius:10px;padding:11px 16px;font-weight:900;font-size:0.95rem;cursor:pointer;font-family:'Tajawal',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(5,150,105,0.24);">
+                        <span>🧾</span>
+                        <span>توثيق فاتورة عميل الآن</span>
+                    </button>
                 </div>
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,185px),1fr));gap:8px;font-size:0.8rem;">
-                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;">
-                        <div style="color:#64748b;font-weight:700;font-size:0.72rem;">تأهيل الحساب والبيانات</div>
-                        <div style="font-weight:800;color:#0f172a;margin-top:2px;">${escM(onbLabels[p.onboarding_status] || p.onboarding_status || 'approved')}</div>
+            `;
+        } else {
+            lcBox.innerHTML = `
+                <div style="background:#ffffff;border:1.5px solid ${acc.is_visible_on_radar ? '#10b981' : (acc.can_accept_pos ? '#f59e0b' : '#ef4444')};border-radius:14px;padding:14px 16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(15,23,42,0.04);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:8px;">
+                        <div style="font-weight:900;font-size:0.95rem;color:#0f172a;">🧭 حالة المتجر والتشغيل (${escM(accessModeAr)})</div>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                            <span style="padding:3px 9px;border-radius:999px;font-size:0.75rem;font-weight:800;background:${acc.is_visible_on_radar ? '#d1fae5' : '#fee2e2'};color:${acc.is_visible_on_radar ? '#065f46' : '#991b1b'};">${acc.is_visible_on_radar ? '🟢 ظاهر بالدليل والرادار' : '🔴 مخفي عن الدليل'}</span>
+                            <span style="padding:3px 9px;border-radius:999px;font-size:0.75rem;font-weight:800;background:${acc.can_accept_pos ? '#d1fae5' : '#fee2e2'};color:${acc.can_accept_pos ? '#065f46' : '#991b1b'};">${acc.can_accept_pos ? '🟢 الكاشير مفتوح' : '🔒 الكاشير مغلق'}</span>
+                            <button type="button" onclick="openMerchantTopupModal()" class="btn btn-sm" style="background:#059669;color:#fff;border:none;padding:4px 10px;font-size:0.76rem;font-weight:800;border-radius:8px;cursor:pointer;">💳 شحن الرصيد</button>
+                            ${acc.is_visible_on_radar ? `<button type="button" onclick="shareMerchantStoreWhatsApp()" class="btn btn-sm" style="background:#f0fdf4;color:#15803d;border:1px solid #86efac;padding:4px 10px;font-size:0.76rem;font-weight:800;border-radius:8px;cursor:pointer;">📲 شارك متجرك</button>` : ''}
+                            ${canSelfPause ? `<button type="button" onclick="toggleMerchantSelfPause()" class="btn btn-sm" style="background:${isSelfPaused ? '#059669' : '#f1f5f9'};color:${isSelfPaused ? '#fff' : '#334155'};border:1px solid #cbd5e1;padding:4px 10px;font-size:0.76rem;font-weight:800;border-radius:8px;cursor:pointer;">${isSelfPaused ? '▶️ إنهاء الإجازة وتفعيل المتجر' : '⏸️ وضع إجازة / إغلاق مؤقت'}</button>` : ''}
+                        </div>
                     </div>
-                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;">
-                        <div style="color:#64748b;font-weight:700;font-size:0.72rem;">الرصيد والتغطية</div>
-                        <div style="font-weight:800;color:#0f172a;margin-top:2px;">${escM(finLabels[p.financial_status] || p.financial_status || 'healthy_green')}</div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,185px),1fr));gap:8px;font-size:0.8rem;">
+                        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;">
+                            <div style="color:#64748b;font-weight:700;font-size:0.72rem;">تأهيل الحساب والبيانات</div>
+                            <div style="font-weight:800;color:#0f172a;margin-top:2px;">${escM(onbLabels[p.onboarding_status] || p.onboarding_status || 'approved')}</div>
+                        </div>
+                        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;">
+                            <div style="color:#64748b;font-weight:700;font-size:0.72rem;">الرصيد والتغطية</div>
+                            <div style="font-weight:800;color:#0f172a;margin-top:2px;">${escM(finLabels[p.financial_status] || p.financial_status || 'healthy_green')}</div>
+                        </div>
+                        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;">
+                            <div style="color:#64748b;font-weight:700;font-size:0.72rem;">حالة الحساب والالتزام</div>
+                            <div style="font-weight:800;color:#0f172a;margin-top:2px;">${escM(govLabels[p.governance_status] || p.governance_status || 'good_standing')}</div>
+                        </div>
                     </div>
-                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;">
-                        <div style="color:#64748b;font-weight:700;font-size:0.72rem;">حالة الحساب والالتزام</div>
-                        <div style="font-weight:800;color:#0f172a;margin-top:2px;">${escM(govLabels[p.governance_status] || p.governance_status || 'good_standing')}</div>
-                    </div>
+                    ${reasonText ? `<div style="margin-top:8px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:7px 10px;font-size:0.79rem;font-weight:700;color:#92400e;">ℹ️ ${escM(reasonText)}</div>` : ''}
                 </div>
-                ${reasonText ? `<div style="margin-top:8px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:7px 10px;font-size:0.79rem;font-weight:700;color:#92400e;">ℹ️ ${escM(reasonText)}</div>` : ''}
-            </div>
-        `;
+            `;
+        }
     }
 
     let d4Box = document.getElementById('merchantD4SettlementCard');
@@ -627,7 +691,13 @@ function renderLiveHomeStats() {
                 hint.textContent = '🔴 المتجر مخفي مؤقتاً — اشحن الرصيد لإعادة الظهور واعتماد الفواتير';
                 hint.style.color = '#dc2626';
             } else {
-                hint.textContent = `🟢 يكفي مبيعات حتى ${fmtMerchantMoney(safeCap, curr)} (${p.zone_status})`;
+                const zoneShortAr = {
+                    GREEN: 'منطقة آمنة',
+                    YELLOW: 'تنبيه مبكر',
+                    RED: 'إنذار حرج',
+                    ISOLATED: 'مخفي مؤقتاً'
+                }[p.zone_status] || 'نشط';
+                hint.textContent = `🟢 يكفي مبيعات حتى ${fmtMerchantMoney(safeCap, curr)} (${zoneShortAr})`;
                 hint.style.color = '#059669';
             }
         }
@@ -647,10 +717,10 @@ function renderLiveHomeStats() {
     }
     if (zoneEl) {
         const zoneMap = {
-            GREEN: '🟢 المنطقة الخضراء (> 30%)',
-            YELLOW: '🟡 إنذار شحن مبكر (<= 30%)',
-            RED: '🟠 إنذار حرج (<= 20%)',
-            ISOLATED: '🔴 معزول لحين الشحن (<= 10%)'
+            GREEN: '🟢 المنطقة الآمنة — أعلى من 30%',
+            YELLOW: '🟡 تنبيه شحن رصيد مبكر — 30% فأقل',
+            RED: '🟠 إنذار حرج للرصيد — 20% فأقل',
+            ISOLATED: '🔴 مخفي مؤقتاً لحين شحن الرصيد — 10% فأقل'
         };
         zoneEl.textContent = zoneMap[p.zone_status] || p.zone_status;
     }
@@ -1346,7 +1416,7 @@ function loadQRScannerPage() {
                                 ✓
                             </button>
                         </div>
-                        <div style="font-size: 0.72rem; color: #64748b; margin-top: 4px;">يبحث لحظياً في قاعدة بيانات الأعضاء النشطين مع إخفاء بيانات التواصل (D26)</div>
+                        <div style="font-size: 0.72rem; color: #64748b; margin-top: 4px;">يبحث لحظياً في قاعدة بيانات الأعضاء النشطين مع حماية خصوصية بيانات التواصل</div>
                     </div>
 
                     <!-- حقل 2: مكان اسم العميل الثابت والمحدد بوضوح -->
@@ -2685,9 +2755,9 @@ async function loadAllTransactions(periodFilter = activeShiftPeriod) {
     const queuedAlertHtml = queuedTxs.length === 0 ? '' : `
         <div style="background:#fef2f2;border:1.5px solid #f87171;border-radius:14px;padding:14px 16px;margin-bottom:14px;">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-                <strong style="color:#991b1b;font-size:0.95rem;">⏸️ فواتير محجوزة في طابور الشحن FIFO أو بانتظار الاعتماد (${queuedTxs.length})</strong>
+                <strong style="color:#991b1b;font-size:0.95rem;">⏸️ فواتير بانتظار شحن الرصيد أو الاعتماد (${queuedTxs.length})</strong>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <button type="button" onclick="showPage('pending')" style="background:#b91c1c;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-weight:800;font-size:0.78rem;cursor:pointer;">⏳ فتح صفحة المعلقات و FIFO</button>
+                    <button type="button" onclick="showPage('pending')" style="background:#b91c1c;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-weight:800;font-size:0.78rem;cursor:pointer;">⏳ فتح قائمة الفواتير المعلقة</button>
                     <button type="button" onclick="showPage('financial')" style="background:#065f46;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-weight:800;font-size:0.78rem;cursor:pointer;">🏦 شحن الرصيد الآن</button>
                 </div>
             </div>
@@ -2702,7 +2772,7 @@ async function loadAllTransactions(periodFilter = activeShiftPeriod) {
                             <b>${fmtMerchantMoney(qt.total_amount, qt.currency_code || curr)}</b>
                             <span style="color:#b91c1c;font-weight:700;">عمولة: ${fmtMerchantMoney(qt.commission_amount, qt.currency_code || curr)}</span>
                             <span style="padding:2px 8px;border-radius:999px;font-size:0.74rem;font-weight:800;background:${qt.status === 'awaiting_merchant_topup' ? '#fee2e2' : '#fef3c7'};color:${qt.status === 'awaiting_merchant_topup' ? '#991b1b' : '#92400e'};">
-                                ${qt.status === 'awaiting_merchant_topup' ? `⏸️ بانتظار شحن المتجر (FIFO #${qt.fifo_seq || 1})` : '⏳ بانتظار الاعتماد'}
+                                ${qt.status === 'awaiting_merchant_topup' ? `⏸️ بانتظار شحن الرصيد (ترتيب #${qt.fifo_seq || 1})` : '⏳ بانتظار الاعتماد'}
                             </span>
                         </div>
                     </div>
@@ -2712,7 +2782,7 @@ async function loadAllTransactions(periodFilter = activeShiftPeriod) {
     `;
 
     const rowsHtml = txs.length === 0
-        ? `<tr><td colspan="9" style="padding:20px;text-align:center;color:#64748b;">${queuedTxs.length > 0 ? 'لا توجد عمليات مكتملة بعد — راجع فواتير طابور الشحن / المعلقة الظاهرة أعلاه.' : 'لا توجد عمليات مسجلة بعد في هذا المتجر.'}</td></tr>`
+        ? `<tr><td colspan="9" style="padding:20px;text-align:center;color:#64748b;">${queuedTxs.length > 0 ? 'لا توجد عمليات مكتملة بعد — راجع الفواتير المعلقة الظاهرة أعلاه.' : 'لا توجد عمليات مسجلة بعد في هذا المتجر.'}</td></tr>`
         : txs.map(tx => {
             const thumb = (tx.receipt_media_url && window.SAWYAN && window.SAWYAN.ImageUpload)
                 ? window.SAWYAN.ImageUpload.renderThumbHtml(tx.receipt_media_url, '🧾 إيصال ' + escM(tx.sw_short_code))
@@ -2720,7 +2790,7 @@ async function loadAllTransactions(periodFilter = activeShiftPeriod) {
             return `
             <tr style="border-bottom:1px solid #f1f5f9;">
                 <td data-label="كود الفاتورة" style="padding:12px;font-weight:800;font-family:monospace;direction:ltr;color:#2563eb;">${escM(tx.sw_short_code)}</td>
-                <td data-label="العضو (D26)" style="padding:12px;font-weight:700;">${escM(tx.member_masked_name)}</td>
+                <td data-label="العضو" style="padding:12px;font-weight:700;">${escM(tx.member_masked_name)}</td>
                 <td data-label="الوسيلة والإيصال" style="padding:12px;font-size:0.78rem;">
                     <div>${escM(fmtMerchantPayTypeLabel(tx.payment_type))}</div>
                     ${tx.unique_payment_ref ? `<div style="font-family:monospace;color:#475569;font-size:0.72rem;" dir="ltr">Ref: ${escM(tx.unique_payment_ref)}</div>` : ''}
@@ -2741,12 +2811,12 @@ async function loadAllTransactions(periodFilter = activeShiftPeriod) {
 
     page.innerHTML = `
         <div style="background:#fff7ed;border:1.5px solid #fb923c;border-radius:12px;padding:12px 16px;margin-bottom:14px;font-size:0.84rem;color:#9a3412;line-height:1.65;">
-            🛑 <strong>القاعدة التعاقدية الحاكمة للمرتجعات (D5):</strong> يُقبل استرداد العمولة عبر النظام خلال الشهر المفتوح وحتى نهاية اليوم <strong>14</strong> من الشهر التالي فقط (قبل يوم الصرف 15). <strong>وبعد يوم الصرف (يوم 15) يُقفل الشهر نهائياً ويرفض السيستم أي مرتجع يخصه؛ فإن وافق البائع على قبول المرتجع بعد يوم 15 يتحمله البائع وحده بالكامل (100%) خارج نظام سوياً.</strong>
+            🛑 <strong>القاعدة التعاقدية للمرتجعات:</strong> يُقبل استرداد العمولة عبر النظام خلال الشهر المفتوح وحتى نهاية اليوم <strong>14</strong> من الشهر التالي فقط (قبل يوم الصرف 15). <strong>وبعد يوم الصرف (يوم 15) يُقفل الشهر نهائياً ويرفض السيستم أي مرتجع يخصه؛ فإن وافق البائع على قبول المرتجع بعد يوم 15 يتحمله البائع وحده بالكامل (100%) خارج نظام سوياً.</strong>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
             <div>
-                <h2 style="margin:0;font-size:1.3rem;font-weight:900;color:#0f172a;">💳 سجل العمليات وتقفيل الوردية المحاسبي (Point 13)</h2>
-                <p style="margin:4px 0 0;font-size:0.84rem;color:#64748b;">مقنّع الأسماء (D26) وخالٍ من تفكيك العمولة الداخلي، مع تطهير خلايا CSV ضد حقن المعادلات</p>
+                <h2 style="margin:0;font-size:1.3rem;font-weight:900;color:#0f172a;">💳 سجل العمليات وتقفيل الوردية</h2>
+                <p style="margin:4px 0 0;font-size:0.84rem;color:#64748b;">سجل محمي للخصوصية وجاهز لتقفيل الوردية وتصدير كشف Excel آمن</p>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <select onchange="loadAllTransactions(this.value)" class="form-control" style="width:auto;font-weight:700;">
@@ -2755,7 +2825,7 @@ async function loadAllTransactions(periodFilter = activeShiftPeriod) {
                     <option value="month" ${activeShiftPeriod === 'month' ? 'selected' : ''}>الشهر الحالي</option>
                 </select>
                 <button type="button" onclick="downloadSafeShiftCsv('${activeShiftPeriod}')" style="background:#0f172a;color:white;border:none;padding:8px 14px;border-radius:8px;font-weight:700;cursor:pointer;">
-                    📥 تنزيل CSV الوردية المطهّر (Excel BOM)
+                    📥 تنزيل كشف الوردية (Excel / CSV)
                 </button>
             </div>
         </div>
@@ -2770,7 +2840,7 @@ async function loadAllTransactions(periodFilter = activeShiftPeriod) {
                 <strong style="display:block;font-size:1.1rem;color:#b45309;">${fmtMerchantMoney(totals.pending_amount ?? totals.pending_gross ?? 0, curr)}</strong>
             </div>
             <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px;">
-                <small style="color:#991b1b;">طابور FIFO (${totals.awaiting_topup_count || 0})</small>
+                <small style="color:#991b1b;">بانتظار شحن الرصيد (${totals.awaiting_topup_count || 0})</small>
                 <strong style="display:block;font-size:1.1rem;color:#dc2626;">${fmtMerchantMoney(totals.awaiting_topup_amount ?? totals.awaiting_topup_gross ?? 0, curr)}</strong>
             </div>
             <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:12px;">
@@ -2785,7 +2855,7 @@ async function loadAllTransactions(periodFilter = activeShiftPeriod) {
                 <thead>
                     <tr style="background:#f8fafc;border-bottom:1.5px solid #e2e8f0;color:#475569;font-weight:800;">
                         <th style="padding:12px;">كود الفاتورة</th>
-                        <th style="padding:12px;">العضو (D26)</th>
+                        <th style="padding:12px;">العضو</th>
                         <th style="padding:12px;">الوسيلة والإيصال</th>
                         <th style="padding:12px;">إجمالي الفاتورة</th>
                         <th style="padding:12px;">العمولة التعاقدية</th>

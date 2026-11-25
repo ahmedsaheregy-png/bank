@@ -288,15 +288,54 @@ def run_phase_b_and_c_browser_and_chaos():
         raise AssertionError(f"Browser/Chaos errors detected: {page_errors}")
 
 
+def run_cross_schema_config_parity_check():
+    """Ensures `sawyan` (Production) and `sawyan_demo` (Staging) registration field configs never drift."""
+    base_url, anon_key = load_public_supabase_config()
+
+    def _normalize_fields(resp):
+        if isinstance(resp, dict):
+            fields = resp.get("fields") or []
+        elif isinstance(resp, list):
+            fields = resp
+        else:
+            fields = []
+        return {
+            str(f.get("field_key") or f.get("key") or ""): (
+                bool(f.get("is_visible", True)),
+                bool(f.get("is_required", False)),
+                bool(f.get("is_enabled", True)),
+            )
+            for f in fields
+            if isinstance(f, dict) and (f.get("field_key") or f.get("key"))
+        }
+
+    mismatches = []
+    for role in ("member", "merchant"):
+        st_p, prod_cfg = post_rpc(base_url, anon_key, "sawyan", "get_registration_form_config", {"p_form_type": role}, timeout=20)
+        st_d, demo_cfg = post_rpc(base_url, anon_key, "sawyan_demo", "get_registration_form_config", {"p_form_type": role}, timeout=20)
+        assert st_p == 200 and st_d == 200, f"[CONFIG PARITY] RPC error for {role}: prod={st_p}, demo={st_d}"
+        prod_map = _normalize_fields(prod_cfg)
+        demo_map = _normalize_fields(demo_cfg)
+        assert len(prod_map) >= 4, f"[CONFIG PARITY] Unexpectedly empty prod {role} config: {prod_map}"
+        all_keys = sorted(set(prod_map.keys()) | set(demo_map.keys()))
+        for k in all_keys:
+            if prod_map.get(k) != demo_map.get(k):
+                mismatches.append(f"{role}.{k}: sawyan={prod_map.get(k)} vs sawyan_demo={demo_map.get(k)}")
+
+    assert not mismatches, f"[CONFIG PARITY FAIL] Schema registration config drift detected: {mismatches}"
+    print(" [PARITY PASS] Cross-schema registration_field_configs (sawyan <-> sawyan_demo) 100% identical (member & merchant)")
+
+
 def run_canary_health():
     """Lightweight 6-hour production & staging synthetic canary (runs in <20s)."""
     base_url, anon_key = load_public_supabase_config()
 
-    # 1. Verify live Supabase Production (`sawyan`) & Staging (`sawyan_demo`) public RPCs
+    # 1. Verify live Supabase Production (`sawyan`) & Staging (`sawyan_demo`) public RPCs + Config Parity
     for schema in ("sawyan", "sawyan_demo"):
         st, data = post_rpc(base_url, anon_key, schema, "get_public_active_countries_and_cities", {}, timeout=20)
         assert st == 200 and isinstance(data, dict) and len(data.get("countries") or []) >= 2, \
             f"[CANARY FAIL] {schema} public countries RPC unhealthy: {st} {data}"
+    run_cross_schema_config_parity_check()
 
     # 2. Verify live GitHub Pages Production & Staging URLs return HTTP 200 with zero broken HTML
     urls = [
@@ -327,6 +366,7 @@ def main():
         run_canary_health()
         return
 
+    run_cross_schema_config_parity_check()
     run_phase_a_sql_lifecycle(args.seed)
     if not args.sql_only:
         run_phase_b_and_c_browser_and_chaos()
