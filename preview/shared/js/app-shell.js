@@ -411,27 +411,44 @@
         }
         const modalIds = [
             'sawyanHelpPopoverModal',
-            'adminCmdKOverlay',
-            'svStage7ModalOverlay',
-            'sawyanOpsModal',
-            'svAdminModalOverlay',
-            'opsModalOverlay',
+            'swMediaLightbox',
+            'storeKitModalOverlay',
+            'sawyanMerchantReturnModal',
+            'svMerchantStage7Overlay',
             'svMerchantTopupOverlay',
             'svMerchantModalOverlay',
-            'sawyanMemberModalOverlay',
-            'memberDetailModal',
-            'memberModalOverlay',
             'merchantPromoRequestModal',
             'merchantRadarModal',
             'wifiSharingModal',
-            'tsNodeModalOverlay'
+            'tsInspectorOverlay',
+            'tsNodeModalOverlay',
+            'sawyanAcademyPlayerOverlay',
+            'sawyanQuickMemberQrOverlay',
+            'sawyanMemberModalOverlay',
+            'memberDetailModal',
+            'memberModalOverlay',
+            'adminCmdKOverlay',
+            'svCountryEditorOverlay',
+            'svPitchRadarOverlay',
+            'svStage7ModalOverlay',
+            'sawyanOpsModal',
+            'svAdminModalOverlay',
+            'opsModalOverlay'
         ];
+        const removeOnClose = new Set([
+            'sawyanOpsModal',
+            'tsNodeModalOverlay',
+            'tsInspectorOverlay',
+            'sawyanHelpPopoverModal',
+            'svCountryEditorOverlay',
+            'svPitchRadarOverlay'
+        ]);
         for (let i = 0; i < modalIds.length; i++) {
             const el = document.getElementById(modalIds[i]);
             if (el) {
                 const st = window.getComputedStyle(el);
                 if (st.display !== 'none' && st.visibility !== 'hidden') {
-                    if (el.id === 'sawyanOpsModal' || el.id === 'tsNodeModalOverlay') {
+                    if (removeOnClose.has(el.id)) {
                         el.remove();
                     } else {
                         el.classList.remove('active');
@@ -447,12 +464,58 @@
             activeModal.style.display = 'none';
             return true;
         }
+        // Smart safety net: catch ANY visible full-screen fixed overlay (excluding system loaders/security locks)
+        const protectedIds = new Set(['appShellBackdrop', 'loadingOverlay', 'empTempLockOverlay', 'moreMenu']);
+        const fixedOverlays = Array.from(document.body.children).filter(function (el) {
+            if (!el || el.nodeType !== 1 || protectedIds.has(el.id)) return false;
+            const st = window.getComputedStyle(el);
+            if (st.position !== 'fixed' || st.display === 'none' || st.visibility === 'hidden') return false;
+            const z = parseInt(st.zIndex, 10) || 0;
+            const r = el.getBoundingClientRect();
+            return z >= 1000 && r.width >= window.innerWidth * 0.85 && r.height >= window.innerHeight * 0.85;
+        });
+        if (fixedOverlays.length > 0) {
+            const topOv = fixedOverlays[fixedOverlays.length - 1];
+            topOv.classList.remove('active');
+            topOv.style.display = 'none';
+            return true;
+        }
         const moreMenu = document.getElementById('moreMenu');
         if (moreMenu && moreMenu.classList.contains('open')) {
             moreMenu.classList.remove('open');
             return true;
         }
         return false;
+    }
+
+    function setupUniversalModalEscape() {
+        if (window.__sawyanModalEscapeMounted) return;
+        window.__sawyanModalEscapeMounted = true;
+
+        // 1) Pressing Escape closes the topmost open modal/overlay cleanly
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                if (closeAnyOpenDashboardModal()) {
+                    e.preventDefault();
+                }
+            }
+        });
+
+        // 2) Clicking directly on the dark backdrop of any full-screen overlay closes it
+        const protectedIds = new Set(['appShellBackdrop', 'loadingOverlay', 'empTempLockOverlay', 'moreMenu']);
+        document.addEventListener('click', function (e) {
+            const target = e.target;
+            if (!target || target.nodeType !== 1 || target.parentElement !== document.body) return;
+            if (protectedIds.has(target.id)) return;
+            const st = window.getComputedStyle(target);
+            if (st.position !== 'fixed' || st.display === 'none' || st.visibility === 'hidden') return;
+            const z = parseInt(st.zIndex, 10) || 0;
+            const r = target.getBoundingClientRect();
+            if (z >= 1000 && r.width >= window.innerWidth * 0.85 && r.height >= window.innerHeight * 0.85) {
+                target.classList.remove('active');
+                target.style.display = 'none';
+            }
+        });
     }
 
     function navigateDashboardTabInternal(pageId) {
@@ -563,6 +626,7 @@
         syncMobileMoreMenuFromSidebar();
         enhanceTablesAndLabels();
         setupUniversalHistoryNavigation();
+        setupUniversalModalEscape();
 
         const target = document.querySelector('.main-content') || document.body;
         if (target && typeof MutationObserver !== 'undefined') {

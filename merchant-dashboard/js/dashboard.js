@@ -2549,13 +2549,22 @@ function openStoreKitModal() {
     if (!modal) {
         modal = document.createElement('div');
         modal.id = 'storeKitModalOverlay';
-        modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.78);z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px;font-family:Tajawal,sans-serif;direction:rtl;';
+        modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.78);z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;font-family:Tajawal,sans-serif;direction:rtl;';
         document.body.appendChild(modal);
     }
+    if (!document.getElementById('storeKitPrintHideStyle')) {
+        const ps = document.createElement('style');
+        ps.id = 'storeKitPrintHideStyle';
+        ps.textContent = '@media print { .store-kit-no-print { display: none !important; } }';
+        document.head.appendChild(ps);
+    }
+    const closeStoreKit = () => { modal.style.display = 'none'; };
+    modal.onclick = (e) => { if (e.target === modal) closeStoreKit(); };
     modal.style.display = 'flex';
     modal.innerHTML = `
-        <div id="storeKitPrintableCard" style="background:#ffffff;border:4px solid #059669;border-radius:20px;max-width:520px;width:100%;padding:26px;text-align:center;box-shadow:0 25px 60px rgba(0,0,0,0.4);">
-            <div style="background:#064e3b;color:#fff;padding:10px 16px;border-radius:12px;margin-bottom:14px;">
+        <div id="storeKitPrintableCard" style="position:relative;background:#ffffff;border:4px solid #059669;border-radius:20px;max-width:520px;width:100%;padding:26px;text-align:center;box-shadow:0 25px 60px rgba(0,0,0,0.4);">
+            <div style="position:relative;background:#064e3b;color:#fff;padding:12px 44px 12px 44px;border-radius:12px;margin-bottom:14px;">
+                <button type="button" id="storeKitCloseX" class="store-kit-no-print" aria-label="إغلاق" title="إغلاق (Esc)" onclick="document.getElementById('storeKitModalOverlay').style.display='none'" style="position:absolute;top:10px;left:10px;width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,0.35);background:rgba(255,255,255,0.18);color:#ffffff;font-size:1.05rem;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
                 <div style="font-size:0.8rem;color:#a7f3d0;font-weight:800;">نقطة بيع معتمدة رسمياً في شبكة SAWYAN العالمية</div>
                 <h2 style="margin:4px 0 0;font-size:1.4rem;">🏪 ${escM(p.business_name || 'متجرك المعتمد')}</h2>
             </div>
@@ -2569,9 +2578,9 @@ function openStoreKitModal() {
                     <li>تُضاف عائدات خطة الدخل لصندوق هدفك الشهري فوراً!</li>
                 </ol>
             </div>
-            <div style="display:flex;gap:10px;justify-content:center;">
+            <div class="store-kit-no-print" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
                 <button type="button" onclick="window.print()" class="btn btn-primary" style="padding:10px 22px;font-weight:800;">🖨️ طباعة الملصق فوراً (A4/A5)</button>
-                <button type="button" onclick="document.getElementById('storeKitModalOverlay').style.display='none'" class="btn btn-outline">إغلاق</button>
+                <button type="button" id="storeKitCloseBtn" onclick="document.getElementById('storeKitModalOverlay').style.display='none'" class="btn btn-outline" style="padding:10px 22px;font-weight:800;background:#f1f5f9;color:#0f172a;border:1.5px solid #cbd5e1;">✕ إغلاق</button>
             </div>
         </div>
     `;
@@ -2896,6 +2905,7 @@ function openMerchantPosReturnModal(transactionId, shortCode) {
     }
     overlay.style.display = 'flex';
     const close = () => { overlay.style.display = 'none'; };
+    overlay.onclick = (e) => { if (e.target === overlay) close(); };
 
     const renderStep1 = () => {
         overlay.innerHTML = `

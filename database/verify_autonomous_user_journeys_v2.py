@@ -99,6 +99,134 @@ def start_server():
     return httpd, port
 
 
+def assert_modal_escapable(page, label, overlay_sel, open_fn_js):
+    """Pillar 7 ('دخلت هنا أخرج إزاي؟'): Guarantees EVERY modal has a high-contrast visible close button + Escape + Backdrop + Back exit."""
+    def _is_open():
+        return page.evaluate(
+            """(sel) => {
+                const el = document.querySelector(sel);
+                if (!el) return false;
+                const st = window.getComputedStyle(el);
+                return st.display !== 'none' && st.visibility !== 'hidden' && Number(st.opacity || 1) > 0;
+            }""",
+            overlay_sel,
+        )
+
+    # 1) Open & verify visible close button with real WCAG contrast >= 3.0 (catches white-on-white invisible buttons!)
+    page.evaluate(open_fn_js)
+    page.wait_for_timeout(350)
+    assert _is_open(), f"[PILLAR 7 FAIL — {label}] Modal '{overlay_sel}' failed to open!"
+
+    close_audit = page.evaluate(
+        """(sel) => {
+            const ov = document.querySelector(sel);
+            if (!ov) return { found: false, details: 'no overlay' };
+            const parseRgba = (s) => {
+                const m = String(s || '').match(/rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)(?:,\\s*([\\d.]+))?\\)/i);
+                if (!m) return null;
+                return { r: +m[1], g: +m[2], b: +m[3], a: m[4] === undefined ? 1 : +m[4] };
+            };
+            const effBg = (el) => {
+                let cur = el;
+                while (cur && cur.nodeType === 1) {
+                    const cs = window.getComputedStyle(cur);
+                    const bg = parseRgba(cs.backgroundColor);
+                    if (bg && bg.a > 0.45) return bg;
+                    const bi = cs.backgroundImage || '';
+                    if (bi && bi !== 'none') {
+                        const gm = bi.match(/rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)/i);
+                        if (gm) return { r: +gm[1], g: +gm[2], b: +gm[3], a: 1 };
+                    }
+                    cur = cur.parentElement;
+                }
+                return { r: 255, g: 255, b: 255, a: 1 };
+            };
+            const lum = (c) => {
+                const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+                return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b);
+            };
+            const contrast = (fg, bg) => {
+                const l1 = Math.max(lum(fg), lum(bg));
+                const l2 = Math.min(lum(fg), lum(bg));
+                return (l1 + 0.05) / (l2 + 0.05);
+            };
+            const btns = Array.from(ov.querySelectorAll('button, a, [role="button"]')).filter(b => {
+                const r = b.getBoundingClientRect();
+                const st = window.getComputedStyle(b);
+                if (st.display === 'none' || st.visibility === 'hidden' || r.width < 18 || r.height < 18) return false;
+                const txt = (b.innerText || b.getAttribute('aria-label') || b.getAttribute('title') || '').trim();
+                return /✕|×|✖|إغلاق|إلغاء|رجوع|حسناً|close|cancel/i.test(txt);
+            });
+            const report = btns.map(b => {
+                const fg = parseRgba(window.getComputedStyle(b).color) || { r: 0, g: 0, b: 0, a: 1 };
+                const bg = effBg(b);
+                return {
+                    id: b.id || '',
+                    text: (b.innerText || b.getAttribute('aria-label') || '').trim().slice(0, 28),
+                    contrast: Math.round(contrast(fg, bg) * 100) / 100
+                };
+            });
+            const visibleHighContrast = report.filter(x => x.contrast >= 3.0);
+            const invisibleLowContrast = report.filter(x => x.contrast < 3.0);
+            return { found: visibleHighContrast.length > 0, visibleHighContrast, invisibleLowContrast };
+        }""",
+        overlay_sel,
+    )
+    assert close_audit["found"], (
+        f"[PILLAR 7 FAIL — {label}] Modal '{overlay_sel}' has NO visible high-contrast close button! Audit={close_audit}"
+    )
+    assert not close_audit["invisibleLowContrast"], (
+        f"[PILLAR 7 FAIL — {label}] Modal '{overlay_sel}' has an INVISIBLE/LOW-CONTRAST close button (white-on-white trap!): {close_audit['invisibleLowContrast']}"
+    )
+
+    # 2) Test Escape #1: Click the first visible close button inside the modal
+    clicked_close = page.evaluate(
+        """(sel) => {
+            const ov = document.querySelector(sel);
+            if (!ov) return false;
+            const btn = Array.from(ov.querySelectorAll('button, a, [role="button"]')).find(b => {
+                const r = b.getBoundingClientRect();
+                const st = window.getComputedStyle(b);
+                if (st.display === 'none' || st.visibility === 'hidden' || r.width < 18 || r.height < 18) return false;
+                const txt = (b.innerText || b.getAttribute('aria-label') || b.getAttribute('title') || '').trim();
+                return /✕|×|✖|إغلاق|إلغاء|رجوع|close|cancel/i.test(txt);
+            });
+            if (!btn) return false;
+            btn.click();
+            return true;
+        }""",
+        overlay_sel,
+    )
+    page.wait_for_timeout(250)
+    assert clicked_close and not _is_open(), f"[PILLAR 7 FAIL — {label}] Clicking close button did NOT close '{overlay_sel}'!"
+
+    # 3) Test Escape #2: Escape key
+    page.evaluate(open_fn_js)
+    page.wait_for_timeout(250)
+    assert _is_open(), f"[PILLAR 7 FAIL — {label}] Modal '{overlay_sel}' failed to re-open for Esc test"
+    page.keyboard.press("Escape")
+    page.wait_for_timeout(250)
+    assert not _is_open(), f"[PILLAR 7 FAIL — {label}] Pressing Escape did NOT close '{overlay_sel}'!"
+
+    # 4) Test Escape #3: Clicking dark backdrop corner (6, 6)
+    page.evaluate(open_fn_js)
+    page.wait_for_timeout(250)
+    assert _is_open(), f"[PILLAR 7 FAIL — {label}] Modal '{overlay_sel}' failed to re-open for backdrop test"
+    page.mouse.click(6, 6)
+    page.wait_for_timeout(250)
+    assert not _is_open(), f"[PILLAR 7 FAIL — {label}] Clicking dark backdrop did NOT close '{overlay_sel}'!"
+
+    # 5) Test Escape #4: Browser Back closes modal cleanly without leaving dashboard.html
+    page.evaluate(open_fn_js)
+    page.wait_for_timeout(250)
+    page.go_back()
+    page.wait_for_timeout(350)
+    assert "dashboard.html" in page.url and "login.html" not in page.url, (
+        f"[PILLAR 7 FAIL — {label}] Browser Back inside '{overlay_sel}' left dashboard.html -> {page.url}"
+    )
+    assert not _is_open(), f"[PILLAR 7 FAIL — {label}] Browser Back did NOT close '{overlay_sel}'!"
+
+
 def audit_screen_purity(page, label, is_user_facing=True):
     """Pillar 5: Scans visible text, layout overflow, and numeric inputs on the active screen."""
     res = page.evaluate(
@@ -441,6 +569,33 @@ def run_v2_multi_persona_browser_journeys():
                 page_mer.evaluate(f"() => typeof showPage === 'function' && showPage('{tab}')")
                 page_mer.wait_for_timeout(450)
                 audit_screen_purity(page_mer, f"merchant_{tab}_375", is_user_facing=True)
+            # Verify Merchant Pillar 7 Modal Escape & Contrast Gate (Store Kit Sticker, Promo, Radar, Top-Up)
+            page_mer.evaluate("() => typeof showPage === 'function' && showPage('home')")
+            page_mer.wait_for_timeout(400)
+            assert_modal_escapable(
+                page_mer,
+                "merchant_store_kit_sticker",
+                "#storeKitModalOverlay",
+                "() => typeof openStoreKitModal === 'function' && openStoreKitModal()",
+            )
+            assert_modal_escapable(
+                page_mer,
+                "merchant_promo_request",
+                "#merchantPromoRequestModal",
+                "() => { const m = document.getElementById('merchantPromoRequestModal'); if (m) m.style.display = 'flex'; }",
+            )
+            assert_modal_escapable(
+                page_mer,
+                "merchant_radar_modal",
+                "#merchantRadarModal",
+                "() => { const m = document.getElementById('merchantRadarModal'); if (m) m.style.display = 'flex'; }",
+            )
+            assert_modal_escapable(
+                page_mer,
+                "merchant_topup_modal",
+                "#svMerchantTopupOverlay",
+                "() => typeof window.openMerchantTopupModal === 'function' && window.openMerchantTopupModal()",
+            )
             # Verify Merchant Browser Back Guard
             page_mer.go_back()
             page_mer.wait_for_timeout(500)
@@ -448,7 +603,7 @@ def run_v2_multi_persona_browser_journeys():
                 f"[PILLAR 6 FAIL — Merchant Browser Back Trap] Pressing Back kicked merchant out to: {page_mer.url}"
             )
             ctx_mer.close()
-            print(f" [V2 PILLAR 3 PASS] Merchant Mobile Lifecycle @ 375x812 (header={mer_hdr_h}px, 7 tabs pure, 0 dead-end locks, Back guard OK)")
+            print(f" [V2 PILLAR 3 & 7 PASS] Merchant Mobile Lifecycle @ 375x812 (header={mer_hdr_h}px, 7 tabs pure, 0 dead-end locks, 4 modals 4-way escapable + contrast>=3.0, Back guard OK)")
 
             # =================================================================
             # PILLAR 4: CASHIER EMPLOYEE (ARABIC PIN) & SOVEREIGN ADMIN COCKPIT
