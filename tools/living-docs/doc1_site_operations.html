@@ -2877,6 +2877,15 @@
 <li style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;">تفعيل مسار طلب وتنفيذ محو البيانات الشخصية (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">GDPR/KVKK</code>) مع حفظ السجلات المالية والضريبية المجهّلة وفق القانون، وتفعيل رصد تواطؤ الأجهزة لحماية نزاهة المنظومة (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">33_stage27_gdpr_pseudonymize_and_s10_fraud_signals.sql</code>).</li>
 <li style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;">إبقاء بنود «غير متأكد للمراجعة» (البند #4 الشراء الذاتي للمالك، والبند #7 توحيد مصطلحات «محفظة / شحن / دفع من المحفظة قريباً») مؤجلة كما قرر المؤسس دون تغيير.</li>
 </ol>
+<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 30px 0;">
+<h2 id="الباب-الثامن-والعشرون-منع-تكرار-إعلانات-التجار-وتأسيس-سياسة-جرس-الإدارة-المرحلة-28-2026-11-25">الباب الثامن والعشرون: منع تكرار إعلانات التجار وتأسيس سياسة جرس الإدارة (المرحلة 28 — 2026-11-25)</h2>
+<ol style="padding-right: 25px; margin: 12px 0;">
+<li value="1" style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">منع تكرار طلبات الإعلانات الترويجية (<code style="background: #f1f5f9; color: #0f766e; padding: 2px 7px; border-radius: 4px; font-family: Calibri, Consolas, monospace; font-size: 0.94em; direction: ltr; display: inline-block;">database/34_stage28_flash_offer_dedup_and_actionable_admin_bell.sql</code>):</strong></li>
+<li style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;">قفل زر الإرسال في بوابة التاجر أثناء التنفيذ وتفريغ الحقول بعد النجاح، مع قفل تكرار على مستوى قاعدة البيانات يمنع حفظ نفس الإعلان مرتين أو استهلاك الحصة الأسبوعية للتاجر بالخطأ.</li>
+<li value="2" style="margin-right: 0; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">السياسة الدستورية لجرس الإشعارات:</strong></li>
+<li style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">جرس الإدارة:</strong> مخصص حصراً لـ <strong style="color: #0f172a; font-weight: 700;">ما يحتاج قراراً أو رد فعل من الإدارة + الإنذارات الحرجة</strong> (تاجر جديد، إيصال شحن بنكي، إعلان ترويجي لتاجر، طلب سحب أرباح، شكوى أو نزاع، طلب حذف بيانات خلال 72 ساعة، وعزل المتجر أو خرق المطابقة الصفرية)، ويُعلَّم الإشعار مقروءاً تلقائياً فور البت فيه، مع إبعاد أخبار «للعلم فقط» الروتينية إلى سجل النشاط الأخير.</li>
+<li style="margin-right: 22px; margin-bottom: 9px; line-height: 1.85;"><strong style="color: #0f172a; font-weight: 700;">جرس التاجر والعضو:</strong> يجمع بين الطلبات التي تحتاج فعلًا (اعتماد فاتورة) والأخبار المهمة المحفزة (قبول إعلان، شحن رصيد، اعتماد فاتورة، انضمام عضو جديد).</li>
+</ol>
         </div>
     </div>
     <script>

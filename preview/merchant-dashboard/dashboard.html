@@ -375,7 +375,7 @@
     <script src="../shared/components/smart-search.js?v=20261121_launch_geo"></script>
     <script src="../shared/js/registration-engine.js?v=20261121_launch_geo"></script>
     <script src="../shared/components/ui-feedback.js?v=20261121_launch_s27"></script>
-    <script src="../shared/components/notifications.js?v=20261121_launch_s18"></script>
+    <script src="../shared/components/notifications.js?v=20261121_launch_s28"></script>
     <script src="../shared/components/image-upload.js?v=20261121_launch"></script>
     <script src="../shared/payments/payment-provider.js?v=20261121_launch"></script>
     <script src="../shared/payments/payment-service.js?v=20261121_launch"></script>
@@ -649,10 +649,10 @@
                   </div>
 
                   <div style="display:flex; gap:8px;">
-                      <button onclick="submitPromoRequestForReview()" style="flex:2; background:#059669; color:white; border:none; padding:12px; border-radius:8px; font-weight:800; font-family:'Tajawal'; font-size:0.92rem; cursor:pointer; box-shadow:0 3px 10px rgba(5,150,105,0.3);">
+                      <button id="promoSubmitBtn" type="button" onclick="submitPromoRequestForReview()" style="flex:2; background:#059669; color:white; border:none; padding:12px; border-radius:8px; font-weight:800; font-family:'Tajawal'; font-size:0.92rem; cursor:pointer; box-shadow:0 3px 10px rgba(5,150,105,0.3);">
                           📨 إرسال الطلب لاعتماد الإدارة والبث
                       </button>
-                      <button onclick="document.getElementById('merchantPromoRequestModal').style.display='none'" style="flex:1; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:12px; border-radius:8px; font-weight:700; font-family:'Tajawal'; font-size:0.85rem; cursor:pointer;">
+                      <button type="button" onclick="document.getElementById('merchantPromoRequestModal').style.display='none'" style="flex:1; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:12px; border-radius:8px; font-weight:700; font-family:'Tajawal'; font-size:0.85rem; cursor:pointer;">
                           إلغاء
                       </button>
                   </div>
@@ -680,10 +680,13 @@
 
 
 <script>
+let _promoRequestInFlight = false;
 async function submitPromoRequestForReview() {
+    if (_promoRequestInFlight) return;
     const titleEl = document.getElementById('promoTitle');
     const bodyEl = document.getElementById('promoBody');
     const durationEl = document.getElementById('promoDuration');
+    const submitBtn = document.getElementById('promoSubmitBtn');
 
     const title = titleEl ? titleEl.value.trim() : '';
     const body = bodyEl ? bodyEl.value.trim() : '';
@@ -692,6 +695,15 @@ async function submitPromoRequestForReview() {
     if (!title || !body) {
         if (window.SAWYAN?.UI) window.SAWYAN.UI.toast('يرجى ملء عنوان وتفاصيل العرض الترويجي.', 'warning');
         return;
+    }
+
+    _promoRequestInFlight = true;
+    const origBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.65';
+        submitBtn.style.cursor = 'not-allowed';
+        submitBtn.innerHTML = '⏳ جاري إرسال الطلب...';
     }
 
     try {
@@ -705,14 +717,21 @@ async function submitPromoRequestForReview() {
             discountHint: duration
         });
 
-        const promoId = res.request_id ? String(res.request_id).slice(0, 8).toUpperCase() : 'PRM-LIVE';
+        const rawId = res?.offer_id || res?.request_id || '';
+        const promoId = rawId ? String(rawId).slice(0, 8).toUpperCase() : 'PRM-LIVE';
         const formCont = document.getElementById('promoFormContainer');
         const statusCont = document.getElementById('promoStatusContainer');
         const reqIdEl = document.getElementById('promoReqId');
 
+        if (titleEl) titleEl.value = '';
+        if (bodyEl) bodyEl.value = '';
         if (formCont) formCont.style.display = 'none';
         if (statusCont) statusCont.style.display = 'block';
         if (reqIdEl) reqIdEl.innerText = '#' + promoId;
+
+        if (res?.deduplicated) {
+            window.SAWYAN?.UI?.toast('هذا العرض مُرسل بالفعل وبانتظار موافقة الإدارة (#' + promoId + ') — لم يتم تكراره.', 'info');
+        }
 
         const btn = document.getElementById('promoActionBtn');
         if (btn) {
@@ -725,12 +744,22 @@ async function submitPromoRequestForReview() {
         }
     } catch (err) {
         const msg = String(err.message || '');
-        if (msg.includes('MERCHANT_NOT_IN_GREEN_ZONE')) {
+        if (msg.includes('MERCHANT_NOT_IN_GREEN_ZONE') || msg.includes('FLASH_OFFER_BLOCKED_WALLET_NOT_GREEN')) {
             window.SAWYAN?.UI?.toast('يشترط النظام أن يكون رصيد المتجر في المنطقة الآمنة (أعلى من 30%) لإرسال العروض الترويجية.', 'warning');
-        } else if (msg.includes('EXTERNAL_LINKS_OR_PHONES_FORBIDDEN')) {
+        } else if (msg.includes('EXTERNAL_LINKS_OR_PHONES_FORBIDDEN') || msg.includes('FLASH_OFFER_BLOCKED_PROHIBITED_CONTENT')) {
             window.SAWYAN?.UI?.toast('يُحظر تضمين روابط خارجية أو أرقام هواتف دفع مباشر داخل نص الإشعار الترويجي.', 'warning');
+        } else if (msg.includes('FLASH_OFFER_WEEKLY_LIMIT_EXCEEDED')) {
+            window.SAWYAN?.UI?.toast('بلغ متجرك الحد الأقصى الأسبوعي للعروض الترويجية (إعلانان كل 7 أيام).', 'warning');
         } else {
             window.SAWYAN?.UI?.toast('تعذر إرسال العرض: ' + (window.SAWYAN?.UI?.humanizeError(msg) || msg), 'error');
+        }
+    } finally {
+        _promoRequestInFlight = false;
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = '1';
+            submitBtn.style.cursor = 'pointer';
+            submitBtn.innerHTML = origBtnHtml || '📨 إرسال الطلب لاعتماد الإدارة والبث';
         }
     }
 }

@@ -105,8 +105,28 @@ window.SAWYAN.Notifications = {
                 message: `${p.business_name || 'متجر'} (${p.merchant_code || ''}) — ${p.amount_local ?? ''}`
             },
             MerchantFlashOfferPending: {
-                title: '🔥 عرض ترويجي خاطف بانتظار الاعتماد',
-                message: `${p.business_name || ''}: ${p.title || ''}`
+                title: '🔥 إعلان ترويجي لتاجر بانتظار اعتمادك',
+                message: `${p.business_name || 'تاجر معتمد'}: ${p.title || ''}`
+            },
+            MemberWithdrawalRequested: {
+                title: '💸 طلب سحب أرباح عضو بانتظار الصرف',
+                message: `${p.full_name || 'عضو'} (#${p.member_code || '-'}) — مبلغ ${p.amount_usd ?? ''} USD`
+            },
+            MemberGdprErasureRequested: {
+                title: '🛡️ طلب محو بيانات شخصية (مهلة 72 ساعة)',
+                message: `${p.full_name || 'عضو'} (#${p.member_code || '-'}) — يتطلب التحقق من الأرصدة والبت خلال 72 ساعة`
+            },
+            ZeroDiscrepancyBreachAutoHalt: {
+                title: '🚨 إنذار طوارئ: إيقاف تلقائي لحماية المطابقة الصفرية',
+                message: `فرق دفتر الأستاذ: ${p.abs_diff_usd ?? 0} USD — تم إيقاف الصرف تلقائياً لحين المراجعة.`
+            },
+            AdminMerchantIsolatedFifoAlert: {
+                title: '🔴 عزل متجر تلقائياً لهبوط الرصيد',
+                message: `${p.business_name || 'متجر'} (${p.merchant_code || ''}) — يحتاج متابعة وشحن رصيد.`
+            },
+            PendingInvoiceApprovedByOwnerOverride: {
+                title: '✅ تم اعتماد فاتورتك بواسطة مالك المتجر',
+                message: `فاتورة ${p.sw_short_code || ''} لدى ${p.merchant_name || 'المتجر'} أُضيفت لصندوق هدفك الشهري.`
             },
             MerchantFlashOfferLive: {
                 title: p.title || `🔥 عرض حصري الآن من ${p.business_name || 'متجر معتمد'}`,
@@ -180,6 +200,8 @@ window.SAWYAN.Notifications = {
     },
 
     handleNewNotification: function (notification) {
+        if (!notification) return;
+        if (notification.id && this.notifications.some(n => n.id === notification.id)) return;
         this.notifications.unshift(notification);
         this.unreadCount++;
         this.updateBadge();
@@ -268,14 +290,34 @@ window.SAWYAN.Notifications = {
         if (dropdown) dropdown.style.display = 'none';
         const ev = String(eventName || '');
         if (this.userType === 'admin') {
-            if (ev === 'NewMerchantRegistered' || ev.startsWith('MerchantBankTopup') || ev === 'MerchantComplianceAutoEscalated') {
+            if (ev === 'NewMerchantRegistered' || ev.startsWith('MerchantBankTopup') || ev === 'MerchantComplianceAutoEscalated' || ev === 'AdminMerchantIsolatedFifoAlert') {
                 const nav = document.querySelector('.sidebar-nav .nav-item[data-page="merchants"]');
                 if (nav) nav.click();
                 else if (typeof window.showPage === 'function') window.showPage('merchants');
             } else if (ev === 'MerchantFlashOfferPending') {
+                const nav = document.querySelector('.sidebar-nav .nav-item[data-page="home"]');
+                if (nav) nav.click();
+                else if (typeof window.goToPage === 'function') window.goToPage('home');
+                else if (typeof window.showPage === 'function') window.showPage('home');
+                setTimeout(() => {
+                    if (typeof window.scrollToPromoQueue === 'function') window.scrollToPromoQueue();
+                    else {
+                        const sec = document.getElementById('adminPromoModerationSection');
+                        if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 180);
+            } else if (ev === 'MemberWithdrawalRequested') {
+                const nav = document.querySelector('.sidebar-nav .nav-item[data-page="withdrawals"]');
+                if (nav) nav.click();
+                else if (typeof window.goToPage === 'function') window.goToPage('withdrawals');
+            } else if (ev === 'MemberGdprErasureRequested') {
+                const nav = document.querySelector('.sidebar-nav .nav-item[data-page="support"]');
+                if (nav) nav.click();
+                else if (typeof window.goToPage === 'function') window.goToPage('support');
+            } else if (ev === 'ZeroDiscrepancyBreachAutoHalt') {
                 const nav = document.querySelector('.sidebar-nav .nav-item[data-page="sovereignLive"]');
                 if (nav) nav.click();
-                else if (typeof window.showPage === 'function') window.showPage('sovereignLive');
+                else if (typeof window.openSovereignLiveDashboard === 'function') window.openSovereignLiveDashboard();
             } else if (ev === 'MerchantComplaintFiled' || ev === 'DisputeTicketOpened') {
                 const nav = document.querySelector('.sidebar-nav .nav-item[data-page="disputes"]');
                 if (nav) nav.click();
@@ -320,6 +362,11 @@ window.SAWYAN.Notifications = {
             MerchantBankTopupSubmitted: '🏦',
             MerchantBankTopupProofProcessed: '✅',
             MerchantFlashOfferPending: '🔥',
+            MemberWithdrawalRequested: '💸',
+            MemberGdprErasureRequested: '🛡️',
+            ZeroDiscrepancyBreachAutoHalt: '🚨',
+            AdminMerchantIsolatedFifoAlert: '🔴',
+            PendingInvoiceApprovedByOwnerOverride: '✅',
             OnMemberRegistered: '🌟',
             PendingPurchaseRequested: '⏳',
             TransactionCompleted: '✅',

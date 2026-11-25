@@ -10,6 +10,6 @@
   "frozen_items": [
     "OFFLINE_TOTP_MEMBER_QR_60S"
   ],
-  "last_full_audit_verified_at": "2026-11-25T12:15:00Z",
-  "notes": "strict_parity_enabled becomes true upon completing Phase 1 & Phase 2 and binds Stop Hook + Zero-Defect Gate to full D29/D30 visual & spec parity. Stages 10-25 sealed. Stage 27 (Bundle 1-3 + GDPR/S10 migration 33_stage27 + public-page surgical fixes on index.html mobile/680px header & public/merchants.html card photo badge, compact filter bar, mobile active-scope bar, unclipped city & search icon spacing + visual gate navbar/badge guard) verified 2026-11-25."
+  "last_full_audit_verified_at": "2026-11-25T15:25:00Z",
+  "notes": "strict_parity_enabled becomes true upon completing Phase 1 & Phase 2 and binds Stop Hook + Zero-Defect Gate to full D29/D30 visual & spec parity. Stages 10-27 sealed. Stage 28 (34_stage28_flash_offer_dedup_and_actionable_admin_bell.sql deployed on sawyan & sawyan_demo: per-merchant flash offer dedup lock, merchant submit button lock, Actionable+Critical Admin Bell standard with auto-clear on decision & Mirag duplicate cleanup + notifications.js s28 routing) sealed 2026-11-25."
 }

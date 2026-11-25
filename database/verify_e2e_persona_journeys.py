@@ -36,6 +36,8 @@ class QuietHandler(http.server.SimpleHTTPRequestHandler):
 
 class QuietServer(socketserver.ThreadingTCPServer):
     allow_reuse_address = True
+    request_queue_size = 64
+    daemon_threads = True
 
     def handle_error(self, request, client_address):
         _, exc, _ = sys.exc_info()
