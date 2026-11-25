@@ -131,7 +131,7 @@
                 '<div style="font-weight:900;color:#312e81;margin-bottom:8px;">🧮 محاكي الفارق النقدي للهدف المصري (1,237.50 مقابل 1,250 ج.م)</div>' +
                 '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">' +
                     '<label>سعر الصرف (ج.م/$): <input id="d0_fx" type="number" value="50" min="10" max="200" step="0.5" style="width:76px;padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;" oninput="SAWYAN_SIM.calcD0()"></label>' +
-                    '<label>عدد الأعضاء المحققين: <input id="d0_mem" type="number" value="1000" min="1" max="100000" step="100" style="width:92px;padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;" oninput="SAWYAN_SIM.calcD0()"></label>' +
+                    '<label>عدد الأعضاء المحققين: <input id="d0_mem" type="number" value="1000" min="1" max="100000" step="1" style="width:92px;padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;" oninput="SAWYAN_SIM.calcD0()"></label>' +
                     '<label>النموذج: <select id="d0_mode" style="padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;" onchange="SAWYAN_SIM.calcD0()"><option value="a">خيار أ: اشتقاق آلي دقيق</option><option value="b">خيار ب: تقريب تجاري إلى 1,250</option></select></label>' +
                 '</div>' +
                 '<div class="lab-sim-out" id="simOut_D0"></div>' +
@@ -174,8 +174,8 @@
             return '<div class="lab-sim-box" id="sim_' + k + '">' +
                 '<div style="font-weight:900;color:#312e81;margin-bottom:8px;">🏪 محاكي رصيد التاجر والعتبة الآمنة (' + k + ')</div>' +
                 '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">' +
-                    '<label>باقة التاجر (ج.م): <input id="' + k + '_pkg" type="number" value="4000" min="1000" max="50000" step="500" style="width:84px;padding:4px;border:1px solid #cbd5e1;border-radius:6px;" oninput="SAWYAN_SIM.calcMer(\'' + k + '\')"></label>' +
-                    '<label>الرصيد الحالي (ج.م): <input id="' + k + '_bal" type="number" value="350" min="0" max="50000" step="50" style="width:84px;padding:4px;border:1px solid #cbd5e1;border-radius:6px;" oninput="SAWYAN_SIM.calcMer(\'' + k + '\')"></label>' +
+                    '<label>باقة التاجر (ج.م): <input id="' + k + '_pkg" type="number" value="4000" min="1000" max="50000" step="any" style="width:84px;padding:4px;border:1px solid #cbd5e1;border-radius:6px;" oninput="SAWYAN_SIM.calcMer(\'' + k + '\')"></label>' +
+                    '<label>الرصيد الحالي (ج.م): <input id="' + k + '_bal" type="number" value="350" min="0" max="50000" step="any" style="width:84px;padding:4px;border:1px solid #cbd5e1;border-radius:6px;" oninput="SAWYAN_SIM.calcMer(\'' + k + '\')"></label>' +
                     '<label>فاتورة جديدة (عمولة 500 ج.م): <select id="' + k + '_mode" style="padding:4px;border:1px solid #cbd5e1;border-radius:6px;" onchange="SAWYAN_SIM.calcMer(\'' + k + '\')"><option value="a">خيار أ: Prepaid + MAX(5%, 500)</option><option value="b">خيار ب: Credit مسموح + نسب مئوية فقط</option></select></label>' +
                 '</div>' +
                 '<div class="lab-sim-out" id="simOut_' + k + '"></div>' +
@@ -185,7 +185,7 @@
             return '<div class="lab-sim-box" id="sim_D5">' +
                 '<div style="font-weight:900;color:#312e81;margin-bottom:8px;">↩️ محاكي المرتجعات: درع الكاري أون (أيام 1–14) والحظر القاطع بعد يوم الصرف 15 (0.00$ خزانة)</div>' +
                 '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">' +
-                    '<label>رصيد الكاري أون المرحّل ($): <input id="d5_amt" type="number" value="30.00" min="0" max="500" step="2.5" style="width:80px;padding:4px;border:1px solid #cbd5e1;border-radius:6px;" oninput="SAWYAN_SIM.calcD5()"></label>' +
+                    '<label>رصيد الكاري أون المرحّل ($): <input id="d5_amt" type="number" value="30.00" min="0" max="500" step="any" style="width:80px;padding:4px;border:1px solid #cbd5e1;border-radius:6px;" oninput="SAWYAN_SIM.calcD5()"></label>' +
                     '<label>توقيت محاولة المرتجع: <select id="d5_when" style="padding:4px;border:1px solid #cbd5e1;border-radius:6px;" onchange="SAWYAN_SIM.calcD5()"><option value="before15">يوم 10 (خلال الـ 14 يوماً قبل صرف يوم 15)</option><option value="after15">يوم 16 (بعد يوم الصرف 15 — مرفوض برمجياً)</option></select></label>' +
                 '</div>' +
                 '<div class="lab-sim-out" id="simOut_D5"></div>' +
@@ -225,8 +225,8 @@
             return '<div class="lab-sim-box" id="sim_D24">' +
                 '<div style="font-weight:900;color:#312e81;margin-bottom:8px;">🤝 حاسبة عائد الشريك الممول (إجمالي الخزانة مقابل صافي الربح)</div>' +
                 '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">' +
-                    '<label>حصة الخزانة (ج.م): <input id="d24_gross" type="number" value="32115" step="1000" style="width:90px;padding:4px;border:1px solid #cbd5e1;border-radius:6px;" oninput="SAWYAN_SIM.calcD24()"></label>' +
-                    '<label>مصروفات + ضرائب + احتياطي: <input id="d24_opex" type="number" value="18500" step="500" style="width:86px;padding:4px;border:1px solid #cbd5e1;border-radius:6px;" oninput="SAWYAN_SIM.calcD24()"></label>' +
+                    '<label>حصة الخزانة (ج.م): <input id="d24_gross" type="number" value="32115" step="any" style="width:90px;padding:4px;border:1px solid #cbd5e1;border-radius:6px;" oninput="SAWYAN_SIM.calcD24()"></label>' +
+                    '<label>مصروفات + ضرائب + احتياطي: <input id="d24_opex" type="number" value="18500" step="any" style="width:86px;padding:4px;border:1px solid #cbd5e1;border-radius:6px;" oninput="SAWYAN_SIM.calcD24()"></label>' +
                     '<label>نسبة الشريك (%): <input id="d24_pct" type="number" value="10" min="1" max="50" style="width:60px;padding:4px;border:1px solid #cbd5e1;border-radius:6px;" oninput="SAWYAN_SIM.calcD24()"></label>' +
                 '</div>' +
                 '<div class="lab-sim-out" id="simOut_D24"></div>' +

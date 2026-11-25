@@ -137,8 +137,8 @@
                 '<p style="font-size:0.82rem;color:#334155;margin:0 0 10px 0;">بعد تحويل مبلغ الشحن لحساب الشركة البنكي الرسمي (' + esc(cc) + ' ' + esc(curr) + ')، أدخل المبلغ ورقم مرجع الإيصال وأرفق صورة الإيصال ليقوم المحاسب بمطابقته وشحن رصيدك.</p>' +
                 '<div style="margin-bottom:10px;"><a href="https://wa.me/905376744337?text=' + waText + '" target="_blank" rel="noopener" style="display:inline-block;background:#16a34a;color:#fff;padding:7px 13px;border-radius:8px;text-decoration:none;font-weight:800;font-size:0.82rem;">💬 اطلب بيانات الحساب البنكي عبر واتساب (905376744337+)</a></div>' +
                 '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:8px;margin-bottom:10px;">' +
-                    '<input id="svMerProofAmt" type="number" step="50" placeholder="المبلغ المحوّل بالعملة المحلية" class="form-control">' +
-                    '<input id="svMerProofRef" type="text" value="REF-' + Date.now() + '" placeholder="رقم مرجع الحوالة البنكية" class="form-control">' +
+                    '<input id="svMerProofAmt" type="number" step="any" min="0.01" inputmode="decimal" placeholder="المبلغ المحوّل بالعملة المحلية" class="form-control" dir="ltr">' +
+                    '<input id="svMerProofRef" type="text" value="" placeholder="رقم مرجع الحوالة البنكية" class="form-control" dir="ltr">' +
                 '</div>' +
                 '<input id="svMerProofNote" type="text" placeholder="اسم البنك المحوّل منه / ملاحظات إضافية" class="form-control" style="margin-bottom:10px;">' +
                 '<div id="svMerBankProofUploader" style="margin-bottom:10px;"></div>' +

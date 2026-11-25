@@ -31,6 +31,10 @@ jobs:
         run: |
           python3 database/verify_phase1_regression_suite.py --static-only
 
+      - name: Run Stage 18 Static DOM, HTML5 Form Validity & UX Hygiene Gate
+        run: |
+          python3 database/verify_dom_and_form_lint.py
+
       - name: Verify Living Documentation Sync (when docs/ present)
         run: |
           python3 database/verify_doc_sync.py

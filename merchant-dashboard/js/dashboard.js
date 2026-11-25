@@ -3175,19 +3175,19 @@ function getCountryTopupOptions(countryCode) {
     const cc = String(countryCode || 'EG').toUpperCase();
     if (cc === 'TR') {
         return [
-            { value: 'iban_fast_tr', label: '🏦 تحويل بنكي محلي / دولي (IBAN / EFT / FAST)' },
+            { value: 'iban_fast_tr', label: '🏦 تحويل بنكي سريع (FAST / IBAN)' },
             { value: 'bank_transfer', label: '🏢 إيداع / حوالة بنكية مباشرة' }
         ];
     }
     if (cc === 'SA') {
         return [
-            { value: 'iban_sar', label: '🏦 تحويل بنكي (IBAN / مدى السريع)' },
+            { value: 'iban_sar', label: '🏦 تحويل بنكي سريع (IBAN)' },
             { value: 'stc_pay', label: '⚡ تحويل فوري (STC Pay)' }
         ];
     }
     if (cc === 'EG') {
         return [
-            { value: 'instapay', label: '⚡ تحويل فوري (InstaPay / تحويل بنكي)' },
+            { value: 'instapay', label: '⚡ إنستاباي / تحويل فوري' },
             { value: 'bank_transfer', label: '🏦 إيداع أو حوالة بنكية' }
         ];
     }
@@ -3201,6 +3201,7 @@ function openMerchantTopupModal() {
     const curr = p.currency_code || 'EGP';
     const cc = p.country_code || 'EG';
     const opts = getCountryTopupOptions(cc);
+    const pendTopups = Array.isArray(merchantBundle?.pending_topups) ? merchantBundle.pending_topups : [];
     const waText = encodeURIComponent(`مرحباً فريق مالية SAWYAN، أحتاج بيانات الحساب البنكي الرسمي لشحن رصيد متجر: ${p.business_name || ''} (${p.merchant_code || ''}) بعملة ${curr}.`);
 
     let ov = document.getElementById('svMerchantTopupOverlay');
@@ -3213,6 +3214,12 @@ function openMerchantTopupModal() {
     ov.style.display = 'flex';
     window._svTopupModalReceiptData = null;
 
+    const existingPendingNotice = pendTopups.length > 0
+        ? `<div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:0.8rem;color:#92400e;line-height:1.55;">
+               <strong>⏳ تنبيه: لديك ${pendTopups.length} طلب شحن مفتوح قيد المراجعة حالياً</strong> — لا تُرسل نفس التحويل مرتين؛ أرسل طلباً جديداً فقط إذا قمت بحوالة بنكية إضافية جديدة.
+           </div>`
+        : '';
+
     ov.innerHTML = `
         <div style="background:#ffffff;border-radius:18px;max-width:520px;width:100%;max-height:92vh;overflow-y:auto;padding:22px;font-family:'Tajawal',sans-serif;direction:rtl;box-shadow:0 24px 55px rgba(15,23,42,0.34);">
             <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1.5px solid #e2e8f0;padding-bottom:10px;margin-bottom:14px;">
@@ -3220,20 +3227,22 @@ function openMerchantTopupModal() {
                 <button type="button" onclick="document.getElementById('svMerchantTopupOverlay').style.display='none'" style="background:#f1f5f9;border:none;width:34px;height:34px;border-radius:8px;font-size:1.1rem;cursor:pointer;font-weight:900;">✕</button>
             </div>
 
+            ${existingPendingNotice}
+
             <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:0.84rem;color:#064e3b;line-height:1.65;">
                 <strong>📋 خطوات شحن الرصيد بسهولة:</strong>
                 <ol style="margin:6px 18px 8px 0;padding:0;">
-                    <li>حوّل مبلغ الشحن لحساب SAWYAN البنكي المعتمد لدولتك (${escM(cc)} — ${escM(curr)}).</li>
-                    <li>أدخل المبلغ ورقم مرجع الحوالة وارفع صورة الإيصال أدناه لتسريع الاعتماد.</li>
+                    <li>حوّل المبلغ المطلوب لحساب SAWYAN البنكي المعتمد لدولتك (<span dir="ltr">${escM(cc)} — ${escM(curr)}</span>).</li>
+                    <li>أدخل المبلغ الفعلي المحوّل + رقم مرجع الحوالة أو صورة الإيصال أدناه لتسريع الاعتماد.</li>
                 </ol>
-                <a href="https://wa.me/905376744337?text=${waText}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#16a34a;color:#fff;padding:7px 14px;border-radius:8px;text-decoration:none;font-weight:800;font-size:0.82rem;">💬 اطلب بيانات الحساب البنكي عبر واتساب (905376744337+)</a>
+                <a href="https://wa.me/905376744337?text=${waText}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#16a34a;color:#fff;padding:7px 14px;border-radius:8px;text-decoration:none;font-weight:800;font-size:0.82rem;">💬 اطلب بيانات الحساب البنكي عبر واتساب (<span dir="ltr">+905376744337</span>)</a>
             </div>
 
-            <form id="svMerchantTopupForm" style="display:grid;gap:12px;">
+            <form id="svMerchantTopupForm" style="display:grid;gap:12px;" novalidate>
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:10px;">
                     <div>
                         <label style="font-weight:800;font-size:0.84rem;display:block;margin-bottom:4px;">💰 مبلغ الشحن (${escM(curr)}) *</label>
-                        <input id="svTopupAmtInput" type="number" step="50" min="1" required value="2000" class="form-control" dir="ltr">
+                        <input id="svTopupAmtInput" type="number" step="any" min="0.01" inputmode="decimal" required value="" placeholder="مثال: 2000" class="form-control" dir="ltr">
                     </div>
                     <div>
                         <label style="font-weight:800;font-size:0.84rem;display:block;margin-bottom:4px;">🏦 وسيلة التحويل *</label>
@@ -3243,8 +3252,8 @@ function openMerchantTopupModal() {
                     </div>
                 </div>
                 <div>
-                    <label style="font-weight:800;font-size:0.84rem;display:block;margin-bottom:4px;">🔢 رقم مرجع الحوالة البنكية (اتركه أو عدّله)</label>
-                    <input id="svTopupRefInput" type="text" value="REF-${Date.now()}" placeholder="مثال: REF-123456" class="form-control" dir="ltr">
+                    <label style="font-weight:800;font-size:0.84rem;display:block;margin-bottom:4px;">🔢 رقم مرجع الحوالة البنكية (مطلوب ما لم تُرفق صورة الإيصال)</label>
+                    <input id="svTopupRefInput" type="text" value="" placeholder="أدخل رقم المرجع من إيصال البنك (مثال: FAST-982341)" class="form-control" dir="ltr">
                 </div>
                 <div>
                     <label style="font-weight:800;font-size:0.84rem;display:block;margin-bottom:4px;">📝 اسم البنك المحوّل منه / ملاحظات (اختياري)</label>
@@ -3258,7 +3267,7 @@ function openMerchantTopupModal() {
 
     if (window.SAWYAN && window.SAWYAN.ImageUpload) {
         window.SAWYAN.ImageUpload.mountUploader(document.getElementById('svTopupModalUploader'), {
-            label: '🧾 صورة إيصال التحويل البنكي (اختياري — يُسرّع المطابقة)',
+            label: '🧾 صورة إيصال التحويل البنكي (موصى بها بشدة لتسريع المطابقة)',
             maxDim: 1280,
             maxChars: 360000,
             onChange: (v) => { window._svTopupModalReceiptData = v || null; }
@@ -3268,12 +3277,18 @@ function openMerchantTopupModal() {
     document.getElementById('svMerchantTopupForm').onsubmit = async (e) => {
         e.preventDefault();
         const btn = document.getElementById('svTopupSubmitBtn');
-        const amt = parseFloat(document.getElementById('svTopupAmtInput')?.value || '0');
+        const rawAmt = String(document.getElementById('svTopupAmtInput')?.value || '').replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).trim();
+        const amt = parseFloat(rawAmt || '0');
         const provider = document.getElementById('svTopupProviderSelect')?.value || 'bank_transfer';
         const ref = (document.getElementById('svTopupRefInput')?.value || '').trim();
         const note = (document.getElementById('svTopupNoteInput')?.value || '').trim();
-        if (!amt || amt <= 0) {
-            swNotify('يرجى إدخال مبلغ شحن صحيح أكبر من صفر.', 'warning');
+        const hasReceipt = Boolean(window._svTopupModalReceiptData);
+        if (!Number.isFinite(amt) || amt <= 0) {
+            swNotify('يرجى إدخال مبلغ شحن صحيح أكبر من صفر (مثال: 500 أو 2000).', 'warning');
+            return;
+        }
+        if (ref.length < 3 && !hasReceipt) {
+            swNotify('يرجى إدخال رقم مرجع الحوالة البنكية (3 أحرف على الأقل) أو رفع صورة إيصال التحويل لتوثيق الطلب.', 'warning');
             return;
         }
         if (btn) { btn.disabled = true; btn.textContent = '⏳ جاري تسجيل طلب الشحن...'; }
@@ -3288,19 +3303,21 @@ function openMerchantTopupModal() {
             });
             window._svTopupModalReceiptData = null;
             ov.style.display = 'none';
+            const amtFormatted = `\u200E${Number(amt).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${curr}\u200E`;
             if (res.mode === 'demo_instant_fifo') {
                 await swAlertBox(
                     'تم شحن الرصيد بنجاح (البيئة التجريبية)',
-                    `تمت إضافة ${fmtMerchantMoney(amt, curr)} لرصيد متجرك وتفعيل ${res.topup_result?.released_fifo_count || 0} فاتورة كانت بانتظار الشحن.`,
+                    `تمت إضافة ${amtFormatted} لرصيد متجرك وتفعيل ${res.topup_result?.released_fifo_count || 0} فاتورة كانت بانتظار الشحن.`,
                     'success'
                 );
             } else {
                 await swAlertBox(
                     'تم استلام طلب الشحن بنجاح',
-                    `رقم المرجع: ${res.payment_ref}\nالمبلغ: ${fmtMerchantMoney(amt, curr)}\n\nسيقوم فريق المالية بمراجعة التحويل وإضافة الرصيد لحساب متجرك فور المطابقة، ويمكنك متابعة حالة الطلب أسفل هذه الصفحة.`,
+                    `رقم المرجع: \u200E${res.payment_ref}\u200E\nالمبلغ: ${amtFormatted}\n\nسيقوم فريق المالية بمراجعة التحويل وإضافة الرصيد لحساب متجرك فور المطابقة، ويمكنك متابعة حالة الطلب من تبويب «الشحن / الموقف المالي».`,
                     'success'
                 );
             }
+            await loadStats();
             await loadFinancialReport();
         } catch (err) {
             swNotify('تعذر تسجيل طلب الشحن: ' + formatMerchantErrorMessage(err), 'error');

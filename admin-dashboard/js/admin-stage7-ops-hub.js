@@ -1201,7 +1201,7 @@
                         '<div><label style="font-size:0.78rem;font-weight:800;">سبب الحوكمة / القرار (للتدقيق)</label><input id="svMerGovReason" type="text" value="' + esc(m.governance_reason || 'تحديث تعاقدي وحوكمة معتمدة') + '" class="form-control"></div>' +
                         '<div><label style="font-size:0.78rem;font-weight:800;">نسبة عمولة سويًا (%)</label><input id="svMerPct" type="number" step="0.5" min="0.5" max="95" value="' + Number(m.deduction_percent || 10) + '" class="form-control"></div>' +
                         '<div><label style="font-size:0.78rem;font-weight:800;">التصنيف التجاري</label><input id="svMerCat" type="text" value="' + esc(m.category || 'supermarket') + '" class="form-control"></div>' +
-                        '<div><label style="font-size:0.78rem;font-weight:800;">سقف الائتمان D4 (' + curr + ') [Maker-Checker]</label><input id="svMerCredit" type="number" step="100" min="0" value="' + Number(m.credit_limit || 0) + '" class="form-control"></div>' +
+                        '<div><label style="font-size:0.78rem;font-weight:800;">سقف الائتمان D4 (' + curr + ') [Maker-Checker]</label><input id="svMerCredit" type="number" step="any" min="0" value="' + Number(m.credit_limit || 0) + '" class="form-control" dir="ltr"></div>' +
                         '<div><label style="font-size:0.78rem;font-weight:800;">استثناء دورة D4 أيام (فارغ=العام ' + Number(lc.d4_effective_cycle_days || 1) + ')</label><input id="svMerD4CycleDays" type="number" min="1" max="90" step="1" value="' + esc(d4CycOv) + '" placeholder="الإعداد العام" class="form-control"></div>' +
                         '<div><label style="font-size:0.78rem;font-weight:800;">استثناء وقت إغلاق D4 (فارغ=العام ' + esc(String(lc.d4_effective_cutoff_time || '23:59:00').slice(0, 5)) + ')</label><input id="svMerCutoffTime" type="time" value="' + esc(cutoffStr) + '" class="form-control"></div>' +
                         '<div><label style="font-size:0.78rem;font-weight:800;">استثناء مهلة سداد D4 ساعة (فارغ=العام ' + Number(lc.d4_effective_grace_hours ?? 2) + ')</label><input id="svMerD4GraceHours" type="number" min="0" max="168" step="0.5" value="' + esc(d4GrOv) + '" placeholder="الإعداد العام" class="form-control"></div>' +
@@ -1225,7 +1225,7 @@
                     '<div style="background:#ecfdf5;border:1px solid #6ee7b7;padding:12px;border-radius:10px;">' +
                         '<div style="font-weight:900;color:#065f46;margin-bottom:8px;">🏦 شحن رصيد التاجر المسبق (2101) مقابل حوالة بنكية موثقة (' + esc(m.currency_code) + ')</div>' +
                         '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:8px;">' +
-                            '<input id="svMerTopupAmt" type="number" step="50" placeholder="المبلغ بالعملة المحلية" class="form-control">' +
+                            '<input id="svMerTopupAmt" type="number" step="any" min="0.01" placeholder="المبلغ بالعملة المحلية" class="form-control" dir="ltr">' +
                             '<input id="svMerTopupRef" type="text" placeholder="رقم مرجع الإيداع البنكي" class="form-control">' +
                             '<button type="button" class="btn btn-primary" onclick="svApproveBankTopup(\'' + m.id + '\',document.getElementById(\'svMerTopupAmt\').value,document.getElementById(\'svMerTopupRef\').value,null)">شحن الآن</button>' +
                         '</div>' +

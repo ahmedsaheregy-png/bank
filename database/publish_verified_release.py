@@ -168,6 +168,8 @@ def main():
     try:
         run_gate_script("sync_dual_site_mirror.py")
         run_gate_script("verify_doc_sync.py")
+        run_gate_script("verify_dom_and_form_lint.py")
+        run_gate_script("verify_phase1_regression_suite.py", ["--static-only"])
 
         docs_git_dir = os.path.join(DOCS_DIR, ".git")
         if os.path.isdir(docs_git_dir):
@@ -189,6 +191,7 @@ def main():
 
         if not args.skip_visual_gate:
             run_gate_script("verify_ui_and_visual_gates.py", ["--full"])
+            run_gate_script("verify_e2e_persona_journeys.py")
     except RuntimeError as exc:
         print(f"[PUBLISH BLOCKED] {exc}", file=sys.stderr)
         sys.exit(1)
