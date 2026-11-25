@@ -10,6 +10,6 @@
   "frozen_items": [
     "OFFLINE_TOTP_MEMBER_QR_60S"
   ],
-  "last_full_audit_verified_at": "2026-11-25T06:58:00Z",
-  "notes": "strict_parity_enabled becomes true upon completing Phase 1 & Phase 2 and binds Stop Hook + Zero-Defect Gate to full D29/D30 visual & spec parity. Stages 10-22 sealed. Stage 23 (Admin mobile/tablet compact role dropdown header + live-banner 2-line KPI grid fix, 64px rail group-label clean dividers in app-shell.css, Member tree mobile title & accurate team count, and automated header/live-banner geometric overlap detection in verify_ui_and_visual_gates.py) sealed 2026-11-25."
+  "last_full_audit_verified_at": "2026-11-25T07:31:00Z",
+  "notes": "strict_parity_enabled becomes true upon completing Phase 1 & Phase 2 and binds Stop Hook + Zero-Defect Gate to full D29/D30 visual & spec parity. Stages 10-23 sealed. Stage 24 (live Supabase deployment of 30_perf_fk_indexes_and_public_rls_cleanup.sql + 31_stage24_complete_fk_indexes_and_auth_lock.sql: active-schema unindexed_foreign_keys 76->0, multiple_permissive_policies 120->0, pg_graphql_authenticated_table_exposed 62->12, live GL 0.00 parity & 50-member E2E 100% GREEN) sealed 2026-11-25."
 }
