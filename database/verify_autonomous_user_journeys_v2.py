@@ -503,7 +503,7 @@ def run_v2_multi_persona_browser_journeys():
                 if "admin_search_and_reply_ops" in req.url:
                     rpc_hits.append(req.url)
             page_adm.on("request", _on_req)
-            fifo_card = page_adm.locator("#actionRowFifoMerchants button")
+            fifo_card = page_adm.locator("#actionRowFifoMerchants, #actionRowFifoMerchants button")
             if fifo_card.count() > 0:
                 fifo_card.first.click()
                 page_adm.wait_for_timeout(1200)

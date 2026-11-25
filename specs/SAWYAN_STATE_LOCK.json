@@ -10,6 +10,6 @@
   "frozen_items": [
     "OFFLINE_TOTP_MEMBER_QR_60S"
   ],
-  "last_full_audit_verified_at": "2026-11-25T15:25:00Z",
-  "notes": "strict_parity_enabled becomes true upon completing Phase 1 & Phase 2 and binds Stop Hook + Zero-Defect Gate to full D29/D30 visual & spec parity. Stages 10-27 sealed. Stage 28 (34_stage28_flash_offer_dedup_and_actionable_admin_bell.sql deployed on sawyan & sawyan_demo: per-merchant flash offer dedup lock, merchant submit button lock, Actionable+Critical Admin Bell standard with auto-clear on decision & Mirag duplicate cleanup + notifications.js s28 routing) sealed 2026-11-25."
+  "last_full_audit_verified_at": "2026-11-25T22:20:00Z",
+  "notes": "strict_parity_enabled becomes true upon completing Phase 1 & Phase 2 and binds Stop Hook + Zero-Defect Gate to full D29/D30 visual & spec parity. Stages 10-28 sealed. Stage 29 (Option B Priority Focus Action Queue in admin-home-demo.js s29 with crisp SVG icons, full-card clickable buttons, zero redundant pills/checkmarks, light+dark+mobile polish) sealed 2026-11-25."
 }
