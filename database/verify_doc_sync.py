@@ -72,6 +72,18 @@ def main():
         if marker not in tech_md:
             failures.append(f"Missing feature marker `{marker}` in `الملف_التقني_للمطورين.md`")
 
+    # 2b. Automatically verify every numbered SQL migration (>= 25) is documented in `الملف_التقني_للمطورين.md`
+    undocumented_migrations = []
+    for fn in sorted(os.listdir(DB_DIR)):
+        m = re.match(r"^(\d+)_.*\.sql$", fn)
+        if m and int(m.group(1)) >= 25:
+            if fn not in tech_md:
+                undocumented_migrations.append(fn)
+    if undocumented_migrations:
+        failures.append(
+            f"SQL migrations (>= 25) missing from `الملف_التقني_للمطورين.md`: {undocumented_migrations}"
+        )
+
     # 3. Verify HTML sizes, freshness vs Markdown mtimes, and synced content
     for label, md_p, html_p, html_txt in [
         ("TECHNICAL_SPECS.html", tech_md_path, tech_html_path, tech_html),

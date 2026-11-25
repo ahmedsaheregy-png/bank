@@ -474,6 +474,13 @@
             });
         },
 
+        async getPublicActiveFlashOffers({ countryCode = null, limit = 20 } = {}) {
+            return await callRpc('get_public_active_flash_offers', {
+                p_country_code: countryCode && countryCode !== 'ALL' ? countryCode : null,
+                p_limit: limit
+            });
+        },
+
         async getMemberDashboardBundle({
             memberId,
             sessionToken = null,

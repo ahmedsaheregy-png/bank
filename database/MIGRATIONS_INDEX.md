@@ -35,6 +35,7 @@
 | 26 | `25_stage17_onboarding_notifs_d4_fixes.sql` | Stage 17 Bi-Directional Live Notifications (Admin/Merchant Bells), D4 Cycle Fix, Self-Purchase Guard & Optional Onboarding Defaults |
 | 27 | `26_stage19_perf_topup_and_lifecycle_locks.sql` | Stage 19 Tree Hash-Join Optimization (zero N+1), Dashboard `12s` Timeout Guard, Configurable Optional-Proof Top-Up Policy (`REQUIRE_TOPUP_PROOF`) & Anti-Duplicate Guards |
 | 28 | `27_stage19_demo_full_lifecycle_simulator.sql` | Stage 19 `sawyan_demo`-Only Self-Rolling-Back 50-Member + 6-Merchant + Month-Close + Day-15 Payout + `0.00` Trial Balance Simulator |
+| 29 | `28_flash_offers_live_broadcast.sql` | Live Flash Offers Broadcast (`MerchantFlashOfferLive` to Members + Merchant Confirmation), Public Active Offers RPC (`get_public_active_flash_offers`) & Idempotent Backfill |
 
 ## 2. Redefined Function Canonical Ownership Table (Single Source of Truth)
 | Function (`sawyan.*`) | Definitions Count | Canonical Final Owner | Previous Files |
@@ -42,7 +43,7 @@
 | `admin_decide_governance_request` | 3 | **`19_unified_verification_and_employee_portal.sql`** | `09_stage6_admin_governance_and_launch_rpcs.sql`, `17_merchant_lifecycle_3axis_governance.sql` |
 | `admin_manage_merchant_contract` | 3 | **`17_merchant_lifecycle_3axis_governance.sql`** | `10_stage7_operational_completeness_rpcs.sql`, `16_registration_form_builder_governance.sql` |
 | `admin_manage_staff_accounts` | 2 | **`16_registration_form_builder_governance.sql`** | `10_stage7_operational_completeness_rpcs.sql` |
-| `admin_operational_decision` | 2 | **`17_merchant_lifecycle_3axis_governance.sql`** | `09_stage6_admin_governance_and_launch_rpcs.sql` |
+| `admin_operational_decision` | 3 | **`28_flash_offers_live_broadcast.sql`** | `09_stage6_admin_governance_and_launch_rpcs.sql`, `17_merchant_lifecycle_3axis_governance.sql` |
 | `admin_search_and_reply_ops` | 3 | **`18_launch_hardening_auth_and_ux_rpcs.sql`** | `10_stage7_operational_completeness_rpcs.sql`, `17_merchant_lifecycle_3axis_governance.sql` |
 | `authenticate_admin_login` | 3 | **`21_phase0_security_hardening.sql`** | `09_stage6_admin_governance_and_launch_rpcs.sql`, `18_launch_hardening_auth_and_ux_rpcs.sql` |
 | `authenticate_member_login` | 2 | **`18_launch_hardening_auth_and_ux_rpcs.sql`** | `06_stage4_member_and_portal_rpcs.sql` |

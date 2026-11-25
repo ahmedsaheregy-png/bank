@@ -13,6 +13,18 @@
         searchQuery: ''
     };
     let livePortalMerchants = null;
+    let liveActiveFlashOffers = [];
+    let liveFlashOffersByMerchant = new Map();
+
+    function formatOfferRemainingAr(sec) {
+        const s = Math.max(0, Number(sec || 0));
+        if (s < 3600) return `${Math.max(1, Math.round(s / 60))} دقيقة`;
+        const hrs = Math.floor(s / 3600);
+        if (hrs < 24) return `${hrs} ساعة`;
+        const days = Math.floor(hrs / 24);
+        const remH = hrs % 24;
+        return remH > 0 ? `${days} يوم و${remH} س` : `${days} يوم`;
+    }
 
     function isProdEnvironment() {
         return Boolean(window.SAWYAN && window.SAWYAN.API && !window.SAWYAN.API.isDemoMode());
@@ -21,17 +33,34 @@
     async function loadLiveMerchantsForPortal() {
         if (!(window.SAWYAN && window.SAWYAN.API && window.SAWYAN.supabase)) return;
         try {
-            const rows = await window.SAWYAN.API.getPublicMerchantsCatalog({});
+            const [rows, offers] = await Promise.all([
+                window.SAWYAN.API.getPublicMerchantsCatalog({}),
+                typeof window.SAWYAN.API.getPublicActiveFlashOffers === 'function'
+                    ? window.SAWYAN.API.getPublicActiveFlashOffers({}).catch(function () { return []; })
+                    : Promise.resolve([])
+            ]);
+
+            liveActiveFlashOffers = Array.isArray(offers) ? offers : [];
+            liveFlashOffersByMerchant = new Map();
+            liveActiveFlashOffers.forEach(function (of) {
+                if (of && of.merchant_id && !liveFlashOffersByMerchant.has(String(of.merchant_id))) {
+                    liveFlashOffersByMerchant.set(String(of.merchant_id), of);
+                }
+            });
+
             if (Array.isArray(rows)) {
                 livePortalMerchants = rows.map(function (r) {
                     const cCode = String(r.country_code || 'EG').toUpperCase();
                     const cfg = window.SAWYAN_GEO ? window.SAWYAN_GEO.getCountryConfig(cCode) : { name: cCode };
+                    const catRaw = r.category || r.category_code || 'services';
+                    const activeOffer = liveFlashOffersByMerchant.get(String(r.merchant_id)) || null;
                     return {
                         id: r.merchant_id,
+                        branchId: r.branch_id,
                         code: r.merchant_code,
                         businessName: r.business_name,
-                        category: r.category_code || 'متجر معتمد',
-                        categorySlug: r.category_code || 'supermarket',
+                        category: catRaw,
+                        categorySlug: catRaw,
                         country: cCode,
                         countryName: cfg.name || cCode,
                         cityKey: 'all',
@@ -47,9 +76,11 @@
                         rating: Number(r.avg_rating || 0),
                         reviewsCount: Number(r.reviews_count || 0),
                         isVerified: true,
-                        isFeatured: true
+                        isFeatured: Boolean(activeOffer) || true,
+                        activeOffer: activeOffer
                     };
                 });
+                renderLiveFlashOffersSpotlight();
                 renderFeaturedMerchants();
                 const statEl = byId('stat-merchants');
                 const bigMerchEl = byId('bigStatMerchants');
@@ -62,9 +93,66 @@
             console.warn('Live portal catalog fetch warning:', err.message);
             if (isProdEnvironment() && livePortalMerchants === null) {
                 livePortalMerchants = [];
+                renderLiveFlashOffersSpotlight();
                 renderFeaturedMerchants();
             }
         }
+    }
+
+    function renderLiveFlashOffersSpotlight() {
+        const box = byId('liveFlashOffersSpotlight');
+        if (!box) return;
+        const allOffers = Array.isArray(liveActiveFlashOffers) ? liveActiveFlashOffers : [];
+        if (!allOffers.length) {
+            box.style.display = 'none';
+            box.innerHTML = '';
+            return;
+        }
+        const curCc = String(currentGeo.country || 'ALL').toUpperCase();
+        const matching = curCc === 'ALL'
+            ? allOffers
+            : allOffers.filter(function (o) {
+                return String(o.country_code || '').toUpperCase() === curCc || o.merchant_type === 'online' || o.merchant_type === 'both';
+            });
+        const list = matching.length > 0 ? matching : allOffers;
+
+        box.style.display = 'block';
+        box.innerHTML = `
+            <div style="background:linear-gradient(135deg,#fffbeb 0%,#fef3c7 45%,#ecfdf5 100%);border:2px solid #f59e0b;border-radius:18px;padding:18px 20px;box-shadow:0 10px 28px rgba(245,158,11,0.16);">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <span style="background:#dc2626;color:#fff;font-size:0.74rem;font-weight:900;padding:3px 10px;border-radius:999px;">🔴 مباشر الآن</span>
+                        <h3 style="margin:0;font-size:1.12rem;font-weight:900;color:#0f172a;">🔥 عروض وحملات حصرية نشطة من تجار SAWYAN (${list.length})</h3>
+                    </div>
+                    <span style="font-size:0.78rem;font-weight:700;color:#92400e;">عروض معتمدة لفترة محدودة</span>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:12px;">
+                    ${list.slice(0, 6).map(function (o) {
+                        const flag = (window.SAWYAN && window.SAWYAN.Flags) ? window.SAWYAN.Flags.svg(o.country_code, 16) : escapeHtml(o.country_code || '');
+                        const rem = formatOfferRemainingAr(o.remaining_seconds);
+                        const href = `public/merchants.html?country=${encodeURIComponent(o.country_code || 'ALL')}&merchant=${encodeURIComponent(o.branch_id ? ('LIVE-' + o.branch_id) : o.merchant_id)}`;
+                        return `
+                            <div style="background:#ffffff;border:1.5px solid #fcd34d;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-shadow:0 4px 12px rgba(15,23,42,0.06);">
+                                <div>
+                                    <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+                                        <strong style="font-size:0.98rem;color:#0f172a;display:inline-flex;align-items:center;gap:6px;">🏪 ${escapeHtml(o.business_name)} ${flag}</strong>
+                                        <span style="background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;padding:2px 8px;border-radius:999px;font-size:0.72rem;font-weight:800;">⏳ متبقي ${escapeHtml(rem)}</span>
+                                    </div>
+                                    <div style="font-size:0.94rem;font-weight:800;color:#92400e;background:#fffbeb;border-right:3px solid #f59e0b;padding:7px 10px;border-radius:8px;line-height:1.55;">
+                                        🔥 ${escapeHtml(o.title)}
+                                    </div>
+                                    ${o.body && o.body !== o.title ? `<p style="margin:6px 0 0;font-size:0.82rem;color:#475569;line-height:1.5;">${escapeHtml(o.body)}</p>` : ''}
+                                </div>
+                                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px dashed #e2e8f0;">
+                                    <span style="background:#ecfdf5;color:#047857;font-size:0.76rem;font-weight:800;padding:3px 9px;border-radius:999px;">✨ عائدات فريقك ${Number(o.plan_cashback_pct || 0).toFixed(2)}%</span>
+                                    <a href="${href}" class="btn btn-primary btn-sm" style="padding:5px 12px;font-size:0.78rem;text-decoration:none;">عرض المتجر والحملة ↗</a>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
     }
 
     const CATEGORY_ICONS = {
@@ -190,10 +278,11 @@
 
     function filterMerchantsPool(list, includeCityFilter) {
         return list.filter(function (m) {
-            if (currentGeo.country !== 'ALL' && m.country !== currentGeo.country) {
+            const isGlobalOnline = m.merchantType === 'online' || m.merchantType === 'both';
+            if (currentGeo.country !== 'ALL' && m.country !== currentGeo.country && !isGlobalOnline) {
                 return false;
             }
-            if (includeCityFilter && currentGeo.country !== 'ALL' && currentGeo.city && currentGeo.city !== 'all') {
+            if (includeCityFilter && currentGeo.country !== 'ALL' && !isGlobalOnline && currentGeo.city && currentGeo.city !== 'all') {
                 if (m.cityKey && m.cityKey !== 'all' && m.cityKey !== currentGeo.city) return false;
                 if (!m.cityKey) return false;
             }
@@ -314,10 +403,16 @@
             ? `<img src="${escapeHtml(m.logoUrl)}" alt="" style="width:28px;height:28px;border-radius:8px;object-fit:cover;border:1px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.2);" loading="lazy">`
             : `<span class="merchant-icon-floating">${icon}</span>`;
 
+        const activeOffer = m.activeOffer || liveFlashOffersByMerchant.get(String(m.id)) || null;
+        const promoRibbonHtml = activeOffer
+            ? `<div style="background:linear-gradient(90deg,#fef3c7,#fde68a);border:1px solid #f59e0b;border-radius:10px;padding:7px 10px;margin:8px 0;font-size:0.8rem;color:#78350f;font-weight:800;line-height:1.45;">🔥 عرض حصري الآن: ${escapeHtml(activeOffer.title)} <span style="display:inline-block;background:#dc2626;color:#fff;padding:1px 6px;border-radius:999px;font-size:0.68rem;margin-right:4px;">⏳ ${escapeHtml(formatOfferRemainingAr(activeOffer.remaining_seconds))}</span></div>`
+            : '';
+
         return `
-            <article class="merchant-card" data-merchant-id="${escapeHtml(m.id)}" tabindex="0" role="link" aria-label="${escapeHtml(m.businessName)}">
+            <article class="merchant-card" data-merchant-id="${escapeHtml(m.id)}" tabindex="0" role="link" aria-label="${escapeHtml(m.businessName)}"${activeOffer ? ' style="border:2px solid #f59e0b;box-shadow:0 8px 24px rgba(245,158,11,0.18);"' : ''}>
                 <div class="merchant-image-container">
                     ${heroVisual}
+                    ${activeOffer ? '<span style="position:absolute;top:10px;left:10px;z-index:3;background:#dc2626;color:#fff;font-size:0.72rem;font-weight:900;padding:4px 10px;border-radius:999px;box-shadow:0 3px 10px rgba(220,38,38,0.35);">🔥 عرض خاص الآن</span>' : ''}
                     <div class="merchant-overlay">
                         <div class="merchant-overlay-content">
                             ${badgeVisual}
@@ -330,10 +425,11 @@
                         <h3 class="merchant-name">${escapeHtml(m.businessName)}</h3>
                         ${m.isVerified ? '<span class="verified-icon" title="تاجر موثق ومعتمد">✓</span>' : ''}
                     </div>
+                    ${promoRibbonHtml}
                     <div class="merchant-rating-compact" style="margin:4px 0 8px;">
-                        <span class="stars" style="color:#f59e0b;">★</span>
-                        <span class="rating-value">${escapeHtml(m.rating)}</span>
-                        <span class="rating-count">(${window.formatNumber(m.reviewsCount || 0)} تقييم)</span>
+                        ${Number(m.reviewsCount || 0) > 0 && Number(m.rating || 0) > 0
+                            ? `<span class="stars" style="color:#f59e0b;">★</span><span class="rating-value">${escapeHtml(m.rating)}</span><span class="rating-count">(${window.formatNumber(m.reviewsCount || 0)} تقييم)</span>`
+                            : `<span style="background:#ecfdf5;color:#047857;padding:2px 8px;border-radius:999px;font-size:0.72rem;font-weight:800;">🆕 متجر معتمد</span>`}
                         <span style="margin-right:auto; font-size:0.78rem; color:#047857; font-weight:700;">${typeLabel}</span>
                     </div>
                     <p class="merchant-desc-short">${escapeHtml(m.description)}</p>
@@ -369,6 +465,7 @@
     }
 
     function renderFeaturedMerchants() {
+        renderLiveFlashOffersSpotlight();
         const grid = byId('featured-merchants');
         if (!grid) return;
 
@@ -396,6 +493,9 @@
         }
 
         const sorted = matched.slice().sort(function (a, b) {
+            const oa = (a.activeOffer || liveFlashOffersByMerchant.has(String(a.id))) ? 1 : 0;
+            const ob = (b.activeOffer || liveFlashOffersByMerchant.has(String(b.id))) ? 1 : 0;
+            if (oa !== ob) return ob - oa;
             const fa = a.isFeatured ? 1 : 0;
             const fb = b.isFeatured ? 1 : 0;
             if (fa !== fb) return fb - fa;

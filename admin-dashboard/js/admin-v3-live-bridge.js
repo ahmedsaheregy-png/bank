@@ -1448,13 +1448,18 @@
 
     window.svOpsAct = async function (domain, recordId, decision) {
         try {
-            await window.SAWYAN.API.adminOperationalDecision({
+            const res = await window.SAWYAN.API.adminOperationalDecision({
                 domain: domain,
                 recordId: recordId,
                 decision: decision,
                 notes: 'قرار رقابي من لوحة الإدارة السيادية V3.0'
             });
-            showToast('تم تنفيذ الإجراء الرقابي (' + domain + ' → ' + decision + ') بنجاح.', false);
+            if (domain === 'flash_offer' && decision === 'approved') {
+                const cnt = Number((res && res.broadcast_members_count) || 0);
+                showToast('🔥 تم اعتماد وبث الحملة في الرئيسية والدليل وإشعار ' + cnt + ' عضواً نشطاً بنجاح.', false);
+            } else {
+                showToast('تم تنفيذ الإجراء الرقابي (' + domain + ' → ' + decision + ') بنجاح.', false);
+            }
             await refreshSovereignBundle(false);
         } catch (err) {
             showToast(err.message, true);

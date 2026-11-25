@@ -108,6 +108,18 @@ window.SAWYAN.Notifications = {
                 title: '🔥 عرض ترويجي خاطف بانتظار الاعتماد',
                 message: `${p.business_name || ''}: ${p.title || ''}`
             },
+            MerchantFlashOfferLive: {
+                title: p.title || `🔥 عرض حصري الآن من ${p.business_name || 'متجر معتمد'}`,
+                message: p.message || `${p.offer_title || ''}${p.discount_hint ? ' — ' + p.discount_hint : ''}`
+            },
+            MerchantFlashOfferApproved: {
+                title: p.title || '🔥 تم اعتماد وبث حملتك الترويجية بنجاح!',
+                message: p.message || `حملتك «${p.offer_title || ''}» نشطة وظاهرة الآن للأعضاء.`
+            },
+            MerchantFlashOfferRejected: {
+                title: p.title || '❌ تعذر اعتماد الحملة الترويجية',
+                message: p.message || `${p.offer_title || ''}: ${p.reason || 'غير مطابق لضوابط النشر'}`
+            },
             OnMemberRegistered: {
                 title: 'عضو جديد في شجرتك 🌟',
                 message: `انضم ${p.full_name || 'عضو جديد'} بكود #${p.new_member_code || '-'}`

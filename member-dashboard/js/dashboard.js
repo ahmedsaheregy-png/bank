@@ -48,6 +48,9 @@ function swMemErrText(err) {
 }
 let activeLensCountry = null;
 let liveCatalog = [];
+let liveFlashOffers = [];
+let liveFlashOffersByMerchant = new Map();
+let __flashOfferPopupChecked = false;
 let liveCountriesPlanMap = new Map();
 let radarCatalogOverride = null;
 let merchantFilterState = { q: '', country: 'ALL', category: 'all', sort: 'distance' };
@@ -294,9 +297,150 @@ function scheduleMemberAdaptivePoll() {
     }, 6000);
 }
 
+function formatMemberOfferRemainingAr(sec) {
+    const s = Math.max(0, Number(sec || 0));
+    if (s < 3600) return `${Math.max(1, Math.round(s / 60))} دقيقة`;
+    const hrs = Math.floor(s / 3600);
+    if (hrs < 24) return `${hrs} ساعة`;
+    const days = Math.floor(hrs / 24);
+    const remH = hrs % 24;
+    return remH > 0 ? `${days} يوم و${remH} س` : `${days} يوم`;
+}
+
+function getPrioritizedMemberFlashOffers() {
+    const all = Array.isArray(liveFlashOffers) ? liveFlashOffers.slice() : [];
+    if (!all.length) return [];
+    const myCc = String(memberBundle?.profile?.country_code || '').toUpperCase();
+    return all.sort((a, b) => {
+        const aLocal = String(a.country_code || '').toUpperCase() === myCc ? 1 : 0;
+        const bLocal = String(b.country_code || '').toUpperCase() === myCc ? 1 : 0;
+        if (aLocal !== bLocal) return bLocal - aLocal;
+        return Number(b.remaining_seconds || 0) - Number(a.remaining_seconds || 0);
+    });
+}
+
+function renderMemberHomeFlashOffersBanner() {
+    const slot = document.getElementById('memberHomeFlashOffersSlot');
+    if (!slot) return;
+    const list = getPrioritizedMemberFlashOffers();
+    if (!list.length) {
+        slot.style.display = 'none';
+        slot.innerHTML = '';
+        return;
+    }
+    slot.style.display = 'block';
+    slot.innerHTML = `
+        <div style="background:linear-gradient(135deg,#fffbeb 0%,#fef3c7 55%,#ecfdf5 100%);border:2px solid #f59e0b;border-radius:16px;padding:15px 16px;margin:12px 0;box-shadow:0 6px 20px rgba(245,158,11,0.14);">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+                <strong style="font-size:0.98rem;color:#0f172a;">🔥 عروض وحملات حصرية نشطة الآن (${list.length})</strong>
+                <button type="button" onclick="goToPage('merchants')" class="btn btn-outline btn-sm" style="padding:4px 10px;font-size:0.76rem;background:#fff;">عرض جميع المتاجر ↗</button>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:10px;">
+                ${list.slice(0, 4).map(o => {
+                    const flag = (window.SAWYAN?.Flags?.svg) ? window.SAWYAN.Flags.svg(o.country_code, 15) : esc(o.country_code || '');
+                    const rem = formatMemberOfferRemainingAr(o.remaining_seconds);
+                    return `
+                        <div style="background:#fff;border:1.5px solid #fcd34d;border-radius:12px;padding:11px 13px;display:flex;flex-direction:column;justify-content:space-between;gap:8px;">
+                            <div>
+                                <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">
+                                    <strong style="font-size:0.9rem;color:#0f172a;display:inline-flex;align-items:center;gap:5px;">🏪 ${esc(o.business_name)} ${flag}</strong>
+                                    <span style="background:#fef2f2;color:#b91c1c;padding:2px 7px;border-radius:999px;font-size:0.7rem;font-weight:800;">⏳ ${esc(rem)}</span>
+                                </div>
+                                <div style="margin-top:6px;font-size:0.85rem;font-weight:800;color:#92400e;background:#fffbeb;border-right:3px solid #f59e0b;padding:6px 9px;border-radius:7px;line-height:1.5;">
+                                    🔥 ${esc(o.title)}
+                                </div>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">
+                                <span style="font-size:0.74rem;font-weight:800;color:#047857;">✨ عائدات فريقك ${Number(o.plan_cashback_pct || 0).toFixed(2)}%</span>
+                                <button type="button" class="btn btn-primary btn-sm" style="padding:4px 10px;font-size:0.75rem;" onclick="openMemberPurchaseModal('${esc(o.merchant_id)}', '${esc(o.branch_id || '')}', '${esc(o.business_name)}', '${esc(o.currency_code || '')}', ${Number(o.plan_cashback_pct || 0)})">📝 استفد ووثّق شراء</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+}
+
+function maybeShowFlashOfferSpotlightPopup() {
+    if (__flashOfferPopupChecked) return;
+    const list = getPrioritizedMemberFlashOffers();
+    if (!list.length) return;
+    __flashOfferPopupChecked = true;
+
+    const storageKey = 'sawyan_seen_flash_offers_v1';
+    let seen = [];
+    try {
+        const raw = localStorage.getItem(storageKey);
+        seen = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(seen)) seen = [];
+    } catch (_) { seen = []; }
+
+    const unseen = list.find(o => o && o.offer_id && !seen.includes(String(o.offer_id)));
+    if (!unseen) return;
+
+    seen.push(String(unseen.offer_id));
+    try { localStorage.setItem(storageKey, JSON.stringify(seen.slice(-40))); } catch (_) {}
+
+    const flag = (window.SAWYAN?.Flags?.svg) ? window.SAWYAN.Flags.svg(unseen.country_code, 18) : esc(unseen.country_code || '');
+    const rem = formatMemberOfferRemainingAr(unseen.remaining_seconds);
+    const bodyHtml = `
+        <div style="text-align:right;line-height:1.7;">
+            <div style="background:linear-gradient(135deg,#0f172a,#064e3b);color:#fff;border-radius:14px;padding:14px 16px;margin-bottom:12px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px;">
+                    <span style="background:#dc2626;color:#fff;font-size:0.72rem;font-weight:900;padding:3px 9px;border-radius:999px;">🔥 عرض حصري جديد</span>
+                    <span style="background:rgba(255,255,255,0.14);color:#fde68a;font-size:0.75rem;font-weight:800;padding:3px 9px;border-radius:999px;">⏳ متبقي ${esc(rem)}</span>
+                </div>
+                <div style="font-size:1.12rem;font-weight:900;display:flex;align-items:center;gap:7px;">🏪 ${esc(unseen.business_name)} ${flag}</div>
+                <div style="font-size:0.8rem;color:#a7f3d0;margin-top:2px;">✨ عائدات خطة الدخل لفريقك: <strong>${Number(unseen.plan_cashback_pct || 0).toFixed(2)}%</strong></div>
+            </div>
+            <div style="background:#fffbeb;border:2px solid #f59e0b;border-radius:12px;padding:12px 14px;margin-bottom:14px;">
+                <div style="font-size:1.02rem;font-weight:900;color:#92400e;">${esc(unseen.title)}</div>
+                ${unseen.body && unseen.body !== unseen.title ? `<div style="font-size:0.86rem;color:#475569;margin-top:6px;">${esc(unseen.body)}</div>` : ''}
+                ${unseen.discount_hint ? `<div style="font-size:0.78rem;color:#b45309;font-weight:800;margin-top:6px;">${esc(unseen.discount_hint)}</div>` : ''}
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="btn btn-primary" style="flex:1;" onclick="closeMemberModal(); openMemberPurchaseModal('${esc(unseen.merchant_id)}', '${esc(unseen.branch_id || '')}', '${esc(unseen.business_name)}', '${esc(unseen.currency_code || '')}', ${Number(unseen.plan_cashback_pct || 0)});">📝 الذهاب للمتجر وتوثيق شراء</button>
+                <button type="button" class="btn btn-outline" onclick="closeMemberModal(); goToPage('merchants');">🏪 تصفح المتاجر</button>
+            </div>
+        </div>
+    `;
+    setTimeout(() => {
+        if (!document.getElementById('sawyanMemberModalOverlay')) {
+            openMemberModal('🔥 عرض ترويجي مميز معتمد لك الآن', bodyHtml, null);
+        }
+    }, 650);
+}
+
+async function loadPublicFlashOffersSafe() {
+    try {
+        if (window.SAWYAN?.API && typeof window.SAWYAN.API.getPublicActiveFlashOffers === 'function') {
+            const offers = await window.SAWYAN.API.getPublicActiveFlashOffers({});
+            liveFlashOffers = Array.isArray(offers) ? offers : [];
+            liveFlashOffersByMerchant = new Map();
+            liveFlashOffers.forEach(o => {
+                if (o && o.merchant_id && !liveFlashOffersByMerchant.has(String(o.merchant_id))) {
+                    liveFlashOffersByMerchant.set(String(o.merchant_id), o);
+                }
+            });
+            renderMemberHomeFlashOffersBanner();
+            maybeShowFlashOfferSpotlightPopup();
+            const merchPg = document.getElementById('merchantsPage');
+            if (merchPg && merchPg.classList.contains('active')) {
+                updateMemberMerchantsResults();
+            }
+        }
+    } catch (err) {
+        console.warn('Flash offers load warning:', err && err.message);
+    }
+}
+
 async function loadPublicMerchantsCatalogSafe() {
     try {
-        const rows = await window.SAWYAN.API.getPublicMerchantsCatalog({});
+        const [rows] = await Promise.all([
+            window.SAWYAN.API.getPublicMerchantsCatalog({}),
+            loadPublicFlashOffersSafe()
+        ]);
         liveCatalog = Array.isArray(rows) ? rows : [];
     } catch (err) {
         console.warn('Catalog load warning:', err.message);
@@ -740,6 +884,9 @@ function renderHomePage() {
             </div>
         ` : ''}
 
+        <!-- شريط العروض الترويجية والحملات الحصرية النشطة (يظهر فقط عند وجود عرض حي) -->
+        <div id="memberHomeFlashOffersSlot" style="display:none;"></div>
+
         <!-- خط سير الدورة الشهرية (1-30 تجميع → 1-14 مراجعة → 15 صرف) -->
         <div class="cycle-timeline-bar" style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:8px 12px;margin:10px 0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;font-size:0.78rem;">
             <span style="font-weight:800;color:#047857;">🟢 1–30 الشهر: تجميع المشتريات والهدف</span>
@@ -902,6 +1049,14 @@ function renderHomePage() {
                 </div>`}
         </div>
     `;
+
+    // ترطيب شريط العروض الترويجية الحصرية النشطة + بوب-أب التنبيه لمرة واحدة
+    renderMemberHomeFlashOffersBanner();
+    if (!liveFlashOffers.length) {
+        loadPublicFlashOffersSafe();
+    } else {
+        maybeShowFlashOfferSpotlightPopup();
+    }
 
     // ترطيب حي لبطاقة «نبض شجرتي» من الخادم دون إبطاء تحميل الصفحة الرئيسية
     if (window.SAWYAN?.TreeStudio?.fetchPulseOnly) {
@@ -2506,6 +2661,9 @@ function getFilteredMerchantsList(myCoords) {
         }
         return true;
     }).sort((a, b) => {
+        const oa = liveFlashOffersByMerchant.has(String(a.merchant_id)) ? 1 : 0;
+        const ob = liveFlashOffersByMerchant.has(String(b.merchant_id)) ? 1 : 0;
+        if (oa !== ob) return ob - oa;
         if (merchantFilterState.sort === 'cashback_desc') return Number(b.plan_cashback_pct || 0) - Number(a.plan_cashback_pct || 0);
         if (merchantFilterState.sort === 'name') {
             const ls = window.SAWYAN && window.SAWYAN.LocaleSort;
@@ -2542,9 +2700,11 @@ function updateMemberMerchantsResults() {
                     const safeCover = (up && up.isSafeMediaUrl(m.cover_image_url)) ? m.cover_image_url : null;
                     const coverKey = safeCover && up ? up.registerLightboxItem(safeCover, esc(m.business_name)) : null;
                     const flagHtml = (window.SAWYAN?.Flags?.svg) ? window.SAWYAN.Flags.svg(m.country_code, 16) : esc(m.country_code || '');
+                    const activeOffer = liveFlashOffersByMerchant.get(String(m.merchant_id)) || null;
                     return `
-                        <div style="background:#fff;border:1.5px solid #cbd5e1;border-radius:16px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;gap:8px;">
+                        <div style="background:#fff;border:${activeOffer ? '2px solid #f59e0b;box-shadow:0 6px 20px rgba(245,158,11,0.16)' : '1.5px solid #cbd5e1'};border-radius:16px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;gap:8px;">
                             <div>
+                                ${activeOffer ? `<div style="background:linear-gradient(90deg,#fef3c7,#fde68a);border:1px solid #f59e0b;border-radius:10px;padding:7px 10px;margin-bottom:9px;font-size:0.8rem;color:#78350f;font-weight:800;line-height:1.45;">🔥 عرض حصري الآن: ${esc(activeOffer.title)} <span style="background:#dc2626;color:#fff;padding:1px 6px;border-radius:999px;font-size:0.68rem;margin-right:4px;">⏳ ${esc(formatMemberOfferRemainingAr(activeOffer.remaining_seconds))}</span></div>` : ''}
                                 ${safeCover ? `<img src="${esc(safeCover)}" data-sw-lightbox-key="${coverKey || ''}" alt="${esc(m.business_name)}" style="width:100%;height:110px;object-fit:cover;border-radius:10px;margin-bottom:10px;cursor:zoom-in;">` : ''}
                                 <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
                                     <div style="display:flex;align-items:center;gap:8px;min-width:0;">
