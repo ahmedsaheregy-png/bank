@@ -28,11 +28,31 @@
 
     async function callRpc(fnName, args = {}) {
         const client = getClient();
-        const { data, error } = await client.rpc(fnName, args);
-        if (error) {
-            throw new Error(`RPC[${fnName}] failed: ${error.message}`);
+        const isSafeRead = typeof fnName === 'string' && fnName.startsWith('get_');
+        let lastErr = null;
+        const maxAttempts = isSafeRead ? 2 : 1;
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                const { data, error } = await client.rpc(fnName, args);
+                if (!error) return data;
+                lastErr = error;
+                const msg = String(error.message || error.details || error.code || '');
+                const isTransient = error.code === '57014' || /statement timeout|canceling statement|Failed to fetch|NetworkError|500|502|503|504/i.test(msg);
+                if (attempt < maxAttempts && isTransient) {
+                    await new Promise(r => setTimeout(r, 350));
+                    continue;
+                }
+                break;
+            } catch (ex) {
+                lastErr = ex;
+                if (attempt < maxAttempts) {
+                    await new Promise(r => setTimeout(r, 350));
+                    continue;
+                }
+                break;
+            }
         }
-        return data;
+        throw new Error(`RPC[${fnName}] failed: ${lastErr ? (lastErr.message || String(lastErr)) : 'Unknown error'}`);
     }
 
     function escapeCsvField(val) {

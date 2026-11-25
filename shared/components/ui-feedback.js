@@ -97,6 +97,12 @@
         if (m.includes('RECEIPT_REQUIRED_FOR_REMOTE_PURCHASE')) {
             return 'يرجى تصوير أو رفع صورة الفاتورة / الإيصال لإرسال الطلب للتاجر.';
         }
+        if (m.includes('DUPLICATE_TOPUP_NOTICE_COOLDOWN')) {
+            return 'تم استلام إشعار شحن مماثل بنفس المبلغ للتو — يرجى الانتظار دقيقتين قبل إرسال طلب جديد منعاً للتكرار.';
+        }
+        if (m.includes('TOPUP_PROOF_OR_REF_REQUIRED')) {
+            return 'يرجى إدخال رقم مرجع الحوالة البنكية (3 أحرف على الأقل) أو إرفاق صورة الإيصال حسب سياسة الشحن المفعّلة حالياً.';
+        }
         if (m.includes('DUPLICATE_PAYMENT_REF') || m.includes('transactions_unique_payment_ref')) {
             return 'رقم مرجع الدفع المدخل مستخدم من قبل في عملية سابقة.';
         }

@@ -218,13 +218,15 @@ def run_all_personas():
                 assert v_state["ok"] and not v_state["stepMismatch"], \
                     f"[merchant_mobile] Top-up amount '{test_amt}' FAILED HTML5 validity: {v_state}"
 
-            # 5) NEGATIVE TEST: submitting with 2000 but EMPTY ref & NO receipt MUST be blocked by JS guard
-            amt_inp.fill("2000")
+            # 5) NEGATIVE TEST: zero/negative/blank amount MUST be blocked cleanly; optional proof label matches launch policy
+            ref_lbl = page.locator("#svTopupRefLabel").inner_text()
+            assert "اختياري" in ref_lbl or "مطلوب" in ref_lbl, f"[merchant_mobile] Missing clarity on top-up ref label: {ref_lbl}"
+            amt_inp.fill("0")
             ref_inp.fill("")
             page.locator("#svTopupSubmitBtn").click()
             page.wait_for_timeout(400)
             still_open = page.locator("#svMerchantTopupOverlay").is_visible()
-            assert still_open, "[merchant_mobile] Junk top-up (blank ref + no receipt) was NOT blocked!"
+            assert still_open, "[merchant_mobile] Zero top-up amount was NOT blocked!"
             page.evaluate("() => { const o = document.getElementById('svMerchantTopupOverlay'); if (o) o.style.display='none'; }")
 
             # 6) Walk all merchant tabs and fuzz numeric inputs

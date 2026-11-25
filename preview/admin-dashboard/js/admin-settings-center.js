@@ -416,8 +416,22 @@
     }
     function killHtml(readonly) {
         var any = KILL.some(function (k) { return ACTIVE[k[0]]; });
+        var liveSw = (window.__SAWYAN_ADMIN_LIVE_BUNDLE__ && window.__SAWYAN_ADMIN_LIVE_BUNDLE__.settings && window.__SAWYAN_ADMIN_LIVE_BUNDLE__.settings.operational_kill_switches) || {};
+        var reqProof = Boolean(liveSw.REQUIRE_TOPUP_PROOF);
         return '<div class="sc-card" style="border:2px solid ' + (any ? '#dc2626' : '#e2e8f0') + '"><div style="font-weight:900;color:#b91c1c;margin-bottom:4px">🚨 مفاتيح الإيقاف الطارئ (Break-Glass)</div><div class="sc-help" style="margin-bottom:8px">تسري فوراً بلا اعتماد ثانٍ، لكن بسبب إلزامي وتنبيه وتسجيل في سجل التدقيق ومراجعة لاحقة خلال 24 ساعة.</div>' +
-            KILL.map(function (k) { var on = !!ACTIVE[k[0]]; return '<div class="sc-row" style="display:flex;justify-content:space-between;align-items:center"><div class="sc-lab">' + k[1] + (on ? '<span class="sc-chip" style="background:#fee2e2;color:#b91c1c">⛔ موقوف الآن</span>' : '<span class="sc-chip" style="background:#d1fae5;color:#065f46">يعمل</span>') + '</div><button class="sc-btn ' + (on ? 'p' : 'd') + '" id="kill_' + k[0] + '" ' + (readonly ? 'disabled' : '') + ' onclick="scKill(\'' + k[0] + '\')">' + (on ? 'استئناف' : 'إيقاف فوراً') + '</button></div>'; }).join('') + '</div>';
+            KILL.map(function (k) { var on = !!ACTIVE[k[0]]; return '<div class="sc-row" style="display:flex;justify-content:space-between;align-items:center"><div class="sc-lab">' + k[1] + (on ? '<span class="sc-chip" style="background:#fee2e2;color:#b91c1c">⛔ موقوف الآن</span>' : '<span class="sc-chip" style="background:#d1fae5;color:#065f46">يعمل</span>') + '</div><button class="sc-btn ' + (on ? 'p' : 'd') + '" id="kill_' + k[0] + '" ' + (readonly ? 'disabled' : '') + ' onclick="scKill(\'' + k[0] + '\')">' + (on ? 'استئناف' : 'إيقاف فوراً') + '</button></div>'; }).join('') + '</div>' +
+            '<div class="sc-card" style="border:1.5px solid #cbd5e1;margin-top:10px;">' +
+                '<div style="font-weight:900;color:#0f172a;font-size:0.95rem;margin-bottom:4px;">💳 سياسة توثيق شحن رصيد التجار (مربوطة مباشرة بـ PostgreSQL)</div>' +
+                '<div class="sc-help" style="margin-bottom:8px;">يمكن للتاجر مؤقتاً إشعار المالية بالشحن بالمبلغ فقط دون إلزام برفع مستند أو رقم مرجع؛ وعند التفعيل يصبح إدخال المرجع أو الإيصال إلزامياً في الواجهة وقاعدة البيانات.</div>' +
+                '<div class="sc-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">' +
+                    '<div class="sc-lab">إلزام مرجع الحوالة أو صورة الإيصال عند الشحن <code style="font-size:0.74rem;color:#64748b;">(REQUIRE_TOPUP_PROOF)</code>' +
+                        (reqProof
+                            ? '<span class="sc-chip" style="background:#dbeafe;color:#1e40af;">🔒 إلزامي حالياً</span>'
+                            : '<span class="sc-chip" style="background:#fef3c7;color:#92400e;">🟡 اختياري مؤقتاً (إشعار بالمبلغ فقط)</span>') +
+                    '</div>' +
+                    '<button type="button" class="sc-btn ' + (reqProof ? 'g' : 'b') + '"' + (readonly ? ' disabled' : '') + ' onclick="scLiveToggleKill(\'REQUIRE_TOPUP_PROOF\',' + (!reqProof) + ')">' + (reqProof ? '🔓 جعله اختيارياً مؤقتاً' : '🔒 تفعيل الإلزام الآن') + '</button>' +
+                '</div>' +
+            '</div>';
     }
     function asideHtml() {
         var d = derived(), v = validate(), chs = changes(), cmp = completeness(), imp = impact(chs), u = curUser();
@@ -773,7 +787,22 @@
                     '<button type="button" class="sc-btn ' + (on ? 'p' : 'd') + '"' + (ro ? ' disabled' : '') + ' onclick="scLiveToggleKill(\'' + k[0] + '\',' + (!on) + ')">' + (on ? '✅ استئناف التشغيل' : '🚨 إيقاف طارئ فوري') + '</button>' +
                 '</div>';
             }).join('') +
-        '</div>';
+        '</div>' +
+        (function () {
+            var reqProof = Boolean(sw.REQUIRE_TOPUP_PROOF);
+            return '<div class="sc-card" style="border:1.5px solid #cbd5e1;margin-top:12px;">' +
+                '<div style="font-weight:900;color:#0f172a;font-size:0.96rem;margin-bottom:4px;">💳 سياسة توثيق شحن رصيد التجار (قابل للتبديل الفوري)</div>' +
+                '<div class="sc-help" style="margin-bottom:10px;">يمكن للتاجر مؤقتاً إشعار المالية بالشحن بالمبلغ فقط دون إلزام برفع مستند أو رقم مرجع؛ وعند التفعيل يصبح إدخال رقم مرجع التحويل أو صورة الإيصال إلزامياً في الواجهة وقاعدة البيانات.</div>' +
+                '<div class="sc-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">' +
+                    '<div class="sc-lab">إلزام مرجع الحوالة أو صورة الإيصال عند الشحن <code style="font-size:0.74rem;color:#64748b;">(REQUIRE_TOPUP_PROOF)</code>' +
+                        (reqProof
+                            ? '<span class="sc-chip" style="background:#dbeafe;color:#1e40af;">🔒 إلزامي حالياً</span>'
+                            : '<span class="sc-chip" style="background:#fef3c7;color:#92400e;">🟡 اختياري مؤقتاً (إشعار بالمبلغ فقط)</span>') +
+                    '</div>' +
+                    '<button type="button" class="sc-btn ' + (reqProof ? 'g' : 'b') + '"' + (ro ? ' disabled' : '') + ' onclick="scLiveToggleKill(\'REQUIRE_TOPUP_PROOF\',' + (!reqProof) + ')">' + (reqProof ? '🔓 جعله اختيارياً مؤقتاً' : '🔒 تفعيل الإلزام الآن') + '</button>' +
+                '</div>' +
+            '</div>';
+        })();
     }
 
     function renderLive2faTab(adm) {
@@ -973,6 +1002,9 @@
     window.scLiveToggleKill = async function (switchKey, enabled) {
         var reasonEl = document.getElementById('liveKillReason');
         var reason = (reasonEl ? reasonEl.value : '').trim();
+        if (switchKey === 'REQUIRE_TOPUP_PROOF' && reason.length < 5) {
+            reason = enabled ? 'تفعيل إلزام إرفاق مرجع/إيصال شحن التاجر' : 'تسهيل شحن التاجر مؤقتاً بإشعار المبلغ فقط';
+        }
         if (reason.length < 5) {
             liveToast('أدخل سبب الإجراء الطارئ (5 أحرف على الأقل) في خانة السبب أولاً.', true);
             if (reasonEl) reasonEl.focus();
@@ -985,9 +1017,14 @@
                 reason: reason
             });
             if (reasonEl) reasonEl.value = '';
-            liveToast((enabled ? '🚨 تم تفعيل الإيقاف الطارئ ' : '✅ تم استئناف التشغيل ') + '(' + switchKey + ') في PostgreSQL.', false);
+            liveToast(
+                switchKey === 'REQUIRE_TOPUP_PROOF'
+                    ? (enabled ? '🔒 تم تفعيل إلزام مرجع/إيصال شحن التاجر في PostgreSQL.' : '🟡 تم جعل مرجع/إيصال شحن التاجر اختيارياً مؤقتاً في PostgreSQL.')
+                    : ((enabled ? '🚨 تم تفعيل الإيقاف الطارئ ' : '✅ تم استئناف التشغيل ') + '(' + switchKey + ') في PostgreSQL.'),
+                false
+            );
             if (typeof window.refreshSovereignBundle === 'function') await window.refreshSovereignBundle(false);
-            renderLiveProductionSettings();
+            if (isLiveProductionMode()) renderLiveProductionSettings(); else render();
         } catch (err) {
             liveToast((err && err.message) || 'تعذر تحديث مفتاح الإيقاف الطارئ في PostgreSQL', true);
         }

@@ -1,0 +1,44 @@
+name: SAWYAN Nightly Full-Lifecycle 50-Member & Chaos E2E Robot
+
+on:
+  schedule:
+    # Runs automatically every 24 hours at 00:00 UTC (02:00 Cairo / 03:00 Turkey)
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: 'Optional PRNG seed for 50-member randomized tree simulation'
+        required: false
+        default: ''
+
+jobs:
+  full-lifecycle-50-member-and-chaos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Playwright & Headless Chromium
+        run: |
+          pip install playwright
+          python3 -m playwright install --with-deps chromium
+
+      - name: Layer 1 — Static DOM, HTML5 Validity & Cache-Bust Gate
+        run: python3 database/verify_dom_and_form_lint.py
+
+      - name: Layer 2 — 5-Persona Interactive Browser E2E Gate
+        run: python3 database/verify_e2e_persona_journeys.py
+
+      - name: Layer 3 & 4 — 50-Member + 6-Merchant + Day-15 Payout + 0.00 Accounting + Chaos E2E
+        run: |
+          if [ -n "${{ github.event.inputs.seed }}" ]; then
+            python3 database/verify_full_lifecycle_50_members_e2e.py --seed "${{ github.event.inputs.seed }}"
+          else
+            python3 database/verify_full_lifecycle_50_members_e2e.py
+          fi
