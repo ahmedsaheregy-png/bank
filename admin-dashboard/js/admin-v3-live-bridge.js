@@ -164,21 +164,45 @@
         if (!bar) {
             bar = document.createElement('div');
             bar.id = 'sawyanHeaderRbacBar';
-            bar.style.cssText = 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;';
+            bar.className = 'admin-header-rbac-bar';
             hdr.appendChild(bar);
         }
+
+        const existingPwdBtn = document.getElementById('svAdminChangeOwnPwdBtn');
 
         if (window.SAWYAN.API.isDemoMode()) {
             const founderActive = isSovereignFounder(adm);
             const checkerActive = adm.role === 'approver' && !founderActive;
+            const activePillText = founderActive
+                ? '👑 المؤسس ▾'
+                : (adm.role === 'finance' ? '💼 Maker ▾' : (checkerActive ? '✅ Checker ▾' : '🔍 Auditor ▾'));
+            const activePillBg = founderActive
+                ? '#b45309'
+                : (adm.role === 'finance' ? '#1d4ed8' : (checkerActive ? '#059669' : '#d97706'));
             bar.innerHTML =
-                '<span style="font-size:0.75rem;color:#64748b;font-weight:800;">تبديل الدور الحي:</span>' +
-                '<button type="button" id="switchFounderBtn" onclick="sawyanSwitchDemoRole(\'founder\')" style="padding:5px 10px;border-radius:8px;border:1px solid ' + (founderActive ? '#b45309' : '#cbd5e1') + ';background:' + (founderActive ? '#b45309' : '#ffffff') + ';color:' + (founderActive ? '#ffffff' : '#0f172a') + ';font-family:Tajawal,sans-serif;font-size:0.76rem;font-weight:800;cursor:pointer;">👑 المؤسس (إدارة مطلقة)</button>' +
-                '<button type="button" id="switchMakerBtn" onclick="sawyanSwitchDemoRole(\'maker\')" style="padding:5px 10px;border-radius:8px;border:1px solid ' + (adm.role === 'finance' ? '#1d4ed8' : '#cbd5e1') + ';background:' + (adm.role === 'finance' ? '#1d4ed8' : '#ffffff') + ';color:' + (adm.role === 'finance' ? '#ffffff' : '#0f172a') + ';font-family:Tajawal,sans-serif;font-size:0.76rem;font-weight:800;cursor:pointer;">💼 Maker (مالي)</button>' +
-                '<button type="button" id="switchCheckerBtn" onclick="sawyanSwitchDemoRole(\'checker\')" style="padding:5px 10px;border-radius:8px;border:1px solid ' + (checkerActive ? '#059669' : '#cbd5e1') + ';background:' + (checkerActive ? '#059669' : '#ffffff') + ';color:' + (checkerActive ? '#ffffff' : '#0f172a') + ';font-family:Tajawal,sans-serif;font-size:0.76rem;font-weight:800;cursor:pointer;">✅ Checker (مُعتمِد)</button>' +
-                '<button type="button" id="switchAuditorBtn" onclick="sawyanSwitchDemoRole(\'auditor\')" style="padding:5px 10px;border-radius:8px;border:1px solid ' + (adm.role === 'auditor' ? '#d97706' : '#cbd5e1') + ';background:' + (adm.role === 'auditor' ? '#d97706' : '#ffffff') + ';color:' + (adm.role === 'auditor' ? '#ffffff' : '#0f172a') + ';font-family:Tajawal,sans-serif;font-size:0.76rem;font-weight:800;cursor:pointer;">🔍 Auditor (قراءة فقط)</button>';
+                '<div class="admin-role-dropdown-wrap" id="sawyanRoleDropdownWrap">' +
+                    '<button type="button" class="admin-role-dropdown-trigger" style="background:' + activePillBg + ';border-color:' + activePillBg + ';" onclick="event.stopPropagation(); var w=document.getElementById(\'sawyanRoleDropdownWrap\'); if(w) w.classList.toggle(\'open\');">' + activePillText + '</button>' +
+                    '<div class="admin-role-dropdown-menu">' +
+                        '<span class="admin-role-label" style="font-size:0.75rem;color:#64748b;font-weight:800;">تبديل الدور الحي:</span>' +
+                        '<button type="button" id="switchFounderBtn" onclick="sawyanSwitchDemoRole(\'founder\')" style="padding:5px 10px;border-radius:8px;border:1px solid ' + (founderActive ? '#b45309' : '#cbd5e1') + ';background:' + (founderActive ? '#b45309' : '#ffffff') + ';color:' + (founderActive ? '#ffffff' : '#0f172a') + ';font-family:Tajawal,sans-serif;font-size:0.76rem;font-weight:800;cursor:pointer;">👑 المؤسس (إدارة مطلقة)</button>' +
+                        '<button type="button" id="switchMakerBtn" onclick="sawyanSwitchDemoRole(\'maker\')" style="padding:5px 10px;border-radius:8px;border:1px solid ' + (adm.role === 'finance' ? '#1d4ed8' : '#cbd5e1') + ';background:' + (adm.role === 'finance' ? '#1d4ed8' : '#ffffff') + ';color:' + (adm.role === 'finance' ? '#ffffff' : '#0f172a') + ';font-family:Tajawal,sans-serif;font-size:0.76rem;font-weight:800;cursor:pointer;">💼 Maker (مالي)</button>' +
+                        '<button type="button" id="switchCheckerBtn" onclick="sawyanSwitchDemoRole(\'checker\')" style="padding:5px 10px;border-radius:8px;border:1px solid ' + (checkerActive ? '#059669' : '#cbd5e1') + ';background:' + (checkerActive ? '#059669' : '#ffffff') + ';color:' + (checkerActive ? '#ffffff' : '#0f172a') + ';font-family:Tajawal,sans-serif;font-size:0.76rem;font-weight:800;cursor:pointer;">✅ Checker (مُعتمِد)</button>' +
+                        '<button type="button" id="switchAuditorBtn" onclick="sawyanSwitchDemoRole(\'auditor\')" style="padding:5px 10px;border-radius:8px;border:1px solid ' + (adm.role === 'auditor' ? '#d97706' : '#cbd5e1') + ';background:' + (adm.role === 'auditor' ? '#d97706' : '#ffffff') + ';color:' + (adm.role === 'auditor' ? '#ffffff' : '#0f172a') + ';font-family:Tajawal,sans-serif;font-size:0.76rem;font-weight:800;cursor:pointer;">🔍 Auditor (قراءة فقط)</button>' +
+                    '</div>' +
+                '</div>';
+            if (!window.__sawyanRoleDropdownCloserBound) {
+                window.__sawyanRoleDropdownCloserBound = true;
+                document.addEventListener('click', function () {
+                    const w = document.getElementById('sawyanRoleDropdownWrap');
+                    if (w) w.classList.remove('open');
+                });
+            }
         } else {
-            bar.innerHTML = '<span style="font-size:0.76rem;background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7;padding:4px 10px;border-radius:999px;font-weight:800;">🔒 جلسة إنتاج سيادية موثقة (`sawyan`)</span>';
+            bar.innerHTML = '<span style="font-size:0.76rem;background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7;padding:4px 10px;border-radius:999px;font-weight:800;">🔒 جلسة إنتاج سيادية موثقة</span>';
+        }
+
+        if (existingPwdBtn) {
+            bar.appendChild(existingPwdBtn);
         }
     }
 
@@ -215,6 +239,8 @@
         const adm = api.getSavedAdmin();
         const tok = api.getAdminSessionToken();
         if (!adm || !tok) return;
+        mountSovereignNavAndPage();
+        updateHeaderIdentity(adm);
 
         try {
             const periodInput = document.getElementById('svClosePeriodInput');
@@ -336,13 +362,13 @@
                     '<button type="button" onclick="refreshSovereignBundle(true)" style="background:rgba(255,255,255,0.14);color:#ffffff;border:1px solid rgba(255,255,255,0.3);padding:6px 12px;border-radius:8px;font-family:Tajawal,sans-serif;font-weight:700;font-size:0.8rem;cursor:pointer;">🔄 تحديث فوري</button>' +
                 '</div>' +
             '</div>' +
-            '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;font-size:0.82rem;">' +
-                '<div style="background:rgba(255,255,255,0.08);padding:8px 11px;border-radius:10px;">👥 الأعضاء بالقاعدة: <b>' + Number(k.members_total || 0) + '</b> (+ #0)</div>' +
-                '<div style="background:rgba(255,255,255,0.08);padding:8px 11px;border-radius:10px;white-space:nowrap;">🏪 التجار النشطون: <b>' + Number(k.merchants_active || 0) + ' / ' + Number(k.merchants_total || 0) + '</b></div>' +
-                '<div style="background:rgba(255,255,255,0.08);padding:8px 11px;border-radius:10px;white-space:nowrap;">💳 فواتير مكتملة: <b>' + Number(k.transactions_completed || 0) + '</b></div>' +
-                '<div style="background:rgba(255,255,255,0.08);padding:8px 11px;border-radius:10px;white-space:nowrap;">🏦 صافي الخزانة (25%): <b>$' + fmt2(k.treasury_revenue_usd) + '</b></div>' +
-                '<div style="background:rgba(255,255,255,0.08);padding:8px 11px;border-radius:10px;white-space:nowrap;">🎯 متبقي وعاء الخطة (2201): <b>$' + fmt2(k.plan_pool_liability_usd) + '</b></div>' +
-                '<div style="background:rgba(255,255,255,0.08);padding:8px 11px;border-radius:10px;">⚖️ المطابقة الصفرية: <b style="color:' + (zd.is_zero_discrepancy_intact ? '#6ee7b7' : '#fca5a5') + ';">' + (zd.is_zero_discrepancy_intact ? '✅ فرق $0.00' : '⛔ خلل!') + '</b></div>' +
+            '<div class="admin-live-kpi-strip" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:10px;font-size:0.82rem;">' +
+                '<div class="admin-live-kpi-cell" style="background:rgba(255,255,255,0.08);padding:9px 12px;border-radius:10px;min-width:0;overflow:hidden;"><div style="font-size:0.75rem;color:#cbd5e1;">👥 الأعضاء بالقاعدة</div><b style="display:block;margin-top:3px;font-size:0.96rem;" dir="ltr">' + Number(k.members_total || 0) + ' (+ #0)</b></div>' +
+                '<div class="admin-live-kpi-cell" style="background:rgba(255,255,255,0.08);padding:9px 12px;border-radius:10px;min-width:0;overflow:hidden;"><div style="font-size:0.75rem;color:#cbd5e1;">🏪 التجار النشطون</div><b style="display:block;margin-top:3px;font-size:0.96rem;" dir="ltr">' + Number(k.merchants_active || 0) + ' / ' + Number(k.merchants_total || 0) + '</b></div>' +
+                '<div class="admin-live-kpi-cell" style="background:rgba(255,255,255,0.08);padding:9px 12px;border-radius:10px;min-width:0;overflow:hidden;"><div style="font-size:0.75rem;color:#cbd5e1;">💳 فواتير مكتملة</div><b style="display:block;margin-top:3px;font-size:0.96rem;" dir="ltr">' + Number(k.transactions_completed || 0) + '</b></div>' +
+                '<div class="admin-live-kpi-cell" style="background:rgba(255,255,255,0.08);padding:9px 12px;border-radius:10px;min-width:0;overflow:hidden;"><div style="font-size:0.75rem;color:#cbd5e1;">🏦 صافي الخزانة (25%)</div><b style="display:block;margin-top:3px;font-size:0.96rem;" dir="ltr">$' + fmt2(k.treasury_revenue_usd) + '</b></div>' +
+                '<div class="admin-live-kpi-cell" style="background:rgba(255,255,255,0.08);padding:9px 12px;border-radius:10px;min-width:0;overflow:hidden;"><div style="font-size:0.75rem;color:#cbd5e1;">🎯 متبقي وعاء الخطة (2201)</div><b style="display:block;margin-top:3px;font-size:0.96rem;" dir="ltr">$' + fmt2(k.plan_pool_liability_usd) + '</b></div>' +
+                '<div class="admin-live-kpi-cell" style="background:rgba(255,255,255,0.08);padding:9px 12px;border-radius:10px;min-width:0;overflow:hidden;"><div style="font-size:0.75rem;color:#cbd5e1;">⚖️ المطابقة الصفرية</div><b style="display:block;margin-top:3px;font-size:0.94rem;color:' + (zd.is_zero_discrepancy_intact ? '#6ee7b7' : '#fca5a5') + ';">' + (zd.is_zero_discrepancy_intact ? '✅ فرق $0.00' : '⛔ خلل!') + '</b></div>' +
             '</div>';
 
         const elMemb = document.getElementById('totalMembers');

@@ -229,16 +229,17 @@
             contentArea.appendChild(p);
         }
 
-        // Add self password change button to top header
+        // Add self password change button inside compact RBAC bar (or header fallback)
         const hdr = document.querySelector('.dashboard-header');
+        const rbacBar = document.getElementById('sawyanHeaderRbacBar');
         if (hdr && !document.getElementById('svAdminChangeOwnPwdBtn')) {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.id = 'svAdminChangeOwnPwdBtn';
-            btn.style.cssText = 'background:#f1f5f9;color:#0f172a;border:1px solid #cbd5e1;padding:5px 11px;border-radius:8px;font-family:Tajawal,sans-serif;font-weight:800;font-size:0.78rem;cursor:pointer;margin-right:8px;';
-            btn.textContent = '🔑 تغيير كلمة مروري';
+            btn.className = 'admin-own-pwd-btn';
+            btn.textContent = '🔑 كلمة مروري';
             btn.onclick = window.svOpenAdminSelfPasswordModal;
-            hdr.appendChild(btn);
+            (rbacBar || hdr).appendChild(btn);
         }
 
         const adm = curAdmin();

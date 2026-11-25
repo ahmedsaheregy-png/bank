@@ -390,16 +390,22 @@
                 '</div>';
             }).join('') + '</div>';
 
+        const totalTeamCount = Number(d.total_subtree_members || 0);
+        const shownDownlines = Math.max(0, nodes.length - (rootNode ? 1 : 0));
+        const teamCountBadgeText = shownDownlines < totalTeamCount
+            ? ('أعضاء فريقك: ' + totalTeamCount + ' • المعروض حالياً: ' + shownDownlines)
+            : ('أعضاء فريقك: ' + totalTeamCount);
+
         container.innerHTML = STUDIO_CSS +
             '<div class="ts-wrap">' +
                 // Top Header + Device Adaptive Depth Controls
                 '<div class="ts-card" data-spec-id="member-tree-kpis">' +
                     '<div class="ts-header-bar">' +
                         '<div>' +
-                            '<h2 style="margin:0;font-size:1.12rem;font-weight:900;">🌳 ' + t('tree.studio_title', 'استوديو الشجرة الثنائية التكيّفي') + '</h2>' +
+                            '<h2 style="margin:0;font-size:1.12rem;font-weight:900;">🌳 شجرتي الدولية</h2>' +
                             '<div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">' +
                                 '<span class="ts-badge" style="background:#ecfdf5;color:#065f46;">' + (mob ? '📱 ' + t('tree.device_mobile', 'وضع الموبايل السلس (4–5 أجيال)') : '💻 ' + t('tree.device_desktop', 'وضع اللابتوب الكامل (6–8 أجيال)')) + '</span>' +
-                                '<span class="ts-badge" style="background:#eff6ff;color:#1e40af;">إجمالي شجرتك: ' + Number(d.total_subtree_members || 0) + ' • المعروض: ' + nodes.length + '</span>' +
+                                '<span class="ts-badge" style="background:#eff6ff;color:#1e40af;">' + teamCountBadgeText + '</span>' +
                             '</div>' +
                         '</div>' +
                         '<div class="ts-controls" data-spec-id="member-tree-controls">' +

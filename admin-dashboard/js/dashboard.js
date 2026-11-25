@@ -20,9 +20,9 @@
     let idleWarningShown = false;
 
     const PAGE_TITLES = {
-        home: 'غرفة العمليات المركزية',
+        home: 'لوحة الإدارة',
         members: 'إدارة الأعضاء',
-        networkTree: 'الشجرة الكاملة للشركة',
+        networkTree: 'الشجرة الكاملة',
         merchants: 'إدارة التجار',
         transactions: 'العمليات والفواتير الحية',
         commissions: 'العمولات والخزينة',

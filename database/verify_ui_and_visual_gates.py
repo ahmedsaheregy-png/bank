@@ -162,6 +162,45 @@ def inspect_layout_metrics(page):
                 });
             }
         });
+        const headerOverlaps = [];
+        const hdr = document.querySelector('.dashboard-header');
+        if (hdr && window.getComputedStyle(hdr).display !== 'none') {
+            const hItems = Array.from(hdr.children).filter(el => {
+                const st = window.getComputedStyle(el);
+                const r = el.getBoundingClientRect();
+                return st.display !== 'none' && st.visibility !== 'hidden' && r.width > 1 && r.height > 1;
+            });
+            for (let i = 0; i < hItems.length; i++) {
+                for (let j = i + 1; j < hItems.length; j++) {
+                    const a = hItems[i].getBoundingClientRect();
+                    const b = hItems[j].getBoundingClientRect();
+                    const ix = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+                    const iy = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+                    if (ix * iy > 24) {
+                        headerOverlaps.push(`${hItems[i].id || hItems[i].tagName}<->${hItems[j].id || hItems[j].tagName}:${Math.round(ix * iy)}px2`);
+                    }
+                }
+            }
+        }
+        const bannerCardIssues = [];
+        const liveStrip = document.querySelector('[data-spec-id="admin-home-live-banner"] .admin-live-kpi-strip');
+        if (liveStrip && liveStrip.offsetParent) {
+            const cells = Array.from(liveStrip.children).filter(el => el.offsetParent);
+            for (let i = 0; i < cells.length; i++) {
+                if (cells[i].scrollWidth > cells[i].clientWidth + 3) {
+                    bannerCardIssues.push(`cell[${i}] text overflow ${cells[i].scrollWidth}>${cells[i].clientWidth}`);
+                }
+                for (let j = i + 1; j < cells.length; j++) {
+                    const a = cells[i].getBoundingClientRect();
+                    const b = cells[j].getBoundingClientRect();
+                    const ix = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+                    const iy = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+                    if (ix * iy > 4) {
+                        bannerCardIssues.push(`cell[${i}]<->cell[${j}] overlap ${Math.round(ix * iy)}px2`);
+                    }
+                }
+            }
+        }
         return {
             viewportWidth: vw,
             scrollWidth: sw,
@@ -169,7 +208,9 @@ def inspect_layout_metrics(page):
             sidebarRect,
             mainRect,
             emptyDataLabelsCount: emptyDataLabels.length,
-            emptyDataLabelsSample: emptyDataLabels.slice(0, 3)
+            emptyDataLabelsSample: emptyDataLabels.slice(0, 3),
+            headerOverlaps,
+            bannerCardIssues
         };
     }""")
 
@@ -335,6 +376,14 @@ def verify_portal_in_browser(context, base_url, portal_name, login_path, manifes
                 if m["emptyDataLabelsCount"] > 0:
                     failures.append(
                         f"[{portal_name}:{chk_pg} @ {vp['width']}x{vp['height']}] Table cells missing data-label with hidden thead: {m['emptyDataLabelsSample']}"
+                    )
+                if m.get("headerOverlaps"):
+                    failures.append(
+                        f"[{portal_name}:{chk_pg} @ {vp['width']}x{vp['height']}] Header child OVERLAP detected: {m['headerOverlaps']}"
+                    )
+                if m.get("bannerCardIssues"):
+                    failures.append(
+                        f"[{portal_name}:{chk_pg} @ {vp['width']}x{vp['height']}] Live-banner KPI card overlap/overflow: {m['bannerCardIssues']}"
                     )
                 if save_screenshots and vp["width"] in (680, 375) and (portal_name != "member" or chk_pg in ("home", "tree")):
                     os.makedirs(AUDIT_DIR, exist_ok=True)

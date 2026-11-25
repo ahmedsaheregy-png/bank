@@ -176,6 +176,16 @@ html, body {
         display: none !important;
     }
 
+    .sidebar:not(.rail-expanded) .sidebar-nav-group-label {
+        font-size: 0 !important;
+        line-height: 0 !important;
+        height: 1px !important;
+        padding: 0 !important;
+        margin: 6px 10px !important;
+        background: rgba(255, 255, 255, 0.18) !important;
+        overflow: hidden !important;
+    }
+
     .sidebar:not(.rail-expanded) .sidebar-nav {
         padding: 4px !important;
         width: 100%;
