@@ -839,15 +839,103 @@
         sel.innerHTML =
             '<option value="all">📋 جميع التقارير الرسمية الستة (عرض مجمع)</option>' +
             '<option value="tree">1. تقرير الشجرة الشامل (الجيل المزدوج)</option>' +
-            '<option value="carryon">2. تقرير التأهل الشهري والـ Carry On</option>' +
-            '<option value="commissions">3. تقرير العمولات الفردية وسجل الـ Roll-up</option>' +
+            '<option value="carryon">2. تقرير التأهل الشهري وصندوق الهدف</option>' +
+            '<option value="commissions">3. تقرير المعاملات والعمولات الفعلي</option>' +
             '<option value="international">4. تقرير الأداء الدولي المتوازي</option>' +
             '<option value="reconciliation">5. تقرير الخزانة والمطابقة المالية</option>' +
             '<option value="audit">6. تقرير المراجعة والاستثناءات والضرائب</option>';
         var sD = document.getElementById('reportStartDate');
         var eD = document.getElementById('reportEndDate');
-        if (sD && !sD.value) sD.value = '2026-11-01';
-        if (eD && !eD.value) eD.value = '2026-11-14';
+        var today = new Date();
+        var monthStart = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-01';
+        var monthEnd = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()).padStart(2, '0');
+        if (sD && !sD.value) sD.value = monthStart;
+        if (eD && !eD.value) eD.value = monthEnd;
+    }
+    function isIsoInDateRange(isoVal, sD, eD) {
+        if (!sD && !eD) return true;
+        if (!isoVal) return false;
+        var dayStr = String(isoVal).slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dayStr)) return true;
+        if (sD && dayStr < sD) return false;
+        if (eD && dayStr > eD) return false;
+        return true;
+    }
+    function buildFilteredReports(sD, eD) {
+        var b = LIVE_BUNDLE_REF || {};
+        var rawMems = Array.isArray(b.members) ? b.members : [];
+        var rawTxs = Array.isArray(b.transactions) ? b.transactions : [];
+        var ctrs = Array.isArray(b.countries) ? b.countries : [];
+        var zd = b.zero_discrepancy || {};
+        var kp = b.kpis || {};
+        var txStAr = { completed: 'مكتملة ✅', pending: 'معلقة للمراجعة ⏳', awaiting_merchant_topup: 'بانتظار شحن التاجر ⏸️', reversed: 'مسترجعة ↩️', rejected: 'مرفوضة ❌' };
+
+        var filteredTxs = rawTxs.filter(function (t) { return isIsoInDateRange(t.completed_at || t.created_at, sD, eD); });
+        var filteredMems = rawMems.filter(function (m) {
+            if (!m.created_at) return true;
+            return isIsoInDateRange(m.created_at, sD, eD);
+        });
+        var completedFiltered = filteredTxs.filter(function (t) { return t.status === 'completed'; });
+        var pendingFiltered = filteredTxs.filter(function (t) { return t.status === 'pending' || t.status === 'awaiting_merchant_topup'; });
+
+        OFFICIAL_REPORTS.tree.rows = filteredMems.map(function (m) {
+            return [
+                '#' + Number(m.member_code),
+                m.full_name || ('عضو #' + Number(m.member_code)),
+                m.residency_country_code || 'EG',
+                Number(m.member_code) === 0 ? '—' : ('#' + Number(m.sponsor_code || 0)),
+                Number(m.member_code) === 0 ? '—' : ('#' + Number(m.parent_code || 0)),
+                m.placement_side === 'left' ? 'يسار' : (m.placement_side === 'right' ? 'يمين' : 'الجذر'),
+                'ج' + Number(m.generation_in_tree || 0)
+            ];
+        });
+
+        OFFICIAL_REPORTS.carryon.rows = rawMems.filter(function (m) { return Number(m.member_code) > 0; }).map(function (m) {
+            return [
+                (m.full_name || ('عضو #' + Number(m.member_code))) + ' (#' + Number(m.member_code) + ')',
+                m.residency_country_code || 'EG',
+                fmt(m.carry_on_in_usd || 0),
+                fmt(m.current_purchases_usd || 0),
+                fmt(m.carry_on_out_usd || 0),
+                m.is_qualified_period ? '🟢 مؤهل' : '🟠 قيد التجميع'
+            ];
+        });
+
+        OFFICIAL_REPORTS.commissions.rows = filteredTxs.map(function (t) {
+            return [
+                t.sw_short_code || t.id,
+                (t.member_name || '') + ' (#' + Number(t.member_code || 0) + ')',
+                t.merchant_name || '',
+                fmt(t.total_amount) + ' ' + (t.currency_code || ''),
+                fmt(t.commission_amount),
+                fmt(t.income_plan_share_usd) + ' $',
+                txStAr[t.status] || t.status
+            ];
+        });
+
+        OFFICIAL_REPORTS.international.rows = ctrs.map(function (c) {
+            var cname = (c.country_name_i18n && (c.country_name_i18n.ar || c.country_name_i18n.en)) || c.country_code;
+            return [
+                cname + ' (' + c.country_code + ')',
+                String(Number(c.active_merchants_count || 0)),
+                String(Number(c.completed_tx_count || 0)),
+                fmt(c.admin_fx_rate || 1) + ' ' + (c.currency_code || '') + ' / $',
+                fmt(c.monthly_target_usd || 24.75) + ' $',
+                c.is_active ? '🟢 نشطة ومفعلة' : '⚪ غير نشطة'
+            ];
+        });
+
+        OFFICIAL_REPORTS.reconciliation.rows = [
+            ['توازن القيد المزدوج العام', fmt(zd.total_debit_usd || 0) + ' $ (مدين)', fmt(zd.total_credit_usd || 0) + ' $ (دائن)', fmt(zd.ledger_diff_usd || 0) + ' $', zd.is_zero_discrepancy_intact ? '✅ مطابق 100%' : '⛔ خلل'],
+            ['حصة الخزانة مقابل وعاء خطة الدخل', fmt(kp.treasury_revenue_usd || 0) + ' $ خزانة', fmt(kp.plan_pool_liability_usd || 0) + ' $ خطة', fmt0(zd.pool_mismatch_count || 0) + ' فوارق', Number(zd.pool_mismatch_count || 0) === 0 ? '✅ مطابق 100%' : '⛔ خلل'],
+            ['إجمالي أرصدة التجار المشحونة', fmt(kp.merchant_prepaid_float_usd || 0) + ' $', 'صافي أرصدة الشحن الحية', '0.00 $', '✅ مطابق 100%']
+        ];
+
+        OFFICIAL_REPORTS.audit.rows = [
+            ['فواتير مكتملة ضمن الفترة المختارة', String(completedFiltered.length), 'من إجمالي ' + Number(kp.transactions_completed || 0) + ' فاتورة بالدورة', 'القيد المزدوج المتوازن'],
+            ['فواتير معلقة أو بانتظار الشحن ضمن الفترة', String(pendingFiltered.length), 'بانتظار التأكيد أو شحن رصيد التاجر', 'ضوابط الرصيد والائتمان'],
+            ['فروق التقريب العشرية', fmt(kp.rounding_4301_usd || 0, 4) + ' $', 'تدوير Decimal دقيق لحساب فروق التقريب', 'دقة الكسور العشرية']
+        ];
     }
     window.generateReport = async function () {
         upgradeReportsSelect();
@@ -859,30 +947,45 @@
                 }
             } catch (_) {}
         }
-        var sD = document.getElementById('reportStartDate').value || '2026-11-01';
-        var eD = document.getElementById('reportEndDate').value || '2026-11-30';
-        var typ = document.getElementById('reportType').value || 'all';
+        var sD = (document.getElementById('reportStartDate') || {}).value || '';
+        var eD = (document.getElementById('reportEndDate') || {}).value || '';
+        var typ = (document.getElementById('reportType') || {}).value || 'all';
+        buildFilteredReports(sD, eD);
         var resDiv = document.getElementById('reportResults');
         if (!resDiv) return;
         var keys = typ === 'all' ? Object.keys(OFFICIAL_REPORTS) : [typ];
+        var helpTag = typeof window.svHelpBtn === 'function' ? window.svHelpBtn('zero_discrepancy') : '';
         resDiv.innerHTML =
             '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">' +
-                '<div style="font-size:0.84rem;color:#475569;">الفترة: <b>' + esc(sD) + '</b> إلى <b>' + esc(eD) + '</b> • مستخرج مباشرةً من قاعدة البيانات الحية</div>' +
+                '<div style="font-size:0.84rem;color:#475569;">الفترة المفلترة فعلياً: <b>' + esc(sD || 'البداية') + '</b> إلى <b>' + esc(eD || 'اليوم') + '</b> • مستخرج ومفلتر مباشرةً من قاعدة البيانات الحية' + helpTag + '</div>' +
                 '<button class="btn btn-primary" onclick="opsExportReport(\'' + esc(typ) + '\')">📥 تصدير التقرير CSV</button>' +
             '</div>' +
             keys.map(function (k) {
                 var r = OFFICIAL_REPORTS[k];
                 if (!r) return '';
                 return '<div style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:16px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">' +
-                    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;"><h3 style="margin:0;color:#0f172a;font-size:1.02rem;">' + r.title + '</h3>' + badgeProp() + '</div>' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;"><h3 style="margin:0;color:#0f172a;font-size:1.02rem;">' + r.title + ' (' + r.rows.length + ')</h3>' + badgeProp() + '</div>' +
                     '<div style="overflow-x:auto;"><table class="data-table"><thead><tr>' + r.headers.map(function (h) { return '<th>' + h + '</th>'; }).join('') + '</tr></thead><tbody>' +
-                    (r.rows.length === 0 ? '<tr><td colspan="' + r.headers.length + '" class="empty-state">لا توجد سجلات مسجلة في هذا التقرير حالياً</td></tr>' : r.rows.map(function (row) { return '<tr>' + row.map(function (c, idx) { return '<td data-label="' + esc(r.headers[idx]) + '">' + esc(c) + '</td>'; }).join('') + '</tr>'; }).join('')) +
+                    (r.rows.length === 0 ? '<tr><td colspan="' + r.headers.length + '" class="empty-state">لا توجد سجلات مطابقة للفترة التاريخية المختارة (' + esc(sD || '—') + ' ← ' + esc(eD || '—') + ')</td></tr>' : r.rows.map(function (row) { return '<tr>' + row.map(function (c, idx) { return '<td data-label="' + esc(r.headers[idx]) + '">' + esc(c) + '</td>'; }).join('') + '</tr>'; }).join('')) +
                     '</tbody></table></div></div>';
             }).join('');
     };
     window.opsExportReport = function (typ) {
-        var r = OFFICIAL_REPORTS[typ === 'all' ? 'reconciliation' : typ] || OFFICIAL_REPORTS.reconciliation;
-        downloadCsv('sawyan_report_' + typ + '.csv', r.headers, r.rows);
+        if (typ === 'all') {
+            var allRows = [];
+            Object.keys(OFFICIAL_REPORTS).forEach(function (k) {
+                var rep = OFFICIAL_REPORTS[k];
+                if (!rep) return;
+                allRows.push(['=== ' + rep.title + ' ===']);
+                allRows.push(rep.headers);
+                rep.rows.forEach(function (rw) { allRows.push(rw); });
+                allRows.push(['']);
+            });
+            downloadCsv('sawyan_all_reports_' + new Date().toISOString().slice(0, 10) + '.csv', ['تقرير سويا الشامل'], allRows);
+            return;
+        }
+        var r = OFFICIAL_REPORTS[typ] || OFFICIAL_REPORTS.reconciliation;
+        downloadCsv('sawyan_report_' + typ + '_' + new Date().toISOString().slice(0, 10) + '.csv', r.headers, r.rows);
     };
 
     /* ============================================================
@@ -890,22 +993,23 @@
        5 تبويبات: close | recon | fraud | fx | compliance
        ============================================================ */
     var GOV_TAB = 'close';
+    var govHelp = function (key) { return (typeof window.svHelpBtn === 'function') ? window.svHelpBtn(key) : ''; };
     var CLOSE_STEPS = [
-        { s: 1, title: 'فحص المطابقة الصفرية التلقائية (P0-7)', desc: 'التحقق من تطابق الخزانة (25%) + الخطة (75%) = العمولات، وأرصدة الشحن، والشجرة الدولية (فرق = 0.00).' },
-        { s: 2, title: 'قفل إدخال مبيعات الفترة (Odoo Sales Lock Date — D3)', desc: 'إغلاق شهر نوفمبر عند 23:59:59 حسب توقيت كل دولة ومنع تسجيل فواتير بأثر رجعي.' },
-        { s: 3, title: 'حسم نافذة التصحيح والطلبات المعلقة (D3 & D6)', desc: 'إغلاق كافة العمليات المتصاعدة بعد 48 ساعة وحسم أي استثناء إداري موثق قبل التوزيع.' },
-        { s: 4, title: 'حساب مسودة التوزيع والتأهل التعويضي ولقطة المعاملات (Hash)', desc: 'تثبيت parameters_snapshot وتطبيق الستوبر العددي ⬅️ السقف والـ Roll-up ⬅️ الستوبر المالي ⬅️ التعويضي دون سالب.' },
-        { s: 5, title: 'الاعتماد المزدوج للإقفال الشامل (Odoo Total Lock)', desc: 'مراجعة المحاسب والمراقب وإقفال القيود المحاسبية نهائياً للشهر.' },
-        { s: 6, title: 'إصدار دفعة صرف العمولات — يوم 15 من الشهر التالي', desc: 'ترحيل الأرباح المؤكدة إلى الأرصدة المتاحة للسحب وفق fx_rate_used لشهر الاستحقاق.' }
+        { s: 1, title: 'فحص المطابقة الصفرية التلقائية', desc: 'التحقق من تطابق الخزانة (25%) + خطة الدخل (75%) = العمولات، وأرصدة الشحن، والشجرة الدولية (فرق = 0.00).' },
+        { s: 2, title: 'قفل إدخال مبيعات الفترة المحاسبية', desc: 'إغلاق الشهر عند 23:59:59 حسب توقيت كل دولة ومنع تسجيل فواتير بأثر رجعي.' },
+        { s: 3, title: 'حسم نافذة التصحيح والطلبات المعلقة', desc: 'إغلاق كافة العمليات المتصاعدة بعد 48 ساعة وحسم أي استثناء إداري موثق قبل التوزيع.' },
+        { s: 4, title: 'حساب مسودة التوزيع والتأهل التعويضي ولقطة المعاملات', desc: 'تثبيت إعدادات الدورة وتطبيق عدد الأجيال المؤهلة ثم سقف التوزيع صعوداً ثم الحد الشهري الأقصى والتأهل التعويضي دون أي رصيد سالب.' },
+        { s: 5, title: 'المراجعة المزدوجة للإقفال الشامل', desc: 'مراجعة المحاسب والمراقب وإقفال القيود المحاسبية نهائياً للشهر.' },
+        { s: 6, title: 'إصدار دفعة صرف العمولات المجدولة', desc: 'ترحيل الأرباح المؤكدة إلى الأرصدة المتاحة للسحب وفق سعر الصرف المعتمد لشهر الاستحقاق.' }
     ];
 
     function govNavHtml() {
         var tabs = [
-            ['close', '📅 معالج الإقفال الشهري (Odoo)'],
+            ['close', '📅 معالج الإقفال الشهري'],
             ['recon', '⚖️ محرك المطابقة الصفرية الحية'],
             ['fraud', '🚨 طابور الاشتباه وفحص المرتجع'],
             ['fx', '💱 غرفة أسعار الصرف الشهرية'],
-            ['compliance', '🌍 بوابة الدول وإشعارات الأثر وPDPL']
+            ['compliance', '🌍 بوابة الدول والامتثال والخصوصية']
         ];
         return '<div class="sc-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">' +
             tabs.map(function (t) {
@@ -919,11 +1023,11 @@
         var blockedByDiff = OPS.reconDiffInjected;
         return '<div style="background:white;border:1.5px solid #cbd5e1;border-radius:14px;padding:18px;">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">' +
-                '<div><h3 style="margin:0;">📅 معالج الإقفال الشهري وأقفال الفترات (مبدأ Odoo Accounting — P0-6 • D3)</h3><div style="font-size:0.8rem;color:#64748b;">الشهر المحاسبي: نوفمبر 2026 • المرحلة الحالية: <b>' + OPS.closeStep + ' / 6</b></div></div>' +
-                badgeProp('قرار D3 + P0-6') +
+                '<div><h3 style="margin:0;">📅 معالج الإقفال الشهري وأقفال الفترات' + govHelp('monthly_close') + '</h3><div style="font-size:0.8rem;color:#64748b;">الشهر المحاسبي النشط • المرحلة الحالية: <b>' + OPS.closeStep + ' / 6</b></div></div>' +
+                badgeProp('إقفال محاسبي محكم') +
             '</div>' +
             (blockedByDiff ? '<div style="background:#fee2e2;border:2px solid #dc2626;color:#991b1b;padding:12px;border-radius:10px;margin-bottom:12px;font-weight:800;">⛔ الإقفال محظور تلقائياً! يوجد فرق مطابقة محاسبي (+12.50 ج.م). انتقل لتبويب «المطابقة الصفرية الحية» لإصلاح القيد قبل المتابعة.</div>' : '') +
-            (OPS.breakGlassOpenUntil ? '<div style="background:#fef3c7;border:2px solid #f59e0b;color:#92400e;padding:10px 14px;border-radius:10px;margin-bottom:12px;font-size:0.84rem;"><b>🔓 استثناء فتح مؤقت نشط (Break-Glass):</b> حتى ' + esc(OPS.breakGlassOpenUntil) + ' • السبب المسجّل: ' + esc(OPS.breakGlassReason) + '</div>' : '') +
+            (OPS.breakGlassOpenUntil ? '<div style="background:#fef3c7;border:2px solid #f59e0b;color:#92400e;padding:10px 14px;border-radius:10px;margin-bottom:12px;font-size:0.84rem;"><b>🔓 استثناء فتح مؤقت نشط:</b> حتى ' + esc(OPS.breakGlassOpenUntil) + ' • السبب المسجّل: ' + esc(OPS.breakGlassReason) + '</div>' : '') +
             '<div style="display:grid;gap:10px;margin-bottom:14px;">' +
             CLOSE_STEPS.map(function (st) {
                 var done = st.s < OPS.closeStep;
@@ -935,7 +1039,7 @@
             }).join('') +
             '</div>' +
             '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-                '<button onclick="govBreakGlassReopen()" style="background:#fff7ed;color:#c2410c;border:1.5px solid #fb923c;padding:8px 14px;border-radius:8px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;">🔓 فتح استثنائي مؤقت بسبب ومدة (Break-Glass)</button>' +
+                '<button onclick="govBreakGlassReopen()" style="background:#fff7ed;color:#c2410c;border:1.5px solid #fb923c;padding:8px 14px;border-radius:8px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;">🔓 فتح استثنائي مؤقت بسبب ومدة</button>' +
                 '<button onclick="govResetClose()" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;padding:8px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;">🔄 إعادة ضبط معالج الإقفال للخطوة 1</button>' +
             '</div>' +
         '</div>';
@@ -949,17 +1053,17 @@
         var sumCr = Number(zd.total_credit_usd || 0);
         var ledDiff = Number(zd.ledger_diff_usd || 0);
         var rows = [
-            ['1. توازن القيد المزدوج العام (Ledger Trial Balance)', fmt(sumDr) + ' $ (مدين)', fmt(sumCr) + ' $ (دائن)', (OPS.reconDiffInjected ? '+12.50 ج.م (محاكاة)' : fmt(ledDiff) + ' $'), !diff],
+            ['1. توازن القيد المزدوج العام (ميزان المراجعة)', fmt(sumDr) + ' $ (مدين)', fmt(sumCr) + ' $ (دائن)', (OPS.reconDiffInjected ? '+12.50 ج.م (محاكاة)' : fmt(ledDiff) + ' $'), !diff],
             ['2. خزانة الشركة (25%) مقابل التزام خطة الدخل (75%)', fmt(kp.treasury_revenue_usd) + ' $ خزانة', fmt(kp.plan_pool_liability_usd) + ' $ التزام خطة', fmt(zd.pool_mismatch_count || 0, 0) + ' فوارق', Number(zd.pool_mismatch_count || 0) === 0],
-            ['3. التزامات الشحن المسبق للتجار (حساب 2101)', fmt(kp.merchant_prepaid_float_usd) + ' $', 'صافي أرصدة التجار الحرة بالقاعدة', '0.00 $', true],
-            ['4. أرصدة محافظ الأعضاء القابلة للسحب + S03 Suspense', fmt(kp.member_wallets_payable_usd) + ' $ متاح', fmt(kp.s03_suspense_usd) + ' $ معلق S03', '0.00 $', true],
-            ['5. قيود يومية غير متزنة (Unbalanced Entries)', fmt0(zd.unbalanced_entries_count || 0) + ' قيود', 'القيد المزدوج الصارم', fmt0(zd.unbalanced_entries_count || 0), Number(zd.unbalanced_entries_count || 0) === 0],
-            ['6. دفتر فروق التقريب العشري (حساب 4301)', fmt(kp.rounding_4301_usd, 4) + ' $', 'تدوير Decimal دقيق (D11)', '0.0000 $', true]
+            ['3. التزامات أرصدة التجار المشحونة مسبقاً', fmt(kp.merchant_prepaid_float_usd) + ' $', 'صافي أرصدة التجار الحرة بالقاعدة', '0.00 $', true],
+            ['4. أرصدة محافظ الأعضاء القابلة للسحب + فائض السقف الشهري', fmt(kp.member_wallets_payable_usd) + ' $ متاح', fmt(kp.s03_suspense_usd) + ' $ فائض معلق', '0.00 $', true],
+            ['5. قيود يومية غير متزنة', fmt0(zd.unbalanced_entries_count || 0) + ' قيود', 'القيد المزدوج الصارم', fmt0(zd.unbalanced_entries_count || 0), Number(zd.unbalanced_entries_count || 0) === 0],
+            ['6. دفتر فروق التقريب العشري', fmt(kp.rounding_4301_usd, 4) + ' $', 'تدوير عشري دقيق', '0.0000 $', true]
         ];
         return '<div style="background:white;border:1.5px solid ' + (diff ? '#dc2626' : '#10b981') + ';border-radius:14px;padding:18px;">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">' +
-                '<div><h3 style="margin:0;">⚖️ محرك المطابقة الصفرية الحية (Live Zero-Discrepancy Engine — P0-7)</h3><div style="font-size:0.8rem;color:#64748b;">أي فارق محاسبي يوقف الإقفال الشهري وصرف العمولات فوراً ويكشف القيد المتسبب</div></div>' +
-                badgeProp('P0-7') +
+                '<div><h3 style="margin:0;">⚖️ محرك المطابقة الصفرية الحية' + govHelp('zero_discrepancy') + '</h3><div style="font-size:0.8rem;color:#64748b;">أي فارق محاسبي يوقف الإقفال الشهري وصرف العمولات فوراً ويكشف القيد المتسبب</div></div>' +
+                badgeProp('مطابقة فورية') +
             '</div>' +
             '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">' +
                 (!diff

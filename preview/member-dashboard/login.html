@@ -123,7 +123,7 @@
                         return;
                     }
                     window.SAWYAN.API.saveMemberSession(res.member, res.session_token);
-                    window.location.href = 'dashboard.html';
+                    window.location.replace('dashboard.html');
                 } catch (error) {
                     showErr(error.message, error.payload);
                 } finally {
@@ -134,6 +134,19 @@
                 }
             }
 
+            if (window.SAWYAN && window.SAWYAN.API) {
+                try {
+                    const qs0 = new URLSearchParams(window.location.search);
+                    if (!qs0.get('quick') && !qs0.get('switch')) {
+                        const existingMem = window.SAWYAN.API.getSavedMember && window.SAWYAN.API.getSavedMember();
+                        const existingTok = window.SAWYAN.API.getMemberSessionToken && window.SAWYAN.API.getMemberSessionToken();
+                        if (existingMem && existingMem.id && existingTok) {
+                            window.location.replace('dashboard.html');
+                            return;
+                        }
+                    }
+                } catch (_e) {}
+            }
             if (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.isDemoMode()) {
                 const demoBox = document.getElementById('demoQuickLoginBox');
                 const demoBtn = document.getElementById('demoQuickLoginBtn');

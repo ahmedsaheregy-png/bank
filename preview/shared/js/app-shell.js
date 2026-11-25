@@ -260,6 +260,72 @@
             what: 'ضابط أمان يمنع أي موظف منفرد من تمرير قرار مالي حساس (مثل منح سقف ائتماني كبير أو حظر متجر) إلا بعد مراجعة واعتماد مدير ثانٍ، بينما تنفذ قرارات المؤسس السيادي فوراً.',
             example: 'إذا عدّل موظف مالي سقف تاجر، يدخل الطلب طابور المراجعة ليراه المراجع ويقبله؛ أما إذا عدّله المؤسس فينفذ في نفس اللحظة.',
             ifBlank: 'يعمل تلقائياً حسب صلاحية الحساب المسجل دخوله.'
+        },
+        numerical_stopper: {
+            title: '🌳 عدد الأجيال المؤهلة في الشجرة (الستوبر العددي)',
+            what: 'يحدد عدد الأجيال المؤهلة التي تحصل منها على عمولات داخل فريقك النشط. أي عضو يتجاوز هذا العدد من المؤهلين المتسلسلين يظهر في «الفريق الرديف».',
+            example: 'إذا كانت القيمة 11، فإن أول 11 مؤهلاً في كل فرع ضمن فريق العمولات؛ ومن بعدهم يدخل الفريق الرديف لحماية استدامة خطة الدخل.',
+            ifBlank: 'الافتراضي المعتمد هو 11 جيلاً مؤهلاً.'
+        },
+        upline_ceiling: {
+            title: '⬆️ إجمالي حصص توزيع الفاتورة صعوداً',
+            what: 'عدد الحصص المتساوية التي يُقسم عليها مبلغ خطة الدخل (صانع التوزيع + الأعضاء المؤهلون فوقه في الشجرة).',
+            example: 'إذا كان الهدف 24.75$ وإجمالي الحصص 11، تكون حصة كل فرد مؤهل = 2.25$ (صانع التوزيع + 10 أعلى منه).',
+            ifBlank: 'الافتراضي المعتمد هو 11 حصة.'
+        },
+        financial_stopper: {
+            title: '🛑 السقف الشهري الأقصى لأرباح العضو بالدولة',
+            what: 'الحد الأقصى للعمولات الشهرية القابلة للصرف للعضو في دولة معينة لحماية الملاءة المالية، ويُحفظ أي فائض فوقه في صندوق مخصص للمراجعة.',
+            example: 'إذا كان السقف 4,605.75$ وحقق العضو 5,000$ في شهر واحد، يُصرف له 4,605.75$ ويُرحّل الفائض 394.25$ لحساب الفائض المعلق.',
+            ifBlank: 'يُحسب تلقائياً من (حصة الفرد المؤهل × حجم الشجرة المكتملة) ما لم تُحدّد قيمة مخصصة.'
+        },
+        soft_hold_cap: {
+            title: '⏳ سقف الحجز المؤقت للفواتير المعلقة (%)',
+            what: 'أقصى نسبة من رصيد التاجر يمكن حجزها مؤقتاً لصالح فواتير أرسلها أعضاء ولم يعتمدها التاجر بعد، منعاً لتجميد رصيد التاجر بفواتير وهمية.',
+            example: 'تاجر رصيده 1,000 ج.م وسقف الحجز المؤقت 20% ← لا يُحجز للفواتير المعلقة أكثر من 200 ج.م في نفس اللحظة.',
+            ifBlank: 'الافتراضي المعتمد هو 20%.'
+        },
+        pending_sla: {
+            title: '⏱️ مهلة رد التاجر على الفواتير المعلقة (بالساعات)',
+            what: 'عدد الساعات المتاحة للتاجر لاعتماد أو رفض الفاتورة التي أرسلها العضو قبل أن تتصعّد تلقائياً لفريق الإدارة للتحكيم.',
+            example: 'عند ضبطها على 48 ساعة، يتلقى التاجر تذكيرات تلقائية؛ وإذا لم يرد خلال 48 ساعة تنتقل الفاتورة للإدارة لحسمها.',
+            ifBlank: 'الافتراضي المعتمد هو 48 ساعة.'
+        },
+        withdrawal_dual_threshold: {
+            title: '💸 حد المراجعة المزدوجة لطلبات السحب ($)',
+            what: 'المبلغ الذي إذا تجاوزه طلب سحب عضو، يتطلب موافقة مديرَين اثنين متعاقبَين قبل تحويل المال لضمان أمان الخزينة.',
+            example: 'إذا كان الحد 200$ وطلب عضو سحب 350$، يراجعه المالي الأول ثم يعتمده المعتمد الثاني قبل الصرف.',
+            ifBlank: 'الافتراضي المعتمد هو 200$.'
+        },
+        withdrawal_cooldown: {
+            title: '🔒 فترة الأمان بعد تغيير حساب استلام السحب (بالساعات)',
+            what: 'فترة تهدئة أمنية تمنع السحب إلى حساب بنكي أو محفظة مضافة حديثاً لفترة مؤقتة لحماية العضو في حال اختراق هاتفه.',
+            example: 'عند ضبطها على 72 ساعة، إذا غيّر العضو رقم حسابه البنكي لا يمكن السحب للحساب الجديد قبل مرور 72 ساعة، بينما الحساب القديم يعمل فوراً.',
+            ifBlank: 'الافتراضي المعتمد هو 72 ساعة.'
+        },
+        zero_discrepancy: {
+            title: '⚖️ محرك المطابقة المحاسبية الصفرية',
+            what: 'يتحقق آلياً لحظة بلحظة أن مجموع المدين يساوي مجموع الدائن في دفتر الأستاذ، وأن توزيع العمولات بين الخزانة وخطة الدخل مطابق بدقة 0.00.',
+            example: 'إذا ظهر فارق حتى بقيمة 0.01$، يوقف النظام خطوة الإقفال الشهري والصرف تلقائياً لحين مراجعة القيد.',
+            ifBlank: 'فحص تلقائي إلزامي يعمل في كل إقفال شهري وكل ليلة.'
+        },
+        monthly_close: {
+            title: '📅 معالج الإقفال الشهري وصرف العمولات',
+            what: 'سلسلة من 6 خطوات محكمة تغلق الشهر المحاسبي بعد انتهاء مهلة المرتجعات (14 يوماً) وتصدر دفعة الأرباح لأرصدة الأعضاء في يوم الصرف المحدد.',
+            example: 'الخطوات 1–4 تجهز التسوية وتفحص المطابقة الصفرية؛ والخطوتان 5–6 تعتمدان الإقفال النهائي وتودعان العمولات للمستحقين.',
+            ifBlank: 'لا يمكن تخطي أي خطوة قبل نجاح الخطوة السابقة لها.'
+        },
+        country_gate: {
+            title: '🌍 بوابة تفعيل الدول واختبار الملاءة المالية',
+            what: 'تتحكم في أسعار الصرف الشهرية والهدف الشهري والضرائب لكل دولة، مع اختبار أكتواري يحاكي أقصى ضغط توزيع قبل فتح أي دولة جديدة.',
+            example: 'قبل تفعيل دولة جديدة، يُراجع الرأي القانوني وضريبة القيمة المضافة والهدف الشهري وسعر الصرف وتُختبر الملاءة المالية.',
+            ifBlank: 'تبقى الدولة غير نشطة حتى تفعيلها رسمياً من الإدارة العليا.'
+        },
+        spam_guard: {
+            title: '🛡️ حماية التوثيق من الطلبات المرفوضة المتكررة',
+            what: 'إذا رُفضت لعضو عدة طلبات توثيق بلا صورة إيصال خلال فترة قصيرة، يُلزمه النظام مؤقتاً بإرفاق صورة الفاتورة لحماية التجار من الإزعاج.',
+            example: 'إذا كانت القيمة 2 خلال 24 ساعة، فعند رفض طلبين بلا صورة يُطلب من العضو تصوير الفاتورة لمدة 24 ساعة ثم تعود طبيعية.',
+            ifBlank: 'ضبطها على 0 يعطّل الإلزام المؤقت بالصورة.'
         }
     };
 
@@ -328,6 +394,14 @@
     }
 
     function closeAnyOpenDashboardModal() {
+        // 0) First check SAWYAN.UI modals (confirm/prompt/alert)
+        const uiOverlay = document.querySelector('.sw-ui-backdrop, .sawyan-ui-modal-overlay');
+        if (uiOverlay) {
+            const cancelBtn = uiOverlay.querySelector('[data-sw-cancel], .sw-ui-cancel');
+            if (cancelBtn) cancelBtn.click();
+            else uiOverlay.remove();
+            return true;
+        }
         const modalIds = [
             'sawyanHelpPopoverModal',
             'adminCmdKOverlay',
@@ -336,15 +410,23 @@
             'svAdminModalOverlay',
             'opsModalOverlay',
             'svMerchantTopupOverlay',
-            'memberModalOverlay'
+            'svMerchantModalOverlay',
+            'sawyanMemberModalOverlay',
+            'memberDetailModal',
+            'memberModalOverlay',
+            'merchantPromoRequestModal',
+            'merchantRadarModal',
+            'wifiSharingModal',
+            'tsNodeModalOverlay'
         ];
         for (let i = 0; i < modalIds.length; i++) {
             const el = document.getElementById(modalIds[i]);
             if (el) {
                 const st = window.getComputedStyle(el);
-                if (st.display !== 'none' && st.visibility !== 'hidden' && (el.classList.contains('active') || el.style.display === 'flex' || el.style.display === 'block' || el.id === 'sawyanOpsModal')) {
-                    if (el.id === 'sawyanOpsModal') el.remove();
-                    else {
+                if (st.display !== 'none' && st.visibility !== 'hidden') {
+                    if (el.id === 'sawyanOpsModal' || el.id === 'tsNodeModalOverlay') {
+                        el.remove();
+                    } else {
                         el.classList.remove('active');
                         el.style.display = 'none';
                     }
@@ -352,7 +434,7 @@
                 }
             }
         }
-        const activeModal = document.querySelector('.modal.active, .modal-overlay.active');
+        const activeModal = document.querySelector('.modal.active, .modal-overlay.active, .modal[style*="display: flex"], .modal[style*="display:flex"], .modal[style*="display: block"]');
         if (activeModal) {
             activeModal.classList.remove('active');
             activeModal.style.display = 'none';
@@ -370,7 +452,17 @@
         if (!pageId) return;
         _isHandlingPopState = true;
         try {
-            if (typeof window.goToPage === 'function') {
+            if (pageId === 'sovereignLive' && typeof window.openSovereignLivePage === 'function') {
+                window.openSovereignLivePage();
+            } else if (pageId === 'sovereignOpsCenter' && typeof window.openSovereignOpsCenter === 'function') {
+                window.openSovereignOpsCenter('root0');
+            } else if (pageId === 'academyAdmin' && typeof window.openAcademyAdminPage === 'function') {
+                window.openAcademyAdminPage('lessons');
+            } else if (pageId === 'registrationBuilder' && typeof window.openRegistrationBuilderPage === 'function') {
+                window.openRegistrationBuilderPage('merchant');
+            } else if (pageId === 'networkTree' && typeof window.openAdminNetworkTree === 'function') {
+                window.openAdminNetworkTree(0);
+            } else if (typeof window.goToPage === 'function') {
                 window.goToPage(pageId);
             } else if (typeof window.showPage === 'function') {
                 window.showPage(pageId);
@@ -380,7 +472,7 @@
             }
             _lastRecordedPage = pageId;
         } finally {
-            setTimeout(function () { _isHandlingPopState = false; }, 40);
+            setTimeout(function () { _isHandlingPopState = false; }, 60);
         }
     }
 

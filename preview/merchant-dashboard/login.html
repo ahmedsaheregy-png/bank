@@ -272,7 +272,7 @@
                         return;
                     }
                     window.SAWYAN.API.saveMerchantSession(res.merchant, res.session_token);
-                    window.location.href = 'dashboard.html';
+                    window.location.replace('dashboard.html');
                 } catch (err) {
                     showErr(err.message, err.payload, 'loginErrorBox');
                 } finally {
@@ -309,7 +309,7 @@
                         idle_timeout_mins: res.idle_timeout_mins,
                         live_poll_interval_secs: res.live_poll_interval_secs
                     });
-                    window.location.href = 'employee.html';
+                    window.location.replace('employee.html');
                 } catch (err) {
                     showErr(err.message, err.payload, 'empLoginErrorBox');
                 } finally {
@@ -320,6 +320,16 @@
                 }
             }
 
+            try {
+                if (!qs.get('quick') && !qs.get('switch') && qs.get('role') !== 'employee' && window.SAWYAN && window.SAWYAN.API) {
+                    const existingMer = window.SAWYAN.API.getSavedMerchant && window.SAWYAN.API.getSavedMerchant();
+                    const existingTok = window.SAWYAN.API.getMerchantSessionToken && window.SAWYAN.API.getMerchantSessionToken();
+                    if (existingMer && existingMer.id && existingTok) {
+                        window.location.replace('dashboard.html');
+                        return;
+                    }
+                }
+            } catch (_e) {}
             if (window.SAWYAN && window.SAWYAN.API && window.SAWYAN.API.isDemoMode()) {
                 const box = document.getElementById('demoMerchantLoginBox');
                 if (box) box.style.display = 'block';

@@ -72,22 +72,13 @@ window.SAWYAN_ADMIN_DEMO = {
             else if (page === 'members') window._pendingMemberFilter = filterKey;
             else if (page === 'transactions') window._pendingTxnFilter = filterKey;
         }
+        if (typeof window.goToPage === 'function') {
+            window.goToPage(page);
+            return;
+        }
         var link = document.querySelector('.sidebar .nav-item[data-page="' + page + '"]') ||
                    document.querySelector('.nav-item[data-page="' + page + '"]');
         if (link) link.click();
-        else if (typeof window.goToPage === 'function') window.goToPage(page);
-
-        if (filterKey !== undefined) {
-            setTimeout(function () {
-                if (page === 'merchants' && typeof window.loadMerchants === 'function') {
-                    window.loadMerchants('', filterKey);
-                } else if (page === 'members' && typeof window.loadMembers === 'function') {
-                    window.loadMembers('', filterKey);
-                } else if (page === 'transactions' && typeof window.loadTransactions === 'function') {
-                    window.loadTransactions('', filterKey);
-                }
-            }, 60);
-        }
     };
 
     window.scrollToPromoQueue = function () {
@@ -144,18 +135,20 @@ window.SAWYAN_ADMIN_DEMO = {
 
         D.schema = schema;
         D.period_label = (k.period_ym || '2026-11') + ' — قاعدة البيانات الحية (' + schema + ')';
+        var matchMer = typeof window.SAWYAN_MATCH_MERCHANT === 'function' ? window.SAWYAN_MATCH_MERCHANT : null;
+        var matchMem = typeof window.SAWYAN_MATCH_MEMBER === 'function' ? window.SAWYAN_MATCH_MEMBER : null;
         D.members = {
             total: Number(k.members_total !== undefined ? k.members_total : mems.length),
-            active: Number(k.members_active !== undefined ? k.members_active : mems.filter(function (m) { return !m.is_tombstone_banned && m.is_active_in_tree !== false; }).length),
-            pending_kyc: Number(k.members_pending_kyc !== undefined ? k.members_pending_kyc : mems.filter(function (m) { return m.kyc_status === 'pending'; }).length),
-            suspended: Number(k.members_banned !== undefined ? k.members_banned : mems.filter(function (m) { return !!m.is_tombstone_banned; }).length)
+            active: matchMem ? mems.filter(function (m) { return matchMem(m, 'active'); }).length : Number(k.members_active !== undefined ? k.members_active : mems.filter(function (m) { return !m.is_tombstone_banned && m.is_active_in_tree !== false; }).length),
+            pending_kyc: matchMem ? mems.filter(function (m) { return matchMem(m, 'pending_kyc'); }).length : Number(k.members_pending_kyc !== undefined ? k.members_pending_kyc : mems.filter(function (m) { return m.kyc_status === 'pending'; }).length),
+            suspended: matchMem ? mems.filter(function (m) { return matchMem(m, 'banned'); }).length : Number(k.members_banned !== undefined ? k.members_banned : mems.filter(function (m) { return !!m.is_tombstone_banned; }).length)
         };
         D.merchants = {
-            total: Number(k.merchants_total !== undefined ? k.merchants_total : mers.length),
-            active: Number(k.merchants_active !== undefined ? k.merchants_active : mers.filter(function (m) { return m.is_active && !m.is_isolated; }).length),
-            frozen: Number(k.merchants_isolated !== undefined ? k.merchants_isolated : mers.filter(function (m) { return !!m.is_isolated; }).length),
-            pending_approval: mers.filter(function (m) { return !m.is_active; }).length,
-            low_balance: mers.filter(function (m) {
+            total: mers.length || Number(k.merchants_total || 0),
+            active: matchMer ? mers.filter(function (m) { return matchMer(m, 'active_store'); }).length : Number(k.merchants_active !== undefined ? k.merchants_active : mers.filter(function (m) { return m.is_active && !m.is_isolated; }).length),
+            frozen: matchMer ? mers.filter(function (m) { return matchMer(m, 'isolated_fifo'); }).length : Number(k.merchants_isolated !== undefined ? k.merchants_isolated : mers.filter(function (m) { return !!m.is_isolated; }).length),
+            pending_approval: matchMer ? mers.filter(function (m) { return matchMer(m, 'draft_incomplete'); }).length : mers.filter(function (m) { return !m.is_active; }).length,
+            low_balance: matchMer ? mers.filter(function (m) { return matchMer(m, 'warnings'); }).length : mers.filter(function (m) {
                 var cash = Number(m.actual_cash_balance || 0);
                 var cred = Number(m.credit_limit || 0);
                 var pct = Number(m.free_balance_pct || 0);
@@ -301,18 +294,17 @@ window.SAWYAN_ADMIN_DEMO = {
         '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:14px;">' +
             '<div><div style="font-size:1.1rem; font-weight:900; color:#0f172a;">🧭 غرفة العمليات المركزية</div>' +
             '<div style="font-size:0.8rem; color:#64748b; margin-top:2px;">ملخص الدورة: ' + esc(D.period_label) + '</div></div>' +
-            '<span style="background:#dcfce7; color:#065f46; border:1px solid #6ee7b7; padding:4px 12px; border-radius:8px; font-size:0.74rem; font-weight:800;">🟢 مرتبط بقاعدة البيانات الحية (' + esc(D.schema) + ')</span>' +
         '</div>' +
 
         '<div data-spec-id="admin-home-kpis" class="admin-kpi-grid-3x2" style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:14px; margin-bottom:18px;">' +
             kpi('👥', 'إجمالي الأعضاء', fmt0(D.members.total), fmt0(D.members.active) + ' نشط • ' + D.members.pending_kyc + ' بانتظار توثيق الهوية • ' + D.members.suspended + ' محجوب', '#3b82f6') +
-            kpi('🏪', 'إجمالي التجار', fmt0(D.merchants.total), D.merchants.active + ' نشط • ' + D.merchants.frozen + ' معزول • ' + D.merchants.pending_approval + ' بانتظار الاعتماد', '#10b981') +
+            kpi('🏪', 'إجمالي التجار', fmt0(D.merchants.total), D.merchants.active + ' نشط • ' + D.merchants.frozen + ' معزول • ' + D.merchants.pending_approval + ' بانتظار الاستكمال', '#10b981') +
             kpi('💳', 'العمليات المكتملة', fmt0(D.ops_mtd),
                 'متوسط الفاتورة ' + fmtUsdSigned(avgTicketUsd) +
                 ((D.ops_fifo > 0 || D.ops_pending_review > 0)
                     ? '<br><span style="color:#b91c1c;font-weight:800;">⏸️ ' + fmt0(D.ops_fifo) + ' بانتظار شحن التاجر (' + fmtUsdSigned(D.fifo_gmv_usd) + ') • ⏳ ' + fmt0(D.ops_pending_review) + ' معلقة</span>'
                     : ''), '#6366f1') +
-            kpi('🛒', 'حجم المبيعات (GMV موحد $)', fmtUsdSigned(D.gmv_usd_completed), curSummary, '#0ea5e9') +
+            kpi('🛒', 'إجمالي المبيعات الموحّد ($)', fmtUsdSigned(D.gmv_usd_completed), curSummary, '#0ea5e9') +
             kpi('💰', 'عمولات سويا المحصّلة ($)', fmtUsdSigned(commUsd),
                 'خزينة الشركة (25%): <b>' + fmtUsdSigned(treasuryUsd) + '</b><br>خطة الدخل والأعضاء (75%): <b>' + fmtUsdSigned(planUsd) + '</b>' + commByCurSummary, '#f59e0b') +
             kpi('🛡️', 'إجمالي أرصدة التجار المشحونة', fmtUsdSigned(D.prepaid_held_usd),
@@ -323,13 +315,13 @@ window.SAWYAN_ADMIN_DEMO = {
             '<div style="font-weight:900; color:#0f172a; font-size:1.05rem; margin-bottom:4px;">⚡ يحتاج قرارك الآن</div>' +
             '<div style="font-size:0.78rem; color:#64748b; margin-bottom:12px;">كل بند يفتح الشاشة المختصة مع تفعيل الفلتر المطابق مباشرةً لاتخاذ القرار الحي</div>' +
             '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap:10px;">' +
-                actionRow('⏸️', D.ops_fifo + D.merchants.frozen, 'تجار متوقفون عن الظهور وفواتير بانتظار الشحن', D.merchants.frozen + ' تاجر معزول/غير مموّل • ' + D.ops_fifo + ' فاتورة بقيمة $' + fmt(D.fifo_gmv_usd) + ' بانتظار شحن الرصيد أو منح سقف ائتماني', 'فتح التجار المعزولين', "goAdminPage('merchants', 'isolated_fifo')", 'actionRowFifoMerchants') +
+                actionRow('⏸️', D.merchants.frozen, 'تجار متوقفون عن الظهور (معزولون / بلا تمويل)', D.merchants.frozen + ' تاجر معزول/غير مموّل' + (D.ops_fifo > 0 ? (' • ' + D.ops_fifo + ' فاتورة بقيمة $' + fmt(D.fifo_gmv_usd) + ' بانتظار الشحن') : ''), 'فتح التجار المعزولين', "goAdminPage('merchants', 'isolated_fifo')", 'actionRowFifoMerchants') +
                 ((D.ops_fifo > 0 || D.ops_pending_review > 0) ? actionRow('💳', D.ops_fifo + D.ops_pending_review, 'فواتير بانتظار شحن التاجر أو معلقة للمراجعة', D.ops_fifo + ' بانتظار شحن التاجر • ' + D.ops_pending_review + ' بانتظار المراجعة — افتح سجل العمليات للمتابعة', 'فتح الفواتير المعلقة', "goAdminPage('transactions', 'pending_or_fifo')", 'actionRowPendingTx') : '') +
                 actionRow('📢', promoPendingCount(), 'طلبات إعلانات ترويجية من التجار', 'تُراجَع نصوصها قبل البث لهواتف الأعضاء', 'مراجعة الآن', 'scrollToPromoQueue()', 'actionRowPromo') +
                 actionRow('💸', D.pending.withdrawals, 'طلبات سحب أرباح الأعضاء', 'تحقق من الهوية وبيانات الحساب قبل التحويل', 'فتح طلبات السحب', "goAdminPage('withdrawals')") +
-                actionRow('🪪', D.members.pending_kyc, 'أعضاء بانتظار توثيق الهوية (KYC)', 'شرط لصرف أول سحب', 'فتح الأعضاء', "goAdminPage('members', 'pending_kyc')") +
-                actionRow('🔋', D.merchants.low_balance, 'تجار رصيدهم المشحون منخفض (≤30%)', 'خطر إخفائهم عن رادار الأعضاء قريباً عند النفاد', 'فتح التجار', "goAdminPage('merchants', 'warnings')") +
-                actionRow('🏪', D.merchants.pending_approval, 'طلبات انضمام تجار جدد', 'مراجعة المستندات واعتماد النسبة', 'فتح التجار الجدد', "goAdminPage('merchants', 'draft_incomplete')") +
+                actionRow('🪪', D.members.pending_kyc, 'أعضاء بانتظار توثيق الهوية', 'شرط لصرف أول سحب', 'فتح الأعضاء', "goAdminPage('members', 'pending_kyc')", 'actionRowPendingKyc') +
+                actionRow('🔋', D.merchants.low_balance, 'تجار رصيدهم المشحون منخفض (≤30%)', 'خطر إخفائهم عن رادار الأعضاء قريباً عند النفاد', 'فتح تجار الرصيد المنخفض', "goAdminPage('merchants', 'warnings')", 'actionRowLowBalance') +
+                actionRow('🏪', D.merchants.pending_approval, 'طلبات انضمام تجار جدد / استكمال بيانات', 'مراجعة المستندات واعتماد النسبة', 'فتح التجار الجدد', "goAdminPage('merchants', 'draft_incomplete')", 'actionRowPendingMerchants') +
                 actionRow('⚠️', D.pending.disputes, 'نزاعات مفتوحة بين الأعضاء والتجار', 'تحكيم إداري ملزم', 'فتح الشكاوى', "goAdminPage('disputes')") +
                 actionRow('🎫', D.pending.support, 'تذاكر دعم فني مفتوحة', 'أعضاء وتجار ينتظرون الرد', 'فتح الدعم الفني', "goAdminPage('support')") +
             '</div>' +

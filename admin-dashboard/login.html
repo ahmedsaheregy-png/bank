@@ -314,7 +314,7 @@
                     totpCode: cleanCode || null
                 });
                 overlay.classList.remove('active');
-                window.location.href = 'dashboard.html';
+                window.location.replace('dashboard.html');
             } catch (err) {
                 overlay.classList.remove('active');
                 showLoginFeedback(err.message || 'تعذر التحقق من بيانات الدخول الإدارية', err.payload);
@@ -366,6 +366,18 @@
         }
 
         document.addEventListener('DOMContentLoaded', function () {
+            // If already authenticated and not explicitly switching demo roles via ?quick=, return to dashboard seamlessly
+            try {
+                const qs0 = new URLSearchParams(window.location.search);
+                if (!qs0.get('quick') && !qs0.get('switch') && window.SAWYAN && window.SAWYAN.API) {
+                    const existingAdm = window.SAWYAN.API.getSavedAdmin();
+                    const existingTok = window.SAWYAN.API.getAdminSessionToken();
+                    if (existingAdm && existingAdm.id && existingTok) {
+                        window.location.replace('dashboard.html');
+                        return;
+                    }
+                }
+            } catch (_e) {}
             if (window.SAWYAN && window.SAWYAN.Logo) {
                 document.getElementById('logoContainer').innerHTML = window.SAWYAN.Logo.full();
             }

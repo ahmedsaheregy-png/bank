@@ -1,14 +1,20 @@
 /**
  * ============================================================================
- * SAWYAN V3.0 — Phase 2 Adaptive Binary Tree Studio (`SAWYAN.TreeStudio`)
+ * SAWYAN V3.0 — Compact Circular Binary Tree Studio (`SAWYAN.TreeStudio`)
  * ============================================================================
- * Powered by server-side lazy-loaded `sawyan.get_member_tree_subtree` RPC:
- *   - Mid-range Mobile (<= 768px): 4 gens default (max 5 gens / <= 80 DOM nodes)
- *   - Laptop / Desktop (> 1024px): 6 gens default (up to 8 gens / <= 500 nodes)
- *   - Avatars/Monograms + SVG Target Progress Rings + Crisp SVG Country Flags
- *   - ZERO Scroll-Jacking (zoom via +/−, Fullscreen, or Ctrl+Wheel only)
- *   - Breadcrumb Drill-Down, Right/Left Power Bar, Next Spillover Slot,
- *     Month-End 72h War Room (Roll-Up & 70-99%), and Paginated Team Table.
+ * Powered by server-side `get_member_tree_subtree` RPC:
+ *   - Compact sleek circles ONLY (zero square node cards, zero oversized flags!)
+ *   - Constitutional 6-State Visual System (Locked by Founder):
+ *       1) Green  (#10b981/#047857): Qualified 100% (within S01=11 commission team)
+ *       2) Orange (#f59e0b/#ea580c): Accumulating 1%–99% (NEVER blue, NEVER yellow)
+ *       3) White  (#ffffff + border): 0% (no purchases / no carry-on yet)
+ *       4) Dark Gray (#475569):      Relative Reserve Team (beyond 11th qualified stopper)
+ *       5) Red    (#dc2626):         Tombstone Banned / Frozen pass-through seat
+ *       6) Semi-Transparent (0.28):  Out of selected Country Lens (brightens on hover)
+ *   - Inside circle: Member photo (avatar_url) if present, else First Name only
+ *   - Rim + Under: Tiny crisp SVG country flag (18×13px) + compact `#code` pill only
+ *   - Click Inspector Modal: All 9 Founder-specified fields + DB-enforced 10-upline
+ *     phone & WhatsApp privacy (`viewer_depth BETWEEN 0 AND 10`).
  */
 (function () {
     'use strict';
@@ -69,19 +75,55 @@
         return '<span>' + esc(cc || '') + '</span>';
     }
 
-    function getInitials(name) {
+    function getFirstName(name) {
         const clean = String(name || 'عضو').trim();
-        const parts = clean.split(/\s+/).filter(Boolean);
-        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-        return clean.slice(0, 2).toUpperCase();
+        if (!clean) return 'عضو';
+        const first = clean.split(/\s+/)[0] || clean;
+        return first.length > 9 ? first.slice(0, 8) + '…' : first;
     }
 
-    function ringColor(node) {
-        if (node.is_tombstone_banned) return '#475569';
-        if (node.is_qualified || Number(node.progress_pct) >= 100) return '#10b981';
-        if (Number(node.progress_pct) >= 70) return '#f59e0b';
-        if (Number(node.progress_pct) > 0) return '#3b82f6';
-        return '#cbd5e1';
+    /**
+     * Exact Constitutional 5-Status Node Classification (Locked by Founder):
+     *   red    = Banned / Frozen Tombstone seat
+     *   gray   = Relative Reserve Team (beyond S01=11 qualified stopper)
+     *   green  = Qualified 100%
+     *   orange = Accumulating 1%–99% (NEVER blue, NEVER yellow)
+     *   white  = 0% (no purchases / no carry-on yet)
+     */
+    function nodeStatus(node) {
+        if (node.is_tombstone_banned) {
+            return { key: 'red', color: '#dc2626', soft: '#fef2f2', text: '#991b1b', label: '🔴 مجمّد / محظور' };
+        }
+        if (node.is_reserve_team) {
+            return { key: 'gray', color: '#475569', soft: '#f1f5f9', text: '#334155', label: '⚫ فريق رديف (بعد الستوبر 11)' };
+        }
+        const pct = Number(node.progress_pct || 0);
+        if (node.is_qualified || pct >= 100) {
+            return { key: 'green', color: '#059669', soft: '#ecfdf5', text: '#065f46', label: '🟢 مؤهل (100%)' };
+        }
+        if (pct > 0) {
+            return { key: 'orange', color: '#ea580c', soft: '#fff7ed', text: '#9a3412', label: '🟠 قيد التجميع (' + Math.round(pct) + '%)' };
+        }
+        return { key: 'white', color: '#64748b', soft: '#f8fafc', text: '#334155', label: '⚪ لم يبدأ بعد (0%)' };
+    }
+
+    function formatLocalMoney(amount, currencyCode) {
+        const num = Number(amount || 0);
+        const formatted = num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const curMap = { EGP: 'ج.م', TRY: 'ل.ت', SAR: 'ر.س', AED: 'د.إ', EUR: '€', GBP: '£', USD: '$' };
+        const cc = String(currencyCode || 'EGP').toUpperCase();
+        return formatted + ' ' + (curMap[cc] || cc);
+    }
+
+    function formatJoinDate(iso) {
+        if (!iso) return '—';
+        try {
+            const dt = new Date(iso);
+            if (isNaN(dt.getTime())) return String(iso).slice(0, 10);
+            return dt.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+        } catch (_e) {
+            return String(iso).slice(0, 10);
+        }
     }
 
     function formatWaLink(phone, text) {
@@ -105,45 +147,213 @@
         .ts-crumb-btn:hover { background:#d1fae5; }
         .ts-power-grid { display:grid; grid-template-columns:1.5fr 1fr; gap:12px; align-items:center; }
         @media (max-width:768px) { .ts-power-grid { grid-template-columns:1fr; } }
-        .ts-power-bar-track { height:12px; border-radius:999px; overflow:hidden; background:#e2e8f0; display:flex; margin:8px 0 6px; }
+        .ts-arms-row { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+        .ts-arm-pill { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; font-size:0.76rem; font-weight:800; }
+        .ts-arm-right { background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; }
+        .ts-arm-left { background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; }
+        .ts-power-bar-track { height:10px; border-radius:999px; overflow:hidden; background:#e2e8f0; display:flex; margin:8px 0 4px; }
         .ts-power-right { background:linear-gradient(90deg,#10b981,#059669); transition:width 0.35s; }
         .ts-power-left { background:linear-gradient(90deg,#3b82f6,#1d4ed8); transition:width 0.35s; }
-        .ts-spill-pill { background:linear-gradient(135deg,#ecfdf5,#eff6ff); border:1.5px dashed #10b981; border-radius:12px; padding:10px 12px; font-size:0.8rem; font-weight:800; color:#065f46; }
-        .ts-viewport { position:relative; width:100%; height:480px; overflow:auto; border-radius:14px; border:1.5px solid #cbd5e1; background:radial-gradient(circle at top,#f8fafc 0%,#f1f5f9 100%); touch-action:pan-y pan-x; cursor:grab; }
+        .ts-spill-pill { background:linear-gradient(135deg,#ecfdf5,#f8fafc); border:1.5px dashed #10b981; border-radius:12px; padding:10px 12px; font-size:0.8rem; font-weight:800; color:#065f46; }
+
+        /* Lens + Constitutional Color Legend Strip */
+        .ts-lens-legend { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-top:10px; padding-top:10px; border-top:1px solid #f1f5f9; }
+        .ts-legend { display:flex; align-items:center; gap:9px; flex-wrap:wrap; font-size:0.73rem; font-weight:800; color:#334155; }
+        .ts-legend-item { display:inline-flex; align-items:center; gap:4px; }
+        .ts-dot { width:10px; height:10px; border-radius:50%; display:inline-block; flex-shrink:0; }
+        .ts-dot-green { background:#10b981; }
+        .ts-dot-orange { background:#f59e0b; }
+        .ts-dot-white { background:#ffffff; border:2px solid #94a3b8; }
+        .ts-dot-gray { background:#475569; }
+        .ts-dot-red { background:#dc2626; }
+
+        /* Interactive Tree Canvas */
+        .ts-viewport { position:relative; width:100%; height:500px; overflow:auto; border-radius:14px; border:1.5px solid #cbd5e1; background:radial-gradient(circle at top,#ffffff 0%,#f8fafc 55%,#f1f5f9 100%); touch-action:pan-y pan-x; cursor:grab; }
         .ts-viewport.panning { cursor:grabbing; }
         .ts-viewport.fullscreen { position:fixed; inset:0; z-index:10500; height:100vh; border-radius:0; border:none; background:#f8fafc; }
         .ts-fs-bar { position:sticky; top:8px; inset-inline-end:8px; z-index:20; display:flex; justify-content:space-between; align-items:center; padding:6px 10px; pointer-events:none; }
         .ts-fs-bar > * { pointer-events:auto; }
         .ts-zoom-cluster { display:inline-flex; gap:4px; background:rgba(255,255,255,0.92); backdrop-filter:blur(6px); padding:4px; border-radius:10px; border:1px solid #cbd5e1; box-shadow:0 4px 12px rgba(15,23,42,0.08); }
-        .ts-stage { position:relative; transform-origin:top center; padding:20px 28px 40px; min-width:100%; width:max-content; margin:0 auto; }
+        .ts-stage { position:relative; transform-origin:top center; padding:18px 24px 38px; min-width:100%; width:max-content; margin:0 auto; }
         .ts-svg-lines { position:absolute; inset:0; pointer-events:none; overflow:visible; }
-        .ts-tree-ul { display:flex; justify-content:center; align-items:flex-start; gap:14px; list-style:none; margin:0; padding:0; }
+        .ts-tree-ul { display:flex; justify-content:center; align-items:flex-start; gap:10px; list-style:none; margin:0; padding:0; }
         .ts-tree-li { display:flex; flex-direction:column; align-items:center; position:relative; }
-        .ts-children-row { display:flex; justify-content:center; align-items:flex-start; gap:12px; margin-top:26px; }
-        .ts-node { position:relative; width:114px; background:#ffffff; border:1.5px solid #e2e8f0; border-radius:14px; padding:8px 6px 7px; text-align:center; cursor:pointer; transition:transform 0.15s,box-shadow 0.15s,border-color 0.15s; box-shadow:0 3px 10px rgba(15,23,42,0.05); }
-        @media (max-width:768px) { .ts-node { width:92px; padding:6px 4px; } }
-        .ts-node:hover { transform:translateY(-2px); border-color:#10b981; box-shadow:0 8px 18px rgba(16,185,129,0.16); }
-        .ts-node.dimmed { opacity:0.35; filter:grayscale(0.7); }
-        .ts-node.root-node { border-color:#059669; border-width:2px; background:linear-gradient(180deg,#ecfdf5 0%,#ffffff 100%); }
-        .ts-avatar-ring { position:relative; width:48px; height:48px; margin:0 auto 4px; }
-        .ts-avatar-ring svg { position:absolute; inset:0; width:48px; height:48px; transform:rotate(-90deg); }
-        .ts-avatar-img, .ts-avatar-mono { position:absolute; top:5px; left:5px; width:38px; height:38px; border-radius:50%; object-fit:cover; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:0.78rem; color:#ffffff; background:linear-gradient(135deg,#0f2744,#059669); }
-        .ts-flag-corner { position:absolute; bottom:-2px; inset-inline-end:-4px; }
-        .ts-node-name { font-size:0.74rem; font-weight:800; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
-        .ts-node-meta { display:flex; justify-content:center; align-items:center; gap:4px; font-size:0.66rem; font-weight:800; color:#475569; margin-top:2px; direction:ltr; }
-        .ts-direct-dot { background:#fef3c7; color:#92400e; padding:0 4px; border-radius:4px; font-size:0.62rem; }
-        .ts-expand-pill { margin-top:5px; border:none; background:#0f2744; color:#ffffff; border-radius:999px; padding:2px 8px; font-size:0.66rem; font-weight:800; cursor:pointer; font-family:'Poppins','Tajawal',sans-serif; }
+        .ts-children-row { display:flex; justify-content:center; align-items:flex-start; gap:10px; margin-top:24px; padding:0; list-style:none; }
+
+        /* ================================================================
+           COMPACT SLEEK CIRCULAR NODE (NO SQUARE CARD! NO GIANT FLAG!)
+           ================================================================ */
+        .ts-node {
+            position:relative;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            gap:3px;
+            padding:0 2px;
+            background:transparent;
+            border:none;
+            cursor:pointer;
+            transition:transform 0.16s ease, opacity 0.2s ease, filter 0.2s ease;
+            z-index:2;
+        }
+        .ts-node:hover { transform:translateY(-3px) scale(1.07); }
+        /* Dimmed / Semi-Transparent when outside active Country Lens (brightens on hover!) */
+        .ts-node.dimmed { opacity:0.28; filter:grayscale(0.75); }
+        .ts-node.dimmed:hover { opacity:0.82; filter:grayscale(0.15); }
+
+        .ts-circle-wrap {
+            position:relative;
+            width:48px;
+            height:48px;
+            flex-shrink:0;
+        }
+        .ts-node.root-node .ts-circle-wrap {
+            width:56px;
+            height:56px;
+        }
+        .ts-circle {
+            width:100%;
+            height:100%;
+            border-radius:50%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-weight:900;
+            font-size:0.72rem;
+            line-height:1.05;
+            text-align:center;
+            overflow:hidden;
+            padding:3px;
+            box-shadow:0 4px 12px rgba(15,23,42,0.12);
+            border:2.5px solid #ffffff;
+            user-select:none;
+        }
+        .ts-node.root-node .ts-circle {
+            box-shadow:0 0 0 3px #10b981, 0 6px 16px rgba(16,185,129,0.28);
+            font-size:0.8rem;
+        }
+        .ts-circle.has-photo { padding:0; }
+        .ts-circle img { width:100%; height:100%; object-fit:cover; display:block; }
+
+        /* Exact Constitutional Status Colors */
+        .ts-st-green .ts-circle { background:linear-gradient(135deg,#10b981 0%,#047857 100%); color:#ffffff; border-color:#d1fae5; }
+        .ts-st-green .ts-circle.has-photo { border:3px solid #10b981; }
+
+        .ts-st-orange .ts-circle { background:linear-gradient(135deg,#f59e0b 0%,#ea580c 100%); color:#ffffff; border-color:#fef3c7; }
+        .ts-st-orange .ts-circle.has-photo { border:3px solid #f59e0b; }
+
+        .ts-st-white .ts-circle { background:#ffffff; color:#1e293b; border:2.5px solid #cbd5e1; box-shadow:0 3px 8px rgba(15,23,42,0.08); }
+        .ts-st-white .ts-circle.has-photo { border:3px solid #cbd5e1; }
+
+        .ts-st-gray .ts-circle { background:linear-gradient(135deg,#64748b 0%,#334155 100%); color:#f1f5f9; border-color:#cbd5e1; }
+        .ts-st-gray .ts-circle.has-photo { border:3px solid #475569; }
+
+        .ts-st-red .ts-circle { background:linear-gradient(135deg,#ef4444 0%,#b91c1c 100%); color:#ffffff; border-color:#fee2e2; }
+        .ts-st-red .ts-circle.has-photo { border:3px solid #dc2626; }
+
+        /* Tiny crisp SVG country flag nestled neatly on bottom-left rim */
+        .ts-flag-dot {
+            position:absolute;
+            bottom:-2px;
+            left:-3px;
+            width:18px;
+            height:13px;
+            border-radius:3px;
+            overflow:hidden;
+            border:1.5px solid #ffffff;
+            box-shadow:0 1px 4px rgba(0,0,0,0.28);
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background:#ffffff;
+            z-index:3;
+            pointer-events:none;
+        }
+        .ts-flag-dot svg {
+            width:100% !important;
+            height:100% !important;
+            display:block !important;
+            position:static !important;
+            transform:none !important;
+        }
+
+        /* Compact #code pill directly beneath circle */
+        .ts-code-pill {
+            font-family:'Poppins','Tajawal',sans-serif;
+            font-size:0.65rem;
+            font-weight:800;
+            color:#334155;
+            background:rgba(255,255,255,0.94);
+            border:1px solid #e2e8f0;
+            border-radius:999px;
+            padding:0 6px;
+            line-height:1.38;
+            direction:ltr;
+            box-shadow:0 1px 3px rgba(15,23,42,0.05);
+            white-space:nowrap;
+        }
+        .ts-st-green .ts-code-pill { border-color:#a7f3d0; color:#065f46; background:#ecfdf5; }
+        .ts-st-orange .ts-code-pill { border-color:#fed7aa; color:#9a3412; background:#fff7ed; }
+        .ts-st-red .ts-code-pill { border-color:#fecaca; color:#991b1b; background:#fef2f2; }
+
+        .ts-expand-pill { margin-top:2px; border:none; background:#0f2744; color:#ffffff; border-radius:999px; padding:1px 7px; font-size:0.62rem; font-weight:800; cursor:pointer; font-family:'Poppins','Tajawal',sans-serif; }
         .ts-expand-pill:hover { background:#059669; }
-        .ts-slot-empty { width:72px; min-height:52px; border:1.5px dashed #cbd5e1; border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:0.66rem; color:#94a3b8; font-weight:700; padding:4px; }
+
+        .ts-slot-empty { width:42px; height:42px; border:1.5px dashed #cbd5e1; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.78rem; color:#94a3b8; font-weight:800; background:rgba(255,255,255,0.65); }
         .ts-slot-empty.next-spill { border-color:#10b981; background:#ecfdf5; color:#047857; box-shadow:0 0 0 3px rgba(16,185,129,0.18); animation:tsPulse 2s infinite; }
         @keyframes tsPulse { 0%,100% { box-shadow:0 0 0 2px rgba(16,185,129,0.2); } 50% { box-shadow:0 0 0 6px rgba(16,185,129,0.35); } }
+
+        @media (max-width:768px) {
+            .ts-viewport { height:420px; }
+            .ts-children-row { gap:6px; margin-top:20px; }
+            .ts-circle-wrap { width:40px; height:40px; }
+            .ts-node.root-node .ts-circle-wrap { width:46px; height:46px; }
+            .ts-circle { font-size:0.62rem; }
+            .ts-flag-dot { width:15px; height:11px; bottom:-2px; left:-2px; }
+            .ts-code-pill { font-size:0.6rem; padding:0 5px; }
+            .ts-slot-empty { width:34px; height:34px; font-size:0.7rem; }
+        }
+
         .ts-war-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px; margin-top:10px; }
         .ts-war-item { border:1px solid #e2e8f0; border-radius:12px; padding:10px 12px; background:#f8fafc; display:flex; justify-content:space-between; align-items:center; gap:8px; }
-        .ts-inspector { position:fixed; inset:0; z-index:10600; background:rgba(15,23,42,0.55); display:flex; align-items:center; justify-content:center; padding:14px; }
-        .ts-inspector-card { background:#ffffff; border-radius:16px; max-width:420px; width:100%; padding:18px; box-shadow:0 20px 44px rgba(15,23,42,0.3); }
+
+        /* ================================================================
+           CLICK MEMBER DETAIL MODAL (ALL 9 FOUNDER-SPECIFIED FIELDS!)
+           ================================================================ */
+        .ts-inspector { position:fixed; inset:0; z-index:10600; background:rgba(15,23,42,0.58); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; padding:14px; }
+        .ts-inspector-card { background:#ffffff; border-radius:20px; max-width:430px; width:100%; overflow:hidden; box-shadow:0 24px 56px rgba(15,23,42,0.35); border:1px solid #e2e8f0; }
+        .ts-mm-hero { background:linear-gradient(135deg,#0f2744 0%,#047857 100%); color:#ffffff; padding:15px 16px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+        .ts-mm-hero-main { display:flex; align-items:center; gap:11px; min-width:0; }
+        .ts-mm-avatar { width:50px; height:50px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:0.86rem; flex-shrink:0; overflow:hidden; border:3px solid #ffffff; }
+        .ts-mm-avatar img { width:100%; height:100%; object-fit:cover; display:block; }
+        .ts-mm-name { font-size:1.02rem; font-weight:900; line-height:1.25; }
+        .ts-mm-sub { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:4px; font-size:0.75rem; font-weight:800; }
+        .ts-mm-code { background:rgba(255,255,255,0.2); padding:1px 8px; border-radius:999px; font-family:'Poppins',sans-serif; direction:ltr; }
+        .ts-mm-status { padding:1px 8px; border-radius:999px; font-weight:800; }
+        .ts-mm-close { width:32px; height:32px; border-radius:50%; border:none; background:rgba(255,255,255,0.18); color:#ffffff; font-size:1rem; font-weight:900; cursor:pointer; flex-shrink:0; }
+        .ts-mm-body { padding:14px 16px 16px; display:flex; flex-direction:column; gap:10px; }
+        .ts-mm-target { border-radius:13px; padding:10px 12px; border:1px solid #e2e8f0; background:#f8fafc; }
+        .ts-mm-target-top { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:0.78rem; font-weight:800; margin-bottom:5px; flex-wrap:wrap; }
+        .ts-mm-target-vals { display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-size:0.86rem; font-weight:900; color:#0f172a; margin-bottom:6px; }
+        .ts-mm-bar { height:8px; background:rgba(15,23,42,0.08); border-radius:999px; overflow:hidden; }
+        .ts-mm-bar-fill { height:100%; border-radius:999px; transition:width 0.3s; }
+        .ts-mm-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+        .ts-mm-cell { background:#f8fafc; border:1px solid #e2e8f0; border-radius:11px; padding:8px 10px; min-width:0; }
+        .ts-mm-lbl { font-size:0.71rem; color:#64748b; font-weight:700; margin-bottom:2px; }
+        .ts-mm-val { font-size:0.83rem; color:#0f172a; font-weight:800; display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+        .ts-mm-team { grid-column:1 / -1; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; background:#f8fafc; border:1px solid #e2e8f0; border-radius:11px; padding:9px 11px; }
+        .ts-mm-phone-ok { background:#ecfdf5; border:1px solid #a7f3d0; border-radius:12px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+        .ts-mm-phone-num { font-family:'Poppins',sans-serif; font-size:0.9rem; font-weight:800; color:#065f46; direction:ltr; }
+        .ts-mm-wa-btn { background:#16a34a; color:#ffffff; text-decoration:none; padding:8px 13px; border-radius:10px; font-weight:800; font-size:0.82rem; white-space:nowrap; display:inline-flex; align-items:center; gap:5px; box-shadow:0 4px 12px rgba(22,163,74,0.28); }
+        .ts-mm-phone-locked { background:#f1f5f9; border:1px dashed #cbd5e1; border-radius:11px; padding:9px 11px; font-size:0.78rem; font-weight:700; color:#475569; text-align:center; }
+        .ts-mm-drill { width:100%; background:#0f2744; color:#ffffff; border:none; padding:10px 12px; border-radius:11px; font-family:'Tajawal',sans-serif; font-size:0.86rem; font-weight:800; cursor:pointer; }
+        .ts-mm-drill:hover { background:#047857; }
+
+        html[data-theme="dark"] .ts-card { background:#0f172a; border-color:#24324a; color:#f1f5f9; }
         html[data-theme="dark"] .ts-viewport { background:#0b1220; border-color:#24324a; }
-        html[data-theme="dark"] .ts-node, html[data-theme="dark"] .ts-inspector-card, html[data-theme="dark"] .ts-war-item, html[data-theme="dark"] .ts-breadcrumb { background:#111c30; border-color:#24324a; color:#f1f5f9; }
-        html[data-theme="dark"] .ts-node-name { color:#f8fafc; }
+        html[data-theme="dark"] .ts-inspector-card, html[data-theme="dark"] .ts-war-item, html[data-theme="dark"] .ts-breadcrumb, html[data-theme="dark"] .ts-mm-cell, html[data-theme="dark"] .ts-mm-team, html[data-theme="dark"] .ts-mm-target { background:#111c30; border-color:#24324a; color:#f1f5f9; }
+        html[data-theme="dark"] .ts-mm-val, html[data-theme="dark"] .ts-mm-target-vals { color:#f8fafc; }
+        html[data-theme="dark"] .ts-code-pill { background:#1e293b; border-color:#334155; color:#e2e8f0; }
     </style>`;
 
     async function fetchSubtree(opts) {
@@ -170,17 +380,15 @@
     }
 
     function buildNodeHtml(node, byParent, spillParent, spillSide, rootCode, curDepth, maxDepth) {
-        const r = 21;
-        const circ = 2 * Math.PI * r;
-        const pct = Math.max(0, Math.min(100, Number(node.progress_pct || 0)));
-        const offset = circ - (pct / 100) * circ;
-        const stroke = ringColor(node);
+        const st = nodeStatus(node);
         const dimClass = node.in_country_lens === false ? ' dimmed' : '';
         const rootClass = node.member_code === rootCode ? ' root-node' : '';
+        const firstName = getFirstName(node.full_name);
 
-        const avatarInner = node.avatar_url
-            ? '<img class="ts-avatar-img" src="' + esc(node.avatar_url) + '" alt="' + esc(node.full_name) + '" loading="lazy">'
-            : '<div class="ts-avatar-mono">' + esc(getInitials(node.full_name)) + '</div>';
+        const hasPhoto = Boolean(node.avatar_url && !node.is_tombstone_banned);
+        const circleInner = hasPhoto
+            ? '<img src="' + esc(node.avatar_url) + '" alt="' + esc(firstName) + '" loading="lazy">'
+            : esc(node.is_tombstone_banned ? 'مجمّد' : firstName);
 
         const kids = byParent.get(node.member_code) || [];
         const rightKid = kids.find(function (k) { return k.placement_side === 'right'; }) || kids[0] || null;
@@ -197,8 +405,11 @@
                 if (kid) return buildNodeHtml(kid, byParent, spillParent, spillSide, rootCode, curDepth + 1, maxDepth);
                 const isNextSpill = (node.member_code === spillParent && side === spillSide);
                 if (!isNextSpill && curDepth >= 2) return '';
-                return '<li class="ts-tree-li"><div class="ts-slot-empty' + (isNextSpill ? ' next-spill' : '') + '">' +
-                    (isNextSpill ? '✨ التالي<br>(' + (side === 'right' ? 'يمين' : 'يسار') + ')' : (side === 'right' ? 'يمين متاح' : 'يسار متاح')) +
+                const slotTitle = isNextSpill
+                    ? ('المقعد التلقائي القادم (' + (side === 'right' ? 'يمين' : 'يسار') + ')')
+                    : (side === 'right' ? 'مقعد يمين متاح' : 'مقعد يسار متاح');
+                return '<li class="ts-tree-li"><div class="ts-slot-empty' + (isNextSpill ? ' next-spill' : '') + '" title="' + esc(slotTitle) + '">' +
+                    (isNextSpill ? '✨' : '+') +
                 '</div></li>';
             };
             const rSlot = renderSlot(rightKid, 'right');
@@ -209,16 +420,12 @@
         }
 
         return '<li class="ts-tree-li" data-node-code="' + Number(node.member_code) + '">' +
-            '<div class="ts-node' + dimClass + rootClass + '" data-ts-code="' + Number(node.member_code) + '" onclick="window.SAWYAN.TreeStudio.openInspector(' + Number(node.member_code) + ')">' +
-                '<div class="ts-avatar-ring">' +
-                    '<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="' + r + '" fill="none" stroke="#e2e8f0" stroke-width="3.5"/><circle cx="24" cy="24" r="' + r + '" fill="none" stroke="' + stroke + '" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="' + circ.toFixed(1) + '" stroke-dashoffset="' + offset.toFixed(1) + '"/></svg>' +
-                    avatarInner +
-                    '<span class="ts-flag-corner">' + flagSvg(node.country_code, 16) + '</span>' +
+            '<div class="ts-node ts-st-' + st.key + dimClass + rootClass + '" data-ts-code="' + Number(node.member_code) + '" title="' + esc(node.full_name) + ' (#' + Number(node.member_code) + ')" onclick="window.SAWYAN.TreeStudio.openInspector(' + Number(node.member_code) + ')">' +
+                '<div class="ts-circle-wrap">' +
+                    '<div class="ts-circle' + (hasPhoto ? ' has-photo' : '') + '">' + circleInner + '</div>' +
+                    '<span class="ts-flag-dot">' + flagSvg(node.country_code, 18) + '</span>' +
                 '</div>' +
-                '<div class="ts-node-name" title="' + esc(node.full_name) + '">' + esc(node.full_name) + '</div>' +
-                '<div class="ts-node-meta"><span>#' + Number(node.member_code) + '</span><span>•</span><span style="color:' + stroke + ';">' + Math.round(pct) + '%</span>' +
-                    (node.is_direct_referral ? '<span class="ts-direct-dot" title="إحالة مباشرة">★</span>' : '') +
-                '</div>' +
+                '<span class="ts-code-pill">#' + Number(node.member_code) + '</span>' +
                 expandBtn +
             '</div>' +
             childrenHtml +
@@ -239,10 +446,10 @@
         const scale = STATE.zoom || 1;
         const paths = [];
         stage.querySelectorAll('.ts-tree-li').forEach(function (li) {
-            const parentCard = li.querySelector(':scope > .ts-node');
+            const parentNode = li.querySelector(':scope > .ts-node');
             const childRow = li.querySelector(':scope > .ts-children-row');
-            if (!parentCard || !childRow) return;
-            const pRect = parentCard.getBoundingClientRect();
+            if (!parentNode || !childRow) return;
+            const pRect = parentNode.getBoundingClientRect();
             const px = (pRect.left - stageRect.left + pRect.width / 2) / scale;
             const py = (pRect.bottom - stageRect.top) / scale;
             childRow.querySelectorAll(':scope > .ts-tree-li > .ts-node, :scope > .ts-tree-li > .ts-slot-empty').forEach(function (childEl) {
@@ -250,7 +457,7 @@
                 const cx = (cRect.left - stageRect.left + cRect.width / 2) / scale;
                 const cy = (cRect.top - stageRect.top) / scale;
                 const midY = py + (cy - py) * 0.5;
-                paths.push('<path d="M ' + px.toFixed(1) + ' ' + py.toFixed(1) + ' C ' + px.toFixed(1) + ' ' + midY.toFixed(1) + ', ' + cx.toFixed(1) + ' ' + midY.toFixed(1) + ', ' + cx.toFixed(1) + ' ' + cy.toFixed(1) + '" fill="none" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round"/>');
+                paths.push('<path d="M ' + px.toFixed(1) + ' ' + py.toFixed(1) + ' C ' + px.toFixed(1) + ' ' + midY.toFixed(1) + ', ' + cx.toFixed(1) + ' ' + midY.toFixed(1) + ', ' + cx.toFixed(1) + ' ' + cy.toFixed(1) + '" fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-linecap="round"/>');
             });
         });
         svg.innerHTML = paths.join('');
@@ -285,7 +492,6 @@
             drag = false;
             vp.classList.remove('panning');
         };
-        // ZERO SCROLL-JACKING: only zoom on Ctrl/Meta+Wheel or in Fullscreen!
         vp.onwheel = function (e) {
             if (!e.ctrlKey && !e.metaKey && !STATE.fullscreen) return;
             e.preventDefault();
@@ -304,7 +510,8 @@
             ? nodes.filter(function (n) {
                 return String(n.full_name || '').toLowerCase().includes(q) ||
                     String(n.member_code || '').includes(q) ||
-                    String(n.country_code || '').toLowerCase().includes(q);
+                    String(n.country_code || '').toLowerCase().includes(q) ||
+                    String(n.country_name_ar || '').toLowerCase().includes(q);
             })
             : nodes;
 
@@ -314,18 +521,21 @@
         const slice = filtered.slice(start, start + STATE.tablePageSize);
 
         wrap.innerHTML =
-            '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>العضو</th><th>الدولة</th><th>الجيل</th><th>التقدم</th><th>التواصل</th><th>استكشاف</th></tr></thead><tbody>' +
+            '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>العضو</th><th>الدولة</th><th>الجيل</th><th>الهدف الشهري</th><th>التواصل</th><th>استكشاف</th></tr></thead><tbody>' +
             (slice.length === 0
                 ? '<tr><td colspan="6" style="text-align:center;color:#64748b;padding:18px;">لا توجد نتائج مطابقة في هذا الفرع</td></tr>'
                 : slice.map(function (n) {
+                    const st = nodeStatus(n);
                     const wa = formatWaLink(n.phone, 'أهلاً ' + (n.full_name || '') + ' — فريق SAWYAN');
+                    const achLocal = n.achieved_local !== undefined ? formatLocalMoney(n.achieved_local, n.currency_code) : ('$' + Number(n.accumulated_usd || 0).toFixed(2));
+                    const reqLocal = n.target_required_local !== undefined ? formatLocalMoney(n.target_required_local, n.currency_code) : ('$' + Number(n.target_required_usd || 24.75).toFixed(2));
                     return '<tr>' +
-                        '<td><b>' + esc(n.full_name) + '</b> <span style="color:#64748b;font-size:0.78rem;" dir="ltr">#' + Number(n.member_code) + '</span>' + (n.is_direct_referral ? ' <span class="ts-direct-dot">★ مباشر</span>' : '') + '</td>' +
-                        '<td>' + flagSvg(n.country_code, 16) + ' ' + esc(n.country_code) + '</td>' +
+                        '<td><b>' + esc(n.full_name) + '</b> <span style="color:#64748b;font-size:0.78rem;" dir="ltr">#' + Number(n.member_code) + '</span>' + (n.is_direct_referral ? ' <span style="background:#fef3c7;color:#92400e;padding:0 5px;border-radius:4px;font-size:0.68rem;">★ مباشر</span>' : '') + '</td>' +
+                        '<td>' + flagSvg(n.country_code, 16) + ' ' + esc(n.country_name_ar || n.country_code) + '</td>' +
                         '<td>الجيل ' + Number(n.viewer_depth || n.rel_depth) + '</td>' +
-                        '<td><b style="color:' + ringColor(n) + ';" dir="ltr">' + Math.round(Number(n.progress_pct || 0)) + '%</b> <small style="color:#64748b;" dir="ltr">($' + Number(n.accumulated_usd || 0).toFixed(2) + ' / $' + Number(n.target_required_usd || 24.75).toFixed(2) + ')</small></td>' +
+                        '<td><b style="color:' + st.color + ';" dir="ltr">' + Math.round(Number(n.progress_pct || 0)) + '%</b> <small style="color:#64748b;">(' + esc(achLocal) + ' / ' + esc(reqLocal) + ')</small></td>' +
                         '<td dir="ltr">' + (wa ? '<a href="' + esc(wa) + '" target="_blank" rel="noopener noreferrer" style="color:#047857;font-weight:800;text-decoration:none;">💬 ' + esc(n.phone) + '</a>' : '<span style="color:#94a3b8;">🔒 محمي</span>') + '</td>' +
-                        '<td><button type="button" class="ts-btn" onclick="window.SAWYAN.TreeStudio.drillTo(' + Number(n.member_code) + ')">🔍 فتح الفرع</button></td>' +
+                        '<td><button type="button" class="ts-btn" onclick="window.SAWYAN.TreeStudio.openInspector(' + Number(n.member_code) + ')">🪪 البطاقة</button></td>' +
                     '</tr>';
                 }).join('')) +
             '</tbody></table></div>' +
@@ -373,17 +583,23 @@
         const warHtml = warItems.length === 0
             ? '<div style="font-size:0.82rem;color:#64748b;padding:8px 0;">لا توجد حالات طارئة في هذه القائمة حالياً 🎉</div>'
             : '<div class="ts-war-grid">' + warItems.map(function (item) {
+                const remStr = item.remaining_local !== undefined
+                    ? formatLocalMoney(item.remaining_local, item.currency_code)
+                    : ('$' + Number(item.remaining_usd || 0).toFixed(2));
+                const riskStr = item.at_risk_local !== undefined
+                    ? formatLocalMoney(item.at_risk_local, item.currency_code)
+                    : ('$' + Number(item.at_risk_usd || 0).toFixed(2));
                 const msg = STATE.warTab === 'rollup'
                     ? 'تنبيه مهم من فريق SAWYAN: لديك ' + item.qualified_downlines + ' عضو مؤهل تحتك هذا الشهر، أكمل هدفك لحفظ عمولاتك!'
-                    : 'أنت على بُعد $' + Number(item.remaining_usd || 0).toFixed(2) + ' فقط لإتمام تأهلك الشهري (' + item.progress_pct + '%)!';
+                    : 'أنت على بُعد ' + remStr + ' فقط لإتمام تأهلك الشهري (' + item.progress_pct + '%)!';
                 const wa = formatWaLink(item.phone, msg);
                 return '<div class="ts-war-item">' +
                     '<div>' +
                         '<div style="font-weight:800;font-size:0.84rem;">' + flagSvg(item.country_code, 14) + ' ' + esc(item.full_name) + ' <small dir="ltr">#' + Number(item.member_code) + '</small></div>' +
                         '<div style="font-size:0.75rem;color:#64748b;margin-top:2px;">' +
                             (STATE.warTab === 'rollup'
-                                ? '🚨 ' + item.qualified_downlines + ' مؤهل تحته (معرّض لـ $' + Number(item.at_risk_usd || 0).toFixed(2) + ')'
-                                : '🔥 ' + item.progress_pct + '% — متبقي $' + Number(item.remaining_usd || 0).toFixed(2)) +
+                                ? '🚨 ' + item.qualified_downlines + ' مؤهل تحته (معرّض لـ ' + esc(riskStr) + ')'
+                                : '🟠 ' + item.progress_pct + '% — متبقي ' + esc(remStr)) +
                         '</div>' +
                     '</div>' +
                     (wa ? '<a href="' + esc(wa) + '" target="_blank" rel="noopener noreferrer" class="ts-btn" style="background:#ecfdf5;border-color:#10b981;color:#065f46;text-decoration:none;">💬 تذكير</a>' : '<button type="button" class="ts-btn" onclick="window.SAWYAN.TreeStudio.drillTo(' + Number(item.member_code) + ')">🔍</button>') +
@@ -404,7 +620,7 @@
                         '<div>' +
                             '<h2 style="margin:0;font-size:1.12rem;font-weight:900;">🌳 شجرتي الدولية</h2>' +
                             '<div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">' +
-                                '<span class="ts-badge" style="background:#ecfdf5;color:#065f46;">' + (mob ? '📱 ' + t('tree.device_mobile', 'وضع الموبايل السلس (4–5 أجيال)') : '💻 ' + t('tree.device_desktop', 'وضع اللابتوب الكامل (6–8 أجيال)')) + '</span>' +
+                                '<span class="ts-badge" style="background:#ecfdf5;color:#065f46;">⭕ عرض الدوائر المختصر</span>' +
                                 '<span class="ts-badge" style="background:#eff6ff;color:#1e40af;">' + teamCountBadgeText + '</span>' +
                             '</div>' +
                         '</div>' +
@@ -432,9 +648,9 @@
                     // Right/Left Power Bar + Next Spillover Slot
                     '<div class="ts-power-grid" data-spec-id="member-tree-reserve-counter" style="margin-top:12px;">' +
                         '<div>' +
-                            '<div style="display:flex;justify-content:space-between;font-size:0.8rem;font-weight:800;">' +
-                                '<span style="color:#047857;">👉 ' + t('tree.right_arm', 'الذراع الأيمن') + ': ' + Number(pb.right_total || 0) + ' (' + Number(pb.right_qualified || 0) + ' مؤهل)</span>' +
-                                '<span style="color:#1d4ed8;">👈 ' + t('tree.left_arm', 'الذراع الأيسر') + ': ' + Number(pb.left_total || 0) + ' (' + Number(pb.left_qualified || 0) + ' مؤهل)</span>' +
+                            '<div class="ts-arms-row">' +
+                                '<span class="ts-arm-pill ts-arm-right">↗ ' + t('tree.right_arm', 'الذراع الأيمن') + ': ' + Number(pb.right_total || 0) + ' (' + Number(pb.right_qualified || 0) + ' مؤهل)</span>' +
+                                '<span class="ts-arm-pill ts-arm-left">↖ ' + t('tree.left_arm', 'الذراع الأيسر') + ': ' + Number(pb.left_total || 0) + ' (' + Number(pb.left_qualified || 0) + ' مؤهل)</span>' +
                             '</div>' +
                             '<div class="ts-power-bar-track"><div class="ts-power-right" style="width:' + rPct + '%;"></div><div class="ts-power-left" style="width:' + lPct + '%;"></div></div>' +
                         '</div>' +
@@ -443,20 +659,29 @@
                         '</div>' +
                     '</div>' +
 
-                    // Dynamic Country Lens Bar (SVG Flags!)
-                    '<div data-spec-id="member-tree-lens-bar" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px;">' +
-                        '<span style="font-size:0.76rem;font-weight:800;color:#64748b;">🌍 عدسة الدولة:</span>' +
-                        '<button type="button" class="ts-btn' + (!STATE.countryCode ? ' active' : '') + '" onclick="window.SAWYAN.TreeStudio.setCountry(null)">الكل (' + Number(d.total_subtree_members || 0) + ')</button>' +
-                        '<span data-spec-id="member-tree-country-reports" style="display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center;">' +
-                            countries.map(function (c) {
-                                return '<button type="button" class="ts-btn' + (STATE.countryCode === c.country_code ? ' active' : '') + '" onclick="window.SAWYAN.TreeStudio.setCountry(\'' + esc(c.country_code) + '\')">' +
-                                    flagSvg(c.country_code, 16) + ' ' + esc(c.country_code) + ' (' + Number(c.count) + ')</button>';
-                            }).join('') +
-                        '</span>' +
+                    // Dynamic Country Lens Bar + Exact Constitutional Color Legend
+                    '<div class="ts-lens-legend">' +
+                        '<div data-spec-id="member-tree-lens-bar" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">' +
+                            '<span style="font-size:0.76rem;font-weight:800;color:#64748b;">🌍 عدسة الدولة:</span>' +
+                            '<button type="button" class="ts-btn' + (!STATE.countryCode ? ' active' : '') + '" onclick="window.SAWYAN.TreeStudio.setCountry(null)">الكل (' + totalTeamCount + ')</button>' +
+                            '<span data-spec-id="member-tree-country-reports" style="display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center;">' +
+                                countries.map(function (c) {
+                                    return '<button type="button" class="ts-btn' + (STATE.countryCode === c.country_code ? ' active' : '') + '" onclick="window.SAWYAN.TreeStudio.setCountry(\'' + esc(c.country_code) + '\')">' +
+                                        flagSvg(c.country_code, 16) + ' ' + esc(c.country_name_ar || c.country_code) + ' (' + Number(c.count) + ')</button>';
+                                }).join('') +
+                            '</span>' +
+                        '</div>' +
+                        '<div class="ts-legend" aria-label="دليل ألوان الشجرة">' +
+                            '<span class="ts-legend-item"><i class="ts-dot ts-dot-green"></i> مؤهل 100%</span>' +
+                            '<span class="ts-legend-item"><i class="ts-dot ts-dot-orange"></i> قيد التجميع</span>' +
+                            '<span class="ts-legend-item"><i class="ts-dot ts-dot-white"></i> 0%</span>' +
+                            '<span class="ts-legend-item"><i class="ts-dot ts-dot-gray"></i> رديف (&gt;11)</span>' +
+                            '<span class="ts-legend-item"><i class="ts-dot ts-dot-red"></i> مجمّد</span>' +
+                        '</div>' +
                     '</div>' +
                 '</div>' +
 
-                // Interactive Tree Canvas (Zero Scroll-Jacking!)
+                // Interactive Tree Canvas (Compact Circles!)
                 '<div id="tsViewport" data-spec-id="member-tree-earth-viewport" class="ts-viewport' + (STATE.fullscreen ? ' fullscreen' : '') + '">' +
                     '<div class="ts-fs-bar">' +
                         '<div class="ts-zoom-cluster" data-spec-id="member-tree-hud-dpad">' +
@@ -465,7 +690,7 @@
                             '<button type="button" class="ts-btn" onclick="window.SAWYAN.TreeStudio.resetZoom()" title="إعادة ضبط">↺</button>' +
                             (STATE.fullscreen ? '<button type="button" class="ts-btn active" onclick="window.SAWYAN.TreeStudio.toggleFullscreen()">✕ خروج</button>' : '') +
                         '</div>' +
-                        '<span class="ts-badge" style="background:rgba(255,255,255,0.92);border:1px solid #cbd5e1;color:#475569;">' + t('tree.zoom_hint', 'التمرير حر — استخدم +/− أو Ctrl+العجلة للتكبير') + '</span>' +
+                        '<span class="ts-badge" style="background:rgba(255,255,255,0.92);border:1px solid #cbd5e1;color:#475569;">اضغط على أي دائرة لعرض بطاقة العضو</span>' +
                     '</div>' +
                     '<div id="tsStage" class="ts-stage" style="transform:scale(' + STATE.zoom + ');">' +
                         '<svg id="tsSvgLines" class="ts-svg-lines"></svg>' +
@@ -478,7 +703,7 @@
                     '<div class="ts-header-bar">' +
                         '<div style="font-weight:900;font-size:0.96rem;">⚡ ' + t('tree.war_room', 'غرفة عمليات نهاية الشهر (72 ساعة)') + '</div>' +
                         '<div class="ts-controls">' +
-                            '<button type="button" data-spec-id="member-tree-orange-filter" class="ts-btn' + (STATE.warTab === 'near' ? ' active' : '') + '" onclick="window.SAWYAN.TreeStudio.setWarTab(\'near\')">🔥 قريبون من التأهل 70–99% (' + nearList.length + ')</button>' +
+                            '<button type="button" data-spec-id="member-tree-orange-filter" class="ts-btn' + (STATE.warTab === 'near' ? ' active' : '') + '" onclick="window.SAWYAN.TreeStudio.setWarTab(\'near\')">🟠 قريبون من التأهل 70–99% (' + nearList.length + ')</button>' +
                             '<button type="button" class="ts-btn' + (STATE.warTab === 'rollup' ? ' active' : '') + '" onclick="window.SAWYAN.TreeStudio.setWarTab(\'rollup\')">🚨 تنبيه Roll-Up (' + rollupList.length + ')</button>' +
                         '</div>' +
                     '</div>' +
@@ -488,7 +713,7 @@
                 // Paginated Team Directory (Zero Focus Loss Search Input!)
                 '<div class="ts-card" data-spec-id="member-tree-detail-table">' +
                     '<div class="ts-header-bar" style="margin-bottom:10px;">' +
-                        '<div style="font-weight:900;font-size:0.96rem;">📋 دليل أعضاء الفرع المعروض (' + Math.max(0, nodes.length - 1) + ')</div>' +
+                        '<div style="font-weight:900;font-size:0.96rem;">📋 دليل أعضاء الفرع المعروض (' + shownDownlines + ')</div>' +
                         '<input type="search" id="tsTableSearchInput" value="' + esc(STATE.searchQuery) + '" placeholder="ابحث بالاسم أو الكود أو الدولة..." style="padding:7px 12px;border:1.5px solid #cbd5e1;border-radius:10px;min-width:220px;font-family:Tajawal,sans-serif;">' +
                     '</div>' +
                     '<div id="tsTableWrap"></div>' +
@@ -500,7 +725,7 @@
             sIn.addEventListener('input', function (e) {
                 STATE.searchQuery = e.target.value;
                 STATE.tablePage = 1;
-                renderPaginatedTableOnly(); // Never destroys the input!
+                renderPaginatedTableOnly();
             });
         }
 
@@ -512,7 +737,7 @@
     async function mount(containerId) {
         const host = document.getElementById(containerId || 'treePage');
         if (!host) return;
-        host.innerHTML = STUDIO_CSS + '<div class="ts-card" style="text-align:center;padding:36px;color:#475569;font-weight:800;">🌳 جارٍ تحميل شجرتك التكيّفية من الخادم...</div>';
+        host.innerHTML = STUDIO_CSS + '<div class="ts-card" style="text-align:center;padding:36px;color:#475569;font-weight:800;">🌳 جارٍ تحميل شجرتك من الخادم...</div>';
         try {
             const res = await fetchSubtree({});
             if (!res) throw new Error('TREE_SESSION_UNAVAILABLE');
@@ -570,26 +795,117 @@
             if (!node) return;
             const existing = document.getElementById('tsInspectorOverlay');
             if (existing) existing.remove();
+
+            const st = nodeStatus(node);
+            const pct = Math.max(0, Math.min(100, Number(node.progress_pct || 0)));
+            const firstName = getFirstName(node.full_name);
+            const hasPhoto = Boolean(node.avatar_url && !node.is_tombstone_banned);
+
+            const achLocal = node.achieved_local !== undefined
+                ? formatLocalMoney(node.achieved_local, node.currency_code)
+                : ('$' + Number(node.accumulated_usd || 0).toFixed(2));
+            const reqLocal = node.target_required_local !== undefined
+                ? formatLocalMoney(node.target_required_local, node.currency_code)
+                : ('$' + Number(node.target_required_usd || 24.75).toFixed(2));
+            const remLocal = node.remaining_local !== undefined
+                ? formatLocalMoney(node.remaining_local, node.currency_code)
+                : ('$' + Number(node.remaining_usd || 0).toFixed(2));
+
+            const sponsorText = node.sponsor_name
+                ? (esc(node.sponsor_name) + ' <span style="color:#047857;font-family:Poppins,sans-serif;" dir="ltr">#' + Number(node.sponsor_code) + '</span>')
+                : (node.sponsor_code ? ('<span dir="ltr">#' + Number(node.sponsor_code) + '</span>') : 'جذر المؤسسة (#0)');
+
+            const countryLabel = esc(node.country_name_ar || node.country_code || '') + ' (' + esc(node.currency_code || '') + ')';
+            const joinDateStr = formatJoinDate(node.created_at);
+            const viewerDepth = Number(node.viewer_depth || 0);
+            const depthLabel = viewerDepth === 0
+                ? 'أنت (الجذر الحالي)'
+                : ('الجيل ' + viewerDepth + (viewerDepth <= 10 ? ' (ضمن أول 10)' : ' (أبعد من 10)'));
+
+            const leftCnt = Number(node.left_team_count !== undefined ? node.left_team_count : 0);
+            const rightCnt = Number(node.right_team_count !== undefined ? node.right_team_count : 0);
+            const totalTeam = Number(node.subtree_count || (leftCnt + rightCnt));
+
             const wa = formatWaLink(node.phone, 'أهلاً ' + (node.full_name || '') + ' — فريق SAWYAN');
+            const phoneBlockHtml = (node.phone && wa)
+                ? '<div class="ts-mm-phone-ok">' +
+                      '<div>' +
+                          '<div class="ts-mm-phone-num">' + esc(node.phone) + '</div>' +
+                          '<div style="font-size:0.7rem;color:#047857;font-weight:700;margin-top:2px;">🔓 ظاهر لك (' + (viewerDepth === 0 ? 'حسابك الشخصي' : 'ضمن أول 10 مستويات أب لاين') + ')</div>' +
+                      '</div>' +
+                      '<a href="' + esc(wa) + '" target="_blank" rel="noopener noreferrer" class="ts-mm-wa-btn">💬 واتساب مباشر</a>' +
+                  '</div>'
+                : '<div class="ts-mm-phone-locked">' +
+                      (node.is_tombstone_banned
+                          ? '🔒 رقم الهاتف غير متاح لحساب مجمّد'
+                          : '🔒 رقم الهاتف وزر الواتساب محميان — يظهران فقط لأول 10 مستويات أب لاين فوق العضو') +
+                  '</div>';
+
+            const avatarBg = st.key === 'white' ? '#ffffff;color:#0f172a;border-color:#cbd5e1;' : (st.color + ';color:#ffffff;border-color:#ffffff;');
+
             const ov = document.createElement('div');
             ov.id = 'tsInspectorOverlay';
             ov.className = 'ts-inspector';
             ov.onclick = function (e) { if (e.target === ov) ov.remove(); };
             ov.innerHTML =
                 '<div class="ts-inspector-card">' +
-                    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
-                        '<div style="font-weight:900;font-size:1.05rem;">' + flagSvg(node.country_code, 18) + ' ' + esc(node.full_name) + ' <small dir="ltr">#' + Number(node.member_code) + '</small></div>' +
-                        '<button type="button" class="ts-btn" onclick="document.getElementById(\'tsInspectorOverlay\').remove()">✕</button>' +
+                    '<div class="ts-mm-hero">' +
+                        '<div class="ts-mm-hero-main">' +
+                            '<div class="ts-mm-avatar" style="background:' + avatarBg + '">' +
+                                (hasPhoto ? '<img src="' + esc(node.avatar_url) + '" alt="' + esc(firstName) + '">' : esc(node.is_tombstone_banned ? 'مجمّد' : firstName)) +
+                            '</div>' +
+                            '<div style="min-width:0;">' +
+                                '<div class="ts-mm-name">' + esc(node.full_name) + '</div>' +
+                                '<div class="ts-mm-sub">' +
+                                    '<span class="ts-mm-code">#' + Number(node.member_code) + '</span>' +
+                                    '<span class="ts-mm-status" style="background:' + st.soft + ';color:' + st.text + ';">' + st.label + '</span>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<button type="button" class="ts-mm-close" onclick="document.getElementById(\'tsInspectorOverlay\').remove()" aria-label="إغلاق">✕</button>' +
                     '</div>' +
-                    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.84rem;margin-bottom:12px;">' +
-                        '<div style="background:#f8fafc;padding:8px;border-radius:10px;"><b>التأهل الشهري:</b><br><span style="color:' + ringColor(node) + ';font-weight:900;">' + Math.round(Number(node.progress_pct || 0)) + '%</span></div>' +
-                        '<div style="background:#f8fafc;padding:8px;border-radius:10px;"><b>المتبقي للهدف:</b><br><b dir="ltr">$' + Number(node.remaining_usd || 0).toFixed(2) + '</b></div>' +
-                        '<div style="background:#f8fafc;padding:8px;border-radius:10px;"><b>حجم فريقه:</b><br><b>' + Number(node.subtree_count || 0) + ' عضو</b></div>' +
-                        '<div style="background:#f8fafc;padding:8px;border-radius:10px;"><b>نوع العلاقة:</b><br><b>' + (node.is_direct_referral ? '★ إحالة مباشرة' : '● فريق ممتد') + '</b></div>' +
-                    '</div>' +
-                    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-                        '<button type="button" class="ts-btn active" onclick="document.getElementById(\'tsInspectorOverlay\').remove(); window.SAWYAN.TreeStudio.drillTo(' + Number(node.member_code) + ')">🔍 استكشاف فرع هذا العضو</button>' +
-                        (wa ? '<a href="' + esc(wa) + '" target="_blank" rel="noopener noreferrer" class="ts-btn" style="text-decoration:none;background:#ecfdf5;border-color:#10b981;color:#065f46;">💬 واتساب</a>' : '') +
+                    '<div class="ts-mm-body">' +
+                        '<div class="ts-mm-target" style="background:' + st.soft + ';border-color:' + st.color + '44;">' +
+                            '<div class="ts-mm-target-top" style="color:' + st.text + ';">' +
+                                '<span>🎯 الهدف الشخصي الشهري</span>' +
+                                '<span>' + (pct >= 100 ? '✅ مكتمل 100%' : ('متبقي: ' + esc(remLocal))) + '</span>' +
+                            '</div>' +
+                            '<div class="ts-mm-target-vals">' +
+                                '<span>' + esc(achLocal) + ' من أصل ' + esc(reqLocal) + '</span>' +
+                                '<span style="color:' + st.color + ';" dir="ltr">' + Math.round(pct) + '%</span>' +
+                            '</div>' +
+                            '<div class="ts-mm-bar"><div class="ts-mm-bar-fill" style="width:' + pct + '%;background:' + st.color + ';"></div></div>' +
+                        '</div>' +
+                        '<div class="ts-mm-grid">' +
+                            '<div class="ts-mm-cell">' +
+                                '<div class="ts-mm-lbl">👤 الأب لاين الحقيقي (الراعي)</div>' +
+                                '<div class="ts-mm-val">' + sponsorText + '</div>' +
+                            '</div>' +
+                            '<div class="ts-mm-cell">' +
+                                '<div class="ts-mm-lbl">🌍 دولة التسجيل</div>' +
+                                '<div class="ts-mm-val">' + flagSvg(node.country_code, 16) + ' ' + countryLabel + '</div>' +
+                            '</div>' +
+                            '<div class="ts-mm-cell">' +
+                                '<div class="ts-mm-lbl">📅 تاريخ الاشتراك</div>' +
+                                '<div class="ts-mm-val">' + esc(joinDateStr) + '</div>' +
+                            '</div>' +
+                            '<div class="ts-mm-cell">' +
+                                '<div class="ts-mm-lbl">📍 المستوى في شجرتك</div>' +
+                                '<div class="ts-mm-val">' + esc(depthLabel) + '</div>' +
+                            '</div>' +
+                            '<div class="ts-mm-team">' +
+                                '<div>' +
+                                    '<div class="ts-mm-lbl">🌳 عدد فريقه</div>' +
+                                    '<div class="ts-mm-val">' + totalTeam + ' عضواً</div>' +
+                                '</div>' +
+                                '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+                                    '<span class="ts-arm-pill ts-arm-right">يمين: ' + rightCnt + '</span>' +
+                                    '<span class="ts-arm-pill ts-arm-left">يسار: ' + leftCnt + '</span>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>' +
+                        phoneBlockHtml +
+                        '<button type="button" class="ts-mm-drill" onclick="document.getElementById(\'tsInspectorOverlay\').remove(); window.SAWYAN.TreeStudio.drillTo(' + Number(node.member_code) + ')">🔍 عرض شجرة هذا العضو كجذر</button>' +
                     '</div>' +
                 '</div>';
             document.body.appendChild(ov);

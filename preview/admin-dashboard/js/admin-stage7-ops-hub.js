@@ -123,6 +123,67 @@
         if (fk === 'suspended_banned') return gov === 'suspended_compliance' || gov === 'banned_permanent' || onb === 'rejected';
         return true;
     }
+    window.SAWYAN_MATCH_MERCHANT = matchMerchantFilter;
+    const _WD_STATUS_AR = {
+        processing_payout: ['قيد التحويل البنكي ⏳', 'badge-warning'],
+        completed: ['تم التحويل ✅', 'badge-success'],
+        rejected: ['مرفوض وأُعيد للمحفظة ↩️', 'badge-danger'],
+        pending: ['قيد المراجعة ⏳', 'badge-warning']
+    };
+    const _SUP_STATUS_AR = {
+        open: ['مفتوحة 🟡', 'badge-warning'],
+        in_progress: ['قيد المتابعة 🔵', 'badge-info'],
+        closed: ['مغلقة ✅', 'badge-success'],
+        resolved: ['تم الحل ✅', 'badge-success']
+    };
+    const _SUP_CAT_AR = {
+        password_recovery: '🔑 استعادة كلمة مرور',
+        account: '👤 حساب وعضوية',
+        merchant: '🏪 شؤون التجار',
+        payment: '💳 مدفوعات وسحب',
+        technical: '🛠️ دعم فني',
+        complaint: '📣 شكوى',
+        general: '💬 استفسار عام',
+        inquiry: '💬 استفسار عام'
+    };
+    const _DISP_STATUS_AR = {
+        awaiting_merchant_friendly: ['مهلة الحل الودي ⏳', 'badge-warning'],
+        escalated_to_admin: ['مصعّدة للتحكيم الإداري 🚨', 'badge-danger'],
+        appealed_72h: ['اعتراض خلال 72س ⚖️', 'badge-warning'],
+        resolved_member: ['حُكم لصالح العضو ✅', 'badge-success'],
+        resolved_member_clawback: ['عكس لصالح العضو ↩️', 'badge-success'],
+        resolved_merchant: ['حُكم لصالح التاجر 🏪', 'badge-info'],
+        closed: ['مغلق ✅', 'badge-success']
+    };
+    const _DISP_CAT_AR = {
+        general: 'نزاع فاتورة عام',
+        amount_mismatch: 'اختلاف قيمة الفاتورة',
+        rejected_unfairly: 'رفض غير مبرر من التاجر',
+        return_stalled: 'تأخر توثيق مرتجع',
+        merchant_return_escalation: 'تصعيد مرتجع من التاجر',
+        missing_points: 'عدم قيد النقاط'
+    };
+    const _COMP_STATUS_AR = {
+        open: ['مفتوحة للمراجعة ⏳', 'badge-warning'],
+        verified: ['موثّقة كمخالفة 🔴', 'badge-danger'],
+        dismissed: ['مرفوضة (غير مثبتة) ⚪', 'badge-success']
+    };
+    const _GOUGE_STATUS_AR = {
+        pending: ['قيد الفحص ⏳', 'badge-warning'],
+        verified_violation: ['مخالفة سعر مؤكدة 🚨', 'badge-danger'],
+        dismissed: ['غير مثبتة ⚪', 'badge-success']
+    };
+    window.svOpenAdminDetailCard = function (title, rowsArr) {
+        const html = '<div style="display:grid;gap:8px;font-size:0.86rem;">' +
+            (rowsArr || []).map(function (r) {
+                return '<div style="display:flex;justify-content:space-between;gap:12px;padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">' +
+                    '<span style="color:#475569;font-weight:800;">' + esc(r[0]) + '</span>' +
+                    '<span style="color:#0f172a;font-weight:700;text-align:left;">' + esc(r[1]) + '</span>' +
+                '</div>';
+            }).join('') +
+        '</div>';
+        openStage7Modal(title, html, '560px');
+    };
     const _ADM_PAY_LABELS = {
         cash: '💵 نقدي (Cash)',
         pos_card: '💳 بطاقة POS',
@@ -862,9 +923,12 @@
         if (fk === 'banned') return Boolean(m.is_tombstone_banned);
         return true;
     }
+    window.SAWYAN_MATCH_MEMBER = matchMemberFilter;
+    let _memLoadSeq = 0;
     window.loadMembers = async function (q, filterKey) {
         const page = document.getElementById('membersPage');
         if (!page) return;
+        const mySeq = ++_memLoadSeq;
         if (filterKey !== undefined) {
             _activeMemberFilter = filterKey;
         } else if (window._pendingMemberFilter) {
@@ -872,6 +936,7 @@
             window._pendingMemberFilter = null;
         }
         const res = await window.SAWYAN.API.adminSearchAndReplyOps({ action: 'search', entity: 'members', query: q || '' });
+        if (mySeq !== _memLoadSeq) return;
         const allList = res.results || [];
         _LIVE_MEMBERS_MAP.clear();
         allList.forEach(function (m) { if (m && m.id) _LIVE_MEMBERS_MAP.set(String(m.id), m); });
@@ -985,9 +1050,11 @@
         };
 
         // Override Merchants Screen with Live 3-Axis Lifecycle Filter + Clickable Rows + Quick Actions + [؟] Help
+        let _merLoadSeq = 0;
         window.loadMerchants = async function (q, filterKey) {
             const page = document.getElementById('merchantsPage');
             if (!page) return;
+            const mySeq = ++_merLoadSeq;
             if (filterKey !== undefined) {
                 _activeMerchantFilter = filterKey;
             } else if (window._pendingMerchantFilter) {
@@ -998,6 +1065,7 @@
                 window.SAWYAN.API.adminSearchAndReplyOps({ action: 'search', entity: 'merchants', query: q || '' }),
                 window.SAWYAN.API.adminSearchAndReplyOps({ action: 'search', entity: 'bank_topup_proofs' })
             ]);
+            if (mySeq !== _merLoadSeq) return;
             const allList = res.results || [];
             const proofs = proofsRes.results || [];
             _LIVE_MERCHANTS_MAP.clear();
@@ -1120,11 +1188,11 @@
             if (actType === 'focus_credit') {
                 const inp = document.getElementById('svMerCredit');
                 if (inp) {
-                    if (Number(inp.value || 0) === 0) inp.value = '1000';
                     inp.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     inp.focus();
                     inp.select();
                     inp.style.boxShadow = '0 0 0 3px #3b82f6';
+                    toast('أدخل قيمة السقف الائتماني المطلوبة ثم اضغط «حفظ وتطبيق إعدادات وحالة التاجر».', false);
                 }
                 return;
             }
@@ -1141,6 +1209,43 @@
             const govSel = document.getElementById('svMerGovernance');
             const rsnInp = document.getElementById('svMerGovReason');
             if (!onbSel || !govSel) return;
+
+            const mer = _LIVE_MERCHANTS_MAP.get(String(merchantId)) || {};
+            const merLabel = mer.business_name ? (mer.business_name + ' (' + (mer.merchant_code || '') + ')') : 'هذا المتجر';
+            const confirmCfg = {
+                activate_now: {
+                    title: 'تأكيد إعادة تفعيل المتجر',
+                    message: 'هل تؤكد اعتماد وإعادة تفعيل المتجر «' + merLabel + '» للعمل والظهور فوراً؟',
+                    confirmText: 'نعم، تفعيل الآن',
+                    tone: 'primary'
+                },
+                pause_now: {
+                    title: 'تأكيد الإيقاف المؤقت للمتجر',
+                    message: 'هل تؤكد إيقاف المتجر «' + merLabel + '» إدارياً بشكل مؤقت وإخفاءه من الدليل والرادار؟',
+                    confirmText: 'نعم، إيقاف مؤقت',
+                    tone: 'warning'
+                },
+                ban_now: {
+                    title: '⛔ تأكيد الحظر النهائي للمتجر',
+                    message: 'تحذير هام: سيتم تنفيذ حظر نهائي على المتجر «' + merLabel + '» ومنع الدخول والتوثيق فوراً. هل أنت متأكد من هذا القرار؟',
+                    confirmText: 'نعم، تأكيد الحظر النهائي',
+                    tone: 'danger'
+                }
+            }[actType];
+
+            if (confirmCfg) {
+                const confirmed = (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.confirm === 'function')
+                    ? await window.SAWYAN.UI.confirm({
+                        title: confirmCfg.title,
+                        message: confirmCfg.message,
+                        confirmText: confirmCfg.confirmText,
+                        cancelText: 'تراجع وإلغاء',
+                        tone: confirmCfg.tone
+                    })
+                    : false;
+                if (!confirmed) return;
+            }
+
             if (actType === 'activate_now') {
                 onbSel.value = 'approved';
                 govSel.value = 'good_standing';
@@ -1395,15 +1500,17 @@
             const list = bundle.withdrawals || [];
 
             page.innerHTML =
-                '<div class="page-header"><h2>💸 طلبات سحب أرباح الأعضاء الحية (' + list.length + ')</h2></div>' +
+                '<div class="page-header"><h2>💸 طلبات سحب أرباح الأعضاء الحية (' + list.length + ')' + helpBtn('withdrawal_dual_threshold') + '</h2></div>' +
                 '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px;overflow-x:auto;">' +
                     '<table class="data-table"><thead><tr><th>العضو</th><th>المبلغ ($)</th><th>التوقيت</th><th>الحالة</th><th>إجراء المحاسب / المؤسس</th></tr></thead><tbody>' +
                     (list.length === 0 ? '<tr><td colspan="5" class="empty-state">لا توجد طلبات سحب مسجلة حالياً</td></tr>' : list.map(function (w) {
-                        return '<tr>' +
-                            '<td data-label="العضو"><b>' + esc(w.full_name) + ' (#' + Number(w.member_code) + ')</b></td>' +
-                            '<td data-label="المبلغ ($)"><b>$' + fmt2(w.amount_usd) + '</b></td>' +
-                            '<td data-label="التوقيت">' + esc(String(w.created_at || '').slice(0, 16).replace('T', ' ')) + '</td>' +
-                            '<td data-label="الحالة"><span class="badge ' + (w.status === 'completed' ? 'badge-success' : w.status === 'rejected' ? 'badge-danger' : 'badge-warning') + '">' + esc(w.status) + '</span></td>' +
+                        const wdMeta = _WD_STATUS_AR[w.status] || [String(w.status || '—'), 'badge-warning'];
+                        const dtStr = String(w.created_at || '').slice(0, 16).replace('T', ' ');
+                        return '<tr class="clickable-admin-row" style="cursor:pointer;" onclick="if(!event.target.closest(\'button,a\'))svOpenAdminDetailCard(\'💸 تفاصيل طلب السحب\',[[\'العضو\',\'' + esc((w.full_name || '') + ' (#' + Number(w.member_code || 0) + ')') + '\'],[\'المبلغ\',\'\$\'+\'' + fmt2(w.amount_usd) + '\'],[\'الحالة\',\'' + esc(wdMeta[0]) + '\'],[\'التوقيت\',\'' + esc(dtStr) + '\'],[\'مرجع التحويل\',\'' + esc(w.payout_ref || 'لم يصدر بعد') + '\']])">' +
+                            '<td data-label="العضو"><b style="color:#0f766e;text-decoration:underline;">' + esc(w.full_name) + ' (#' + Number(w.member_code) + ') ↗</b></td>' +
+                            '<td data-label="المبلغ ($)"><b dir="ltr">$' + fmt2(w.amount_usd) + '</b></td>' +
+                            '<td data-label="التوقيت" dir="ltr">' + esc(dtStr) + '</td>' +
+                            '<td data-label="الحالة"><span class="badge ' + wdMeta[1] + '">' + esc(wdMeta[0]) + '</span></td>' +
                             '<td data-label="إجراء المحاسب / المؤسس">' + (w.status === 'processing_payout'
                                 ? '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
                                     '<button type="button" class="btn-sm btn-success" onclick="svDecideLiveWithdrawal(\'' + w.id + '\',\'completed\')">✅ تأكيد التحويل بمرجع بنكي</button>' +
@@ -1455,12 +1562,15 @@
                 '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px;overflow-x:auto;">' +
                     '<table class="data-table"><thead><tr><th>المرجع</th><th>المرسل</th><th>التصنيف / الموضوع</th><th>الرسالة والرد</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>' +
                     (list.length === 0 ? '<tr><td colspan="6" class="empty-state">لا توجد تذاكر دعم مفتوحة حالياً</td></tr>' : list.map(function (t) {
-                        return '<tr>' +
-                            '<td data-label="المرجع"><code>' + esc(t.ticket_ref) + '</code></td>' +
-                            '<td data-label="المرسل"><b>' + esc(t.contact_name || t.requester_type) + '</b><br><small>' + esc(t.contact_phone || t.contact_email || '') + '</small></td>' +
-                            '<td data-label="التصنيف / الموضوع"><span class="badge badge-info">' + esc(t.category) + '</span><br><b>' + esc(t.subject || '') + '</b></td>' +
+                        const supSt = _SUP_STATUS_AR[t.status] || [String(t.status || '—'), 'badge-warning'];
+                        const supCat = _SUP_CAT_AR[String(t.category || '').toLowerCase()] || (t.category || 'استفسار عام');
+                        const reqTypeAr = t.requester_type === 'merchant' ? 'تاجر' : (t.requester_type === 'member' ? 'عضو' : 'زائر');
+                        return '<tr class="clickable-admin-row" style="cursor:pointer;" onclick="if(!event.target.closest(\'button,a\'))svReplySupportTicket(\'' + esc(t.id) + '\')" title="اضغط للرد على التذكرة">' +
+                            '<td data-label="المرجع"><code dir="ltr" style="color:#0f766e;font-weight:800;">' + esc(t.ticket_ref) + ' ↗</code></td>' +
+                            '<td data-label="المرسل"><b>' + esc(t.contact_name || reqTypeAr) + '</b><br><small>' + esc(t.contact_phone || t.contact_email || '') + '</small></td>' +
+                            '<td data-label="التصنيف / الموضوع"><span class="badge badge-info">' + esc(supCat) + '</span><br><b>' + esc(t.subject || '') + '</b></td>' +
                             '<td data-label="الرسالة والرد" style="max-width:300px;">' + esc(t.message_body || '') + (t.admin_reply ? '<div style="margin-top:4px;padding:6px;background:#ecfdf5;border-radius:6px;color:#065f46;font-size:0.78rem;"><b>رد الإدارة:</b> ' + esc(t.admin_reply) + '</div>' : '') + '</td>' +
-                            '<td data-label="الحالة"><span class="badge ' + (t.status === 'closed' ? 'badge-success' : 'badge-warning') + '">' + esc(t.status) + '</span></td>' +
+                            '<td data-label="الحالة"><span class="badge ' + supSt[1] + '">' + esc(supSt[0]) + '</span></td>' +
                             '<td data-label="إجراء"><button type="button" class="btn-sm btn-primary" onclick="svReplySupportTicket(\'' + t.id + '\')">💬 رد وإغلاق</button></td>' +
                         '</tr>';
                     }).join('')) +
@@ -1519,9 +1629,11 @@
             } catch (err) { toast(err.message, true); }
         };
 
+        let _txnLoadSeq = 0;
         window.loadTransactions = async function (q, statusFilter) {
             const page = document.getElementById('transactionsPage');
             if (!page) return;
+            const mySeq = ++_txnLoadSeq;
             if (statusFilter !== undefined) {
                 _activeTxnStatusFilter = statusFilter;
             } else if (window._pendingTxnFilter) {
@@ -1533,6 +1645,7 @@
                 entity: 'transactions',
                 query: q || ''
             });
+            if (mySeq !== _txnLoadSeq) return;
             const allRows = Array.isArray(res.results) ? res.results : [];
             _lastLiveTxRows = allRows;
             const rows = allRows.filter(function (t) {
@@ -1577,8 +1690,8 @@
                                 ? '<button type="button" class="btn-sm btn-warning" title="عكس الفاتورة قبل صرف الشهر التالي" onclick="svAdminTxnDecision(\'' + t.id + '\',\'reverse_pre_payout\')">↩️ عكس (' + esc(revHint) + ')</button>'
                                 : '—');
                         const txDateStr = String(t.completed_at || t.created_at || '').slice(0, 16).replace('T', ' ');
-                        return '<tr>' +
-                            '<td data-label="كود الفاتورة"><code dir="ltr" style="font-weight:800;color:#1d4ed8;white-space:nowrap;display:inline-block;">' + esc(t.sw_short_code) + '</code>' + (t.status === 'awaiting_merchant_topup' && t.fifo_seq ? '<div style="font-size:0.72rem;color:#b91c1c;font-weight:800;white-space:nowrap;">⏸️ طابور انتظار الشحن #' + Number(t.fifo_seq) + '</div>' : '') + '</td>' +
+                        return '<tr class="clickable-admin-row" style="cursor:pointer;" title="اضغط لعرض تفاصيل الفاتورة كاملة" onclick="if(!event.target.closest(\'button,a,img\'))svOpenAdminDetailCard(\'🧾 تفاصيل الفاتورة ' + esc(t.sw_short_code) + '\',[[\'العضو\',\'#' + Number(t.member_code || 0) + ' ' + esc(t.member_name || '') + '\'],[\'التاجر\',\'' + esc(t.merchant_name || '') + '\'],[\'القيمة\',\'' + fmt2(t.total_amount) + ' ' + esc(t.currency_code || '') + '\'],[\'العمولة\',\'' + fmt2(t.commission_amount) + ' ' + esc(t.currency_code || '') + '\'],[\'الوسيلة\',\'' + esc(fmtAdmPayType(t.payment_type)) + '\'],[\'الحالة\',\'' + esc(stMeta[0]) + '\'],[\'التوقيت\',\'' + esc(txDateStr) + '\']])">' +
+                            '<td data-label="كود الفاتورة"><code dir="ltr" style="font-weight:800;color:#0f766e;text-decoration:underline;white-space:nowrap;display:inline-block;">' + esc(t.sw_short_code) + ' ↗</code>' + (t.status === 'awaiting_merchant_topup' && t.fifo_seq ? '<div style="font-size:0.72rem;color:#b91c1c;font-weight:800;white-space:nowrap;">⏸️ طابور انتظار الشحن #' + Number(t.fifo_seq) + '</div>' : '') + '</td>' +
                             '<td data-label="العضو"><b>#' + Number(t.member_code || 0) + '</b> ' + esc(t.member_name || '') + (t.is_self_purchase_flag ? '<div style="margin-top:3px;"><span class="badge badge-danger" style="font-size:0.68rem;white-space:nowrap;">⚠️ شراء ذاتي (نفس المالك)</span></div>' : '') + '</td>' +
                             '<td data-label="التاجر والفرع"><b>' + esc(t.merchant_name || '') + '</b><div style="font-size:0.74rem;color:#64748b;">' + esc(t.branch_name || '') + ' • ' + esc(fmtCountryAr(t.country_code)) + '</div></td>' +
                             '<td data-label="وسيلة الدفع والإيصال"><div>' + esc(fmtAdmPayType(t.payment_type)) + '</div>' + (t.unique_payment_ref ? '<div style="font-size:0.72rem;font-family:monospace;word-break:break-all;" dir="ltr">Ref: ' + esc(t.unique_payment_ref) + '</div>' : '') + (rThumb ? '<div style="margin-top:4px;">' + rThumb + '</div>' : '') + '</td>' +
@@ -1706,13 +1819,15 @@
                                   : '') +
                               '<button type="button" class="btn-sm btn-outline" onclick="svAdminDisputeAct(\'dispute_ticket\',\'' + d.id + '\',\'resolved_merchant\')">لصالح التاجر</button>'
                             : 'تم الفصل';
-                        return '<tr>' +
-                            '<td data-label="الفاتورة"><code>' + esc(d.sw_short_code) + '</code><div style="font-size:0.74rem;color:#64748b;">' + fmt2(d.total_amount) + ' ' + esc(d.currency_code || '') + '</div></td>' +
+                        const dStMeta = _DISP_STATUS_AR[d.status] || [String(d.status || '—'), open ? 'badge-warning' : 'badge-success'];
+                        const dCatAr = _DISP_CAT_AR[String(d.dispute_category || 'general').toLowerCase()] || (d.dispute_category || 'نزاع عام');
+                        return '<tr class="clickable-admin-row" style="cursor:pointer;" onclick="if(!event.target.closest(\'button,a,img\'))svOpenAdminDetailCard(\'⚖️ تفاصيل النزاع ' + esc(d.sw_short_code) + '\',[[\'العضو\',\'#' + Number(d.member_code || 0) + ' ' + esc(d.member_name || '') + '\'],[\'التاجر\',\'' + esc(d.merchant_name || '') + '\'],[\'التصنيف\',\'' + esc(dCatAr) + '\'],[\'السبب\',\'' + esc(d.dispute_reason || '') + '\'],[\'الحالة\',\'' + esc(dStMeta[0]) + '\']])">' +
+                            '<td data-label="الفاتورة"><code dir="ltr" style="color:#0f766e;font-weight:800;">' + esc(d.sw_short_code) + ' ↗</code><div style="font-size:0.74rem;color:#64748b;">' + fmt2(d.total_amount) + ' ' + esc(d.currency_code || '') + '</div></td>' +
                             '<td data-label="العضو">#' + Number(d.member_code || 0) + ' ' + esc(d.member_name || '') + '</td>' +
                             '<td data-label="التاجر">' + esc(d.merchant_name || '') + '</td>' +
-                            '<td data-label="التصنيف والسبب"><code>' + esc(d.dispute_category || 'general') + '</code><div>' + esc(d.dispute_reason || '') + '</div></td>' +
+                            '<td data-label="التصنيف والسبب"><span class="badge badge-info" style="font-size:0.7rem;">' + esc(dCatAr) + '</span><div>' + esc(d.dispute_reason || '') + '</div></td>' +
                             '<td data-label="الإثبات المرفق">' + (evThumb || '—') + '</td>' +
-                            '<td data-label="الحالة"><span class="badge ' + (open ? 'badge-warning' : 'badge-success') + '">' + esc(d.status) + '</span></td>' +
+                            '<td data-label="الحالة"><span class="badge ' + dStMeta[1] + '">' + esc(dStMeta[0]) + '</span></td>' +
                             '<td data-label="حكم التحكيم الحي"><div style="display:flex;gap:5px;flex-wrap:wrap;">' + btns + '</div></td>' +
                         '</tr>';
                     }).join('')) +
@@ -1723,19 +1838,20 @@
                     '<table class="data-table"><thead><tr><th>المتجر</th><th>العضو</th><th>التصنيف والموضوع</th><th>التفاصيل والإثبات</th><th>الحالة</th><th>إجراء التحكيم</th></tr></thead><tbody>' +
                     (complaints.length === 0 ? '<tr><td colspan="6" class="empty-state">لا توجد شكاوى تجار مسجلة حالياً</td></tr>' : complaints.map(function (cp) {
                         const isOpen = cp.status === 'open';
+                        const cpStMeta = _COMP_STATUS_AR[cp.status] || [String(cp.status || '—'), isOpen ? 'badge-warning' : 'badge-success'];
                         const cpThumb = renderAdmThumb(cp.evidence_url, '📎 إثبات شكوى ضد ' + esc(cp.merchant_name || ''));
-                        return '<tr>' +
-                            '<td data-label="المتجر"><b>' + esc(cp.merchant_name || '') + '</b><div style="font-size:0.74rem;color:#64748b;">' + esc(cp.merchant_code || '') + ' • ' + esc(cp.country_code || '') + '</div></td>' +
+                        return '<tr class="clickable-admin-row" style="cursor:pointer;" onclick="if(!event.target.closest(\'button,a,img\'))svOpenAdminDetailCard(\'📣 تفاصيل شكوى ضد ' + esc(cp.merchant_name || '') + '\',[[\'المتجر\',\'' + esc(cp.merchant_name || '') + '\'],[\'العضو\',\'#' + Number(cp.member_code || 0) + ' ' + esc(cp.member_name || '') + '\'],[\'الموضوع\',\'' + esc(cp.subject || '') + '\'],[\'التفاصيل\',\'' + esc(cp.details || '') + '\'],[\'الحالة\',\'' + esc(cpStMeta[0]) + '\']])">' +
+                            '<td data-label="المتجر"><b style="color:#0f766e;">' + esc(cp.merchant_name || '') + ' ↗</b><div style="font-size:0.74rem;color:#64748b;">' + esc(cp.merchant_code || '') + ' • ' + esc(fmtCountryAr(cp.country_code)) + '</div></td>' +
                             '<td data-label="العضو">#' + Number(cp.member_code || 0) + ' ' + esc(cp.member_name || '') + '</td>' +
                             '<td data-label="التصنيف والموضوع"><span class="badge badge-warning" style="font-size:0.7rem;">' + esc(compCatLabels[cp.category] || cp.category) + '</span><div style="font-weight:700;margin-top:3px;">' + esc(cp.subject || '') + '</div></td>' +
                             '<td data-label="التفاصيل والإثبات"><div style="font-size:0.8rem;">' + esc(cp.details || '') + '</div>' + (cpThumb ? '<div style="margin-top:4px;">' + cpThumb + '</div>' : '') + '</td>' +
-                            '<td data-label="الحالة"><span class="badge ' + (isOpen ? 'badge-warning' : (cp.status === 'verified' ? 'badge-danger' : 'badge-success')) + '">' + esc(cp.status) + '</span></td>' +
+                            '<td data-label="الحالة"><span class="badge ' + cpStMeta[1] + '">' + esc(cpStMeta[0]) + '</span></td>' +
                             '<td data-label="إجراء التحكيم">' + (isOpen
                                 ? '<div style="display:flex;gap:5px;flex-wrap:wrap;">' +
                                       '<button type="button" class="btn-sm btn-danger" onclick="svAdminDisputeAct(\'merchant_complaint\',\'' + cp.id + '\',\'verified\')">✅ توثيق الشكوى</button>' +
                                       '<button type="button" class="btn-sm btn-outline" onclick="svAdminDisputeAct(\'merchant_complaint\',\'' + cp.id + '\',\'dismissed\')">❌ رفض (غير مثبتة)</button>' +
                                   '</div>'
-                                : esc(cp.admin_notes || cp.status)) + '</td>' +
+                                : esc(cp.admin_notes || cpStMeta[0])) + '</td>' +
                         '</tr>';
                     }).join('')) +
                     '</tbody></table>' +
@@ -1746,12 +1862,13 @@
                     (gouging.length === 0 ? '<tr><td colspan="6" class="empty-state">لا توجد بلاغات رفع أسعار حالياً</td></tr>' : gouging.map(function (g) {
                         const sh = renderAdmThumb(g.shelf_photo_url, '📸 سعر الرف');
                         const rc = renderAdmThumb(g.receipt_url, '🧾 الإيصال');
-                        return '<tr>' +
-                            '<td data-label="الفاتورة"><code>' + esc(g.sw_short_code) + '</code></td>' +
+                        const gStMeta = _GOUGE_STATUS_AR[g.verification_status] || [String(g.verification_status || '—'), 'badge-warning'];
+                        return '<tr class="clickable-admin-row" style="cursor:pointer;" onclick="if(!event.target.closest(\'button,a,img\'))svOpenAdminDetailCard(\'🚨 بلاغ رفع سعر ' + esc(g.sw_short_code) + '\',[[\'التاجر\',\'' + esc(g.merchant_name || '') + '\'],[\'السعر المعلن\',\'' + fmt2(g.declared_price) + '\'],[\'السعر المحصل\',\'' + fmt2(g.charged_price) + '\'],[\'الحالة\',\'' + esc(gStMeta[0]) + '\']])">' +
+                            '<td data-label="الفاتورة"><code dir="ltr" style="color:#0f766e;font-weight:800;">' + esc(g.sw_short_code) + ' ↗</code></td>' +
                             '<td data-label="التاجر">' + esc(g.merchant_name || '') + '</td>' +
                             '<td data-label="السعر المعلن مقابل المحصّل">معلن: ' + fmt2(g.declared_price) + ' ← محصّل: <b style="color:#dc2626;">' + fmt2(g.charged_price) + '</b></td>' +
                             '<td data-label="صور الإثبات"><div style="display:flex;gap:6px;flex-wrap:wrap;">' + (sh + rc || '—') + '</div></td>' +
-                            '<td data-label="الحالة">' + esc(g.verification_status) + '</td>' +
+                            '<td data-label="الحالة"><span class="badge ' + gStMeta[1] + '">' + esc(gStMeta[0]) + '</span></td>' +
                             '<td data-label="إجراء رقابي">' + (g.verification_status === 'pending'
                                 ? '<button type="button" class="btn-sm btn-danger" onclick="svAdminDisputeAct(\'price_gouging\',\'' + g.id + '\',\'verified_violation\')">تأكيد المخالفة</button>'
                                 : '—') + '</td>' +
@@ -1768,24 +1885,16 @@
         window.opsDisputeModal = function () { window.loadDisputes(); };
         window.opsDisputeResolve = function (id, decision) { window.svAdminDisputeAct('dispute_ticket', id, decision); };
 
-        // Hook sidebar clicks so clicking any live Admin screen loads PostgreSQL data immediately
+        // Reset active filter cleanly when user manually clicks a sidebar tab
+        // (Data loading is handled ONCE by dashboard.js activatePage() — eliminating the 6-RPC storm!)
         document.addEventListener('click', function (e) {
             const nav = e.target.closest('.nav-item, .more-menu-item, .bottom-nav-item');
-            if (!nav) return;
+            if (!nav || !e.isTrusted) return;
             const pg = nav.dataset.page;
-            if (e.isTrusted) {
-                if (pg === 'merchants' && !window._pendingMerchantFilter) _activeMerchantFilter = 'all';
-                if (pg === 'members' && !window._pendingMemberFilter) _activeMemberFilter = 'all';
-                if (pg === 'transactions' && !window._pendingTxnFilter) _activeTxnStatusFilter = 'all';
-            }
-            if (pg === 'members') setTimeout(function () { window.loadMembers(); }, 30);
-            else if (pg === 'merchants') setTimeout(function () { window.loadMerchants(); }, 30);
-            else if (pg === 'transactions') setTimeout(function () { window.loadTransactions(); }, 30);
-            else if (pg === 'commissions') setTimeout(function () { window.loadCommissions(); }, 30);
-            else if (pg === 'disputes') setTimeout(function () { window.loadDisputes(); }, 30);
-            else if (pg === 'withdrawals') setTimeout(function () { window.loadWithdrawals(); }, 30);
-            else if (pg === 'support') setTimeout(function () { window.loadSupport(); }, 30);
-        });
+            if (pg === 'merchants' && !window._pendingMerchantFilter) _activeMerchantFilter = 'all';
+            if (pg === 'members' && !window._pendingMemberFilter) _activeMemberFilter = 'all';
+            if (pg === 'transactions' && !window._pendingTxnFilter) _activeTxnStatusFilter = 'all';
+        }, true);
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', mountCommandCenterSidebarLink);
