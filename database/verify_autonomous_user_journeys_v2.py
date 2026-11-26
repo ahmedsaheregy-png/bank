@@ -1280,6 +1280,7 @@ def main():
     parser.add_argument("--canary", action="store_true", help="Run 6-hour live synthetic canary only")
     parser.add_argument("--gen3-static", action="store_true", help="Also run Gen-3 G1 + G2 static handler & Arabic error-code gates")
     parser.add_argument("--gen3", action="store_true", help="Also run Gen-3 quick interaction crawler (G1 + G2 + G3 + G4)")
+    parser.add_argument("--experience", action="store_true", help="Also run Gen-4 persona experience audit (E1-E4, fails only on P0)")
     args = parser.parse_args()
 
     if args.canary:
@@ -1300,6 +1301,10 @@ def main():
         proc = subprocess.run(gen3_cmd, cwd=str(REPO_DIR))
         if proc.returncode != 0:
             raise AssertionError(f"[GEN-3 INTERACTION GATE FAIL] Exit code {proc.returncode}")
+    if args.experience:
+        proc4 = subprocess.run([sys.executable, str(DB_DIR / "robot_gen4_experience_audit.py"), "--no-screens"], cwd=str(REPO_DIR))
+        if proc4.returncode != 0:
+            raise AssertionError(f"[GEN-4 EXPERIENCE AUDIT FAIL] P0 findings present (exit {proc4.returncode})")
     _print_lessons_ledger_status()
     print("\n[SAWYAN AUTONOMOUS USER JOURNEYS V2 (/sawyan-robot): 100% GREEN]")
 
