@@ -122,6 +122,12 @@ window.SAWYAN.Notifications = {
                 title: '🔥 إعلان ترويجي لتاجر بانتظار اعتمادك',
                 message: `${p.business_name || 'تاجر معتمد'}: ${p.title || ''}`
             },
+            MerchantFlashOfferUnderReview: {
+                title: '🟠 إعلان ترويجي قيد المراجعة',
+                message: p.admin_note
+                    ? `${p.offer_title || p.title || 'إعلان ترويجي'} — ملاحظة الإدارة: ${p.admin_note}`
+                    : `${p.business_name || 'تاجر معتمد'}: ${p.title || p.offer_title || ''}`
+            },
             MemberWithdrawalRequested: {
                 title: '💸 طلب سحب أرباح عضو بانتظار الصرف',
                 message: `${p.full_name || 'عضو'} (#${p.member_code || '-'}) — مبلغ ${p.amount_usd ?? ''} USD`
@@ -458,7 +464,7 @@ window.SAWYAN.Notifications = {
                     primaries.push('tr[data-merchant-id="' + escA(merchId) + '"]');
                 }
                 this.scrollAndHighlight(primaries, ['#merchantsTable tbody tr:first-child', '#merchantsTable']);
-            } else if (ev === 'MerchantFlashOfferPending') {
+            } else if (ev === 'MerchantFlashOfferPending' || ev === 'MerchantFlashOfferUnderReview') {
                 this._navigateAdminPage('home');
                 const primaries = [];
                 if (offerId) primaries.push('#admFlashOfferCard_' + escA(offerId));
@@ -529,7 +535,7 @@ window.SAWYAN.Notifications = {
                 }
                 if (bankRef) primaries.push('[data-bank-ref="' + escA(bankRef) + '"]');
                 this.scrollAndHighlight(primaries, ['#finPendingTopupsHost > div', '#merchantTopupProofStatusBox > div', '#finPrepaidHeroCard']);
-            } else if (ev === 'MerchantFlashOfferApproved' || ev === 'MerchantFlashOfferRejected') {
+            } else if (ev === 'MerchantFlashOfferApproved' || ev === 'MerchantFlashOfferUnderReview' || ev === 'MerchantFlashOfferRejected') {
                 if (typeof window.showPage === 'function') window.showPage('home');
                 this.scrollAndHighlight(['#promoActionBtn'], ['#homePage']);
             } else if (ev === 'DisputeTicketOpened' || ev.startsWith('MerchantComplaint')) {
@@ -582,6 +588,9 @@ window.SAWYAN.Notifications = {
             MerchantBankTopupProofRejected: '🔴',
             MerchantBankTopupProofProcessed: '🟢',
             MerchantFlashOfferPending: '🔥',
+            MerchantFlashOfferUnderReview: '🟠',
+            MerchantFlashOfferApproved: '🟢',
+            MerchantFlashOfferRejected: '🔴',
             MemberWithdrawalRequested: '💸',
             MemberGdprErasureRequested: '🛡️',
             ZeroDiscrepancyBreachAutoHalt: '🚨',

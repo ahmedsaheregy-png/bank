@@ -386,7 +386,7 @@ window.SAWYAN_ADMIN_DEMO = {
             withdrawals: Number(k.pending_withdrawals !== undefined ? k.pending_withdrawals : wds.filter(function (w) { return w.status === 'processing_payout'; }).length),
             disputes: Number(k.open_disputes !== undefined ? k.open_disputes : disputes.filter(function (d) { return d.status === 'awaiting_merchant_friendly' || d.status === 'escalated_to_admin' || d.status === 'appealed_72h'; }).length),
             support: tickets.filter(function (t) { return t.status === 'open' || t.status === 'in_progress'; }).length,
-            promo: flash.filter(function (x) { return x.event_name === 'MerchantFlashOfferPending'; }).length
+            promo: flash.filter(function (x) { return x.event_name === 'MerchantFlashOfferPending' || x.event_name === 'MerchantFlashOfferUnderReview'; }).length
         };
 
         // بناء الرسم البياني لآخر 7 أيام من المعاملات الحية

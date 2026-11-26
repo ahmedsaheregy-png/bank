@@ -696,7 +696,7 @@ function fmtBiDi(val) {
     return `<span dir="ltr" style="display:inline-block;unicode-bidi:isolate;white-space:nowrap;">${esc(val)}</span>`;
 }
 
-function computeMonthlyPurchaseStats(txs, periodYm, homePlan) {
+function computeMonthlyPurchaseStats(txs, periodYm, homePlan, strictHomeCurrency) {
     const plan = homePlan || getCountryPlanInfo();
     const fx = Number(plan.fx || 1) > 0 ? Number(plan.fx || 1) : 1;
     const targetCur = String(plan.currencyCode || 'USD').toUpperCase();
@@ -712,6 +712,8 @@ function computeMonthlyPurchaseStats(txs, periodYm, homePlan) {
         const rawPlanLocal = Number(t.income_plan_share_local || 0);
         const rawPlanUsd = Number(t.income_plan_share_usd || 0);
         const txCur = String(t.currency_code || targetCur).toUpperCase();
+
+        if (strictHomeCurrency && txCur !== targetCur) return;
 
         let amtLocal = rawAmt;
         let planLocal = rawPlanLocal;
@@ -779,13 +781,19 @@ function renderHomePage() {
     }
 
     const homePlan = getCountryPlanInfo(profile.country_code);
-    const homeBox = boxes.find(b => b.country_code === profile.country_code && b.period_ym === memberBundle.period_ym) || boxes[0];
+    const currentPeriodBoxes = boxes.filter(b => !memberBundle.period_ym || b.period_ym === memberBundle.period_ym);
+    const homeBox = currentPeriodBoxes.find(b => b.country_code === profile.country_code) || null;
+    const otherActiveBoxes = currentPeriodBoxes.filter(b =>
+        b.country_code !== profile.country_code &&
+        (b.is_qualified || Number(b.net_accumulated_usd || b.current_month_purchases_usd || b.carry_on_in_usd || 0) > 0)
+    );
     const req = Number((homeBox && homeBox.target_required_usd) || homePlan.targetUsd || 24.75);
     const carryUsd = Number((homeBox && homeBox.carry_on_in_usd) || 0);
     const monthUsd = Number((homeBox && homeBox.current_month_purchases_usd) || 0);
     const rawNet = Number((homeBox && homeBox.net_accumulated_usd) || 0);
     const combinedNetUsd = homeBox ? Math.max(0, rawNet) : Math.max(0, monthUsd + carryUsd);
     const isQual = Boolean((homeBox && homeBox.is_qualified) || combinedNetUsd >= req);
+    const isAnyCountryQual = isQual || otherActiveBoxes.some(b => Boolean(b.is_qualified));
     const boxPeriod = (homeBox && homeBox.period_ym) || memberBundle.period_ym || '';
     const monthNum = (() => {
         const m = parseInt(String(boxPeriod || '').split('-')[1] || '', 10);
@@ -794,18 +802,63 @@ function renderHomePage() {
     const unitShareUsd = calcMemberUnitShareUsd(req, homePlan.s02);
     const pct = Math.max(0, Math.min(100, Math.round((combinedNetUsd / Math.max(req, 0.01)) * 100)));
     const remainingUsd = Math.max(0, req - combinedNetUsd);
+    const homeProjCarryOutUsd = isQual ? Math.max(0, combinedNetUsd - req) : combinedNetUsd;
     const stateCls = isQual ? 'green-state' : (combinedNetUsd > 0 ? 'orange-state' : 'white-state');
     const stateBadgeBg = isQual ? '#10b981' : (combinedNetUsd > 0 ? '#f59e0b' : '#64748b');
     const stateBadgeText = isQual
         ? '🟢 مؤهل أخضر (100%)'
         : (combinedNetUsd > 0 ? `🟠 جاري التجميع (${pct}%)` : '⚪ بانتظار أول شراء');
 
-    const monthStats = computeMonthlyPurchaseStats(txs, boxPeriod, homePlan);
+    const monthStats = computeMonthlyPurchaseStats(txs, boxPeriod, homePlan, true);
     const grossMonthFormatted = `${monthStats.grossLocal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${homePlan.currencyCode}`;
     const avgPctFormatted = monthStats.grossLocal > 0 ? `${monthStats.weightedAvgPct.toFixed(1)}%` : '0%';
 
+    const countryReports = Array.isArray(tree.country_reports) ? tree.country_reports : [];
+    const homeReport = countryReports.find(r => r && r.country_code === profile.country_code) || null;
+    const homeCountryNameAr = (homeReport && homeReport.country_name_i18n && (homeReport.country_name_i18n.ar || homeReport.country_name_i18n.en))
+        || (profile.country_code === 'EG' ? 'مصر' : profile.country_code === 'TR' ? 'تركيا' : profile.country_code === 'SA' ? 'السعودية' : profile.country_code);
+    const homeAtRiskUsd = !isQual ? Number((homeReport && homeReport.at_risk_rollup_usd) || 0) : 0;
+    const homeAtRiskLocalStr = `${(homeAtRiskUsd * homePlan.fx).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${homePlan.currencyCode}`;
+    const hasQualifiedForeignBox = otherActiveBoxes.some(b => Boolean(b.is_qualified));
+    const foreignScopeNoticeHtml = (!isQual && otherActiveBoxes.length > 0) ? `
+        <div data-spec-id="member-foreign-box-scope-notice" style="margin-top:8px;padding:8px 10px;background:${homeAtRiskUsd > 0 ? '#fffbeb' : '#f0fdf4'};border:1px solid ${homeAtRiskUsd > 0 ? '#f59e0b' : '#86efac'};border-radius:9px;font-size:0.78rem;line-height:1.7;color:${homeAtRiskUsd > 0 ? '#92400e' : '#166534'};font-weight:700;">
+            ${homeAtRiskUsd > 0
+                ? `⚠️ تنبيه استقلال الدول: ${hasQualifiedForeignBox ? 'تأهلك هنا يشمل عمولات هذه الدولة فقط، ولا يغني' : 'مشترياتك هنا تخص هذه الدولة فقط، ولا تغني'} عن إتمام هدف دولة تسجيلك (${esc(homeCountryNameAr)}). لديك حالياً <b>${fmtBiDi(homeAtRiskLocalStr)}</b> من أرباح فريقك في ${esc(homeCountryNameAr)} مهددة بالضياع إن لم تكمل هدفك فيها قبل نهاية الشهر.`
+                : `ℹ️ استقلال الدول: ${hasQualifiedForeignBox ? 'تأهلك هنا يشمل عمولات هذه الدولة فقط، ولا يغني' : 'مشترياتك هنا تخص هذه الدولة فقط، ولا تغني'} عن إتمام هدف دولة تسجيلك (${esc(homeCountryNameAr)}) لاستحقاق عمولات فريقك فيها أو فتح التأهل التلقائي في دول أخرى.`}
+        </div>
+    ` : '';
+
+    const otherCountryBoxesHtml = otherActiveBoxes.length === 0 ? '' : `
+        <div data-spec-id="member-home-foreign-boxes" style="margin-top:10px;padding:10px 12px;background:#ecfdf5;border:1.5px solid #6ee7b7;border-radius:12px;">
+            <div style="font-size:0.8rem;font-weight:900;color:#065f46;margin-bottom:6px;">🌍 صناديقك النشطة في دول أخرى هذا الشهر (مستقلة عن دولة التسجيل)</div>
+            <div style="display:grid;gap:6px;">
+                ${otherActiveBoxes.map(ob => {
+                    const obFx = Number(ob.admin_fx_rate || 1) > 0 ? Number(ob.admin_fx_rate || 1) : 1;
+                    const obCur = ob.currency_code || 'USD';
+                    const obAcc = Number(ob.net_accumulated_usd || ob.current_month_purchases_usd || 0);
+                    const obReq = Number(ob.target_required_usd || 24.75);
+                    const obPct = Math.min(100, Math.round((obAcc / Math.max(obReq, 0.01)) * 100));
+                    const obCarry = ob.is_qualified ? Math.max(0, obAcc - obReq) : obAcc;
+                    const obName = (ob.country_name_i18n && (ob.country_name_i18n.ar || ob.country_name_i18n.en)) || ob.country_code;
+                    const obShare = Number(ob.unit_share_usd || calcMemberUnitShareUsd(obReq, homePlan.s02));
+                    const obCarryLocalStr = `${(obCarry * obFx).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${obCur}`;
+                    return `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;background:#ffffff;border:1px solid #a7f3d0;border-radius:9px;padding:7px 10px;font-size:0.8rem;">
+                        <div>
+                            <strong>${esc(obName)} (${esc(ob.country_code)})</strong>
+                            <span style="margin-inline-start:6px;padding:1px 7px;border-radius:999px;font-size:0.72rem;font-weight:800;background:${ob.is_qualified ? '#dcfce7;color:#166534' : '#fef3c7;color:#92400e'};">${ob.is_qualified ? '🟢 مؤهل 100%' : `🟠 ${obPct}%`}</span>
+                            ${ob.is_qualified && obCarry > 0 ? `<div style="font-size:0.72rem;color:#047857;margin-top:2px;">ترحيل متوقع: <b>${fmtBiDi(obCarryLocalStr)}</b> (${fmtBiDi('$' + obCarry.toFixed(2))}) • حصة صانع جارية: <b>${fmtBiDi('$' + obShare.toFixed(2))}</b></div>` : ''}
+                        </div>
+                        <strong dir="ltr" style="color:#065f46;">${(obAcc * obFx).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / ${(obReq * obFx).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${esc(obCur)}</strong>
+                    </div>`;
+                }).join('')}
+            </div>
+            ${foreignScopeNoticeHtml}
+        </div>
+    `;
+
     const actualMonthUsd = Number(tree.actual_earnings_usd || 0);
     const expectedOrangeUsd = Number(tree.expected_orange_earnings_usd || 0);
+    const atRiskRollupUsd = Number(tree.at_risk_rollup_usd || 0);
     const nodes = Array.isArray(tree.nodes) ? tree.nodes : [];
 
     const greenTeamCount = nodes.filter(n => {
@@ -817,10 +870,14 @@ function renderHomePage() {
         return d >= 2 && n.team_bucket !== 'RESERVE_TEAM' && n.visual_color !== 'GRAY' && n.visual_color !== 'BLACK' && n.node_color === 'ORANGE';
     }).length;
 
-    const selfActualUsd = isQual ? unitShareUsd : 0;
-    const actualTotalUsd = actualMonthUsd + selfActualUsd;
-    const greenQualifiedTotalCount = greenTeamCount + (isQual ? 1 : 0);
-    const expectedTotalInclAllUsd = actualMonthUsd + expectedOrangeUsd + unitShareUsd;
+    const selfActualUsd = tree.viewer_self_share_usd !== undefined
+        ? Number(tree.viewer_self_share_usd || 0)
+        : (isQual ? unitShareUsd : 0);
+    const actualTotalUsd = tree.total_actual_incl_self_usd !== undefined
+        ? Number(tree.total_actual_incl_self_usd || 0)
+        : (actualMonthUsd + selfActualUsd);
+    const greenQualifiedTotalCount = greenTeamCount + (isAnyCountryQual ? 1 : 0);
+    const expectedTotalInclAllUsd = actualTotalUsd + expectedOrangeUsd + atRiskRollupUsd + (!isAnyCountryQual ? unitShareUsd : 0);
 
     const teamRadar = nodes
         .filter(n => {
@@ -893,7 +950,7 @@ function renderHomePage() {
         <!-- 1. الصندوق الأبيض للهدف الشهري فوق الطيّة (إجابة: كم بقي لي لأتأهل؟) -->
         <div class="target-box-card ${stateCls}" data-spec-id="member-home-target-box" style="background:#ffffff;border:1.5px solid #e2e8f0;border-top:4px solid ${stateBadgeBg};border-radius:16px;padding:16px 18px;margin:0 0 12px;box-shadow:0 4px 16px rgba(15,23,42,0.06);">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
-                <strong style="font-size:1.05rem;color:#0f172a;">🎯 الهدف الشهري لشهر (${monthNum})</strong>
+                <strong style="font-size:1.05rem;color:#0f172a;">🎯 الهدف الشهري لشهر (${monthNum}) — ${esc(profile.country_code || '')}</strong>
                 <div style="display:inline-flex;align-items:center;gap:7px;flex-wrap:wrap;">
                     <span style="font-size:0.82rem;font-weight:800;color:#475569;">الحالة:</span>
                     <span style="padding:4px 12px;border-radius:999px;font-size:0.8rem;font-weight:800;background:${stateBadgeBg};color:#ffffff;white-space:nowrap;">${stateBadgeText}</span>
@@ -929,7 +986,7 @@ function renderHomePage() {
 
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;">
                 <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:9px 11px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
-                    <span style="font-size:0.8rem;font-weight:700;color:#166534;">🛒 إجمالي مشترياتك بهذا الشهر</span>
+                    <span style="font-size:0.8rem;font-weight:700;color:#166534;">🛒 مشترياتك في ${esc(profile.country_code || '')} هذا الشهر</span>
                     <strong style="font-size:0.88rem;color:#064e3b;">${fmtBiDi(grossMonthFormatted)}</strong>
                 </div>
                 <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:9px 11px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
@@ -937,6 +994,7 @@ function renderHomePage() {
                     <strong style="font-size:0.88rem;color:#1e3a8a;">${avgPctFormatted}</strong>
                 </div>
             </div>
+            ${otherCountryBoxesHtml}
         </div>
 
         ${queuedOrPendTxs.length > 0 ? `
@@ -1018,8 +1076,9 @@ function renderHomePage() {
                         ${fmtBiDi(fmtLocalFromUsd(actualTotalUsd))}
                         <span style="font-size:0.78rem;font-weight:700;color:#a7f3d0;">(${fmtBiDi(fmtUsd(actualTotalUsd))})</span>
                     </div>
-                    <div style="font-size:0.8rem;color:#e2e8f0;">عن المؤهلين حتى الآن وعددهم: <strong style="color:#6ee7b7;">${greenQualifiedTotalCount}</strong> <small style="color:#cbd5e1;">(الخضر فقط${isQual ? ` — أنت + ${greenTeamCount} بفريقك` : ''})</small></div>
-                    ${!isQual && greenTeamCount > 0 ? `<div style="font-size:0.74rem;color:#fde68a;margin-top:4px;">⏳ عمولاتهم (${fmtBiDi(fmtLocalFromUsd(actualMonthUsd))}) تُصرف فور إكمال هدفك</div>` : ''}
+                    <div style="font-size:0.8rem;color:#e2e8f0;">عن المؤهلين حتى الآن وعددهم: <strong style="color:#6ee7b7;">${greenQualifiedTotalCount}</strong> <small style="color:#cbd5e1;">(الخضر فقط${isAnyCountryQual ? ` — أنت + ${greenTeamCount} بفريقك` : ''})</small></div>
+                    ${atRiskRollupUsd > 0 ? `<div style="font-size:0.74rem;color:#fde68a;margin-top:4px;">⚠️ عمولات مهددة بالتخطي (${fmtBiDi(fmtLocalFromUsd(atRiskRollupUsd))}) تُصرف فور إكمال هدفك</div>` : ''}
+                    ${actualTotalUsd > 0 ? `<div style="font-size:0.72rem;color:#a7f3d0;margin-top:4px;">⏳ عمولة جارية تُرحّل للمحفظة يوم 15 بعد الإقفال</div>` : ''}
                 </div>
 
                 <div style="background:rgba(245,158,11,0.14);border:1px solid rgba(251,191,36,0.42);border-radius:12px;padding:14px;">
@@ -1097,7 +1156,7 @@ function renderHomePage() {
             if (act) act.textContent = String(Number(p.active_transactors_month || 0));
             if (txc) txc.textContent = ` (${Number(p.tx_count_month || 0)} عملية)`;
             const estUsd = Number(p.estimated_month_commission_usd || 0);
-            if (est && estUsd > 0) est.innerHTML = fmtBiDi(fmtLocalFromUsd(estUsd));
+            if (est) est.innerHTML = fmtBiDi(fmtLocalFromUsd(estUsd));
             if (del) {
                 const dp = Number(p.commission_delta_pct || 0);
                 if (dp > 0) { del.style.color = '#059669'; del.textContent = ` ▲ +${dp}%`; }

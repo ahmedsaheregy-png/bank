@@ -908,16 +908,32 @@
             ];
         });
 
-        OFFICIAL_REPORTS.carryon.rows = filteredMems.filter(function (m) { return Number(m.member_code) > 0; }).map(function (m) {
-            return [
-                (m.full_name || ('عضو #' + Number(m.member_code))) + ' (#' + Number(m.member_code) + ')',
-                m.residency_country_code || 'EG',
-                fmt(m.carry_on_in_usd || 0),
-                fmt(m.current_purchases_usd || 0),
-                fmt(m.carry_on_out_usd || 0),
-                m.is_qualified_period ? '🟢 مؤهل' : '🟠 قيد التجميع'
-            ];
+        var carryRows = [];
+        filteredMems.filter(function (m) { return Number(m.member_code) > 0; }).forEach(function (m) {
+            var cBoxes = Array.isArray(m.country_boxes) && m.country_boxes.length > 0 ? m.country_boxes : null;
+            if (cBoxes) {
+                cBoxes.forEach(function (cb) {
+                    carryRows.push([
+                        (m.full_name || ('عضو #' + Number(m.member_code))) + ' (#' + Number(m.member_code) + ')',
+                        cb.country_code + (cb.country_code !== (m.residency_country_code || 'EG') ? ' (أجنبية — إقامة ' + (m.residency_country_code || 'EG') + ')' : ''),
+                        fmt(cb.carry_on_in_usd || 0),
+                        fmt(cb.current_purchases_usd || 0),
+                        fmt(cb.projected_carry_on_out_usd || 0),
+                        cb.is_qualified ? '🟢 مؤهل' : (Number(cb.current_purchases_usd || 0) + Number(cb.carry_on_in_usd || 0) > 0 ? '🟠 قيد التجميع' : '⚪ لم يبدأ')
+                    ]);
+                });
+            } else {
+                carryRows.push([
+                    (m.full_name || ('عضو #' + Number(m.member_code))) + ' (#' + Number(m.member_code) + ')',
+                    m.residency_country_code || 'EG',
+                    fmt(m.carry_on_in_usd || 0),
+                    fmt(m.current_purchases_usd || 0),
+                    fmt(m.carry_on_out_usd || 0),
+                    m.is_qualified_period ? '🟢 مؤهل' : (Number(m.current_purchases_usd || 0) + Number(m.carry_on_in_usd || 0) > 0 ? '🟠 قيد التجميع' : '⚪ لم يبدأ')
+                ]);
+            }
         });
+        OFFICIAL_REPORTS.carryon.rows = carryRows;
 
         OFFICIAL_REPORTS.commissions.rows = filteredTxs.map(function (t) {
             return [

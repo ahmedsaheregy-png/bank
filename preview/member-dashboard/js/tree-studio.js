@@ -527,11 +527,16 @@
                 : slice.map(function (n) {
                     const st = nodeStatus(n);
                     const wa = formatWaLink(n.phone, 'أهلاً ' + (n.full_name || '') + ' — فريق SAWYAN');
-                    const achLocal = n.achieved_local !== undefined ? formatLocalMoney(n.achieved_local, n.currency_code) : ('$' + Number(n.accumulated_usd || 0).toFixed(2));
-                    const reqLocal = n.target_required_local !== undefined ? formatLocalMoney(n.target_required_local, n.currency_code) : ('$' + Number(n.target_required_usd || 24.75).toFixed(2));
+                    const boxCur = n.box_currency_code || n.currency_code;
+                    const boxCC = n.box_country_code || n.country_code;
+                    const achLocal = n.achieved_local !== undefined ? formatLocalMoney(n.achieved_local, boxCur) : ('$' + Number(n.accumulated_usd || 0).toFixed(2));
+                    const reqLocal = n.target_required_local !== undefined ? formatLocalMoney(n.target_required_local, boxCur) : ('$' + Number(n.target_required_usd || 24.75).toFixed(2));
+                    const crossTag = (boxCC && n.country_code && boxCC !== n.country_code)
+                        ? (' <span style="background:#ecfdf5;color:#065f46;padding:0 5px;border-radius:4px;font-size:0.68rem;">صندوق ' + esc(boxCC) + '</span>')
+                        : '';
                     return '<tr>' +
                         '<td><b>' + esc(n.full_name) + '</b> <span style="color:#64748b;font-size:0.78rem;" dir="ltr">#' + Number(n.member_code) + '</span>' + (n.is_direct_referral ? ' <span style="background:#fef3c7;color:#92400e;padding:0 5px;border-radius:4px;font-size:0.68rem;">★ مباشر</span>' : '') + '</td>' +
-                        '<td>' + flagSvg(n.country_code, 16) + ' ' + esc(n.country_name_ar || n.country_code) + '</td>' +
+                        '<td>' + flagSvg(n.country_code, 16) + ' ' + esc(n.country_name_ar || n.country_code) + crossTag + '</td>' +
                         '<td>الجيل ' + Number(n.viewer_depth || n.rel_depth) + '</td>' +
                         '<td><b style="color:' + st.color + ';" dir="ltr">' + Math.round(Number(n.progress_pct || 0)) + '%</b> <small style="color:#64748b;">(' + esc(achLocal) + ' / ' + esc(reqLocal) + ')</small></td>' +
                         '<td dir="ltr">' + (wa ? '<a href="' + esc(wa) + '" target="_blank" rel="noopener noreferrer" style="color:#047857;font-weight:800;text-decoration:none;">💬 ' + esc(n.phone) + '</a>' : '<span style="color:#94a3b8;">🔒 محمي</span>') + '</td>' +
@@ -666,8 +671,9 @@
                             '<button type="button" class="ts-btn' + (!STATE.countryCode ? ' active' : '') + '" onclick="window.SAWYAN.TreeStudio.setCountry(null)">الكل (' + totalTeamCount + ')</button>' +
                             '<span data-spec-id="member-tree-country-reports" style="display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center;">' +
                                 countries.map(function (c) {
+                                    const qCnt = Number(c.qualified || 0);
                                     return '<button type="button" class="ts-btn' + (STATE.countryCode === c.country_code ? ' active' : '') + '" onclick="window.SAWYAN.TreeStudio.setCountry(\'' + esc(c.country_code) + '\')">' +
-                                        flagSvg(c.country_code, 16) + ' ' + esc(c.country_name_ar || c.country_code) + ' (' + Number(c.count) + ')</button>';
+                                        flagSvg(c.country_code, 16) + ' ' + esc(c.country_name_ar || c.country_code) + ' (' + Number(c.count) + (qCnt > 0 ? (' • ' + qCnt + ' 🟢') : '') + ')</button>';
                                 }).join('') +
                             '</span>' +
                         '</div>' +
@@ -801,21 +807,58 @@
             const firstName = getFirstName(node.full_name);
             const hasPhoto = Boolean(node.avatar_url && !node.is_tombstone_banned);
 
+            const boxCur = node.box_currency_code || node.currency_code || 'EGP';
+            const boxCC = node.box_country_code || node.country_code || '';
+            const boxNameAr = node.box_country_name_ar || node.country_name_ar || boxCC;
+            const resCur = node.residency_currency_code || node.currency_code || '';
+
             const achLocal = node.achieved_local !== undefined
-                ? formatLocalMoney(node.achieved_local, node.currency_code)
+                ? formatLocalMoney(node.achieved_local, boxCur)
                 : ('$' + Number(node.accumulated_usd || 0).toFixed(2));
             const reqLocal = node.target_required_local !== undefined
-                ? formatLocalMoney(node.target_required_local, node.currency_code)
+                ? formatLocalMoney(node.target_required_local, boxCur)
                 : ('$' + Number(node.target_required_usd || 24.75).toFixed(2));
             const remLocal = node.remaining_local !== undefined
-                ? formatLocalMoney(node.remaining_local, node.currency_code)
+                ? formatLocalMoney(node.remaining_local, boxCur)
                 : ('$' + Number(node.remaining_usd || 0).toFixed(2));
+            const projCarryOutLocal = Number(node.projected_carry_on_out_local || 0);
+            const targetTopRight = pct >= 100
+                ? (projCarryOutLocal > 0 ? ('✅ مكتمل 100% • ترحيل: ' + esc(formatLocalMoney(projCarryOutLocal, boxCur))) : '✅ مكتمل 100%')
+                : ('متبقي: ' + esc(remLocal));
+
+            const allCountryBoxes = Array.isArray(node.country_boxes) ? node.country_boxes : [];
+            const extraBoxes = allCountryBoxes.filter(function (cb) {
+                return cb && cb.country_code && (cb.country_code !== boxCC || allCountryBoxes.length > 1);
+            });
+            const resBoxObj = allCountryBoxes.find(function (cb) { return cb && (cb.is_residency || cb.country_code === node.country_code); });
+            const isForeignBoxWhileHomeUnqual = Boolean(boxCC && node.country_code && boxCC !== node.country_code && !(resBoxObj && resBoxObj.is_qualified));
+            const resNameAr = node.country_name_ar || node.country_code || '';
+            const foreignScopeNoteHtml = isForeignBoxWhileHomeUnqual
+                ? '<div data-spec-id="tree-foreign-box-scope-notice" style="margin-top:8px;padding:7px 9px;background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;font-size:0.74rem;line-height:1.55;color:#92400e;font-weight:700;">' +
+                      'ℹ️ استقلال الدول: التأهل في ' + esc(boxNameAr) + ' يشمل عمولات ' + esc(boxNameAr) + ' فقط، ولا يغني عن إتمام هدف دولة التسجيل (' + esc(resNameAr) + ').' +
+                  '</div>'
+                : '';
+            const multiBoxHtml = (extraBoxes.length > 0
+                ? '<div style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(15,23,42,0.12);display:flex;flex-direction:column;gap:4px;">' +
+                      '<div style="font-size:0.71rem;font-weight:800;color:#475569;">🌍 تفصيل صناديق العضو حسب الدولة (استقلال الدول):</div>' +
+                      extraBoxes.map(function (cb) {
+                          const cbPct = Math.round(Number(cb.progress_pct || 0));
+                          const cbIcon = cb.is_qualified ? '🟢' : (cbPct > 0 ? '🟠' : '⚪');
+                          const cbAch = formatLocalMoney(cb.achieved_local || 0, cb.currency_code);
+                          const cbReq = formatLocalMoney(cb.target_required_local || 0, cb.currency_code);
+                          return '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:0.74rem;font-weight:800;background:rgba(255,255,255,0.65);padding:4px 8px;border-radius:8px;">' +
+                              '<span>' + flagSvg(cb.country_code, 14) + ' ' + esc(cb.country_name_ar || cb.country_code) + (cb.is_residency ? ' <small style="color:#64748b;">(التسجيل)</small>' : ' <small style="color:#0284c7;">(أجنبية)</small>') + '</span>' +
+                              '<span>' + cbIcon + ' ' + esc(cbAch) + ' / ' + esc(cbReq) + ' (' + cbPct + '%)</span>' +
+                          '</div>';
+                      }).join('') +
+                  '</div>'
+                : '') + foreignScopeNoteHtml;
 
             const sponsorText = node.sponsor_name
                 ? (esc(node.sponsor_name) + ' <span style="color:#047857;font-family:Poppins,sans-serif;" dir="ltr">#' + Number(node.sponsor_code) + '</span>')
                 : (node.sponsor_code ? ('<span dir="ltr">#' + Number(node.sponsor_code) + '</span>') : 'جذر المؤسسة (#0)');
 
-            const countryLabel = esc(node.country_name_ar || node.country_code || '') + ' (' + esc(node.currency_code || '') + ')';
+            const countryLabel = esc(node.country_name_ar || node.country_code || '') + (resCur ? (' (' + esc(resCur) + ')') : '');
             const joinDateStr = formatJoinDate(node.created_at);
             const viewerDepth = Number(node.viewer_depth || 0);
             const depthLabel = viewerDepth === 0
@@ -867,14 +910,15 @@
                     '<div class="ts-mm-body">' +
                         '<div class="ts-mm-target" style="background:' + st.soft + ';border-color:' + st.color + '44;">' +
                             '<div class="ts-mm-target-top" style="color:' + st.text + ';">' +
-                                '<span>🎯 الهدف الشخصي الشهري</span>' +
-                                '<span>' + (pct >= 100 ? '✅ مكتمل 100%' : ('متبقي: ' + esc(remLocal))) + '</span>' +
+                                '<span>🎯 الهدف الشخصي الشهري — ' + flagSvg(boxCC, 14) + ' ' + esc(boxNameAr) + '</span>' +
+                                '<span>' + targetTopRight + '</span>' +
                             '</div>' +
                             '<div class="ts-mm-target-vals">' +
                                 '<span>' + esc(achLocal) + ' من أصل ' + esc(reqLocal) + '</span>' +
                                 '<span style="color:' + st.color + ';" dir="ltr">' + Math.round(pct) + '%</span>' +
                             '</div>' +
                             '<div class="ts-mm-bar"><div class="ts-mm-bar-fill" style="width:' + pct + '%;background:' + st.color + ';"></div></div>' +
+                            multiBoxHtml +
                         '</div>' +
                         '<div class="ts-mm-grid">' +
                             '<div class="ts-mm-cell">' +

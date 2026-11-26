@@ -909,8 +909,48 @@ def run_v2_multi_persona_browser_journeys():
                 assert deep_res["dropdownClosed"], f"[PILLAR 7B FAIL — Bell Close] Dropdown remained open: {deep_res}"
                 assert deep_res["hasSpotlight"], f"[PILLAR 7B FAIL — Bell Deep-Link] Clicking notification did not highlight target element: {deep_res}"
 
+            # 6.8 Stage 28 — Cross-Screen & Cross-Country Numerical Consistency Audit
+            cons_res = page_adm.evaluate(
+                """() => {
+                    const bun = window.__SAWYAN_ADMIN_LIVE_BUNDLE__ || {};
+                    const kpis = bun.kpis || {};
+                    const mems = Array.isArray(bun.members) ? bun.members : [];
+                    const qualInMembers = mems.filter(m => Number(m.member_code) > 0 && Boolean(m.is_qualified_period)).length;
+                    const kpiQual = Number(kpis.qualified_members_period || 0);
+                    const boxMismatches = [];
+                    for (const m of mems) {
+                        const cbs = Array.isArray(m.country_boxes) ? m.country_boxes : [];
+                        const anyQ = cbs.some(b => Boolean(b.is_qualified));
+                        if (anyQ && !m.is_qualified_period) {
+                            boxMismatches.push({ code: m.member_code, issue: 'country_box_qualified_but_member_not' });
+                        }
+                    }
+                    return { kpiQual, qualInMembers, memCount: mems.length, boxMismatches };
+                }"""
+            )
+            assert cons_res["kpiQual"] == cons_res["qualInMembers"], (
+                f"[PILLAR 6.8 FAIL — Admin KPI vs Members/Reports Drift] KPI qualified={cons_res['kpiQual']} != members qualified={cons_res['qualInMembers']}"
+            )
+            assert not cons_res["boxMismatches"], (
+                f"[PILLAR 6.8 FAIL — Cross-Country Qualification Leak] {cons_res['boxMismatches']}"
+            )
+            page_adm.locator('.sidebar-nav .nav-item[data-page="networkTree"]').first.click()
+            page_adm.wait_for_selector('#networkTreePage[data-tree-loading="0"] button[onclick*="openAdminTreeNodeModal"]', timeout=15000)
+            page_adm.wait_for_timeout(300)
+            non_root_detail_btn = page_adm.locator('#networkTreePage[data-tree-loading="0"] button[onclick*="openAdminTreeNodeModal"]').first
+            if non_root_detail_btn.count() > 0:
+                non_root_detail_btn.click()
+                page_adm.wait_for_timeout(450)
+                adm_node_txt = page_adm.evaluate(
+                    "() => { const ov = document.getElementById('svStage7ModalOverlay'); return ov ? (ov.innerText || '') : ''; }"
+                )
+                assert "جارية (قبل الإقفال):" in adm_node_txt and "مصروفة بالمحفظة:" in adm_node_txt and "يوم 15" in adm_node_txt, (
+                    f"[PILLAR 6.8 FAIL — Admin Node Commission Clarity] Missing open-month vs paid wallet split: {adm_node_txt[:300]}"
+                )
+                page_adm.evaluate("() => { if (typeof closeStage7Modal === 'function') closeStage7Modal(); }")
+
             ctx_adm.close()
-            print(" [V2 PILLAR 4, 5 & 6 PASS] Cashier Employee, Admin Sovereign Cockpit, Real-Click RPC Guard, 3-Portal Back Guard, Reports Date Filter, ban_now Guard, [?] Help Popovers, i18n EN/TR, Dark Mode & Zero-Jargon 100% GREEN")
+            print(" [V2 PILLAR 4, 5 & 6 PASS] Cashier Employee, Admin Sovereign Cockpit, Real-Click RPC Guard, 3-Portal Back Guard, Reports Date Filter, ban_now Guard, [?] Help Popovers, i18n EN/TR, Dark Mode, Cross-Screen Consistency & Zero-Jargon 100% GREEN")
 
             browser.close()
     finally:

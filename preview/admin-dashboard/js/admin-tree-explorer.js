@@ -417,6 +417,7 @@
         const page = document.getElementById('networkTreePage');
         if (!page) return;
         page.setAttribute('data-spec-id', 'admin-network-tree');
+        page.setAttribute('data-tree-loading', STATE.loading ? '1' : '0');
 
         const d = STATE.data;
         const summary = (d && d.summary) || {};
@@ -954,13 +955,20 @@
                     `<div style="font-size:0.76rem;color:#1e3a8a;margin-top:2px;">يمين ${Number(node.subtree_right || 0)} • يسار ${Number(node.subtree_left || 0)}</div>` +
                 '</div>' +
                 '<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px;">' +
-                    '<div style="color:#92400e;font-size:0.74rem;">🎯 صندوق الهدف الشهري</div>' +
+                    `<div style="color:#92400e;font-size:0.74rem;">🎯 صندوق الهدف الشهري${node.box_country_code ? ` (${esc(node.box_country_code)})` : ''}</div>` +
                     `<strong>${Number(node.target_pct || 0)}%</strong>` +
                     `<div style="font-size:0.76rem;color:#78350f;margin-top:2px;">$${fmt2(node.box_accumulated_usd)} / $${fmt2(node.target_required_usd)}</div>` +
+                    (Number(node.projected_carry_on_out_usd || 0) > 0 ? `<div style="font-size:0.72rem;color:#b45309;margin-top:2px;">ترحيل متوقع (Carry-On): <b>$${fmt2(node.projected_carry_on_out_usd)}</b></div>` : '') +
+                    (Array.isArray(node.country_boxes) && node.country_boxes.length > 0
+                        ? `<div style="font-size:0.7rem;color:#78350f;margin-top:4px;border-top:1px dashed #fcd34d;padding-top:4px;">${node.country_boxes.map((cb) => `${esc(cb.country_code)}: ${cb.is_qualified ? '🟢' : '🟠'} $${fmt2(cb.accumulated_usd)}`).join(' • ')}</div>`
+                        : '') +
                 '</div>' +
                 '<div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:10px;">' +
-                    '<div style="color:#065f46;font-size:0.74rem;">💰 المحفظة وتوثيق الهوية</div>' +
-                    `<strong>$${fmt2(node.wallet_balance_usd)}</strong> <small>(أرباح: $${fmt2(node.total_earned_usd)})</small>` +
+                    '<div style="color:#065f46;font-size:0.74rem;">💰 العمولات والمحفظة وتوثيق الهوية</div>' +
+                    `<div><strong>جارية (قبل الإقفال): $${fmt2(node.estimated_month_commission_usd || 0)}</strong></div>` +
+                    `<div style="font-size:0.72rem;color:#047857;margin-top:2px;">صانع: $${fmt2(node.maker_share_usd || 0)} • فريق: $${fmt2(node.downline_est_comm_usd || 0)} <span style="color:#64748b;">(تُصرف يوم 15)</span></div>` +
+                    (Number(node.at_risk_rollup_usd || 0) > 0 ? `<div style="font-size:0.71rem;color:#b45309;margin-top:2px;">⚠️ مهددة بالتخطي: <b>$${fmt2(node.at_risk_rollup_usd)}</b></div>` : '') +
+                    `<div style="font-size:0.74rem;color:#334155;margin-top:3px;border-top:1px dashed #a7f3d0;padding-top:3px;">مصروفة بالمحفظة: <b>$${fmt2(node.wallet_balance_usd)}</b> <small>(إجمالي سابق: $${fmt2(node.total_earned_usd)})</small></div>` +
                     `<div style="margin-top:4px;">${kycBadgeHtml(node.kyc_status)}</div>` +
                 '</div>' +
             '</div>' +

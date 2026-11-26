@@ -1010,22 +1010,35 @@
         if (!container || !badge) return;
 
         const queue = (LIVE_BUNDLE && Array.isArray(LIVE_BUNDLE.flash_offers_queue)) ? LIVE_BUNDLE.flash_offers_queue : [];
-        const pending = queue.filter(function (x) { return x.event_name === 'MerchantFlashOfferPending'; });
-        badge.textContent = pending.length > 0 ? ('🔔 عروض حية بانتظار الاعتماد (' + pending.length + ')') : '✅ لا توجد معلقات (0)';
+        const active = queue.filter(function (x) {
+            return x.event_name === 'MerchantFlashOfferPending' || x.event_name === 'MerchantFlashOfferUnderReview';
+        });
+        const hlp = (typeof window.svHelpBtn === 'function') ? window.svHelpBtn('flash_offer_status') : '';
+        badge.innerHTML = (active.length > 0 ? ('🔔 عروض حية بانتظار البت (' + active.length + ')') : '✅ لا توجد معلقات (0)') + hlp;
 
-        if (pending.length > 0) {
-            container.innerHTML = pending.map(function (item) {
+        if (active.length > 0) {
+            container.innerHTML = active.map(function (item) {
                 const p = item.payload || {};
-                return '<div id="admFlashOfferCard_' + esc(item.id) + '" data-offer-id="' + esc(item.id) + '" style="background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:12px;padding:14px;margin-bottom:10px;">' +
-                    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+                const isUnderReview = item.event_name === 'MerchantFlashOfferUnderReview';
+                const statusBadge = isUnderReview
+                    ? '<span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:0.75rem;font-weight:800;background:#ffedd5;color:#c2410c;border:1.5px solid #fb923c;">🟠 قيد المراجعة</span>'
+                    : '<span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:0.75rem;font-weight:800;background:#ffffff;color:#334155;border:1.5px solid #cbd5e1;">⚪ بانتظار الإدارة</span>';
+                const adminNote = String(p.admin_note || '').trim();
+                const safeTitle = esc(p.title || 'عرض ترويجي').replace(/'/g, '&#39;');
+                return '<div id="admFlashOfferCard_' + esc(item.id) + '" data-offer-id="' + esc(item.id) + '" style="background:#f8fafc;border:1.5px solid ' + (isUnderReview ? '#fb923c' : '#cbd5e1') + ';border-radius:12px;padding:14px;margin-bottom:10px;">' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">' +
                         '<b>🏪 ' + esc(p.business_name || 'تاجر معتمد') + '</b>' +
-                        '<span class="badge badge-warning">معلق بقاعدة البيانات</span>' +
+                        statusBadge +
                     '</div>' +
                     '<div style="font-weight:800;color:#047857;margin-bottom:4px;">📢 ' + esc(p.title) + '</div>' +
-                    '<div style="font-size:0.84rem;color:#334155;margin-bottom:10px;">' + esc(p.body) + '</div>' +
-                    '<div style="display:flex;gap:8px;">' +
-                        '<button type="button" class="btn btn-primary" onclick="svOpsAct(\'flash_offer\',\'' + item.id + '\',\'approved\')">✅ اعتماد وبث العرض الخاطف</button>' +
-                        '<button type="button" class="btn btn-outline" onclick="svOpsAct(\'flash_offer\',\'' + item.id + '\',\'rejected\')">❌ رفض العرض</button>' +
+                    '<div style="font-size:0.84rem;color:#334155;margin-bottom:8px;">' + esc(p.body) + '</div>' +
+                    (adminNote
+                        ? '<div style="margin-bottom:10px;padding:6px 10px;border-radius:8px;font-size:0.76rem;font-weight:700;background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;">🟠 ملاحظة الإدارة المرسلة للتاجر: ' + esc(adminNote) + '</div>'
+                        : '') +
+                    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+                        '<button type="button" class="btn-sm btn-success" onclick="svReviewFlashOffer(\'' + item.id + '\',\'approved\',\'' + safeTitle + '\')">✓ تم (اعتماد وبث)</button>' +
+                        '<button type="button" class="btn-sm btn-review" onclick="svReviewFlashOffer(\'' + item.id + '\',\'under_review\',\'' + safeTitle + '\')">🟠 قيد المراجعة</button>' +
+                        '<button type="button" class="btn-sm btn-danger" onclick="svReviewFlashOffer(\'' + item.id + '\',\'rejected\',\'' + safeTitle + '\')">✕ رفض</button>' +
                     '</div>' +
                 '</div>';
             }).join('');
@@ -1536,6 +1549,54 @@
             } else {
                 showToast('تم رفع عقد الشريك لطابور الاعتماد المزدوج بنجاح!', false);
                 ACTIVE_LIVE_TAB = 'mc';
+            }
+            await refreshSovereignBundle(false);
+        } catch (err) {
+            showToast(err.message, true);
+        }
+    };
+
+    window.svReviewFlashOffer = async function (recordId, decision, offerTitle) {
+        try {
+            let note = 'قرار رقابي من لوحة الإدارة السيادية V3.0';
+            if (decision === 'under_review') {
+                note = window.SAWYAN?.UI?.prompt
+                    ? await window.SAWYAN.UI.prompt({
+                        title: '🟠 تحويل الإعلان إلى «قيد المراجعة»',
+                        message: 'اكتب ملاحظتك للتاجر بخصوص إعلان «' + (offerTitle || 'العرض') + '» — ستصله فوراً في جرسه:',
+                        defaultValue: 'يرجى توضيح تفاصيل العرض أو تعديل الصياغة قبل البث للأعضاء'
+                    })
+                    : null;
+                if (!note || note.trim().length < 3) {
+                    if (note !== null) showToast('يرجى كتابة ملاحظة واضحة للتاجر (3 أحرف على الأقل).', true);
+                    return;
+                }
+            } else if (decision === 'rejected') {
+                note = window.SAWYAN?.UI?.prompt
+                    ? await window.SAWYAN.UI.prompt({
+                        title: '🔴 رفض الإعلان الترويجي',
+                        message: 'اكتب سبب رفض إعلان «' + (offerTitle || 'العرض') + '» — سيصل السبب للتاجر فوراً وتُعاد له حصته الأسبوعية:',
+                        defaultValue: 'صياغة العرض غير مطابقة لضوابط النشر — يمكنك التعديل وإعادة الإرسال'
+                    })
+                    : null;
+                if (!note || note.trim().length < 3) {
+                    if (note !== null) showToast('سبب الرفض إلزامي (3 أحرف على الأقل) ليصل واضحاً للتاجر.', true);
+                    return;
+                }
+            }
+            const res = await window.SAWYAN.API.adminOperationalDecision({
+                domain: 'flash_offer',
+                recordId: recordId,
+                decision: decision,
+                notes: note.trim()
+            });
+            if (decision === 'approved') {
+                const cnt = Number((res && res.broadcast_members_count) || 0);
+                showToast('🟢 تم اعتماد وبث الحملة في الرئيسية والدليل وإشعار ' + cnt + ' عضواً نشطاً بنجاح.', false);
+            } else if (decision === 'under_review') {
+                showToast('🟠 تم تحويل الإعلان إلى «قيد المراجعة» وإرسال ملاحظتك للتاجر فوراً.', false);
+            } else {
+                showToast('🔴 تم رفض الإعلان وإرسال سبب الرفض للتاجر فوراً.', false);
             }
             await refreshSovereignBundle(false);
         } catch (err) {
