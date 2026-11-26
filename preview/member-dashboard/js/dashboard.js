@@ -802,7 +802,28 @@ function renderHomePage() {
     const unitShareUsd = calcMemberUnitShareUsd(req, homePlan.s02);
     const pct = Math.max(0, Math.min(100, Math.round((combinedNetUsd / Math.max(req, 0.01)) * 100)));
     const remainingUsd = Math.max(0, req - combinedNetUsd);
-    const homeProjCarryOutUsd = isQual ? Math.max(0, combinedNetUsd - req) : combinedNetUsd;
+    const homeProjCarryOutUsd = (homeBox && homeBox.projected_carry_on_out_usd !== undefined && homeBox.projected_carry_on_out_usd !== null)
+        ? Number(homeBox.projected_carry_on_out_usd)
+        : (isQual ? Math.max(0, combinedNetUsd - req) : combinedNetUsd);
+    const homeProjCarryOutLocal = (homeBox && homeBox.projected_carry_on_out_local !== undefined && homeBox.projected_carry_on_out_local !== null)
+        ? Number(homeBox.projected_carry_on_out_local)
+        : (homeProjCarryOutUsd * homePlan.fx);
+    const homeProjCarryMonths = (homeBox && homeBox.projected_carry_on_months !== undefined && homeBox.projected_carry_on_months !== null)
+        ? Number(homeBox.projected_carry_on_months)
+        : (req > 0 ? Math.floor(homeProjCarryOutUsd / req) : 0);
+    const fmtCarryMonthsAr = (m) => {
+        const n = Math.max(0, parseInt(m, 10) || 0);
+        if (n === 1) return 'شهراً قادماً كاملاً';
+        if (n === 2) return 'شهرين قادمين كاملين';
+        if (n <= 10) return `${n} أشهر قادمة كاملة`;
+        return `${n} شهراً قادماً كاملاً`;
+    };
+    const carryHelpBtnHtml = typeof window.svHelpBtn === 'function'
+        ? window.svHelpBtn('carry_on_surplus')
+        : ((window.SAWYAN && window.SAWYAN.Help && typeof window.SAWYAN.Help.btn === 'function')
+            ? window.SAWYAN.Help.btn('carry_on_surplus')
+            : '');
+    const homeProjCarryOutLocalStr = `${homeProjCarryOutLocal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${homePlan.currencyCode}`;
     const stateCls = isQual ? 'green-state' : (combinedNetUsd > 0 ? 'orange-state' : 'white-state');
     const stateBadgeBg = isQual ? '#10b981' : (combinedNetUsd > 0 ? '#f59e0b' : '#64748b');
     const stateBadgeText = isQual
@@ -838,17 +859,40 @@ function renderHomePage() {
                     const obAcc = Number(ob.net_accumulated_usd || ob.current_month_purchases_usd || 0);
                     const obReq = Number(ob.target_required_usd || 24.75);
                     const obPct = Math.min(100, Math.round((obAcc / Math.max(obReq, 0.01)) * 100));
-                    const obCarry = ob.is_qualified ? Math.max(0, obAcc - obReq) : obAcc;
+                    const obCarry = (ob.projected_carry_on_out_usd !== undefined && ob.projected_carry_on_out_usd !== null)
+                        ? Number(ob.projected_carry_on_out_usd)
+                        : (ob.is_qualified ? Math.max(0, obAcc - obReq) : obAcc);
+                    const obCarryLocal = (ob.projected_carry_on_out_local !== undefined && ob.projected_carry_on_out_local !== null)
+                        ? Number(ob.projected_carry_on_out_local)
+                        : (obCarry * obFx);
+                    const obCarryMonths = (ob.projected_carry_on_months !== undefined && ob.projected_carry_on_months !== null)
+                        ? Number(ob.projected_carry_on_months)
+                        : (obReq > 0 ? Math.floor(obCarry / obReq) : 0);
                     const obName = (ob.country_name_i18n && (ob.country_name_i18n.ar || ob.country_name_i18n.en)) || ob.country_code;
                     const obShare = Number(ob.unit_share_usd || calcMemberUnitShareUsd(obReq, homePlan.s02));
-                    const obCarryLocalStr = `${(obCarry * obFx).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${obCur}`;
-                    return `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;background:#ffffff;border:1px solid #a7f3d0;border-radius:9px;padding:7px 10px;font-size:0.8rem;">
-                        <div>
-                            <strong>${esc(obName)} (${esc(ob.country_code)})</strong>
-                            <span style="margin-inline-start:6px;padding:1px 7px;border-radius:999px;font-size:0.72rem;font-weight:800;background:${ob.is_qualified ? '#dcfce7;color:#166534' : '#fef3c7;color:#92400e'};">${ob.is_qualified ? '🟢 مؤهل 100%' : `🟠 ${obPct}%`}</span>
-                            ${ob.is_qualified && obCarry > 0 ? `<div style="font-size:0.72rem;color:#047857;margin-top:2px;">ترحيل متوقع: <b>${fmtBiDi(obCarryLocalStr)}</b> (${fmtBiDi('$' + obCarry.toFixed(2))}) • حصة صانع جارية: <b>${fmtBiDi('$' + obShare.toFixed(2))}</b></div>` : ''}
+                    const obShareLocalStr = `${(obShare * obFx).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${obCur}`;
+                    const obCarryLocalStr = `${obCarryLocal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${obCur}`;
+                    return `<div style="display:grid;gap:6px;background:#ffffff;border:1px solid #a7f3d0;border-radius:10px;padding:9px 11px;font-size:0.8rem;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+                            <div>
+                                <strong>${esc(obName)} (${esc(ob.country_code)})</strong>
+                                <span style="margin-inline-start:6px;padding:1px 7px;border-radius:999px;font-size:0.72rem;font-weight:800;background:${ob.is_qualified ? '#dcfce7;color:#166534' : '#fef3c7;color:#92400e'};">${ob.is_qualified ? '🟢 مؤهل 100%' : `🟠 ${obPct}%`}</span>
+                            </div>
+                            <strong dir="ltr" style="color:#065f46;">${(obAcc * obFx).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / ${(obReq * obFx).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${esc(obCur)}</strong>
                         </div>
-                        <strong dir="ltr" style="color:#065f46;">${(obAcc * obFx).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / ${(obReq * obFx).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${esc(obCur)}</strong>
+                        ${obCarry > 0 ? `
+                            <div data-spec-id="member-foreign-box-carry-on" style="background:${ob.is_qualified ? '#f0fdf4' : '#fffbeb'};border:1px solid ${ob.is_qualified ? '#86efac' : '#fcd34d'};border-radius:8px;padding:6px 9px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+                                <span style="font-size:0.76rem;font-weight:800;color:${ob.is_qualified ? '#065f46' : '#92400e'};">
+                                    🔄 ${ob.is_qualified ? 'فائض مرحّل تلقائياً للشهر القادم (Carry-On)' : 'رصيد محفوظ للترحيل (Carry-On)'}${carryHelpBtnHtml}
+                                </span>
+                                <strong style="font-size:0.82rem;color:${ob.is_qualified ? '#047857' : '#b45309'};">${fmtBiDi((ob.is_qualified ? '+' : '') + obCarryLocalStr)}</strong>
+                                <div style="width:100%;font-size:0.72rem;color:${ob.is_qualified ? '#047857' : '#92400e'};line-height:1.5;">
+                                    ${ob.is_qualified
+                                        ? `يُخصم هدف واحد فقط هذا الشهر${obCarryMonths >= 1 ? ` — الفائض يغطي <b>${fmtCarryMonthsAr(obCarryMonths)}</b> تلقائياً` : ''} (مفتوح المدة ولا يضيع) • حصة صانع جارية: <b>${fmtBiDi(obShareLocalStr)}</b>`
+                                        : 'إن لم يكتمل الهدف قبل نهاية الشهر يُرحَّل هذا الرصيد تلقائياً للشهر القادم دون ضياع.'}
+                                </div>
+                            </div>
+                        ` : (ob.is_qualified ? `<div style="font-size:0.72rem;color:#047857;">حصة صانع جارية: <b>${fmtBiDi(obShareLocalStr)}</b></div>` : '')}
                     </div>`;
                 }).join('')}
             </div>
@@ -981,6 +1025,21 @@ function renderHomePage() {
                         <span style="font-weight:800;color:${isQual ? '#047857' : '#b45309'};">باقي للتأهل:</span>
                         <strong style="color:${isQual ? '#047857' : '#b45309'};">${isQual ? 'مكتمل 100% ✅' : fmtBiDi(fmtLocalFromUsd(remainingUsd))}</strong>
                     </div>
+                    ${homeProjCarryOutUsd > 0 ? `
+                        <div data-spec-id="member-home-carry-on-out" style="background:${isQual ? '#ecfdf5' : '#fffbeb'};border:1.5px solid ${isQual ? '#6ee7b7' : '#fcd34d'};border-radius:10px;padding:8px 10px;margin-top:4px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+                                <span style="font-weight:900;color:${isQual ? '#065f46' : '#92400e'};font-size:0.83rem;">
+                                    🔄 ج) ${isQual ? 'فائض مرحّل تلقائياً للشهر القادم (Carry-On)' : 'رصيد محفوظ للترحيل (Carry-On)'}${carryHelpBtnHtml}
+                                </span>
+                                <strong style="color:${isQual ? '#047857' : '#b45309'};font-size:0.9rem;">${fmtBiDi((isQual ? '+' : '') + homeProjCarryOutLocalStr)}</strong>
+                            </div>
+                            <div style="font-size:0.74rem;color:${isQual ? '#047857' : '#92400e'};margin-top:3px;line-height:1.55;">
+                                ${isQual
+                                    ? `يُخصم هدف شهري واحد فقط (${fmtBiDi(fmtLocalFromUsd(req))})، ويُرحَّل الفائض تلقائياً عند الإقفال${homeProjCarryMonths >= 1 ? ` — يغطي <b>${fmtCarryMonthsAr(homeProjCarryMonths)}</b> تلقائياً` : ''} (مفتوح المدة ولا يضيع).`
+                                    : 'مجهودك محفوظ بالكامل — إذا لم يكتمل الهدف قبل نهاية الشهر يُرحَّل هذا الرصيد تلقائياً للشهر القادم.'}
+                            </div>
+                        </div>
+                    ` : ''}
                 </div>
             </div>
 

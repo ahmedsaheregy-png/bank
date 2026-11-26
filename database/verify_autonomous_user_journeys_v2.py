@@ -494,6 +494,12 @@ def run_v2_multi_persona_browser_journeys():
                 const tbRect = tb ? tb.getBoundingClientRect() : null;
                 const b = window.__memberBundleCache || {};
                 const tbData = b.target_box || {};
+                const boxes = Array.isArray(b.target_boxes) ? b.target_boxes : [];
+                const boxesHaveCarryFields = boxes.every(x =>
+                    x && x.projected_carry_on_out_usd !== undefined && x.projected_carry_on_out_local !== undefined && x.projected_carry_on_months !== undefined
+                );
+                const anyPositiveCarry = boxes.some(x => Number(x && x.projected_carry_on_out_usd || 0) > 0);
+                const carryDomRendered = Boolean(document.querySelector('[data-spec-id="member-home-carry-on-out"], [data-spec-id="member-foreign-box-carry-on"]'));
                 const tbText = tb ? tb.innerText : '';
                 return {
                     headerHeight: hdrRect ? Math.round(hdrRect.height) : 999,
@@ -502,6 +508,9 @@ def run_v2_multi_persona_browser_journeys():
                     hasBell: Boolean(bell),
                     hasFlashApi: Boolean(window.SAWYAN && window.SAWYAN.API && typeof window.SAWYAN.API.getPublicActiveFlashOffers === 'function'),
                     hasBundleMath: Boolean(b.profile && b.tree_analytics && tbText.length > 10),
+                    boxesHaveCarryFields,
+                    anyPositiveCarry,
+                    carryDomRendered,
                     dbTeamCount: b.tree_analytics ? Number(b.tree_analytics.total_team_count || 0) : -1,
                     dbTargetReqUsd: Number(tbData.target_required_usd || (b.profile && b.profile.monthly_target_usd) || 0)
                 };
@@ -514,6 +523,9 @@ def run_v2_multi_persona_browser_journeys():
             )
             assert atf["hasBell"] and atf["hasFlashApi"] and atf["hasBundleMath"] and atf["dbTeamCount"] >= 0 and atf["dbTargetReqUsd"] > 0, (
                 f"[JOURNEY V2 FAIL — member_atf] Missing bell, Flash API, or dynamic DB target/tree math: {atf}"
+            )
+            assert atf["boxesHaveCarryFields"] and (not atf["anyPositiveCarry"] or atf["carryDomRendered"]), (
+                f"[JOURNEY V2 FAIL — member_carry_on] Projected Carry-On fields missing from DB bundle or not rendered in UI: {atf}"
             )
             audit_screen_purity(page_mem, "member_home_375", is_user_facing=True)
 
