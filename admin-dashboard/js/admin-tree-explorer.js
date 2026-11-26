@@ -483,7 +483,7 @@
                     '</div>' +
                     '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">' +
                         '<input type="month" id="adminTreePeriodInput" value="' + esc(activePeriod) + '" class="form-control" style="width:auto;padding:5px 9px;font-size:0.8rem;background:#0f172a;color:#f8fafc;border-color:#334155;" onchange="setAdminTreePeriod(this.value)">' +
-                        '<select id="adminTreeDepthSelect" class="form-control" style="width:auto;padding:5px 9px;font-size:0.8rem;background:#0f172a;color:#f8fafc;border-color:#334155;" onchange="setAdminTreeDepth(this.value)">' +
+                        '<select id="adminTreeDepthSelect" class="form-control" style="width:auto;min-width:132px;padding:6px 10px;font-size:0.82rem;background:#0f172a;color:#f8fafc;border-color:#334155;" onchange="setAdminTreeDepth(this.value)">' +
                             [6, 11, 15, 25, 40].map((dp) => `<option value="${dp}" ${Number(STATE.maxDepth) === dp ? 'selected' : ''}>عمق ${dp} جيل</option>`).join('') +
                         '</select>' +
                         (!isRoot0 ? '<button type="button" class="lens-pill-btn" style="background:#fbbf24;color:#0f172a;border-color:#fde047;" onclick="openAdminNetworkTree(0)">👑 العودة للجذر #0</button>' : '') +

@@ -11,8 +11,8 @@
     <link rel="icon" type="image/svg+xml" href="../shared/assets/sawyan-icon.svg">
     <link rel="stylesheet" href="../shared/css/variables.css?v=20261121_launch_2460cbfc">
     <link rel="stylesheet" href="../shared/css/logo.css?v=20261121_launch_ada2fd4d">
-    <link rel="stylesheet" href="../shared/css/ui-feedback.css?v=20261121_launch_e66c22b7">
-    <link rel="stylesheet" href="../css/bidi-support.css?v=20261121_launch_f1b573e0">
+    <link rel="stylesheet" href="../shared/css/ui-feedback.css?v=20261121_launch_6fb6ebf8">
+    <link rel="stylesheet" href="../css/bidi-support.css?v=20261121_launch_4b2394fc">
     <style>
         * { box-sizing: border-box; }
         body {
@@ -115,9 +115,102 @@
             background: #ef4444;
             color: #fff;
             border-radius: 999px;
-            padding: 1px 7px;
+            padding: 2px 8px;
             font-size: 0.72rem;
             font-weight: 900;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .emp-badge.live-green {
+            background: #047857;
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55);
+            animation: empPulseRing 1.6s infinite;
+        }
+        .emp-badge-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #6ee7b7;
+            display: inline-block;
+        }
+        @keyframes empPulseRing {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.45); }
+            50% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+        }
+        .emp-new-arrival-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+            background: #ecfdf5;
+            border: 1.5px solid #10b981;
+            color: #065f46;
+            border-radius: 12px;
+            padding: 8px 12px;
+            margin-bottom: 10px;
+            font-size: 0.8rem;
+            font-weight: 800;
+        }
+        .emp-new-arrival-btn {
+            border: none;
+            background: #047857;
+            color: #ffffff;
+            border-radius: 8px;
+            padding: 6px 12px;
+            min-height: 32px;
+            font-family: 'Tajawal', sans-serif;
+            font-weight: 800;
+            font-size: 0.78rem;
+            cursor: pointer;
+        }
+        .emp-card.is-new-arrival {
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.16);
+        }
+        @media (max-width: 680px) {
+            .emp-header {
+                padding: 8px 12px;
+            }
+            .emp-header-inner {
+                gap: 6px;
+            }
+            .emp-store-title {
+                font-size: 0.94rem;
+            }
+            .emp-sub-meta {
+                font-size: 0.72rem;
+            }
+            .emp-header-actions {
+                width: 100%;
+                gap: 6px;
+            }
+            .emp-pill-btn {
+                min-height: 32px;
+                padding: 5px 9px;
+                font-size: 0.73rem;
+            }
+            .emp-main {
+                margin-top: 10px;
+                padding: 0 10px;
+            }
+            .emp-live-strip {
+                padding: 6px 10px;
+                margin-bottom: 10px;
+                font-size: 0.74rem;
+                gap: 4px;
+            }
+            .emp-tabs {
+                gap: 5px;
+                padding: 4px;
+                margin-bottom: 12px;
+            }
+            .emp-tab-btn {
+                padding: 8px 6px;
+                font-size: 0.78rem;
+                flex-wrap: wrap;
+            }
         }
         .emp-card {
             background: #fff;
@@ -298,6 +391,8 @@
                 <span id="empSessionTimerInfo">الوردية نشطة</span>
             </div>
 
+            <div id="empNewArrivalBanner" class="emp-new-arrival-banner" style="display:none;"></div>
+
             <nav class="emp-tabs" role="tablist">
                 <button type="button" id="empTabPending" class="emp-tab-btn active" onclick="switchEmpTab('pending')">
                     <span>⏳ الطلبات الواردة</span>
@@ -356,7 +451,7 @@
     <script src="../shared/js/push-manager.js?v=20261121_launch_5d2049bd"></script>
     <script src="../shared/components/ui-feedback.js?v=20261121_launch_629aacf5"></script>
     <script src="../shared/components/image-upload.js?v=20261121_launch_7c269213"></script>
-    <script src="js/employee.js?v=20261121_launch_0a48d8ba"></script>
+    <script src="js/employee.js?v=20261121_launch_8b3929dd"></script>
 </body>
 
 </html>

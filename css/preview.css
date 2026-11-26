@@ -1125,8 +1125,9 @@ span {
 }
 
 .rating-count {
-    color: #64748b;
+    color: #475569;
     font-size: 0.875rem;
+    font-weight: 600;
 }
 
 .merchant-footer {
@@ -2169,8 +2170,12 @@ span {
 }
 
 .rating-count {
-    color: #94a3b8;
+    color: #475569;
     font-size: 0.8rem;
+    font-weight: 600;
+}
+[data-theme="dark"] .rating-count {
+    color: #cbd5e1;
 }
 
 .merchant-footer {
@@ -2370,8 +2375,24 @@ span {
 }
 
 .merchant-rating-compact span {
-    color: #fbbf24;
-    /* Star color */
+    color: #334155;
+}
+
+.merchant-rating-compact .stars {
+    color: #d97706;
+}
+
+.merchant-rating-compact .rating-value,
+.merchant-rating-compact .rating-count {
+    color: #334155;
+}
+
+.cta-box .text-gold {
+    background: none;
+    -webkit-background-clip: border-box;
+    background-clip: border-box;
+    -webkit-text-fill-color: #fde047;
+    color: #fde047;
 }
 
 .merchant-desc-short {
@@ -2425,6 +2446,10 @@ span {
 
 [data-theme="dark"] .merchant-rating-compact {
     background: rgba(255, 255, 255, 0.05);
+    color: #e2e8f0;
+}
+[data-theme="dark"] .merchant-rating-compact .rating-value,
+[data-theme="dark"] .merchant-rating-compact .rating-count {
     color: #e2e8f0;
 }
 
@@ -3323,7 +3348,7 @@ section[id] {
 }
 .promo-play-center {
     position: absolute;
-    top: 44%;
+    top: 52%;
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: 4;
@@ -3564,7 +3589,11 @@ section[id] {
 }
 
 @media (max-width: 640px) {
-    .promo-stage { aspect-ratio: 16 / 9; min-height: 190px; }
+    .promo-stage { aspect-ratio: 16 / 9; min-height: 204px; }
+    .promo-top-bar { top: 8px; left: 8px; right: 8px; gap: 4px; }
+    .promo-pill-badge { font-size: 0.66rem; padding: 3px 8px; }
+    .promo-play-center { top: 58%; gap: 5px; width: 92%; }
+    .promo-play-circle { width: 48px; height: 48px; font-size: 1.15rem; }
     .promo-stage-vignette { background: linear-gradient(180deg, rgba(15, 23, 42, 0.14) 0%, transparent 55%, rgba(15, 23, 42, 0.45) 100%); }
     .promo-caption-box {
         position: static;
@@ -3659,8 +3688,9 @@ section[id] {
         border-color: rgba(255, 255, 255, 0.28) !important;
     }
     .top-bar-mobile-controls .sawyan-lang-btn {
-        padding: 2px 5px !important;
-        min-height: 22px !important;
+        padding: 4px 7px !important;
+        min-width: 34px !important;
+        min-height: 32px !important;
     }
     .top-bar-mobile-controls .sawyan-font-btn {
         display: none !important;

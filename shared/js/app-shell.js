@@ -395,7 +395,7 @@
     function renderHelpBtn(key, labelText) {
         const safeKey = String(key || '').replace(/[^a-zA-Z0-9_]/g, '');
         const lbl = labelText ? (' ' + labelText) : '';
-        return '<button type="button" class="sawyan-help-trigger" data-help-key="' + safeKey + '" onclick="event.preventDefault();event.stopPropagation();window.SAWYAN.Help.open(\'' + safeKey + '\')" title="اضغط لشرح الوظيفة بمثال عملي" style="display:inline-flex;align-items:center;justify-content:center;gap:3px;min-width:20px;height:20px;padding:0 6px;margin-inline-start:5px;border-radius:999px;border:1.5px solid #0f766e;background:#ecfdf5;color:#0f766e;font-family:Tajawal,sans-serif;font-size:0.72rem;font-weight:900;cursor:pointer;line-height:1;vertical-align:middle;">؟' + lbl + '</button>';
+        return '<button type="button" class="sawyan-help-trigger" data-help-key="' + safeKey + '" onclick="event.preventDefault();event.stopPropagation();window.SAWYAN.Help.open(\'' + safeKey + '\')" title="اضغط لشرح الوظيفة بمثال عملي" style="display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:28px;height:28px;padding:0 8px;margin-inline-start:5px;border-radius:999px;border:1.5px solid #0f766e;background:#ecfdf5;color:#0f766e;font-family:Tajawal,sans-serif;font-size:0.78rem;font-weight:900;cursor:pointer;line-height:1;vertical-align:middle;">؟' + lbl + '</button>';
     }
 
     window.svHelpBtn = renderHelpBtn;

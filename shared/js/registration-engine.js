@@ -513,9 +513,26 @@
         if (!inputEl) return;
 
         function wrapEye(el) {
-            if (!el || el.dataset.eyeAttached === '1') return;
+            if (!el || el.dataset.eyeAttached === '1') return el ? el.closest('.password-field-wrap') : null;
             el.dataset.eyeAttached = '1';
-            const parent = el.parentElement;
+            let parent = el.parentElement;
+            if (parent && parent.classList.contains('pw-wrap')) {
+                parent.querySelectorAll('.pw-eye-btn').forEach(oldBtn => oldBtn.remove());
+                parent.classList.add('password-field-wrap');
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'pwd-toggle-btn';
+                btn.title = 'إظهار / إخفاء كلمة المرور';
+                btn.setAttribute('aria-label', 'إظهار أو إخفاء كلمة المرور');
+                btn.textContent = '👁️';
+                btn.addEventListener('click', function () {
+                    const show = el.type === 'password';
+                    el.type = show ? 'text' : 'password';
+                    btn.textContent = show ? '🙈' : '👁️';
+                });
+                parent.appendChild(btn);
+                return parent;
+            }
             const wrap = document.createElement('div');
             wrap.className = 'password-field-wrap';
             parent.insertBefore(wrap, el);
@@ -1653,16 +1670,18 @@
                 input.required = Boolean(reqFlag);
             }
 
-            // 3. Update Help Text below field
+            // 3. Update Help Text below field (suppress duplicate notice when residency-lock-box already exists)
             let helpEl = entry.helpEl || wrap.querySelector('.field-help-text');
-            if (!helpEl && cfg.help_text_ar) {
+            const hasResidencyLockBox = cfg.field_key === 'country_of_residence' && Boolean(wrap.querySelector('.residency-lock-box'));
+            const helpTxt = hasResidencyLockBox ? '' : (cfg.help_text_ar || '');
+            if (!helpEl && helpTxt) {
                 helpEl = document.createElement('small');
                 helpEl.className = 'field-help-text form-hint';
                 wrap.appendChild(helpEl);
             }
             if (helpEl) {
-                helpEl.textContent = cfg.help_text_ar || '';
-                helpEl.style.display = cfg.help_text_ar ? 'block' : 'none';
+                helpEl.textContent = helpTxt;
+                helpEl.style.display = helpTxt ? 'block' : 'none';
             }
 
             // 4. Route to Required vs Optional container in initial mode

@@ -2464,15 +2464,58 @@ body {
 
 .transaction-date {
     display: block;
-    font-size: 0.75rem;
-    color: #9CA3AF;
-    margin-top: 2px;
+    font-size: 0.78rem;
+    color: #475569;
+    margin-top: 3px;
 }
 
 .transaction-amount {
-    font-weight: 700;
-    font-size: 0.95rem;
+    font-weight: 800;
+    font-size: 0.96rem;
+    color: #047857;
     white-space: nowrap;
+}
+
+.recent-tx-card {
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+.recent-tx-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.recent-tx-repeat-btn {
+    min-height: 32px;
+    padding: 4px 10px;
+    font-size: 0.76rem;
+    white-space: nowrap;
+}
+
+@media (max-width: 680px) {
+    .recent-tx-card {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 8px;
+    }
+    .recent-tx-card .transaction-info {
+        width: 100%;
+        min-width: 0 !important;
+    }
+    .recent-tx-card .transaction-merchant {
+        font-size: 0.92rem;
+        line-height: 1.45;
+    }
+    .recent-tx-actions {
+        width: 100%;
+        justify-content: space-between;
+        padding-top: 6px;
+        border-top: 1px dashed #e2e8f0;
+    }
 }
 
 .transaction-amount.positive {

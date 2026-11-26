@@ -1177,7 +1177,6 @@ function renderHomePage() {
                     <div style="font-size:0.8rem;color:#a7f3d0;font-weight:800;">💵 أرباح فعلية لهذا الشهر</div>
                     <div style="font-size:1.38rem;font-weight:900;color:#ffffff;margin:6px 0 4px;">
                         ${fmtBiDi(fmtLocalFromUsd(actualTotalUsd))}
-                        <span style="font-size:0.78rem;font-weight:700;color:#a7f3d0;">(${fmtBiDi(fmtUsd(actualTotalUsd))})</span>
                     </div>
                     <div style="font-size:0.8rem;color:#e2e8f0;">عن المؤهلين حتى الآن وعددهم: <strong style="color:#6ee7b7;">${greenQualifiedTotalCount}</strong> <small style="color:#cbd5e1;">(الخضر فقط${isAnyCountryQual ? ` — أنت + ${greenTeamCount} بفريقك` : ''})</small></div>
                     ${atRiskRollupUsd > 0 ? `<div style="font-size:0.74rem;color:#fde68a;margin-top:4px;">⚠️ عمولات مهددة بالتخطي (${fmtBiDi(fmtLocalFromUsd(atRiskRollupUsd))}) تُصرف فور إكمال هدفك</div>` : ''}
@@ -1188,7 +1187,6 @@ function renderHomePage() {
                     <div style="font-size:0.8rem;color:#fde68a;font-weight:800;">🚀 أرباح متوقعة شاملة الذين بدأوا</div>
                     <div style="font-size:1.38rem;font-weight:900;color:#ffffff;margin:6px 0 4px;">
                         ${fmtBiDi(fmtLocalFromUsd(expectedTotalInclAllUsd))}
-                        <span style="font-size:0.78rem;font-weight:700;color:#fde68a;">(${fmtBiDi(fmtUsd(expectedTotalInclAllUsd))})</span>
                     </div>
                     <div style="font-size:0.8rem;color:#e2e8f0;">وعددهم: <strong style="color:#fde68a;">${orangeTeamCount}</strong> <small style="color:#cbd5e1;">(البرتقاليون فقط)</small></div>
                     <div style="font-size:0.73rem;color:#cbd5e1;margin-top:4px;">تشمل أرباح الخضر + البرتقاليين + عمولتك عند إكمال هدفك</div>
@@ -1198,7 +1196,6 @@ function renderHomePage() {
                     <div style="font-size:0.8rem;color:#cbd5e1;font-weight:800;">💎 حصتك عن كل مؤهل في فريقك:</div>
                     <div style="font-size:1.38rem;font-weight:900;color:#6ee7b7;margin:6px 0 4px;">
                         ${fmtBiDi(fmtLocalFromUsd(unitShareUsd))}
-                        <span style="font-size:0.78rem;font-weight:700;color:#e2e8f0;">(${fmtBiDi(fmtUsd(unitShareUsd))})</span>
                     </div>
                     <div style="font-size:0.78rem;color:#cbd5e1;">قيمة الهدف الشهري ÷ ${homePlan.s02} أجيال</div>
                 </div>
@@ -1297,14 +1294,14 @@ function renderHomePage() {
             list.innerHTML = txs.slice(0, 5).map(t => {
                 const stBadge = fmtMemberTxStatusBadge(t);
                 return `
-                <div class="transaction-item" style="flex-wrap:wrap;gap:8px;">
-                    <div class="transaction-info">
-                        <div class="transaction-merchant">${esc(t.merchant_name)} — <small>${esc(t.sw_short_code)}</small></div>
+                <div class="transaction-item recent-tx-card">
+                    <div class="transaction-info" style="min-width:180px;">
+                        <div class="transaction-merchant">${esc(t.merchant_name)} — <small dir="ltr">${esc(t.sw_short_code)}</small></div>
                         <div class="transaction-date">${new Date(t.created_at).toLocaleDateString(getMemLocale())} • <span style="padding:1px 7px;border-radius:999px;font-size:0.74rem;font-weight:800;background:${stBadge.bg};color:${stBadge.color};">${stBadge.label}</span></div>
                     </div>
-                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                        <div class="transaction-amount">${Number(t.total_amount).toFixed(2)} ${esc(t.currency_code)}</div>
-                        ${t.merchant_id ? `<button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px;font-size:0.74rem;white-space:nowrap;" onclick="openQuickRepeatPurchase('${esc(t.merchant_id)}', '${esc(t.merchant_name || '')}', '${esc(t.currency_code || '')}')">🧾 توثيق جديد</button>` : ''}
+                    <div class="recent-tx-actions">
+                        <div class="transaction-amount" dir="ltr">${Number(t.total_amount).toFixed(2)} ${esc(t.currency_code)}</div>
+                        ${t.merchant_id ? `<button type="button" class="btn btn-outline btn-sm recent-tx-repeat-btn" onclick="openQuickRepeatPurchase('${esc(t.merchant_id)}', '${esc(t.merchant_name || '')}', '${esc(t.currency_code || '')}')">🧾 توثيق جديد</button>` : ''}
                     </div>
                 </div>
             `; }).join('');
@@ -1354,6 +1351,11 @@ function fmtMemberPayTypeLabel(pt) {
     return getMemberPayTypeMeta(pt).label;
 }
 
+function isHumanMemberPayRef(refVal) {
+    const s = String(refVal || '').trim();
+    return Boolean(s && !/^(POS|MBR|DEMO|AUTO|SYS|TX)-[0-9a-f-]{12,}$/i.test(s));
+}
+
 function loadMyPendingRequests() {
     const page = document.getElementById('myPendingPage');
     if (!page || !memberBundle) return;
@@ -1374,7 +1376,7 @@ function loadMyPendingRequests() {
         <div data-spec-id="member-pending-limit-meter" style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:14px;padding:14px 16px;margin-bottom:16px;font-size:0.86rem;color:#1e3a8a;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
             <div>
                 ℹ️ <strong>سقف الطلبات قيد المراجعة:</strong> يمكنك إرسال حتى <strong>طلبين معلقين (2)</strong> عند نفس المتجر في الوقت نفسه لحين اعتماد التاجر.
-                <div style="margin-top:4px;font-size:0.8rem;">صافي خطة الدخل المتوقع عند الاعتماد: <strong>${esc(fmtLocalFromUsd(totalPendingUsd))}</strong> (${fmtUsd(totalPendingUsd)})</div>
+                <div style="margin-top:4px;font-size:0.8rem;">صافي خطة الدخل المتوقع عند الاعتماد: <strong>${esc(fmtLocalFromUsd(totalPendingUsd))}</strong></div>
             </div>
             <div style="background:#ffffff;border:1.5px solid #93c5fd;border-radius:10px;padding:8px 14px;text-align:center;">
                 <div style="font-size:0.74rem;color:#475569;">أعلى إشغال عند تاجر</div>
@@ -1393,10 +1395,10 @@ function loadMyPendingRequests() {
                         <div id="memPendingTx_${esc(t.id)}" data-tx-id="${esc(t.id)}" data-short-code="${esc(t.sw_short_code || '')}" style="background:#fff;border:1.5px solid ${t.status === 'awaiting_merchant_topup' ? '#ef4444' : '#f59e0b'};border-radius:14px;padding:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
                             <div>
                                 <strong style="font-size:1rem;">${esc(t.merchant_name)}</strong> (${esc(t.branch_name || 'الفرع الرئيسي')})
-                                <div style="font-size:0.84rem;color:#64748b;">الكود: <code>${esc(t.sw_short_code)}</code> • ${new Date(t.created_at).toLocaleString(getMemLocale())}</div>
+                                <div style="font-size:0.84rem;color:#475569;">الكود: <code>${esc(t.sw_short_code)}</code> • ${new Date(t.created_at).toLocaleString(getMemLocale())}</div>
                                 <div style="font-size:0.78rem;color:#334155;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                                     <span style="background:#f1f5f9;padding:2px 8px;border-radius:6px;font-weight:700;">${esc(fmtMemberPayTypeLabel(t.payment_type))}</span>
-                                    ${t.unique_payment_ref ? `<span>مرجع: <code dir="ltr">${esc(t.unique_payment_ref)}</code></span>` : ''}
+                                    ${isHumanMemberPayRef(t.unique_payment_ref) ? `<span>مرجع: <code dir="ltr">${esc(t.unique_payment_ref)}</code></span>` : ''}
                                 </div>
                                 <div style="font-size:0.8rem;color:#047857;margin-top:3px;">العائد المتوقع لخطة الدخل عند الاعتماد: ${expShare.toFixed(2)} ${esc(t.currency_code)}</div>
                             </div>
@@ -1520,10 +1522,10 @@ function loadAllTransactions() {
                                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
                                     <div>
                                         <strong>${esc(t.merchant_name)}</strong> — <small>${esc(t.branch_name)}</small>
-                                        <div style="font-size:0.82rem;color:#64748b;"><code>${esc(t.sw_short_code)}</code> • ${new Date(t.created_at).toLocaleString(getMemLocale())}</div>
+                                        <div style="font-size:0.82rem;color:#475569;"><code>${esc(t.sw_short_code)}</code> • ${new Date(t.created_at).toLocaleString(getMemLocale())}</div>
                                         <div style="font-size:0.76rem;color:#475569;margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                                             <span style="background:#f1f5f9;padding:2px 7px;border-radius:6px;font-weight:700;">${esc(fmtMemberPayTypeLabel(t.payment_type))}</span>
-                                            ${t.unique_payment_ref ? `<span>مرجع: <code dir="ltr">${esc(t.unique_payment_ref)}</code></span>` : ''}
+                                            ${isHumanMemberPayRef(t.unique_payment_ref) ? `<span>مرجع: <code dir="ltr">${esc(t.unique_payment_ref)}</code></span>` : ''}
                                         </div>
                                     </div>
                                     <div style="text-align:left;">
@@ -4279,8 +4281,8 @@ async function renderMemberProfileCompletionBanner() {
         <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:7px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:0.8rem;">
             <span style="color:#1e3a8a;font-weight:800;">📋 اكتمال ملفك الشخصي: ${st.percent}% ${st.missingRequired.length ? `(${st.missingRequired.slice(0, 2).map(f => esc(f.label_ar)).join('، ')})` : ''}</span>
             <div style="display:flex;align-items:center;gap:6px;">
-                <button type="button" onclick="goToPage('settings')" class="btn btn-primary btn-sm" style="padding:3px 10px;font-size:0.75rem;">استكمال</button>
-                <button type="button" aria-label="إخفاء" onclick="sessionStorage.setItem('sawyan_member_profile_banner_dismissed','1');document.getElementById('memberProfileCompletionBanner')?.remove();" style="border:none;background:transparent;color:#64748b;cursor:pointer;font-weight:900;font-size:0.9rem;padding:2px 6px;">✕</button>
+                <button type="button" onclick="goToPage('settings')" class="btn btn-primary btn-sm" style="min-height:32px;padding:4px 12px;font-size:0.76rem;">استكمال</button>
+                <button type="button" aria-label="إخفاء" onclick="sessionStorage.setItem('sawyan_member_profile_banner_dismissed','1');document.getElementById('memberProfileCompletionBanner')?.remove();" style="border:none;background:transparent;color:#475569;cursor:pointer;font-weight:900;font-size:0.95rem;min-width:32px;min-height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;">✕</button>
             </div>
         </div>
     `;

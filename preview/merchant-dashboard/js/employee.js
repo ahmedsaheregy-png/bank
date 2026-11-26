@@ -15,7 +15,9 @@
     let empBundle = null;
     let activeTab = 'pending';
     let pollTimer = null;
+    let pollTimerMs = 0;
     let knownPendingIds = new Set();
+    let recentArrivalIds = new Set();
     let initialLoadDone = false;
     let alertsEnabled = false;
     let resolvedMember = null;
@@ -288,8 +290,19 @@
         }
     };
 
+    window.jumpToNewPendingArrival = function () {
+        const banner = document.getElementById('empNewArrivalBanner');
+        if (banner) banner.style.display = 'none';
+        window.switchEmpTab('pending');
+        document.getElementById('empPendingPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
     window.switchEmpTab = function (tab) {
         activeTab = tab;
+        if (tab === 'pending') {
+            const banner = document.getElementById('empNewArrivalBanner');
+            if (banner) banner.style.display = 'none';
+        }
         ['pending', 'create', 'today'].forEach(t => {
             const btn = document.getElementById('empTab' + t.charAt(0).toUpperCase() + t.slice(1));
             const panel = document.getElementById('emp' + t.charAt(0).toUpperCase() + t.slice(1) + 'Panel');
@@ -301,6 +314,11 @@
         if (tab === 'today') renderTodayPanel();
     };
 
+    function isHumanReadableRef(refVal) {
+        const s = String(refVal || '').trim();
+        return Boolean(s && !/^(POS|MBR|DEMO|AUTO|SYS|TX)-[0-9a-f-]{12,}$/i.test(s));
+    }
+
     function renderPendingPanel() {
         const panel = document.getElementById('empPendingPanel');
         if (!panel) return;
@@ -309,8 +327,14 @@
         const canReject = info.can_reject_pending_manually !== false;
         const badge = document.getElementById('empPendingCountBadge');
         if (badge) {
-            badge.textContent = String(list.length);
-            badge.style.display = list.length > 0 ? 'inline-block' : 'none';
+            const liveSet = new Set(list.map(t => t.id));
+            let hasFresh = false;
+            recentArrivalIds.forEach(id => { if (liveSet.has(id)) hasFresh = true; });
+            badge.classList.toggle('live-green', list.length > 0);
+            badge.innerHTML = list.length > 0
+                ? `<span class="emp-badge-dot" aria-hidden="true"></span><span>${list.length}${hasFresh ? ' جديد' : ''}</span>`
+                : '0';
+            badge.style.display = list.length > 0 ? 'inline-flex' : 'none';
         }
 
         if (!document.getElementById('empPendingSearchBar')) {
@@ -358,11 +382,12 @@
             const payLbl = PAY_TYPE_LABELS[tx.payment_type] || tx.payment_type;
             const hasThumb = tx.receipt_media_url && window.SAWYAN?.ImageUpload?.renderThumbHtml;
             const busy = empBusyTxIds.has(tx.id);
+            const isFresh = recentArrivalIds.has(tx.id);
             return `
-                <div class="emp-card">
+                <div class="emp-card${isFresh ? ' is-new-arrival' : ''}">
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
                         <div>
-                            <div style="font-weight:900;font-size:1rem;color:#0f172a;">👤 ${esc(tx.member_masked_name)}</div>
+                            <div style="font-weight:900;font-size:1rem;color:#0f172a;">👤 ${esc(tx.member_masked_name)} ${isFresh ? '<span style="background:#dcfce7;color:#065f46;padding:1px 7px;border-radius:999px;font-size:0.72rem;font-weight:900;">✨ وصل للتو</span>' : ''}</div>
                             <div style="font-size:0.76rem;color:#64748b;margin-top:2px;">⏱️ ${new Date(tx.created_at).toLocaleString('ar-EG')}</div>
                         </div>
                         <span class="emp-short-code" dir="ltr">${esc(tx.sw_short_code)}</span>
@@ -376,7 +401,7 @@
                         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
                             <span style="background:#e2e8f0;color:#1e293b;padding:3px 9px;border-radius:7px;font-size:0.76rem;font-weight:800;">${esc(payLbl)}</span>
                             ${tx.zero_hold_in_isolation ? '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:6px;font-size:0.72rem;font-weight:800;">🟠 طلب فوري بدون حجز مؤقت</span>' : ''}
-                            ${tx.unique_payment_ref ? `<span style="font-size:0.72rem;color:#475569;">مرجع: <code dir="ltr">${esc(tx.unique_payment_ref)}</code></span>` : ''}
+                            ${isHumanReadableRef(tx.unique_payment_ref) ? `<span style="font-size:0.72rem;color:#475569;">مرجع: <code dir="ltr">${esc(tx.unique_payment_ref)}</code></span>` : ''}
                         </div>
                     </div>
 
@@ -771,13 +796,31 @@
             if (initialLoadDone) {
                 const newlyArrived = nextPending.filter(t => !prevIds.has(t.id));
                 if (newlyArrived.length > 0) {
+                    newlyArrived.forEach(t => recentArrivalIds.add(t.id));
                     if (alertsEnabled) {
                         playChime();
                         sendBrowserNotification(newlyArrived[0]);
                     }
                     notify(`🔔 وصل طلب توثيق جديد (${newlyArrived[0].sw_short_code}) بمبلغ ${fmtMoney(newlyArrived[0].total_amount, newlyArrived[0].currency_code)}`, 'info');
+                    if (activeTab !== 'pending') {
+                        const ae = document.activeElement;
+                        const isTyping = Boolean(ae && ['INPUT', 'TEXTAREA', 'SELECT'].includes(ae.tagName) && ae.id !== 'empPendingSearchInput');
+                        if (!isTyping) {
+                            empBundle = b;
+                            knownPendingIds = nextIds;
+                            window.switchEmpTab('pending');
+                            document.getElementById('empPendingPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        } else {
+                            const banner = document.getElementById('empNewArrivalBanner');
+                            if (banner) {
+                                banner.innerHTML = `<span>🔔 وصل طلب جديد (<strong dir="ltr">${esc(newlyArrived[0].sw_short_code)}</strong>) — <span dir="ltr">${fmtMoney(newlyArrived[0].total_amount, newlyArrived[0].currency_code)}</span></span><button type="button" class="emp-new-arrival-btn" onclick="jumpToNewPendingArrival()">افتح الآن</button>`;
+                                banner.style.display = 'flex';
+                            }
+                        }
+                    }
                 }
             }
+            recentArrivalIds.forEach(id => { if (!nextIds.has(id)) recentArrivalIds.delete(id); });
             knownPendingIds = nextIds;
             initialLoadDone = true;
             empBundle = b;
@@ -794,12 +837,12 @@
 
     function schedulePoll(intervalSecs) {
         const ms = Math.max(3, Math.min(120, Number(intervalSecs || 8))) * 1000;
-        if (pollTimer && pollTimer._ms === ms) return;
+        if (pollTimer && pollTimerMs === ms) return;
         if (pollTimer) clearInterval(pollTimer);
+        pollTimerMs = ms;
         pollTimer = setInterval(() => {
             if (!document.hidden) refreshEmployeeBundle(true);
         }, ms);
-        pollTimer._ms = ms;
     }
 
     async function initEmployeePortal() {

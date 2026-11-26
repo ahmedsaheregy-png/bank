@@ -296,7 +296,7 @@
         .ts-st-orange .ts-code-pill { border-color:#fed7aa; color:#9a3412; background:#fff7ed; }
         .ts-st-red .ts-code-pill { border-color:#fecaca; color:#991b1b; background:#fef2f2; }
 
-        .ts-expand-pill { margin-top:2px; border:none; background:#0f2744; color:#ffffff; border-radius:999px; padding:1px 7px; font-size:0.62rem; font-weight:800; cursor:pointer; font-family:'Poppins','Tajawal',sans-serif; }
+        .ts-expand-pill { margin-top:4px; border:none; background:#0f2744; color:#ffffff; border-radius:999px; min-height:28px; padding:4px 10px; font-size:0.72rem; font-weight:800; cursor:pointer; font-family:'Poppins','Tajawal',sans-serif; display:inline-flex; align-items:center; justify-content:center; }
         .ts-expand-pill:hover { background:#059669; }
 
         .ts-slot-empty { width:42px; height:42px; border:1.5px dashed #cbd5e1; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.78rem; color:#94a3b8; font-weight:800; background:rgba(255,255,255,0.65); }

@@ -560,7 +560,7 @@ const globalDemoMerchants = [
     {
         id: 'DE02',
         code: 'DE-ELC-302',
-        businessName: 'RheinTech Online Shop',
+        businessName: 'متجر راين تك للإلكترونيات',
         category: 'إلكترونيات',
         categorySlug: 'electronics',
         generalCommissionRate: 8,

@@ -996,6 +996,11 @@
         font-size: 0.84rem !important;
     }
 }
+@media (max-width: 480px) {
+    .geo-filter-pair {
+        grid-template-columns: 1fr !important;
+    }
+}
 @media (max-width: 640px) {
     .top-geo-trust-bar .top-geo-status {
         display: flex !important;

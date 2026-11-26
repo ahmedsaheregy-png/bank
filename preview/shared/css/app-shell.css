@@ -331,8 +331,10 @@ html, body {
         right: 0 !important;
         z-index: 900 !important;
     }
+}
 
-    /* Convert labeled data tables into stacked mobile cards ONLY when labels exist */
+/* Stage 36 A2: Unified Responsive Mobile Card Engine across Member, Merchant & Admin (<= 640px) */
+@media (max-width: 640px) {
     .data-table[data-has-labels="1"] {
         display: block !important;
         min-width: 0 !important;
@@ -350,38 +352,56 @@ html, body {
     .data-table[data-has-labels="1"] tbody tr {
         display: block !important;
         background: #ffffff !important;
-        border: 1px solid #e2e8f0 !important;
-        border-radius: 12px !important;
+        border: 1.5px solid #e2e8f0 !important;
+        border-radius: 14px !important;
         margin-bottom: 12px !important;
         padding: 12px !important;
-        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06) !important;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06) !important;
     }
 
     .data-table[data-has-labels="1"] tbody td {
         display: flex !important;
-        justify-content: space-between;
-        align-items: center;
-        gap: 8px;
+        flex-wrap: wrap !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 6px 10px !important;
         width: 100% !important;
-        text-align: left;
-        padding: 7px 2px !important;
+        text-align: right !important;
+        padding: 8px 4px !important;
         border-bottom: 1px solid #f1f5f9 !important;
         font-size: 0.85rem !important;
         word-break: break-word;
+    }
+
+    .data-table[data-has-labels="1"] tbody td:first-child {
+        background: #f8fafc !important;
+        border-radius: 9px !important;
+        padding: 8px 10px !important;
+        margin-bottom: 4px !important;
+        border-bottom: 1px solid #e2e8f0 !important;
     }
 
     .data-table[data-has-labels="1"] tbody td::before {
         content: attr(data-label) !important;
         font-weight: 800 !important;
         color: #475569 !important;
-        text-align: right;
+        text-align: right !important;
         flex-shrink: 0;
         font-size: 0.78rem !important;
     }
 
+    .data-table[data-has-labels="1"] tbody td:has(div, select, input, textarea, button, .badge, .rb-mode-badge) {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    .data-table[data-has-labels="1"] tbody td > * {
+        max-width: 100%;
+    }
+
     .data-table[data-has-labels="1"] tbody td:last-child {
         border-bottom: none !important;
-        justify-content: flex-end;
+        padding-bottom: 2px !important;
     }
 }
 

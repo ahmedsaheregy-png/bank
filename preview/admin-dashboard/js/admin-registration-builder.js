@@ -251,13 +251,12 @@
             const rowMode = deriveModeFromFlags(f.show_in_initial, f.required_in_initial, f.show_in_dashboard);
             f.display_mode = rowMode;
             return `
-                <tr data-rb-row="${esc(f.field_key)}">
+                <tr data-rb-row="${esc(f.field_key)}" title="${esc(f.field_key)}">
                     <td data-label="الخانة">
                         <div style="font-weight:800;color:#0f172a;">
                             ${esc(f.label_ar)}
                             ${(f.show_in_initial && f.required_in_initial) ? '<span style="color:#DC2626;font-weight:900;">*</span>' : ''}
                         </div>
-                        <div style="font-size:0.74rem;color:#64748b;margin-top:2px;"><code>${esc(f.field_key)}</code></div>
                         <div>${modeBadgeHtml(rowMode)}</div>
                         ${f.is_system_locked ? '<div class="rb-lock-badge">🔒 إلزامي دستوري</div>' : ''}
                     </td>

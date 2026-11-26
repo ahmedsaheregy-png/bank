@@ -570,6 +570,38 @@
     color: #ffffff;
 }
 
+.password-field-wrap {
+    position: relative;
+    display: block;
+    width: 100%;
+}
+
+.password-field-wrap input {
+    width: 100% !important;
+    padding-inline-end: 44px !important;
+    box-sizing: border-box;
+}
+
+.pwd-toggle-btn {
+    position: absolute;
+    inset-inline-end: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    min-width: 32px;
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0;
+    color: #334155;
+    border-radius: 8px;
+    z-index: 2;
+}
+
 .pwd-checklist {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -581,7 +613,9 @@
     border-radius: 10px;
     font-size: 0.76rem;
     font-weight: 700;
-    color: #64748b;
+    color: #475569;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .pwd-checklist-item.ok {
@@ -595,6 +629,7 @@
     gap: 8px;
     flex-wrap: wrap;
     margin-top: 6px;
+    width: 100%;
 }
 
 .pwd-gen-btn {
@@ -602,11 +637,13 @@
     background: #ffffff;
     color: #0f172a;
     border-radius: 8px;
-    padding: 4px 10px;
-    font-size: 0.76rem;
+    padding: 6px 12px;
+    min-height: 36px;
+    font-size: 0.78rem;
     font-weight: 700;
     cursor: pointer;
     font-family: inherit;
+    white-space: nowrap;
 }
 
 .pwd-gen-btn:hover {

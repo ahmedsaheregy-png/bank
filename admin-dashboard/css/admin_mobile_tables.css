@@ -2,7 +2,7 @@
 /* عرض الجداول على الموبايل - حل بسيط ومباشر */
 /* ================================================== */
 
-@media screen and (max-width: 599px) {
+@media screen and (max-width: 640px) {
 
     /* إخفاء رأس الجدول فقط عندما تتوفر عناوين الخلايا data-label */
     .data-table[data-has-labels="1"] thead {
@@ -12,6 +12,7 @@
     /* الجدول كـ block */
     .data-table[data-has-labels="1"] {
         display: block !important;
+        min-width: 0 !important;
         width: 100% !important;
     }
 
@@ -23,48 +24,65 @@
     .data-table[data-has-labels="1"] tbody tr {
         display: block !important;
         background: #fff !important;
-        border: 1px solid #ddd !important;
-        border-radius: 10px !important;
-        margin-bottom: 15px !important;
-        padding: 10px !important;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1) !important;
+        border: 1.5px solid #e2e8f0 !important;
+        border-radius: 14px !important;
+        margin-bottom: 12px !important;
+        padding: 12px !important;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06) !important;
     }
 
-    /* كل خلية = سطر */
+    /* كل خلية = صف مرن يلتف تلقائياً أو يتكدس عمودياً للمحتوى المركب */
     .data-table[data-has-labels="1"] tbody td {
-        display: block !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 6px 10px !important;
         width: 100% !important;
         text-align: right !important;
-        padding: 8px 5px !important;
-        border-bottom: 1px solid #eee !important;
-        color: #333 !important;
-        font-size: 14px !important;
+        padding: 8px 4px !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        color: #1e293b !important;
+        font-size: 0.85rem !important;
         background: transparent !important;
+        word-break: break-word;
+    }
+
+    .data-table[data-has-labels="1"] tbody td:first-child {
+        background: #f8fafc !important;
+        border-radius: 9px !important;
+        padding: 8px 10px !important;
+        margin-bottom: 4px !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+    }
+
+    .data-table[data-has-labels="1"] tbody td:has(div, select, input, textarea, button, .badge, .rb-mode-badge) {
+        flex-direction: column !important;
+        align-items: stretch !important;
     }
 
     /* العنوان قبل القيمة */
     .data-table[data-has-labels="1"] tbody td::before {
-        content: attr(data-label) ": ";
-        font-weight: bold !important;
-        color: #666 !important;
+        content: attr(data-label) !important;
+        font-weight: 800 !important;
+        color: #475569 !important;
+        text-align: right !important;
+        flex-shrink: 0;
+        font-size: 0.78rem !important;
     }
 
     /* آخر خلية (الأزرار) */
     .data-table[data-has-labels="1"] tbody td:last-child {
         border-bottom: none !important;
-        text-align: center !important;
-        padding-top: 10px !important;
-    }
-
-    .data-table[data-has-labels="1"] tbody td:last-child::before {
-        content: "" !important;
+        padding-bottom: 2px !important;
     }
 
     /* الأزرار */
     .data-table button,
     .data-table .btn-sm {
-        margin: 3px !important;
-        padding: 5px 10px !important;
-        font-size: 12px !important;
+        margin: 2px !important;
+        padding: 7px 12px !important;
+        min-height: 34px !important;
+        font-size: 0.8rem !important;
     }
 }

@@ -419,8 +419,10 @@ html[data-theme="dark"] code {
         gap: 2px !important;
     }
     .sawyan-lang-switcher button {
-        padding: 3px 5px !important;
-        font-size: 0.7rem !important;
+        padding: 4px 7px !important;
+        min-width: 34px !important;
+        min-height: 32px !important;
+        font-size: 0.72rem !important;
     }
     .sawyan-ctrl-icon-btn {
         width: 30px !important;

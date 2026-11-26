@@ -2,6 +2,19 @@
 let currentMerchant = null;
 let merchantData = null;
 
+function isHumanMerchantPayRef(refVal) {
+    const s = String(refVal || '').trim();
+    return Boolean(s && !/^(POS|MBR|DEMO|AUTO|SYS|TX)-[0-9a-f-]{12,}$/i.test(s));
+}
+
+function fmtMerchantTxStatusBadgeText(st) {
+    if (st === 'completed') return '✅ مكتملة';
+    if (st === 'reversed') return '↩️ مسترجعة';
+    if (st === 'pending') return '⏳ معلقة';
+    if (st === 'awaiting_merchant_topup') return '⏸️ بانتظار الشحن';
+    return escM(st || '—');
+}
+
 function swNotify(msg, type = null) {
     if (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.toast === 'function') {
         window.SAWYAN.UI.toast(msg, type);
@@ -1071,7 +1084,7 @@ function loadFinancialReport() {
             </div>
             <div style="background:white; border:1px solid #cbd5e1; border-radius:12px; padding:14px 18px; text-align:center;">
                 <div id="finCommRateLbl" style="font-size:0.78rem; color:#64748b; font-weight:700;">عمولات سويًا المستقطعة</div>
-                <div id="finCommDedCard" style="font-size:1.35rem; font-weight:900; color:#dc2626; margin-top:4px;">0.00 ج.م</div>
+                <div id="finCommDedCard" dir="ltr" style="font-size:1.35rem; font-weight:900; color:#dc2626; margin-top:4px;">0.00 ج.م</div>
             </div>
             <div style="background:white; border:1px solid #cbd5e1; border-radius:12px; padding:14px 18px; text-align:center;">
                 <div id="finNetRateLbl" style="font-size:0.78rem; color:#64748b; font-weight:700;">صافي مبيعات المتجر بعد العمولة</div>
@@ -1096,7 +1109,7 @@ function loadFinancialReport() {
         <!-- التبويب 1: كشف استهلاك الشحن تفصيلياً مع كل فاتورة مبيعات -->
         <div id="finTabContent1" style="display:block;">
             <div style="background:white; border:1px solid #cbd5e1; border-radius:12px; overflow:hidden;">
-                <table style="width:100%; border-collapse:collapse; text-align:right; font-size:0.84rem;">
+                <table class="data-table" data-has-labels="1" style="width:100%; border-collapse:collapse; text-align:right; font-size:0.84rem;">
                     <thead style="background:#f1f5f9; border-bottom:1.5px solid #cbd5e1; font-weight:800; color:#334155;">
                         <tr>
                             <th style="padding:10px 12px;">التاريخ والوقت</th>
@@ -1118,7 +1131,7 @@ function loadFinancialReport() {
         <div id="finTabContent2" style="display:none;">
             <div id="merchantTopupProofStatusBox" style="margin-bottom:14px;"></div>
             <div style="background:white; border:1px solid #cbd5e1; border-radius:12px; overflow:hidden;">
-                <table style="width:100%; border-collapse:collapse; text-align:right; font-size:0.84rem;">
+                <table class="data-table" data-has-labels="1" style="width:100%; border-collapse:collapse; text-align:right; font-size:0.84rem;">
                     <thead style="background:#f1f5f9; border-bottom:1.5px solid #cbd5e1; font-weight:800; color:#334155;">
                         <tr>
                             <th style="padding:10px 12px;">تاريخ الشحن</th>
@@ -2630,7 +2643,7 @@ async function loadPendingTransactions(skipRefresh = false) {
                     <div style="font-size:0.78rem;color:#64748b;margin-top:3px;">⏱️ ${new Date(tx.created_at).toLocaleString('ar-EG')} ${tx.branch_name ? `• 📍 ${escM(tx.branch_name)}` : ''}</div>
                     <div style="font-size:0.76rem;color:#334155;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                         <span style="background:#f1f5f9;padding:2px 8px;border-radius:6px;font-weight:700;">${escM(fmtMerchantPayTypeLabel(tx.payment_type))}</span>
-                        ${tx.unique_payment_ref ? `<span>مرجع: <code dir="ltr">${escM(tx.unique_payment_ref)}</code></span>` : ''}
+                        ${isHumanMerchantPayRef(tx.unique_payment_ref) ? `<span>مرجع: <code dir="ltr">${escM(tx.unique_payment_ref)}</code></span>` : ''}
                         ${tx.zero_hold_in_isolation ? '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:6px;font-weight:800;">🟠 طلب بالعزل 10% (بدون حجز مؤقت)</span>' : ''}
                         ${(tx.payment_type === 'cod' || tx.payment_type === 'cheque') ? '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:6px;font-weight:800;">🚚 تحصيل مؤجل — اعتمدها بعد استلام المبلغ</span>' : ''}
                     </div>
@@ -2830,7 +2843,7 @@ async function loadAllTransactions(periodFilter = activeShiftPeriod) {
                 <td data-label="العضو" style="padding:12px;font-weight:700;">${escM(tx.member_masked_name)}</td>
                 <td data-label="الوسيلة والإيصال" style="padding:12px;font-size:0.78rem;">
                     <div>${escM(fmtMerchantPayTypeLabel(tx.payment_type))}</div>
-                    ${tx.unique_payment_ref ? `<div style="font-family:monospace;color:#475569;font-size:0.72rem;" dir="ltr">Ref: ${escM(tx.unique_payment_ref)}</div>` : ''}
+                    ${isHumanMerchantPayRef(tx.unique_payment_ref) ? `<div style="font-family:monospace;color:#475569;font-size:0.72rem;" dir="ltr">Ref: ${escM(tx.unique_payment_ref)}</div>` : ''}
                     ${thumb ? `<div style="margin-top:4px;">${thumb}</div>` : ''}
                 </td>
                 <td data-label="إجمالي الفاتورة" style="padding:12px;font-weight:800;color:#0f172a;"><span dir="ltr">${fmtMerchantMoney(tx.total_amount, tx.currency_code || curr)}</span></td>
@@ -2888,7 +2901,7 @@ async function loadAllTransactions(periodFilter = activeShiftPeriod) {
 
         <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;overflow:auto;">
             ${queuedAlertHtml}
-            <table class="data-table" style="width:100%;border-collapse:collapse;text-align:right;font-size:0.86rem;">
+            <table class="data-table" data-has-labels="1" style="width:100%;border-collapse:collapse;text-align:right;font-size:0.86rem;">
                 <thead>
                     <tr style="background:#f8fafc;border-bottom:1.5px solid #e2e8f0;color:#475569;font-weight:800;">
                         <th style="padding:12px;">كود الفاتورة</th>
@@ -3275,12 +3288,12 @@ loadFinancialReport = async function () {
             ? `<tr><td colspan="6" style="padding:16px;text-align:center;color:#64748b;">لا توجد استقطاعات شحن مسجلة بعد.</td></tr>`
             : txs.map(t => `
                 <tr style="border-bottom:1px solid #f1f5f9;">
-                    <td data-label="التاريخ والوقت" style="padding:10px 12px;color:#64748b;">${new Date(t.created_at).toLocaleString('ar-EG')}</td>
-                    <td data-label="رقم العملية" style="padding:10px 12px;font-weight:800;font-family:monospace;">${escM(t.sw_short_code)}</td>
+                    <td data-label="التاريخ والوقت" style="padding:10px 12px;color:#475569;">${new Date(t.created_at).toLocaleString('ar-EG')}</td>
+                    <td data-label="رقم العملية" style="padding:10px 12px;font-weight:800;font-family:monospace;"><span dir="ltr">${escM(t.sw_short_code)}</span></td>
                     <td data-label="العضو المشتري" style="padding:10px 12px;font-weight:700;">${escM(t.member_masked_name)}</td>
-                    <td data-label="قيمة الفاتورة" style="padding:10px 12px;font-weight:800;">${fmtMerchantMoney(t.total_amount, t.currency_code || curr)}</td>
-                    <td data-label="العمولة التعاقدية" style="padding:10px 12px;color:#dc2626;font-weight:800;">-${fmtMerchantMoney(t.commission_amount, t.currency_code || curr)}</td>
-                    <td data-label="الحالة" style="padding:10px 12px;color:${t.status === 'completed' ? '#059669' : '#64748b'};font-weight:900;">${escM(t.status)}</td>
+                    <td data-label="قيمة الفاتورة" style="padding:10px 12px;font-weight:800;"><span dir="ltr">${fmtMerchantMoney(t.total_amount, t.currency_code || curr)}</span></td>
+                    <td data-label="العمولة التعاقدية" style="padding:10px 12px;color:#dc2626;font-weight:800;"><span dir="ltr">-${fmtMerchantMoney(t.commission_amount, t.currency_code || curr)}</span></td>
+                    <td data-label="الحالة" style="padding:10px 12px;color:${t.status === 'completed' ? '#047857' : '#475569'};font-weight:900;">${fmtMerchantTxStatusBadgeText(t.status)}</td>
                 </tr>
             `).join('');
     }
@@ -3308,7 +3321,7 @@ loadFinancialReport = async function () {
             <div style="background:#fff;border:1px solid #cbd5e1;border-radius:12px;padding:16px;overflow-x:auto;">
                 <h3 style="margin:0 0 10px;color:#0f172a;">🧾 الفواتير الضريبية والتسويات الصادرة تلقائياً (${taxInvs.length})</h3>
                 ${taxInvs.length === 0 ? '<p style="color:#64748b;">تُصدر الفواتير الضريبية تلقائياً مع كل عملية مكتملة.</p>' : `
-                    <table class="data-table" style="width:100%;border-collapse:collapse;text-align:right;font-size:0.84rem;">
+                    <table class="data-table" data-has-labels="1" style="width:100%;border-collapse:collapse;text-align:right;font-size:0.84rem;">
                         <thead><tr style="background:#f8fafc;border-bottom:1.5px solid #cbd5e1;">
                             <th style="padding:10px;">رقم الفاتورة الضريبية</th>
                             <th style="padding:10px;">صافي العمولة</th>

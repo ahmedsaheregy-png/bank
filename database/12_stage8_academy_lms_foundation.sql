@@ -218,7 +218,7 @@ VALUES
 (
     'track-income-plan',
     '{"ar":"٢. مسار خطة الدخل وصندوق الهدف الشهري","en":"2. Income Plan & Monthly Target Box"}'::jsonb,
-    '{"ar":"شرح عملي لآلية الـ 75% / 25%، صندوق الهدف ($24.75)، الترحيل Carry On، والحصص الـ 11.","en":"How 75%/25%, Monthly Target ($24.75), Carry On & 11-share Roll-up work."}'::jsonb,
+    '{"ar":"شرح عملي لآلية تقسيم العمولة (75% خطة الدخل / 25% خزانة الشركة)، صندوق الهدف الشهري بعملة إقامتك، الترحيل المستمر Carry On، والحصص الـ 11 المتساوية.","en":"How 75%/25%, Monthly Target ($24.75), Carry On & 11-share Roll-up work."}'::jsonb,
     '📊',
     'members',
     'global',
@@ -299,8 +299,8 @@ INSERT INTO sawyan.academy_courses (
 VALUES (
     'income-plan-2475-explained',
     (SELECT id FROM sawyan.academy_tracks WHERE slug = 'track-income-plan' LIMIT 1),
-    '{"ar":"١. شرح صندوق الهدف الشهري ($24.75) والترحيل المستمر (Carry On)","en":"1. Understanding the $24.75 Target Box & Carry On"}'::jsonb,
-    '{"ar":"كل فاتورة شراء معتمدة تغذي صندوق هدفك الشهري بالعملة المحلية (بمعادلة $24.75 × سعر الصرف الإداري). إذا لم يكتمل الهدف خلال الشهر، لا يضيع رصيدك أبداً بل يُرحّل تلقائياً عبر عملية Carry On للشهر التالي دون حد زمني. وعند اكتمال الهدف، تتوزع الـ $24.75 بالتساوي على 11 حصة ($2.25 للحصة: الصانع + 10 آباء مؤهلين صعوداً عبر الـ Roll-up)، وتخضع العمولات لمهلة مراجعة 14 يوماً ثم تُتاح للسحب يوم 15 من الشهر التالي.","en":"Approved purchases feed your local Monthly Target Box ($24.75 reference). Unconsumed balances roll over indefinitely via Carry On. Qualified boxes distribute across 11 eligible shares ($2.25 each) up the tree via Bottom-Up Roll-up and settle on Day 15."}'::jsonb,
+    '{"ar":"١. شرح صندوق الهدف الشهري والترحيل المستمر (Carry On)","en":"1. Understanding the $24.75 Target Box & Carry On"}'::jsonb,
+    '{"ar":"كل فاتورة شراء معتمدة تغذي صندوق هدفك الشهري بعملة دولة إقامتك المعتمدة وفق سعر الصرف الإداري. إذا لم يكتمل الهدف خلال الشهر، لا يضيع رصيدك أبداً بل يُرحّل تلقائياً عبر عملية Carry On للشهر التالي دون حد زمني. وعند اكتمال الهدف، تُقسَّم حصيلة الصندوق بالتساوي على 11 حصة (حصتك كصانع هدف + 10 آباء مؤهلين صعوداً عبر الـ Roll-up)، وتخضع العمولات لمهلة مراجعة 14 يوماً ثم تُتاح للسحب يوم 15 من الشهر التالي.","en":"Approved purchases feed your local Monthly Target Box ($24.75 reference). Unconsumed balances roll over indefinitely via Carry On. Qualified boxes distribute across 11 eligible shares ($2.25 each) up the tree via Bottom-Up Roll-up and settle on Day 15."}'::jsonb,
     'article',
     NULL,
     6,
