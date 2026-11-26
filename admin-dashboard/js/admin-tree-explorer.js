@@ -403,7 +403,7 @@
                     `<td data-label="الأب / الراعي">${n.parent_member_code !== null && n.parent_member_code !== undefined ? `أب #${n.parent_member_code}` : '—'}${n.sponsor_code !== null && n.sponsor_code !== undefined ? ` • راعي #${n.sponsor_code}` : ''}</td>` +
                     `<td data-label="الدولة">${countryFlag(n.residency_country_code)} ${esc(n.residency_country_code || '')}</td>` +
                     `<td data-label="الصندوق والمحفظة"><b>${Number(n.target_pct || 0)}%</b> <small style="color:#64748b;">($${fmt2(n.box_accumulated_usd)}/$${fmt2(n.target_required_usd)})</small><div style="font-size:0.73rem;color:#059669;">محفظة: $${fmt2(n.wallet_balance_usd)}</div></td>` +
-                    `<td data-label="حجم فريقه"><b>${Number(n.subtree_total || 0) + 1}</b> <small>(هو + ${Number(n.subtree_total || 0)} • ${Number(n.subtree_right || 0)} يمين / ${Number(n.subtree_left || 0)} يسار)</small></td>` +
+                    `<td data-label="حجم فريقه"><b>${n.team_size_incl_self !== undefined && n.team_size_incl_self !== null ? Number(n.team_size_incl_self) : (Number(n.subtree_total || 0) + 1)}</b> <small>(هو + ${Number(n.subtree_total || 0)} • ${Number(n.subtree_right || 0)} يمين / ${Number(n.subtree_left || 0)} يسار)</small></td>` +
                     `<td data-label="إجراءات" onclick="event.stopPropagation();"><div style="display:flex;gap:5px;flex-wrap:wrap;">` +
                         `<button type="button" class="btn-sm btn-primary" onclick="openAdminNetworkTree(${code})">🎯 تمركز</button>` +
                         `<button type="button" class="btn-sm btn-outline" onclick="openAdminTreeNodeModal(${code})">🪪 تفاصيل</button>` +
@@ -446,7 +446,7 @@
         const s01Gens = Number(summary.s01_gens || 11);
         const isRoot0 = Number(rootNode.member_code) === 0;
         const companyTotal = Number(summary.company_total_members || 0);
-        const subtreeTotal = Number(summary.subtree_total_members || 0);
+        const subtreeTotal = Number((summary.team_size_incl_self !== undefined && summary.team_size_incl_self !== null) ? summary.team_size_incl_self : (summary.subtree_total_members || 0));
         const renderedCount = Number(summary.rendered_nodes_count || nodes.length || 0);
 
         page.innerHTML =
@@ -925,7 +925,9 @@
         const pal = VISUAL_PALETTE[vColor] || VISUAL_PALETTE.WHITE;
         const wa = node.phone ? String(node.phone).replace(/\D/g, '') : '';
         const auditor = isAuditorOnly();
-        const subTotalIncSelf = Number(node.subtree_total || 0) + 1;
+        const subTotalIncSelf = (node.team_size_incl_self !== undefined && node.team_size_incl_self !== null)
+            ? Number(node.team_size_incl_self)
+            : (Number(node.subtree_total || 0) + 1);
 
         const modalAvatarUrl = !isRoot0 ? safeAvatarUrl(node.avatar_url) : '';
         const modalAvatarHtml = isRoot0
@@ -1030,7 +1032,7 @@
                 n.visual_color || n.node_color || '',
                 `${n.target_pct || 0}%`,
                 n.wallet_balance_usd || 0,
-                Number(n.subtree_total || 0) + 1
+                (n.team_size_incl_self !== undefined && n.team_size_incl_self !== null) ? Number(n.team_size_incl_self) : (Number(n.subtree_total || 0) + 1)
             ]);
         const headers = ['Code', 'Name', 'Phone', 'Country', 'CompanyGen', 'Side', 'ParentCode', 'SponsorCode', 'Status', 'BoxPct', 'WalletUSD', 'SubtreeCount'];
         const csvLines = [headers].concat(rows).map((r) =>

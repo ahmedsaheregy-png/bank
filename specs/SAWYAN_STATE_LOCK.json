@@ -10,6 +10,6 @@
   "frozen_items": [
     "OFFLINE_TOTP_MEMBER_QR_60S"
   ],
-  "last_full_audit_verified_at": "2026-11-26T10:15:00Z",
-  "notes": "strict_parity_enabled becomes true upon completing Phase 1 & Phase 2 and binds Stop Hook + Zero-Defect Gate to full D29/D30 visual & spec parity. Stages 10-34 sealed. Stage 35 Wave 1 (Gen-3 G1-G4 crawler wired as permanent pre-publish & Gen-2 hard gates, P1 fixes: closeSawyanModal/dead #settingsPage cleanup/stopQRScanner idle guard/Admin humanizeError/mobile academy bottom clearance, P2 100% Arabic coverage across all user-facing SQL error codes, P6 auto SHA-256 content-hash cache-busting in sync_dual_site_mirror.py + unified Golden Publishing Rule with mandatory pending-work reminder) sealed 2026-11-26."
+  "last_full_audit_verified_at": "2026-11-26T11:10:00Z",
+  "notes": "strict_parity_enabled becomes true upon completing Phase 1 & Phase 2 and binds Stop Hook + Zero-Defect Gate to full D29/D30 visual & spec parity. Stages 10-34 sealed. Stage 35 Wave 1 & Wave 2 (Gen-3 G1-G5 hard gates, P1-P6 complete: 38_stage35_authoritative_team_size_incl_self.sql across sawyan & sawyan_demo + D21 cross-portal equality, mobile bell positioning & 17-event Every-Bell matrix, specs/constitutional_ui_contracts.json + Gate G5, 100% Arabic errors, SHA-256 cache-busting, unified Golden Publishing Rule, Lessons Ledger 22/22 covered) sealed 2026-11-26."
 }

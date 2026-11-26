@@ -612,7 +612,9 @@
             }).join('') + '</div>';
 
         const totalDownlines = Number(d.total_subtree_members || 0);
-        const totalTeamIncSelf = totalDownlines + 1;
+        const totalTeamIncSelf = (d.team_size_incl_self !== undefined && d.team_size_incl_self !== null)
+            ? Number(d.team_size_incl_self)
+            : (totalDownlines + 1);
         const shownDownlines = Math.max(0, nodes.length - (rootNode ? 1 : 0));
         const shownIncSelf = Math.max(1, nodes.length);
         const teamCountBadgeText = shownIncSelf < totalTeamIncSelf
@@ -870,7 +872,9 @@
             const leftCnt = Number(node.left_team_count !== undefined ? node.left_team_count : 0);
             const rightCnt = Number(node.right_team_count !== undefined ? node.right_team_count : 0);
             const downlinesCnt = Number(node.subtree_count || (leftCnt + rightCnt));
-            const totalTeamIncSelf = downlinesCnt + 1;
+            const totalTeamIncSelf = (node.team_size_incl_self !== undefined && node.team_size_incl_self !== null)
+                ? Number(node.team_size_incl_self)
+                : (downlinesCnt + 1);
             const teamUnitAr = totalTeamIncSelf === 1 ? 'عضو' : (totalTeamIncSelf === 2 ? 'عضوان' : (totalTeamIncSelf <= 10 ? 'أعضاء' : 'عضواً'));
             const teamSelfNote = viewerDepth === 0 ? ('أنت + ' + downlinesCnt) : ('هو + ' + downlinesCnt);
 

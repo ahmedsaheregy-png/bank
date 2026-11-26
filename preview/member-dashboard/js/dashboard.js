@@ -804,7 +804,9 @@ function renderHomePage() {
     const downlineCount = tree.total_team_count !== undefined
         ? Number(tree.total_team_count)
         : Math.max(0, (tree.nodes ? tree.nodes.length - 1 : 0));
-    const treeTotalIncludingSelf = downlineCount + 1;
+    const treeTotalIncludingSelf = (tree.team_size_incl_self !== undefined && tree.team_size_incl_self !== null)
+        ? Number(tree.team_size_incl_self)
+        : (downlineCount + 1);
     if (balEl) balEl.textContent = fmtLocalFromUsd(w.balance_usd);
     if (txCntEl) txCntEl.textContent = profile.completed_tx_count !== undefined
         ? Number(profile.completed_tx_count)
@@ -1924,7 +1926,9 @@ function loadTree() {
     const actualEarnUsd = Number(tree.actual_earnings_usd || 0);
     const expOrangeUsd = Number(tree.expected_orange_earnings_usd || 0);
     const totalTeamCount = tree.total_team_count !== undefined ? tree.total_team_count : Math.max(0, nodes.length - 1);
-    const treeTotalIncludingSelf = totalTeamCount + 1;
+    const treeTotalIncludingSelf = (tree.team_size_incl_self !== undefined && tree.team_size_incl_self !== null)
+        ? Number(tree.team_size_incl_self)
+        : (totalTeamCount + 1);
     const selfNode = nodes.find(n => (parseInt(String(n.structural_me || '1').replace(/\D/g, ''), 10) || 1) === 1) || null;
     const selfIsQualified = !!(selfNode && (selfNode.visual_color === 'GREEN' || selfNode.node_color === 'GREEN'));
     const teamCommCount = nodes.filter(n => {

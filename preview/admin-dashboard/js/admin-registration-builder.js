@@ -40,8 +40,13 @@
     }
 
     function toast(msg, isErr) {
+        const rawText = msg && typeof msg === 'object' ? (msg.message || msg.error_code || String(msg)) : String(msg || '');
+        const shouldHumanize = Boolean(isErr) || /RPC\[|failed:\s*[A-Z_]{3,}|\b[A-Z]{3,}_[A-Z0-9]{2,}_[A-Z0-9_]+\b/i.test(rawText);
+        const displayMsg = (shouldHumanize && window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.humanizeError === 'function')
+            ? window.SAWYAN.UI.humanizeError(msg)
+            : rawText;
         if (typeof window.svAdminToast === 'function') {
-            window.svAdminToast(msg, isErr);
+            window.svAdminToast(displayMsg, isErr);
             return;
         }
         let box = document.getElementById('svRegBuilderToast');
@@ -54,7 +59,7 @@
         box.style.background = isErr ? '#991b1b' : '#065f46';
         box.style.color = '#ffffff';
         box.style.border = isErr ? '1.5px solid #fca5a5' : '1.5px solid #6ee7b7';
-        box.textContent = (isErr ? '⛔ ' : '✅ ') + msg;
+        box.textContent = (isErr ? '⛔ ' : '✅ ') + displayMsg;
         box.style.opacity = '1';
         clearTimeout(box._timer);
         box._timer = setTimeout(function () { box.style.opacity = '0'; }, 4500);

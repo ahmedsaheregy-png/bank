@@ -571,7 +571,10 @@ def run_v2_multi_persona_browser_journeys():
                     boxesHaveCarryFields,
                     anyPositiveCarry,
                     carryDomRendered,
+                    memberCode: b.profile ? Number(b.profile.member_code || 0) : 0,
                     dbTeamCount: b.tree_analytics ? Number(b.tree_analytics.total_team_count || 0) : -1,
+                    dbTeamInclSelf: (b.tree_analytics && b.tree_analytics.team_size_incl_self !== undefined) ? Number(b.tree_analytics.team_size_incl_self) : -1,
+                    renderedHomeTeam: Number((document.getElementById('teamSize')?.innerText || '').replace(/\\D/g, '') || 0),
                     dbTargetReqUsd: Number(tbData.target_required_usd || (b.profile && b.profile.monthly_target_usd) || 0)
                 };
             }"""
@@ -581,9 +584,13 @@ def run_v2_multi_persona_browser_journeys():
             assert atf["targetBoxTop"] < 720, (
                 f"[JOURNEY V2 FAIL — member_atf] Monthly Target Box pushed below the fold on 375x812 (top={atf['targetBoxTop']}px)"
             )
-            assert atf["hasBell"] and atf["hasFlashApi"] and atf["hasBundleMath"] and atf["dbTeamCount"] >= 0 and atf["dbTargetReqUsd"] > 0, (
-                f"[JOURNEY V2 FAIL — member_atf] Missing bell, Flash API, or dynamic DB target/tree math: {atf}"
-            )
+            assert (
+                atf["hasBell"] and atf["hasFlashApi"] and atf["hasBundleMath"]
+                and atf["dbTeamCount"] >= 0
+                and atf["dbTeamInclSelf"] == atf["dbTeamCount"] + 1
+                and atf["renderedHomeTeam"] == atf["dbTeamInclSelf"]
+                and atf["dbTargetReqUsd"] > 0
+            ), f"[JOURNEY V2 FAIL — member_atf] Missing bell, Flash API, or authoritative DB team/target math: {atf}"
             assert atf["boxesHaveCarryFields"] and (not atf["anyPositiveCarry"] or atf["carryDomRendered"]), (
                 f"[JOURNEY V2 FAIL — member_carry_on] Projected Carry-On fields missing from DB bundle or not rendered in UI: {atf}"
             )
@@ -618,9 +625,36 @@ def run_v2_multi_persona_browser_journeys():
                 and s34_chk["softHoldArabic"]
                 and s34_chk["unknownFallbackArabic"]
             ), f"[JOURNEY V2 FAIL — stage34_mobile_guards] {s34_chk}"
+            # P3.3 Negative-Path Error Matrix across 7 business-rule error codes (must each be specific Arabic, 0 leaks)
+            neg_codes = [
+                "MERCHANT_SOFT_HOLD_CAP_20PCT_EXCEEDED",
+                "FLASH_OFFER_BLOCKED_WALLET_NOT_GREEN",
+                "INSUFFICIENT_WALLET_BALANCE",
+                "SPAM_GUARD_RECEIPT_REQUIRED",
+                "POST_PAYOUT_RETURN_FORBIDDEN",
+                "CASHIER_PIN_LOCKED",
+                "DUPLICATE_TOPUP_NOTICE_COOLDOWN",
+            ]
+            neg_res = page_mem.evaluate(
+                """(codes) => {
+                    const H = window.SAWYAN.UI.humanizeError;
+                    const generic = H('RPC[x] failed: ZZZ_ROBOT_UNKNOWN_ZZZ');
+                    const bad = [];
+                    for (const c of codes) {
+                        const out = H('RPC[probe] failed: ' + c);
+                        if (!/[\\u0600-\\u06FF]/.test(out) || out.includes(c) || out.includes('RPC[') || out === generic) {
+                            bad.push({ code: c, out });
+                        }
+                    }
+                    return bad;
+                }""",
+                neg_codes,
+            )
+            assert not neg_res, f"[P3.3 FAIL — Negative-Path Error Matrix] {neg_res}"
             audit_screen_purity(page_mem, "member_home_375", is_user_facing=True)
 
             # 2b. Walk Member Tabs + Wallet Arabic Localization + Browser Back Guard
+            mem_tree_team = -1
             for tab in ["myPending", "transactions", "tree", "wallet", "merchants", "referrals", "settings"]:
                 page_mem.evaluate(f"() => typeof goToPage === 'function' && goToPage('{tab}')")
                 page_mem.wait_for_timeout(550)
@@ -638,6 +672,10 @@ def run_v2_multi_persona_browser_journeys():
                     assert tree_team_check["found"] and tree_team_check["count"] >= 1, (
                         f"[JOURNEY V2 FAIL — member_tree_team_min1] Team count must include self (>= 1), got: {tree_team_check}"
                     )
+                    assert tree_team_check["count"] == atf["dbTeamInclSelf"], (
+                        f"[P4 FAIL — Member Home vs Tree Studio Drift] Home={atf['dbTeamInclSelf']} != TreeStudio={tree_team_check['count']}"
+                    )
+                    mem_tree_team = tree_team_check["count"]
                 if tab == "wallet":
                     raw_wallet = page_mem.evaluate(
                         """() => {
@@ -648,6 +686,50 @@ def run_v2_multi_persona_browser_journeys():
                     }"""
                     )
                     assert not raw_wallet, f"[JOURNEY V2 FAIL — member_wallet] Raw English wallet enums leaked: {raw_wallet}"
+
+            # P3.2 Member Mobile Bell Positioning (non-overlapping with #notificationBell) + Every-Event Routing Matrix
+            mem_bell_pos = page_mem.evaluate(
+                """() => {
+                    const bell = document.getElementById('notificationBell');
+                    if (!bell) return { hasBell: false };
+                    window.SAWYAN.Notifications.toggleDropdown();
+                    const dd = document.getElementById('notificationDropdown');
+                    const br = bell.getBoundingClientRect();
+                    const dr = dd ? dd.getBoundingClientRect() : null;
+                    window.SAWYAN.Notifications.toggleDropdown();
+                    return { hasBell: true, bellBottom: Math.round(br.bottom), dropTop: dr ? Math.round(dr.top) : -1 };
+                }"""
+            )
+            assert mem_bell_pos.get("hasBell") and mem_bell_pos.get("dropTop", -1) >= mem_bell_pos.get("bellBottom", 0) - 2, (
+                f"[P3.2 FAIL — Member Mobile Bell Overlap] Dropdown covered bell at 375px: {mem_bell_pos}"
+            )
+            for ev_name, expected_page in [
+                ("PendingPurchaseRequested", "myPendingPage"),
+                ("TransactionCompleted", "transactionsPage"),
+                ("OnMemberRegistered", "treePage"),
+                ("MerchantFlashOfferLive", "merchantsPage"),
+                ("MemberWithdrawalApproved", "walletPage"),
+            ]:
+                page_mem.evaluate(
+                    """(ev) => {
+                        const N = window.SAWYAN.Notifications;
+                        const orig = N.notifications;
+                        N.notifications = [{ id: 'probe-mem-' + ev, event_name: ev, is_read: false, created_at: new Date().toISOString(), payload: { sw_short_code: 'SW-PROBE', merchant_name: 'متجر', amount: 100, amount_usd: 5, new_member_code: 99, full_name: 'عضو' } }];
+                        N.handleNotificationClick('probe-mem-' + ev, ev);
+                        N.notifications = orig;
+                    }""",
+                    ev_name,
+                )
+                page_mem.wait_for_timeout(200)
+                nav_st = page_mem.evaluate(
+                    "() => ({ active: document.querySelector('.page.active')?.id || '', ddOpen: getComputedStyle(document.getElementById('notificationDropdown')).display !== 'none' })"
+                )
+                assert nav_st["active"] == expected_page and not nav_st["ddOpen"], (
+                    f"[P3.2 FAIL — Member Bell Route] event={ev_name} expected={expected_page} got={nav_st}"
+                )
+
+            probe_member_code = atf["memberCode"]
+            probe_member_team = mem_tree_team
             # Verify Member Browser Back Guard (stays on dashboard.html, never kicks out to login)
             page_mem.go_back()
             page_mem.wait_for_timeout(500)
@@ -712,6 +794,45 @@ def run_v2_multi_persona_browser_journeys():
                 "#svMerchantTopupOverlay",
                 "() => typeof window.openMerchantTopupModal === 'function' && window.openMerchantTopupModal()",
             )
+            # P3.2 Merchant Mobile Bell Positioning & Every-Event Routing Matrix
+            mer_bell_pos = page_mer.evaluate(
+                """() => {
+                    const bell = document.getElementById('notificationBell');
+                    if (!bell) return { hasBell: false };
+                    window.SAWYAN.Notifications.toggleDropdown();
+                    const dd = document.getElementById('notificationDropdown');
+                    const br = bell.getBoundingClientRect();
+                    const dr = dd ? dd.getBoundingClientRect() : null;
+                    window.SAWYAN.Notifications.toggleDropdown();
+                    return { hasBell: true, bellBottom: Math.round(br.bottom), dropTop: dr ? Math.round(dr.top) : -1 };
+                }"""
+            )
+            assert mer_bell_pos.get("hasBell") and mer_bell_pos.get("dropTop", -1) >= mer_bell_pos.get("bellBottom", 0) - 2, (
+                f"[P3.2 FAIL — Merchant Mobile Bell Overlap] Dropdown covered bell at 375px: {mer_bell_pos}"
+            )
+            for ev_name, expected_page in [
+                ("PendingPurchaseRequested", "pendingPage"),
+                ("MerchantBankTopupUnderReview", "financialPage"),
+                ("MerchantBankTopupRejected", "financialPage"),
+                ("MerchantFlashOfferApproved", "homePage"),
+            ]:
+                page_mer.evaluate(
+                    """(ev) => {
+                        const N = window.SAWYAN.Notifications;
+                        const orig = N.notifications;
+                        N.notifications = [{ id: 'probe-mer-' + ev, event_name: ev, is_read: false, created_at: new Date().toISOString(), payload: { bank_ref: 'REF-PROBE', amount_local: 500, currency_code: 'TRY', sw_short_code: 'SW-PROBE' } }];
+                        N.handleNotificationClick('probe-mer-' + ev, ev);
+                        N.notifications = orig;
+                    }""",
+                    ev_name,
+                )
+                page_mer.wait_for_timeout(200)
+                nav_st = page_mer.evaluate(
+                    "() => ({ active: document.querySelector('.page.active')?.id || '', ddOpen: getComputedStyle(document.getElementById('notificationDropdown')).display !== 'none' })"
+                )
+                assert nav_st["active"] == expected_page and not nav_st["ddOpen"], (
+                    f"[P3.2 FAIL — Merchant Bell Route] event={ev_name} expected={expected_page} got={nav_st}"
+                )
             # Verify Merchant Browser Back Guard
             page_mer.go_back()
             page_mer.wait_for_timeout(500)
@@ -1025,7 +1146,49 @@ def run_v2_multi_persona_browser_journeys():
                 assert deep_res["dropdownClosed"], f"[PILLAR 7B FAIL — Bell Close] Dropdown remained open: {deep_res}"
                 assert deep_res["hasSpotlight"], f"[PILLAR 7B FAIL — Bell Deep-Link] Clicking notification did not highlight target element: {deep_res}"
 
-            # 6.8 Stage 28 — Cross-Screen & Cross-Country Numerical Consistency Audit
+            # P3.2 Admin Every-Bell-Event Routing Matrix (all 8 operational event types)
+            for ev_name, expected_page in [
+                ("MerchantBankTopupProofPending", "merchantsPage"),
+                ("NewMerchantRegistered", "merchantsPage"),
+                ("MerchantFlashOfferPending", "homePage"),
+                ("MemberWithdrawalRequested", "withdrawalsPage"),
+                ("MemberGdprErasureRequested", "supportPage"),
+                ("ZeroDiscrepancyBreachAutoHalt", "sovereignLivePage"),
+                ("DisputeTicketOpened", "disputesPage"),
+                ("SupportTicketOpened", "supportPage"),
+            ]:
+                page_adm.evaluate(
+                    """(ev) => {
+                        const N = window.SAWYAN.Notifications;
+                        const orig = N.notifications;
+                        const fmt = N._formatTitleAndBody({ event_name: ev, payload: {} });
+                        if (fmt.title === ev) throw new Error('Bell event missing Arabic formatter: ' + ev);
+                        N.notifications = [{ id: 'probe-adm-' + ev, event_name: ev, is_read: false, created_at: new Date().toISOString(), payload: { business_name: 'متجر', merchant_code: 'M-PROBE', sw_short_code: 'SW-PROBE' } }];
+                        N.handleNotificationClick('probe-adm-' + ev, ev);
+                        N.notifications = orig;
+                    }""",
+                    ev_name,
+                )
+                page_adm.wait_for_timeout(300)
+                adm_nav = page_adm.evaluate(
+                    "() => ({ active: document.querySelector('.page.active')?.id || '', ddOpen: getComputedStyle(document.getElementById('notificationDropdown')).display !== 'none' })"
+                )
+                assert adm_nav["active"] == expected_page and not adm_nav["ddOpen"], (
+                    f"[P3.2 FAIL — Admin Bell Route] event={ev_name} expected={expected_page} got={adm_nav}"
+                )
+
+            # P3.1 Admin Home All Action Cards + Clickable Table Rows Verification
+            page_adm.locator('.sidebar-nav .nav-item[data-page="home"]').first.click()
+            page_adm.wait_for_timeout(500)
+            cards_chk = page_adm.evaluate(
+                """() => {
+                    const req = ['actionRowFifoMerchants','actionRowPendingTx','actionRowPromo','actionRowWithdrawals','actionRowPendingKyc','actionRowLowBalance','actionRowPendingMerchants','actionRowDisputes','actionRowSupport'];
+                    return req.filter(id => !document.getElementById(id));
+                }"""
+            )
+            assert not cards_chk, f"[P3.1 FAIL — Admin Home Action Cards] Missing card IDs: {cards_chk}"
+
+            # 6.8 Stage 28 & P4 — Cross-Screen, Cross-Country & Cross-Portal Equality Audit
             cons_res = page_adm.evaluate(
                 """() => {
                     const bun = window.__SAWYAN_ADMIN_LIVE_BUNDLE__ || {};
@@ -1064,6 +1227,25 @@ def run_v2_multi_persona_browser_journeys():
                     f"[PILLAR 6.8 FAIL — Admin Node Commission Clarity] Missing open-month vs paid wallet split: {adm_node_txt[:300]}"
                 )
                 page_adm.evaluate("() => { if (typeof closeStage7Modal === 'function') closeStage7Modal(); }")
+
+            # P4 Cross-Portal Authoritative `team_size_incl_self` Equality Check (Member Home == Tree Studio == Admin Full Tree RPC/Node)
+            if probe_member_code > 0 and probe_member_team >= 1:
+                adm_tree_eq = page_adm.evaluate(
+                    """async (code) => {
+                        const res = await window.SAWYAN.API.getAdminFullTree({ rootMemberCode: code, maxDepth: 2 });
+                        const nodes = Array.isArray(res && res.nodes) ? res.nodes : [];
+                        const selfNode = nodes.find(n => Number(n.member_code) === Number(code));
+                        const sum = res && res.summary ? res.summary : {};
+                        return {
+                            nodeVal: selfNode && selfNode.team_size_incl_self !== undefined ? Number(selfNode.team_size_incl_self) : -1,
+                            sumVal: sum.team_size_incl_self !== undefined ? Number(sum.team_size_incl_self) : -1
+                        };
+                    }""",
+                    probe_member_code,
+                )
+                assert adm_tree_eq["nodeVal"] == probe_member_team and adm_tree_eq["sumVal"] == probe_member_team, (
+                    f"[P4 FAIL — Cross-Portal Team Size Drift] Member#{probe_member_code} Home/Tree={probe_member_team} != Admin={adm_tree_eq}"
+                )
 
             ctx_adm.close()
             print(" [V2 PILLAR 4, 5 & 6 PASS] Cashier Employee, Admin Sovereign Cockpit, Real-Click RPC Guard, 3-Portal Back Guard, Reports Date Filter, ban_now Guard, [?] Help Popovers, i18n EN/TR, Dark Mode, Cross-Screen Consistency & Zero-Jargon 100% GREEN")

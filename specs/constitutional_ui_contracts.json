@@ -1,0 +1,117 @@
+{
+  "_purpose": "SAWYAN V3.0 Phase P5 Spec-to-UI Constitutional Contract Registry enforced by Gen-3 Gate G5.",
+  "money_concepts": [
+    {
+      "id": "monthly_target_box",
+      "portal": "member",
+      "tab": "home",
+      "required_spec_ids": ["member-home-target-box"],
+      "required_sql_fields": ["target_required_usd", "current_month_purchases_usd", "carry_on_in_usd"],
+      "required_ui_markers": ["member-home-target-box"]
+    },
+    {
+      "id": "carry_on_surplus",
+      "portal": "member",
+      "tab": "home",
+      "required_spec_ids": ["member-home-carry-on-out", "member-foreign-box-carry-on"],
+      "required_sql_fields": ["projected_carry_on_out_usd", "projected_carry_on_out_local", "projected_carry_on_months"],
+      "required_help_keys": ["carry_on_surplus"],
+      "required_ui_markers": ["projected_carry_on_out_local", "projected_carry_on_months"]
+    },
+    {
+      "id": "country_independence_notice",
+      "portal": "member",
+      "required_spec_ids": ["member-foreign-box-scope-notice", "tree-foreign-box-scope-notice"],
+      "required_sql_markers": ["v_home_gate_open"],
+      "required_ui_markers": ["member-foreign-box-scope-notice", "tree-foreign-box-scope-notice"]
+    },
+    {
+      "id": "open_month_vs_paid_wallet_split",
+      "portals": ["member", "admin"],
+      "required_spec_ids": ["member-wallet-fx-reconcile-card"],
+      "required_ui_markers": ["جارية (قبل الإقفال):", "مصروفة بالمحفظة:", "يوم 15"]
+    },
+    {
+      "id": "zero_discrepancy_ledger",
+      "required_sql_functions": ["run_nightly_zero_discrepancy_audit"],
+      "required_sql_markers": ["abs_diff_usd"]
+    }
+  ],
+  "review_workflows": [
+    {
+      "id": "bank_topup_4state",
+      "admin_spec_id": "admin-bank-topup-review-box",
+      "required_states": ["pending", "under_review", "approved", "rejected"],
+      "required_ui_markers": [
+        "data-topup-act=\"under_review\"",
+        "بانتظار الإدارة",
+        "قيد المراجعة",
+        "مرفوض"
+      ],
+      "required_notif_events": [
+        "MerchantBankTopupUnderReview",
+        "MerchantBankTopupRejected",
+        "MerchantTopupApproved"
+      ],
+      "required_sql_rpcs": ["admin_operational_decision"]
+    },
+    {
+      "id": "flash_offer_4state",
+      "admin_marker": "adminPromoModerationSection",
+      "required_states": ["pending", "under_review", "approved", "rejected"],
+      "required_ui_markers": [
+        "svReviewFlashOffer",
+        "'under_review'",
+        "'rejected'",
+        "قيد المراجعة"
+      ],
+      "required_notif_events": [
+        "MerchantFlashOfferUnderReview",
+        "MerchantFlashOfferApproved",
+        "MerchantFlashOfferRejected"
+      ],
+      "required_sql_rpcs": ["admin_operational_decision"]
+    },
+    {
+      "id": "merchant_onboarding_review",
+      "required_ui_markers": ["svOpenMerchantContractModal"],
+      "required_notif_events": [
+        "MerchantOnboardingApproved",
+        "MerchantOnboardingUpdated",
+        "MerchantContractUpdated"
+      ],
+      "required_sql_rpcs": ["admin_manage_merchant_contract"]
+    },
+    {
+      "id": "withdrawal_and_kyc_review",
+      "required_sql_rpcs": ["admin_decide_withdrawal_v3", "admin_review_kyc_or_residency"],
+      "required_error_codes": ["REJECTION_REASON_REQUIRED", "REVIEW_NOTE_REQUIRED"]
+    }
+  ],
+  "cross_screen_metrics": [
+    {
+      "id": "team_size_incl_self",
+      "rule": "always >= 1 (includes self) and equal across Member Home, Tree Studio, Admin Tree Explorer & Root Leaders",
+      "authoritative_field": "team_size_incl_self",
+      "authoritative_sql_file": "database/38_stage35_authoritative_team_size_incl_self.sql",
+      "required_rpcs": [
+        "get_tree_analytics_with_country_lens",
+        "get_member_tree_subtree",
+        "get_admin_full_tree",
+        "admin_manage_root_leaders"
+      ],
+      "ui_consumers": [
+        "preview/member-dashboard/js/dashboard.js",
+        "preview/member-dashboard/js/tree-studio.js",
+        "preview/admin-dashboard/js/admin-tree-explorer.js",
+        "preview/admin-dashboard/js/admin-stage7-ops-hub.js"
+      ]
+    },
+    {
+      "id": "qualified_members_period",
+      "rule": "Admin KPI qualified_members_period equals count of qualified members",
+      "required_sql_fields": ["qualified_members_period"],
+      "required_ui_markers": ["is_qualified_period"]
+    }
+  ]
+}

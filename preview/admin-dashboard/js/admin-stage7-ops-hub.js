@@ -267,6 +267,31 @@
     window.svOpenAdminModal = openStage7Modal;
     window.svAdminToast = toast;
     window.svEsc = esc;
+    window.svCopyText = async function (text, okMsg) {
+        const val = String(text || '');
+        try {
+            if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                await navigator.clipboard.writeText(val);
+                toast(okMsg || '✅ تم النسخ بنجاح!', false);
+                return;
+            }
+        } catch (_err) {}
+        try {
+            const ta = document.createElement('textarea');
+            ta.value = val;
+            ta.setAttribute('readonly', '');
+            ta.style.cssText = 'position:fixed;top:-9999px;opacity:0;';
+            document.body.appendChild(ta);
+            ta.select();
+            const ok = document.execCommand && document.execCommand('copy');
+            document.body.removeChild(ta);
+            if (ok) {
+                toast(okMsg || '✅ تم النسخ بنجاح!', false);
+                return;
+            }
+        } catch (_err2) {}
+        toast('تعذر النسخ التلقائي — يمكنك نسخ الرابط يدوياً من المتصفح.', true);
+    };
 
     // ========================================================================
     // 1. Sovereign Command Center: Root #0 Leaders + Staff RBAC + Geo & Categories
@@ -426,7 +451,7 @@
                         '<td data-label="الدولة">' + esc(t.country_code) + '</td>' +
                         '<td data-label="الحالة">' + (used ? '<span class="badge badge-success">✅ استُخدم (' + esc(t.used_by_phone || '') + ')</span>' : '<span class="badge badge-warning">🟢 متاح لمرة واحدة</span>') + '</td>' +
                         '<td data-label="الصلاحية"><small>' + esc(String(t.expires_at || '').slice(0, 16).replace('T', ' ')) + '</small></td>' +
-                        '<td data-label="رابط التسجيل والنسخ / واتساب">' + (used ? '—' : ('<div style="display:flex;gap:5px;flex-wrap:wrap;"><button type="button" class="btn-sm btn-primary" onclick="navigator.clipboard.writeText(\'' + esc(url) + '\');window.SAWYAN?.UI?.toast(\'✅ تم نسخ الرابط التأسيسي!\',\'success\')">📋 نسخ الرابط</button><a href="' + esc(wa) + '" target="_blank" style="background:#16a34a;color:#fff;padding:4px 9px;border-radius:6px;text-decoration:none;font-size:0.76rem;font-weight:800;">💬 إرسال واتساب</a></div>')) + '</td>' +
+                        '<td data-label="رابط التسجيل والنسخ / واتساب">' + (used ? '—' : ('<div style="display:flex;gap:5px;flex-wrap:wrap;"><button type="button" class="btn-sm btn-primary" onclick="svCopyText(\'' + esc(url) + '\',\'✅ تم نسخ الرابط التأسيسي!\')">📋 نسخ الرابط</button><a href="' + esc(wa) + '" target="_blank" style="background:#16a34a;color:#fff;padding:4px 9px;border-radius:6px;text-decoration:none;font-size:0.76rem;font-weight:800;">💬 إرسال واتساب</a></div>')) + '</td>' +
                         '<td data-label="إجراء">' + (!used && founder ? '<button type="button" class="btn-sm btn-danger" onclick="svRevokeRootToken(\'' + esc(t.token) + '\')">إلغاء</button>' : '—') + '</td>' +
                     '</tr>';
                 }).join('')) +
@@ -446,8 +471,8 @@
                         '<td data-label="الاسم الكامل">' + esc(l.full_name) + '</td>' +
                         '<td data-label="الهاتف">' + esc(l.phone) + '</td>' +
                         '<td data-label="الدولة">' + esc(l.country_code) + '</td>' +
-                        '<td data-label="حجم فريقه"><b>' + (Number(l.team_size || 0) + 1) + '</b> <small style="color:#64748b;">(هو + ' + Number(l.team_size || 0) + ')</small></td>' +
-                        '<td data-label="إجراءات ورابط الإحالة"><div style="display:flex;gap:5px;flex-wrap:wrap;"><button type="button" class="btn-sm btn-outline" onclick="if (typeof openAdminNetworkTree === \'function\') openAdminNetworkTree(' + Number(l.member_code) + ')">🌳 شجرته</button><button type="button" class="btn-sm btn-primary" onclick="navigator.clipboard.writeText(\'' + esc(refUrl) + '\');window.SAWYAN?.UI?.toast(\'تم نسخ رابط إحالة القائد #' + l.member_code + '\',\'success\')">📋 نسخ رابط القائد</button></div></td>' +
+                        '<td data-label="حجم فريقه"><b>' + ((l.team_size_incl_self !== undefined && l.team_size_incl_self !== null) ? Number(l.team_size_incl_self) : (Number(l.team_size || 0) + 1)) + '</b> <small style="color:#64748b;">(هو + ' + Number(l.team_size || 0) + ')</small></td>' +
+                        '<td data-label="إجراءات ورابط الإحالة"><div style="display:flex;gap:5px;flex-wrap:wrap;"><button type="button" class="btn-sm btn-outline" onclick="if (typeof openAdminNetworkTree === \'function\') openAdminNetworkTree(' + Number(l.member_code) + ')">🌳 شجرته</button><button type="button" class="btn-sm btn-primary" onclick="svCopyText(\'' + esc(refUrl) + '\',\'تم نسخ رابط إحالة القائد #' + l.member_code + '\')">📋 نسخ رابط القائد</button></div></td>' +
                     '</tr>';
                 }).join('')) +
                 '</tbody></table></div>' +

@@ -379,6 +379,7 @@ JS_COLLECT_CANDIDATES = r"""
             btnType: (el.getAttribute('type') || '').toLowerCase(),
             inForm: Boolean(el.closest('form')),
             isActiveTab: el.classList.contains('active') || el.getAttribute('aria-selected') === 'true',
+            isUploadTrigger: !ocRaw && /رفع مستند|إرفاق صورة|التقط أو ارفع/.test(txt),
             isPrintOrFocus: /window\.print|exportFinancialStatementPDF|focus\(|focusBillAmount|openKioskQuickSalePanel|triggerGpsRadarSearch/.test(ocRaw)
         });
     }
@@ -576,6 +577,7 @@ def crawl_surface(page, label, home_url, tab, scope_sel, max_clicks, findings, e
             if (
                 not c.get("isActiveTab")
                 and not c.get("isPrintOrFocus")
+                and not c.get("isUploadTrigger")
                 and not (c.get("inForm") and c.get("btnType") in ("submit", ""))
             ):
                 findings.append({"gate": "G3", "severity": "INFO", "kind": "DEAD_CLICK_NO_VISIBLE_EFFECT", "surface": label, "element": elem, "onclick": c["onclick"]})
@@ -647,11 +649,102 @@ def run_g3_crawler(pw_browser, base, portals, max_per_tab):
 
 
 # ---------------------------------------------------------------------------
+# G5 — Constitutional Spec-to-UI & 4-State Workflow Contract Gate (Phase P5)
+# ---------------------------------------------------------------------------
+CONTRACTS_PATH = REPO_DIR / "specs" / "constitutional_ui_contracts.json"
+
+
+def run_g5_constitutional_contracts():
+    if not CONTRACTS_PATH.exists():
+        return [{"gate": "G5", "severity": "FAIL", "issue": "missing_contracts_file", "path": str(CONTRACTS_PATH)}], {"checked": 0}
+    cfg = load_json(CONTRACTS_PATH, {})
+    sql_blob = "\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in sorted((REPO_DIR / "database").glob("*.sql")))
+    ui_files = [
+        p for p in sorted(PREVIEW_DIR.rglob("*"))
+        if p.is_file() and p.suffix.lower() in (".html", ".js") and "__pycache__" not in p.parts
+    ]
+    ui_blob = "\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in ui_files)
+    notif_path = PREVIEW_DIR / "shared" / "components" / "notifications.js"
+    notif_txt = notif_path.read_text(encoding="utf-8", errors="ignore") if notif_path.exists() else ""
+    help_path = PREVIEW_DIR / "shared" / "js" / "app-shell.js"
+    help_txt = help_path.read_text(encoding="utf-8", errors="ignore") if help_path.exists() else ""
+
+    findings = []
+    checked = 0
+
+    for item in cfg.get("money_concepts", []):
+        checked += 1
+        cid = item.get("id", "?")
+        for f in item.get("required_sql_fields", []):
+            if f not in sql_blob:
+                findings.append({"gate": "G5", "severity": "FAIL", "contract": cid, "issue": "missing_sql_field", "token": f})
+        for fn in item.get("required_sql_functions", []):
+            if fn not in sql_blob:
+                findings.append({"gate": "G5", "severity": "FAIL", "contract": cid, "issue": "missing_sql_function", "token": fn})
+        for m in item.get("required_sql_markers", []):
+            if m not in sql_blob:
+                findings.append({"gate": "G5", "severity": "FAIL", "contract": cid, "issue": "missing_sql_marker", "token": m})
+        for sid in item.get("required_spec_ids", []):
+            if sid not in ui_blob:
+                findings.append({"gate": "G5", "severity": "FAIL", "contract": cid, "issue": "missing_ui_spec_id", "token": sid})
+        for mk in item.get("required_ui_markers", []):
+            if mk not in ui_blob:
+                findings.append({"gate": "G5", "severity": "FAIL", "contract": cid, "issue": "missing_ui_marker", "token": mk})
+        for hk in item.get("required_help_keys", []):
+            if hk not in help_txt:
+                findings.append({"gate": "G5", "severity": "FAIL", "contract": cid, "issue": "missing_help_key", "token": hk})
+
+    for wf in cfg.get("review_workflows", []):
+        checked += 1
+        wid = wf.get("id", "?")
+        for mk in wf.get("required_ui_markers", []):
+            if mk not in ui_blob:
+                findings.append({"gate": "G5", "severity": "FAIL", "contract": wid, "issue": "missing_workflow_ui_marker", "token": mk})
+        for ev in wf.get("required_notif_events", []):
+            if ev not in notif_txt:
+                findings.append({"gate": "G5", "severity": "FAIL", "contract": wid, "issue": "missing_workflow_notif_event", "token": ev})
+        for rpc in wf.get("required_sql_rpcs", []):
+            if rpc not in sql_blob:
+                findings.append({"gate": "G5", "severity": "FAIL", "contract": wid, "issue": "missing_workflow_rpc", "token": rpc})
+        for ec in wf.get("required_error_codes", []):
+            if ec not in ui_blob:
+                findings.append({"gate": "G5", "severity": "FAIL", "contract": wid, "issue": "missing_workflow_error_humanizer", "token": ec})
+
+    for mt in cfg.get("cross_screen_metrics", []):
+        checked += 1
+        mid = mt.get("id", "?")
+        auth_sql = mt.get("authoritative_sql_file")
+        if auth_sql:
+            ap_path = REPO_DIR / auth_sql
+            if not ap_path.exists():
+                findings.append({"gate": "G5", "severity": "FAIL", "contract": mid, "issue": "missing_authoritative_sql_file", "path": auth_sql})
+            else:
+                ap_txt = ap_path.read_text(encoding="utf-8", errors="ignore")
+                field = mt.get("authoritative_field", "")
+                for rpc in mt.get("required_rpcs", []):
+                    if rpc not in ap_txt or (field and field not in ap_txt):
+                        findings.append({"gate": "G5", "severity": "FAIL", "contract": mid, "issue": "missing_rpc_field_patch", "rpc": rpc})
+        field = mt.get("authoritative_field", "")
+        for cp in mt.get("ui_consumers", []):
+            c_path = REPO_DIR / cp
+            if not c_path.exists() or (field and field not in c_path.read_text(encoding="utf-8", errors="ignore")):
+                findings.append({"gate": "G5", "severity": "FAIL", "contract": mid, "issue": "ui_consumer_missing_authoritative_field", "file": cp})
+        for mk in mt.get("required_ui_markers", []):
+            if mk not in ui_blob:
+                findings.append({"gate": "G5", "severity": "FAIL", "contract": mid, "issue": "missing_metric_ui_marker", "token": mk})
+        for sf in mt.get("required_sql_fields", []):
+            if sf not in sql_blob:
+                findings.append({"gate": "G5", "severity": "FAIL", "contract": mid, "issue": "missing_metric_sql_field", "token": sf})
+
+    return findings, {"checked": checked, "violations": len(findings)}
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 def main():
     ap = argparse.ArgumentParser(description="SAWYAN /sawyan-robot Gen-3 Interaction Crawler & Contract Gates")
-    ap.add_argument("--static", action="store_true", help="Run G1 + G2 only")
+    ap.add_argument("--static", action="store_true", help="Run G1 + G2 + G5 only")
     ap.add_argument("--quick", action="store_true", help="Cap crawler at 12 clicks per tab")
     ap.add_argument("--portal", default="public,member,merchant,admin")
     ap.add_argument("--max-per-tab", type=int, default=40)
@@ -665,6 +758,10 @@ def main():
     t0 = time.time()
     report = {"started_at": time.strftime("%Y-%m-%dT%H:%M:%S"), "findings": [], "stats": {}}
     try:
+        g5, g5_stats = run_g5_constitutional_contracts()
+        report["findings"] += g5
+        report["stats"]["g5"] = g5_stats
+        print(f" [G5] Constitutional Spec-to-UI & 4-State contracts: {g5_stats}")
         with sync_playwright() as p:
             browser = p.chromium.launch()
             g1 = run_g1_handler_integrity(browser, base, login)

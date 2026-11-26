@@ -211,6 +211,26 @@ window.SAWYAN.Notifications = {
             MerchantComplaintUpdated: {
                 title: 'تحديث مراجعة شكوى متجر ⚖️',
                 message: `تم البت في الشكوى (${p.decision || ''})${p.notes ? ': ' + p.notes : ''}`
+            },
+            SupportTicketOpened: {
+                title: '🎧 تذكرة دعم فني جديدة',
+                message: `${p.sender_name || p.subject || 'تواصل جديد بانتظار الرد'}`
+            },
+            MemberKycSubmitted: {
+                title: '🪪 طلب توثيق هوية عضو (KYC)',
+                message: `${p.full_name || 'عضو'} (#${p.member_code || '-'}) — بانتظار المراجعة`
+            },
+            MemberResidencyMovePending: {
+                title: '🌍 طلب نقل إقامة عضو بانتظار المراجعة',
+                message: `${p.full_name || 'عضو'} (#${p.member_code || '-'}) إلى ${p.target_country_code || ''}`
+            },
+            MemberWithdrawalApproved: {
+                title: '💸 تم اعتماد وصرف طلب السحب الخاص بك',
+                message: `مبلغ ${p.amount_usd ?? ''} USD${p.payout_ref ? ' — مرجع: ' + p.payout_ref : ''}`
+            },
+            MemberWithdrawalRejected: {
+                title: '🔴 تعذر صرف طلب السحب — أُعيد الرصيد لمحفظتك',
+                message: `مبلغ ${p.amount_usd ?? ''} USD — السبب: ${p.reason || 'يرجى مراجعة وسيلة الاستلام'}`
             }
         };
         return map[ev] || {
@@ -475,11 +495,16 @@ window.SAWYAN.Notifications = {
                 const wId = p.wallet_tx_id || p.withdrawal_id || '';
                 const primaries = wId ? ['#admWithdrawalRow_' + escA(wId)] : [];
                 this.scrollAndHighlight(primaries, ['#withdrawalsPage tbody tr:first-child', '#withdrawalsPage']);
-            } else if (ev === 'MemberGdprErasureRequested') {
+            } else if (ev === 'MemberGdprErasureRequested' || ev === 'SupportTicketOpened') {
                 this._navigateAdminPage('support');
                 const tId = p.ticket_id || '';
                 const primaries = tId ? ['#admTicketRow_' + escA(tId)] : [];
                 this.scrollAndHighlight(primaries, ['#supportPage tbody tr:first-child', '#supportPage']);
+            } else if (ev === 'MemberKycSubmitted' || ev === 'MemberResidencyMovePending') {
+                this._navigateAdminPage('members');
+                const mId = p.member_id || '';
+                const primaries = mId ? ['#admMemberRow_' + escA(mId)] : [];
+                this.scrollAndHighlight(primaries, ['#membersPage tbody tr:first-child', '#membersPage']);
             } else if (ev === 'ZeroDiscrepancyBreachAutoHalt') {
                 if (typeof window.openSovereignLivePage === 'function') {
                     window.openSovereignLivePage('coa');
@@ -570,6 +595,9 @@ window.SAWYAN.Notifications = {
             } else if (ev === 'MerchantFlashOfferLive') {
                 if (typeof window.goToPage === 'function') window.goToPage('merchants');
                 this.scrollAndHighlight(['#merchantsPage']);
+            } else if (ev === 'MemberWithdrawalApproved' || ev === 'MemberWithdrawalRejected') {
+                if (typeof window.goToPage === 'function') window.goToPage('wallet');
+                this.scrollAndHighlight(['[data-spec-id="member-wallet-history"]', '#walletPage']);
             }
         }
     },
@@ -609,6 +637,11 @@ window.SAWYAN.Notifications = {
             MerchantGovernanceUpdated: '⚙️',
             MerchantComplaintFiled: '📣',
             MerchantComplaintUpdated: '⚖️',
+            SupportTicketOpened: '🎧',
+            MemberKycSubmitted: '🪪',
+            MemberResidencyMovePending: '🌍',
+            MemberWithdrawalApproved: '💸',
+            MemberWithdrawalRejected: '🔴',
             transaction_request: '📝',
             transaction_approved: '✅',
             commission: '💰',
@@ -631,6 +664,15 @@ window.SAWYAN.Notifications = {
         const dropdown = document.getElementById('notificationDropdown');
         if (dropdown) {
             const isOpening = dropdown.style.display === 'none' || !dropdown.style.display;
+            if (isOpening && window.innerWidth <= 640) {
+                const bell = document.getElementById('notificationBell');
+                if (bell) {
+                    const rect = bell.getBoundingClientRect();
+                    dropdown.style.top = Math.max(70, Math.round(rect.bottom) + 8) + 'px';
+                }
+            } else if (isOpening) {
+                dropdown.style.top = '';
+            }
             dropdown.style.display = isOpening ? 'flex' : 'none';
             if (isOpening) {
                 const list = document.getElementById('notificationList');
