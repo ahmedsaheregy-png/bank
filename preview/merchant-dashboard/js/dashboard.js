@@ -1591,15 +1591,27 @@ async function startQRScanner() {
  * إيقاف ماسح QR
  */
 function stopQRScanner() {
-    if (html5QRScanner) {
-        html5QRScanner.stop().then(() => {
-            html5QRScanner.clear();
-            html5QRScanner = null;
-
-            document.getElementById('scannerStatus').innerHTML = '<p style="color: var(--text-secondary, #666);">📷 اضغط لبدء المسح</p>';
-            document.getElementById('startScanBtn').style.display = 'inline-block';
-            document.getElementById('stopScanBtn').style.display = 'none';
-        });
+    const resetUi = () => {
+        try { if (html5QRScanner) html5QRScanner.clear(); } catch (_) {}
+        html5QRScanner = null;
+        const st = document.getElementById('scannerStatus');
+        if (st) st.innerHTML = '<p style="color: var(--text-secondary, #666);">📷 اضغط لبدء المسح</p>';
+        const sBtn = document.getElementById('startScanBtn');
+        if (sBtn) sBtn.style.display = 'inline-block';
+        const stBtn = document.getElementById('stopScanBtn');
+        if (stBtn) stBtn.style.display = 'none';
+    };
+    if (!html5QRScanner) return;
+    try {
+        const state = typeof html5QRScanner.getState === 'function' ? html5QRScanner.getState() : null;
+        // Html5QrcodeScannerState: 2 = SCANNING, 3 = PAUSED
+        if (state === null || state === 2 || state === 3) {
+            Promise.resolve(html5QRScanner.stop()).then(resetUi).catch(resetUi);
+        } else {
+            resetUi();
+        }
+    } catch (_) {
+        resetUi();
     }
 }
 

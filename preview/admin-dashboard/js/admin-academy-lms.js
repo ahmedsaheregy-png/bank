@@ -130,7 +130,10 @@
             LMS_STATE = await window.SAWYAN.API.adminManageAcademyLms({ entity: 'lesson', action: 'list' });
             renderAcademyAdminShell(pg);
         } catch (err) {
-            pg.innerHTML = '<div class="acad-card" style="background:#fef2f2;border-color:#fca5a5;color:#991b1b;font-weight:800;">⛔ تعذر تحميل الأكاديمية: ' + esc(err.message) + '</div>';
+            const niceErr = (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.humanizeError === 'function')
+                ? window.SAWYAN.UI.humanizeError(err)
+                : String((err && err.message) || err || 'تعذر تحميل بيانات الأكاديمية');
+            pg.innerHTML = '<div class="acad-card" style="background:#fef2f2;border-color:#fca5a5;color:#991b1b;font-weight:800;">⛔ تعذر تحميل الأكاديمية: ' + esc(niceErr) + '</div>';
         }
     }
 

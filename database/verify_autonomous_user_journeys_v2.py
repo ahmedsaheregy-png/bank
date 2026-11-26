@@ -74,6 +74,19 @@ FORBIDDEN_USER_JARGON_TOKENS = [
     "k-Anonymity",
 ]
 
+VISIBLE_TECHNICAL_ERROR_PATTERNS = [
+    r"is not defined",
+    r"is not a function",
+    r"Cannot read propert",
+    r"\bTypeError\b",
+    r"\bReferenceError\b",
+    r"\bSyntaxError\b",
+    r"RPC\[",
+    r"\bfailed:\s*[A-Z][A-Z0-9_]{3,}",
+    r"\[object Object\]",
+]
+RAW_UPPER_CODE_RE = r"\b[A-Z]{3,}_[A-Z0-9]{2,}(?:_[A-Z0-9]+)+\b"
+
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, format, *args):
@@ -228,7 +241,7 @@ def assert_modal_escapable(page, label, overlay_sel, open_fn_js):
 
 
 def audit_screen_purity(page, label, is_user_facing=True):
-    """Pillar 5: Scans visible text, layout overflow, and numeric inputs on the active screen."""
+    """Pillar 5 + Gen-3 G4: Scans visible text, error leaks, layout overflow, and numeric inputs."""
     res = page.evaluate(
         """(cfg) => {
         const issues = [];
@@ -236,6 +249,12 @@ def audit_screen_purity(page, label, is_user_facing=True):
         for (const term of cfg.forbiddenTerms) {
             if (bodyText.includes(term)) {
                 issues.push(`Forbidden constitutional term '${term}' found in visible text`);
+            }
+        }
+        // Gate G4: Unconditional visible technical error detector (catches runtime crashes / raw RPC leaks on ALL portals)
+        for (const pat of cfg.techErrorPatterns) {
+            if (new RegExp(pat, 'i').test(bodyText)) {
+                issues.push(`Technical error text matched /${pat}/ in visible UI`);
             }
         }
         if (cfg.isUserFacing) {
@@ -247,6 +266,17 @@ def audit_screen_purity(page, label, is_user_facing=True):
             if (/\\bundefined\\b/.test(bodyText)) {
                 issues.push(`Literal 'undefined' rendered in visible user-facing text`);
             }
+            if (/تعذر تحميل/.test(bodyText)) {
+                issues.push(`Fatal user-facing load failure text 'تعذر تحميل' visible on screen`);
+            }
+        }
+        // Raw UPPER_SNAKE_CASE internal code scan inside active toasts / dialogs
+        const toastText = Array.from(document.querySelectorAll('.sw-toast, .toast, [role="alert"], .sw-dialog-card'))
+            .map(t => t.innerText || '').join(' | ');
+        const rawCodes = (toastText.match(new RegExp(cfg.rawUpperCodeRe, 'g')) || [])
+            .filter(c => !/^(SAWYAN|USD|EUR|TRY|EGP|SAR|AED)$/.test(c));
+        if (rawCodes.length) {
+            issues.push(`Raw internal error code leaked in toast/dialog: ${Array.from(new Set(rawCodes)).slice(0, 4).join(', ')}`);
         }
         const sw = document.documentElement.scrollWidth;
         const cw = document.documentElement.clientWidth;
@@ -258,6 +288,8 @@ def audit_screen_purity(page, label, is_user_facing=True):
         {
             "forbiddenTerms": FORBIDDEN_CONSTITUTIONAL_TERMS,
             "forbiddenJargon": FORBIDDEN_USER_JARGON_TOKENS,
+            "techErrorPatterns": VISIBLE_TECHNICAL_ERROR_PATTERNS,
+            "rawUpperCodeRe": RAW_UPPER_CODE_RE,
             "isUserFacing": is_user_facing,
         },
     )
@@ -288,6 +320,7 @@ def run_constitutional_quality_and_safety_suite(run_full_visual_d29_d30=True):
         ("Doc-Sync & Constitutional Living Docs Gate", [sys.executable, str(DB_DIR / "verify_doc_sync.py")]),
         ("DOM, HTML5 Form Validity & Zero-Dialog Linter", [sys.executable, str(DB_DIR / "verify_dom_and_form_lint.py")]),
         ("Phase 0/1 Security & Ledger Regression Suite", [sys.executable, str(DB_DIR / "verify_phase1_regression_suite.py")]),
+        ("Gen-3 Inline-Handler & Arabic Error-Code Contract Gate (G1+G2)", [sys.executable, str(DB_DIR / "robot_gen3_interaction_crawler.py"), "--static"]),
     ]
     for label, cmd in gate_scripts:
         proc = subprocess.run(cmd, cwd=str(REPO_DIR), capture_output=True, text=True, encoding="utf-8", errors="replace")
@@ -1043,18 +1076,35 @@ def run_v2_multi_persona_browser_journeys():
         raise AssertionError(f"[JOURNEY V2 FAIL] Browser console/page errors: {all_errors[:15]}")
 
 
+def _print_lessons_ledger_status():
+    ledger_path = REPO_DIR / "specs" / "robot_lessons_ledger.json"
+    if not ledger_path.exists():
+        return
+    try:
+        data = json.loads(ledger_path.read_text(encoding="utf-8"))
+        lessons = data.get("lessons", [])
+        cov = sum(1 for x in lessons if x.get("status") == "covered")
+        part = sum(1 for x in lessons if x.get("status") == "partial")
+        unc = sum(1 for x in lessons if x.get("status") == "uncovered")
+        print(f" [LESSONS LEDGER] total={len(lessons)} | covered={cov} | partial={part} | uncovered={unc}")
+    except Exception as exc:
+        print(f" [LESSONS LEDGER WARN] Could not read ledger: {exc}")
+
+
 def main():
-    parser = argparse.ArgumentParser(description="SAWYAN V3.0 Gen-2 Autonomous 5-Persona Journey & UX Inspector")
+    parser = argparse.ArgumentParser(description="SAWYAN V3.0 Gen-2 + Gen-3 Autonomous 5-Persona Journey & UX Inspector")
     parser.add_argument("--seed", type=int, default=int(datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d")))
     parser.add_argument("--fast", action="store_true", help="Run browser 5-persona & UX above-the-fold audit only")
     parser.add_argument("--canary", action="store_true", help="Run 6-hour live synthetic canary only")
+    parser.add_argument("--gen3-static", action="store_true", help="Also run Gen-3 G1 + G2 static handler & Arabic error-code gates")
+    parser.add_argument("--gen3", action="store_true", help="Also run Gen-3 quick interaction crawler (G1 + G2 + G3 + G4)")
     args = parser.parse_args()
 
     if args.canary:
         stage19_lifecycle.run_canary_health()
         return
 
-    print("=== SAWYAN V3.0 GEN-2 AUTONOMOUS 5-PERSONA JOURNEY & UX INSPECTOR (/sawyan-robot) ===")
+    print("=== SAWYAN V3.0 GEN-2 + GEN-3 AUTONOMOUS 5-PERSONA JOURNEY & UX INSPECTOR (/sawyan-robot) ===")
     run_constitutional_quality_and_safety_suite(run_full_visual_d29_d30=(not args.fast))
     stage19_lifecycle.run_cross_schema_config_parity_check()
     sim_res = stage19_lifecycle.run_phase_a_sql_lifecycle(args.seed)
@@ -1062,6 +1112,13 @@ def main():
     if not args.fast:
         stage19_lifecycle.run_phase_b_and_c_browser_and_chaos()
     run_v2_multi_persona_browser_journeys()
+    if args.gen3 or args.gen3_static:
+        gen3_cmd = [sys.executable, str(DB_DIR / "robot_gen3_interaction_crawler.py")]
+        gen3_cmd.append("--quick" if args.gen3 else "--static")
+        proc = subprocess.run(gen3_cmd, cwd=str(REPO_DIR))
+        if proc.returncode != 0:
+            raise AssertionError(f"[GEN-3 INTERACTION GATE FAIL] Exit code {proc.returncode}")
+    _print_lessons_ledger_status()
     print("\n[SAWYAN AUTONOMOUS USER JOURNEYS V2 (/sawyan-robot): 100% GREEN]")
 
 

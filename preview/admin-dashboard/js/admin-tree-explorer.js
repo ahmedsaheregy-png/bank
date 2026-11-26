@@ -806,14 +806,17 @@
             renderAdminTreeShell();
         } catch (err) {
             STATE.loading = false;
-            const msg = String((err && err.message) || err || 'خطأ في تحميل الشجرة الكاملة');
-            if (/ADMIN_AUTH_REQUIRED|ADMIN_SESSION_INVALID|ADMIN_SESSION_EXPIRED|ADMIN_NOT_ACTIVE/.test(msg)) {
+            const rawMsg = String((err && err.message) || err || 'خطأ في تحميل الشجرة الكاملة');
+            if (/ADMIN_AUTH_REQUIRED|ADMIN_SESSION_INVALID|ADMIN_SESSION_EXPIRED|ADMIN_NOT_ACTIVE/.test(rawMsg)) {
                 window.SAWYAN.API.clearAdminSession();
                 window.location.href = 'login.html';
                 return;
             }
-            STATE.error = msg;
-            toast(msg, true);
+            const niceMsg = (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.humanizeError === 'function')
+                ? window.SAWYAN.UI.humanizeError(rawMsg)
+                : rawMsg;
+            STATE.error = niceMsg;
+            toast(niceMsg, true);
             renderAdminTreeShell();
         }
     }

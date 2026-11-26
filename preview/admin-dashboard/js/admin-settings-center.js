@@ -702,7 +702,10 @@
             .catch(function (err) {
                 LIVE_2FA_STATE.loading = false;
                 LIVE_2FA_STATE.loaded = true;
-                LIVE_2FA_STATE.error = err && err.message ? err.message : 'تعذر تحميل سياسة المصادقة الثنائية من PostgreSQL';
+                const niceErr = (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.humanizeError === 'function')
+                    ? window.SAWYAN.UI.humanizeError(err)
+                    : ((err && err.message) || 'تعذر تحميل سياسة المصادقة الثنائية من PostgreSQL');
+                LIVE_2FA_STATE.error = niceErr;
                 if (LIVE_TAB === 'tfa') renderLiveProductionSettings();
             });
     }

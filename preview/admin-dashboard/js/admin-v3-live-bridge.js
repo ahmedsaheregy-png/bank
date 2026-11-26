@@ -76,6 +76,11 @@
     }
 
     function showToast(msg, isError) {
+        const rawText = msg && typeof msg === 'object' ? (msg.message || msg.error_code || String(msg)) : String(msg || '');
+        const shouldHumanize = Boolean(isError) || /RPC\[|failed:\s*[A-Z_]{3,}|\b[A-Z]{3,}_[A-Z0-9]{2,}_[A-Z0-9_]+\b/i.test(rawText);
+        const displayMsg = (shouldHumanize && window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.humanizeError === 'function')
+            ? window.SAWYAN.UI.humanizeError(msg)
+            : rawText;
         let box = document.getElementById('sawyanAdminLiveToast');
         if (!box) {
             box = document.createElement('div');
@@ -86,7 +91,7 @@
         box.style.background = isError ? '#991b1b' : '#065f46';
         box.style.color = '#ffffff';
         box.style.border = isError ? '1.5px solid #fca5a5' : '1.5px solid #6ee7b7';
-        box.textContent = (isError ? '⛔ ' : '✅ ') + msg;
+        box.textContent = (isError ? '⛔ ' : '✅ ') + displayMsg;
         box.style.opacity = '1';
         clearTimeout(box._timer);
         box._timer = setTimeout(function () { box.style.opacity = '0'; }, 4800);

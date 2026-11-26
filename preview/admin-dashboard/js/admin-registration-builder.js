@@ -170,7 +170,10 @@
             _dirty = false;
             renderBuilder(pg);
         } catch (err) {
-            pg.innerHTML = '<div class="rb-card" style="background:#fef2f2;border-color:#fca5a5;color:#991b1b;font-weight:800;">⛔ تعذر تحميل إعدادات نماذج التسجيل: ' + esc(err.message) + '</div>';
+            const niceErr = (window.SAWYAN && window.SAWYAN.UI && typeof window.SAWYAN.UI.humanizeError === 'function')
+                ? window.SAWYAN.UI.humanizeError(err)
+                : String((err && err.message) || err || 'تعذر تحميل إعدادات نماذج التسجيل');
+            pg.innerHTML = '<div class="rb-card" style="background:#fef2f2;border-color:#fca5a5;color:#991b1b;font-weight:800;">⛔ تعذر تحميل إعدادات نماذج التسجيل: ' + esc(niceErr) + '</div>';
         }
     }
 
@@ -656,7 +659,7 @@
                     _pitchMap.setView([lat, lng], rad <= 10 ? 13 : (rad <= 25 ? 11 : 10));
                 }
             } catch (err) {
-                badge.textContent = '⛔ ' + err.message;
+                badge.textContent = '⛔ ' + (window.SAWYAN?.UI?.humanizeError ? window.SAWYAN.UI.humanizeError(err) : (err && err.message) || 'تعذر التحميل');
             }
         }
 

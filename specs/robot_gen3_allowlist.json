@@ -1,0 +1,6 @@
+{
+  "_purpose": "Reviewed exceptions for /sawyan-robot Gen-3. Every entry MUST carry a reason. An empty list is the goal.",
+  "handlers": {},
+  "error_codes_generic_ok": {},
+  "crawl_findings": {}
+}

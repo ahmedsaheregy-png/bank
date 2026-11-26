@@ -550,7 +550,7 @@
                     : '<b>✅ مسموح قبل يوم الصرف (0.00$ على الخزانة + درع الكاري أون):</b> تُلغى العملية وتعود العمولة (' + fmt(t.commAmt) + ' ج.م) للتاجر؛ فإن كان رصيد الكاري أون للعضو يغطي الهدف الشهري يُخصم العجز من الكاري أون ويحتفظ بتأهله، وإن لم يغطِّ يسقط تأهله وتُلغى عمولات تأهله الموزعة مع إعادة حساب الـ Roll-up.') +
             '</div>' +
             (postPayout
-                ? '<button onclick="closeModal()" style="background:#475569;color:white;border:none;padding:9px 18px;border-radius:8px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;">🔒 إغلاق — العملية مقفلة نهائياً بعد الصرف</button>'
+                ? '<button onclick="closeSawyanModal()" style="background:#475569;color:white;border:none;padding:9px 18px;border-radius:8px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;">🔒 إغلاق — العملية مقفلة نهائياً بعد الصرف</button>'
                 : '<div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:10px;margin-bottom:12px;font-size:0.82rem;">' +
                     '<b>📩 مسودة إشعار العضو:</b> "تم إلغاء الفاتورة ' + esc(t.id) + ' بمبلغ ' + fmt(t.amount) + ' ج.م قبل الصرف، وتم تحديث صندوق هدفك والكاري أون آلياً."' +
                   '</div>' +

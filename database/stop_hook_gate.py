@@ -99,12 +99,11 @@ def main():
         print(json.dumps({
             "decision": "continue",
             "reason": (
-                "SAWYAN Auto-Publish Gate blocked turn completion: unpushed changes remain "
+                "SAWYAN Golden Publishing Gate: unpushed changes remain "
                 f"(main dirty={dirty_count}, unpushed_commits={ahead_count}; "
                 f"docs dirty={docs_dirty}, docs_unpushed={docs_ahead}). "
-                "Run `D:\\Python314\\python.exe database/publish_verified_release.py -m \"<concise conventional commit message>\"` "
-                "(and `database/sync_docs_html.py` / `database/sync_private_docs_backup.py` if `docs/` changed) "
-                "before delivering the final response (unless intentionally waiting on a user answer/decision)."
+                "If this work was already approved ('موافق'/'نفذ'), run `D:\\Python314\\python.exe database/publish_verified_release.py -m \"<concise conventional commit message>\"` now. "
+                "If intentionally waiting on the Founder's approval before pushing, ensure the reply prominently includes a `⏳ تنبيه مهم — شغل جاهز ومتفق عليه وينتظر موافقتك للرفع:` reminder listing all completed unpushed items."
             ),
         }, ensure_ascii=False))
         return

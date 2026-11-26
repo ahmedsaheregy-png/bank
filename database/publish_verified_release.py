@@ -170,6 +170,7 @@ def main():
         run_gate_script("verify_doc_sync.py")
         run_gate_script("verify_dom_and_form_lint.py")
         run_gate_script("verify_phase1_regression_suite.py", ["--static-only"])
+        run_gate_script("robot_gen3_interaction_crawler.py", ["--static"])
 
         docs_git_dir = os.path.join(DOCS_DIR, ".git")
         if os.path.isdir(docs_git_dir):

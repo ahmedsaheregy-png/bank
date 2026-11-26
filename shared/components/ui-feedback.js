@@ -259,12 +259,234 @@
         if (m.includes('CONTACT_NAME_REQUIRED') || m.includes('KYC_FULL_NAME_AND_DOC_NUMBER_REQUIRED') || m.includes('PAYOUT_METHOD_FIELDS_REQUIRED')) {
             return 'يرجى استكمال جميع الحقول المطلوبة قبل الحفظ.';
         }
+        // --- Phase P2: 100% Specific Arabic Coverage for All User-Facing & Sandbox Codes ---
+        if (m.includes('ROBOT_SANDBOX_WRITE_BLOCKED')) {
+            return 'وضع الفحص المعزول نشط — عمليات التعديل والكتابة محجوبة مؤقتاً للحفاظ على سلامة البيانات.';
+        }
+        if (m.includes('ACADEMY_LESSON_NOT_ACCESSIBLE')) {
+            return 'هذا الدرس غير متاح حالياً — أكمل الدرس السابق أولاً أو تأكد من تفعيل صلاحية المسار التدريبي.';
+        }
+        if (m.includes('INVALID_PROGRESS_ACTION')) {
+            return 'إجراء التقدم التعليمي غير صالح — حدّث الصفحة وحاول مرة أخرى.';
+        }
+        if (m.includes('ALREADY_IN_TARGET_COUNTRY')) {
+            return 'حسابك مسجّل بالفعل في هذه الدولة — لا حاجة لطلب نقل إقامة.';
+        }
+        if (m.includes('TARGET_COUNTRY_NOT_REGISTERED')) {
+            return 'الدولة المختارة غير متاحة في النظام حالياً لنقل الإقامة.';
+        }
+        if (m.includes('BRANCH_NOT_FOUND')) {
+            return 'تعذر العثور على فرع المتجر المحدد — تأكد من اختيار فرع نشط.';
+        }
+        if (m.includes('INVALID_GEOFENCE_RADIUS')) {
+            return 'نطاق البحث الجغرافي المحدد غير صالح — اختر مسافة مناسبة.';
+        }
+        if (m.includes('CASHIER_CODE_AND_4DIGIT_PIN_REQUIRED')) {
+            return 'يرجى إدخال كود موظف الكاشير ورمز PIN المكوّن من 4 أرقام.';
+        }
+        if (m.includes('CASHIER_PIN_MUST_BE_4_DIGITS')) {
+            return 'يجب أن يتكوّن رمز PIN للكاشير من 4 أرقام فقط (بالأرقام الإنجليزية أو العربية).';
+        }
+        if (m.includes('INITIAL_CASHIER_PIN_REQUIRED')) {
+            return 'يرجى تحديد رمز PIN مبدئي من 4 أرقام لحساب الكاشير قبل متابعة تسجيل المتجر.';
+        }
+        if (m.includes('CURRENT_PASSWORD_INCORRECT')) {
+            return 'كلمة المرور الحالية المدخلة غير صحيحة — تأكد منها وحاول مجدداً.';
+        }
+        if (m.includes('WEAK_OR_DEFAULT_PASSWORD_FORBIDDEN')) {
+            return 'يرجى اختيار كلمة مرور قوية مختلفة عن الكلمات الافتراضية أو السهلة.';
+        }
+        if (m.includes('CREDENTIALS_REQUIRED') || m.includes('MISSING_CREDENTIALS')) {
+            return 'يرجى إدخال بيانات الدخول كاملة (المعرف وكلمة المرور) للمتابعة.';
+        }
+        if (m.includes('CHARGED_PRICE_MUST_EXCEED_DECLARED_PRICE')) {
+            return 'لبلاغ التلاعب بالأسعار، يجب أن يكون السعر المدفوع أكبر من السعر المعلن في الفاتورة.';
+        }
+        if (m.includes('COMPLAINT_SUBJECT_REQUIRED')) {
+            return 'يرجى كتابة عنوان واضح للشكوى قبل الإرسال.';
+        }
+        if (m.includes('COMPLAINT_DETAILS_TOO_SHORT')) {
+            return 'يرجى كتابة تفاصيل أوضح للشكوى حتى تتمكن الإدارة من مراجعتها.';
+        }
+        if (m.includes('COMPLAINT_RATE_LIMIT_24H')) {
+            return 'تم استلام شكوى منك مؤخراً ضد هذا المتجر — يمكنك إرسال شكوى جديدة بعد مرور 24 ساعة.';
+        }
+        if (m.includes('INVALID_COMPLAINT_CATEGORY')) {
+            return 'تصنيف الشكوى المختار غير صحيح — اختر تصنيفاً من القائمة.';
+        }
+        if (m.includes('INVALID_DISPUTE_CATEGORY')) {
+            return 'تصنيف الاعتراض المختار غير صحيح — اختر تصنيفاً من القائمة.';
+        }
+        if (m.includes('COMPLETED_TX_REQUIRED_FOR_REVIEW')) {
+            return 'يمكنك تقييم المتجر بعد إتمام واعتماد فاتورة شراء واحدة على الأقل لديه.';
+        }
+        if (m.includes('COUNTRY_GATE_INACTIVE_D13')) {
+            return 'لم تُفعَّل بوابة تسجيل المتاجر في هذه الدولة بعد وفق ضوابط التفعيل المعتمد.';
+        }
+        if (m.includes('COUNTRY_NOT_REGISTERED') || m.includes('COUNTRY_NOT_SUPPORTED')) {
+            return 'الدولة المختارة غير مدعومة أو غير مسجّلة في النظام حالياً.';
+        }
+        if (m.includes('INVALID_FULL_NAME')) {
+            return 'يرجى إدخال الاسم الكامل بشكل صحيح واضح.';
+        }
+        if (m.includes('INVALID_PHONE_NUMBER') || m.includes('VALID_PHONE_REQUIRED')) {
+            return 'يرجى إدخال رقم هاتف دولي صحيح ومكتمل بالمفتاح الدولي.';
+        }
+        if (m.includes('INVALID_HOME_GPS_COORDINATES') || m.includes('MEMBER_HOME_GPS_REQUIRED')) {
+            return 'يرجى تحديد موقع السكن على الخريطة بدقة قبل إتمام التسجيل أو الحفظ.';
+        }
+        if (m.includes('INVALID_OR_EXPIRED_ROOT_INVITE_TOKEN')) {
+            return 'رابط أو كود الدعوة المؤسسية غير صالح أو منتهي الصلاحية — تواصل مع الإدارة.';
+        }
+        if (m.includes('MEMBER_CITY_REQUIRED')) {
+            return 'يرجى اختيار المدينة لإتمام التسجيل.';
+        }
+        if (m.includes('MEMBER_DISTRICT_REQUIRED')) {
+            return 'يرجى تحديد الحي أو المنطقة لإتمام التسجيل.';
+        }
+        if (m.includes('MEMBER_EMAIL_REQUIRED')) {
+            return 'يرجى إدخال البريد الإلكتروني لإتمام التسجيل.';
+        }
+        if (m.includes('MEMBER_GENDER_REQUIRED')) {
+            return 'يرجى اختيار النوع (ذكر / أنثى) لإتمام التسجيل.';
+        }
+        if (m.includes('MEMBER_NOT_FOUND_OR_INACTIVE')) {
+            return 'تعذر العثور على العضو أو أن حسابه غير نشط حالياً.';
+        }
+        if (m.includes('MEMBER_NOT_FOUND')) {
+            return 'لم يتم العثور على بيانات العضو المطلوب.';
+        }
+        if (m.includes('ROOT_MEMBER_MISSING')) {
+            return 'تعذر تحديد حساب الجذر التأسيسي للشبكة — تواصل مع الدعم الفني.';
+        }
+        if (m.includes('ROOT_SPONSOR_RESTRICTED_TO_ADMIN')) {
+            return 'الربط المباشر برمز القائد الأعلى #0 مقيّد بدعوات الإدارة المعتمدة فقط — أدخل رمز عضو راعٍ.';
+        }
+        if (m.includes('SUBTREE_ROOT_FORBIDDEN_OR_NOT_FOUND')) {
+            return 'لا تملك صلاحية عرض هذه الشجرة الفرعية أو أن الحساب غير موجود.';
+        }
+        if (m.includes('VALID_MEMBER_CODE_REQUIRED')) {
+            return 'يرجى إدخال رقم عضوية صحيح (رقم العضو) للمتابعة.';
+        }
+        if (m.includes('MERCHANT_ADDRESS_REQUIRED')) {
+            return 'يرجى إدخال عنوان المتجر التفصيلي لإتمام التسجيل.';
+        }
+        if (m.includes('MERCHANT_BANNED_RE_REGISTRATION_BLOCKED')) {
+            return 'لا يمكن إعادة تسجيل متجر موقوف أو محظور — يرجى التواصل مع الإدارة.';
+        }
+        if (m.includes('MERCHANT_BUSINESS_NAME_REQUIRED')) {
+            return 'يرجى إدخال الاسم التجاري للمتجر.';
+        }
+        if (m.includes('MERCHANT_CITY_REQUIRED')) {
+            return 'يرجى اختيار مدينة المتجر.';
+        }
+        if (m.includes('MERCHANT_COMMERCIAL_REG_REQUIRED')) {
+            return 'يرجى إدخال رقم السجل التجاري للمتجر.';
+        }
+        if (m.includes('MERCHANT_COMMISSION_REQUIRED')) {
+            return 'يرجى تحديد نسبة العمولة التعاقدية للمتجر.';
+        }
+        if (m.includes('MERCHANT_COVER_REQUIRED')) {
+            return 'يرجى إرفاق صورة غلاف واضحة للمتجر.';
+        }
+        if (m.includes('MERCHANT_DESCRIPTION_REQUIRED')) {
+            return 'يرجى كتابة نبذة واضحة عن نشاط المتجر.';
+        }
+        if (m.includes('MERCHANT_DISTRICT_REQUIRED')) {
+            return 'يرجى تحديد الحي أو المنطقة التابع لها المتجر.';
+        }
+        if (m.includes('MERCHANT_EMAIL_REQUIRED')) {
+            return 'يرجى إدخال البريد الإلكتروني الخاص بالمتجر.';
+        }
+        if (m.includes('MERCHANT_GEO_LOCATION_REQUIRED')) {
+            return 'يرجى تحديد موقع المتجر على الخريطة بدقة قبل الإرسال.';
+        }
+        if (m.includes('MERCHANT_LOGO_REQUIRED')) {
+            return 'يرجى إرفاق شعار (Logo) المتجر.';
+        }
+        if (m.includes('MERCHANT_OWNER_NAME_REQUIRED')) {
+            return 'يرجى إدخال اسم مالك المتجر أو المفوّض بالتوقيع.';
+        }
+        if (m.includes('MERCHANT_SESSION_INVALID')) {
+            return 'انتهت صلاحية جلسة المتجر — يرجى تسجيل الدخول مرة أخرى.';
+        }
+        if (m.includes('MERCHANT_TAX_ID_REQUIRED')) {
+            return 'يرجى إدخال الرقم الضريبي للمتجر.';
+        }
+        if (m.includes('MERCHANT_WEBSITE_REQUIRED')) {
+            return 'يرجى إدخال رابط الموقع الإلكتروني أو الصفحة الرسمية للمتجر.';
+        }
+        if (m.includes('MERCHANT_WHATSAPP_REQUIRED')) {
+            return 'يرجى إدخال رقم واتساب رسمي للتواصل مع المتجر.';
+        }
+        if (m.includes('ONBOARDER_CODE_REQUIRED')) {
+            return 'يرجى إدخال كود العضو الذي دعا المتجر للانضمام.';
+        }
+        if (m.includes('ONBOARDER_MEMBER_NOT_FOUND')) {
+            return 'كود العضو الداعي المدخل غير موجود أو غير نشط.';
+        }
+        if (m.includes('INVALID_DEDUCTION_PERCENT_RANGE')) {
+            return 'نسبة الخصم أو العمولة خارج النطاق المسموح به في إعدادات المنصة.';
+        }
+        if (m.includes('FLASH_OFFER_BLOCKED_WALLET_NOT_GREEN')) {
+            return 'لا يمكن نشر إعلان ترويجي حاليّاً لأن رصيد المتجر التشغيلي في حالة تنبيه أو عزل — اشحن الرصيد أولاً.';
+        }
+        if (m.includes('DEFERRED_PAYMENT_REQUIRES_PENDING_MODE')) {
+            return 'الدفع الآجل لا يُوثَّق مباشرةً — يجب إرساله كطلب معلّق لاعتماد التاجر بعد السداد الفعلي.';
+        }
+        if (m.includes('IDEMPOTENCY_KEY_REQUIRED')) {
+            return 'تعذر التحقق من مرجع عدم التكرار للعملية — أعد المحاولة من الشاشة مباشرة.';
+        }
+        if (m.includes('INSUFFICIENT_WALLET_BALANCE')) {
+            return 'رصيد محفظتك المتاح للسحب غير كافٍ لتغطية المبلغ المطلوب حالياً.';
+        }
+        if (m.includes('INVALID_DECISION_USE_APPROVE_OR_REJECT')) {
+            return 'القرار المختار غير صالح — اختر «اعتماد» أو «رفض» من الأزرار المتاحة.';
+        }
+        if (m.includes('INVALID_EXPORT_FORMAT')) {
+            return 'صيغة التصدير المطلوبة غير مدعومة — اختر صيغة صالحة.';
+        }
+        if (m.includes('INVALID_POS_RETURN_MODE')) {
+            return 'وضع تنفيذ المرتجع غير صالح — اختر طريقة صالحة من الخيارات.';
+        }
+        if (m.includes('INVALID_RETURN_DECISION')) {
+            return 'قرار طلب المرتجع غير صالح — اختر القبول أو الرفض.';
+        }
+        if (m.includes('PAYOUT_METHOD_NOT_FOUND')) {
+            return 'لم يتم العثور على وسيلة السحب المختارة — أضف وسيلة استلام من الإعدادات أولاً.';
+        }
+        if (m.includes('PENDING_PURCHASE_NOT_FOUND')) {
+            return 'لم يعد هذا الطلب المعلّق موجوداً أو تم التعامل معه مسبقاً.';
+        }
+        if (m.includes('PENDING_TX_NOT_FOUND')) {
+            return 'لم تعد هذه الفاتورة المعلّقة متاحة — ربما تم اعتمادها أو رفضها للتو.';
+        }
+        if (m.includes('RETURN_REQUEST_NOT_FOUND')) {
+            return 'لم يتم العثور على طلب المرتجع المطلوب.';
+        }
+        if (m.includes('RETURN_REQUEST_NOT_PENDING')) {
+            return 'طلب المرتجع هذا تم البتّ فيه مسبقاً ولم يعد في حالة الانتظار.';
+        }
+        if (m.includes('TX_NOT_FOUND_OR_UNAUTHORIZED')) {
+            return 'الفاتورة غير موجودة أو ليست ضمن صلاحيات حسابك الحالي.';
+        }
+        if (m.includes('INVALID_PUSH_ACTOR_TYPE') || m.includes('INVALID_PUSH_CHANNEL') || m.includes('INVALID_PUSH_ENDPOINT') || m.includes('WEB_PUSH_KEYS_REQUIRED')) {
+            return 'تعذر تفعيل إشعارات الجهاز تلقائياً — تأكد من منح المتصفح إذن الإشعارات وأعد المحاولة.';
+        }
+        if (m.includes('ADMIN_AUTH_REQUIRED') || m.includes('ADMIN_SESSION_INVALID') || m.includes('ADMIN_SESSION_EXPIRED') || m.includes('ADMIN_NOT_ACTIVE')) {
+            return 'انتهت جلسة الإدارة أو الصلاحية غير مكتملة — أعد تسجيل الدخول.';
+        }
         if (/Failed to fetch|NetworkError|Load failed|timeout|AbortError/i.test(m)) {
             return 'تعذّر الاتصال بالخادم حالياً — تأكد من اتصال الإنترنت وحاول مرة أخرى.';
         }
-        // Never leak raw English `RPC[...] failed: UPPER_SNAKE_CODE` technical errors to Arabic users
-        const stripped = m.replace(/^❌\s*/, '').replace(/^RPC\[[^\]]+\]\s*failed:\s*/i, '').trim();
-        if (!/[\u0600-\u06FF]/.test(stripped)) {
+        // Strip raw English `RPC[...] failed: CODE` and UPPER_SNAKE_CASE codes anywhere in the string
+        const stripped = m
+            .replace(/^❌\s*/, '')
+            .replace(/RPC\[[^\]]+\]\s*failed:\s*[A-Z0-9_]+(?:[:\s—-]*[^\u0600-\u06FF]*)?/gi, '')
+            .replace(/\b[A-Z]{3,}_[A-Z0-9]{2,}(?:_[A-Z0-9]+)+\b/g, '')
+            .replace(/[:\s—-]+$/, '')
+            .trim();
+        if (!stripped || !/[\u0600-\u06FF]/.test(stripped)) {
             return 'تعذّر إتمام هذا الطلب حالياً لسبب تشغيلي أو فني — يرجى التحقق من البيانات أو المحاولة مرة أخرى، أو التواصل مع الدعم الفني.';
         }
         return stripped;
