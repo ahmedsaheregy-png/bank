@@ -82,7 +82,7 @@
         if (m.includes('MERCHANT_ONBOARDING_INCOMPLETE')) {
             return 'المتجر ما زال يستكمل بياناته التعاقدية قبل بدء استقبال الفواتير.';
         }
-        if (m.includes('PENDING_LIMIT_REACHED') || m.includes('MAX_PENDING_LIMIT')) {
+        if (m.includes('PENDING_LIMIT_REACHED') || m.includes('MAX_PENDING_LIMIT') || m.includes('MEMBER_PENDING_LIMIT_REACHED')) {
             return 'بلغت الحد الأقصى للطلبات المعلقة لدى هذا المتجر — انتظر اعتماد التاجر أو ألغِ طلباً قديماً أولاً.';
         }
         if (m.includes('SPAM_GUARD_RECEIPT_REQUIRED')) {
@@ -91,11 +91,26 @@
         if (m.includes('CASHIER_PIN_ONLY_ON_EMPLOYEE_OR_MERCHANT_DEVICE')) {
             return 'توثيق رمز PIN يتم من جهاز التاجر أو الموظف فقط — أرسل طلب التوثيق وسيعتمده المتجر فوراً من موبايله.';
         }
-        if (m.includes('SOFT_HOLD_CAP_EXCEEDED')) {
-            return 'تجاوز الطلب السقف المؤقت للعمليات المعلقة لدى هذا المتجر حالياً.';
+        if (m.includes('SOFT_HOLD_CAP') || m.includes('MERCHANT_SOFT_HOLD_CAP')) {
+            return 'قيمة هذه الفاتورة تتجاوز الحد المؤقت المسموح به للطلبات المعلّقة لدى هذا المتجر حالياً (سقف الحجز الوقائي لحماية رصيد التاجر). يُرجى الطلب من الكاشير توثيق الفاتورة مباشرة من شاشة المتجر عبر رمز الـ QR أو رقم عضويتك، أو المحاولة بعد اعتماد الطلبات المعلقة.';
         }
         if (m.includes('RECEIPT_REQUIRED_FOR_REMOTE_PURCHASE')) {
             return 'يرجى تصوير أو رفع صورة الفاتورة / الإيصال لإرسال الطلب للتاجر.';
+        }
+        if (m.includes('INVALID_PURCHASE_AMOUNT') || m.includes('POSITIVE_INVOICE_AMOUNT_REQUIRED')) {
+            return 'يرجى إدخال قيمة فاتورة صحيحة أكبر من صفر.';
+        }
+        if (m.includes('INVALID_PAYMENT_TYPE')) {
+            return 'وسيلة الدفع المختارة غير مدعومة حالياً — اختر وسيلة أخرى من القائمة.';
+        }
+        if (m.includes('MERCHANT_COMMISSION_NOT_SET_YET')) {
+            return 'لم يتم ضبط نسبة عمولة هذا المتجر بعد — لا يمكن تسجيل فواتير عليه حالياً.';
+        }
+        if (m.includes('MERCHANT_INACTIVE') || m.includes('MERCHANT_NOT_FOUND') || m.includes('MERCHANT_ACCOUNT_INACTIVE')) {
+            return 'هذا المتجر غير نشط أو غير متاح حالياً لاستقبال الفواتير.';
+        }
+        if (m.includes('NO_ACTIVE_MERCHANT_BRANCH') || m.includes('INVALID_MERCHANT_BRANCH')) {
+            return 'لا يوجد فرع نشط مفعّل لهذا المتجر حالياً.';
         }
         if (m.includes('DUPLICATE_TOPUP_NOTICE_COOLDOWN')) {
             return 'تم استلام إشعار شحن مماثل بنفس المبلغ للتو — يرجى الانتظار دقيقتين قبل إرسال طلب جديد منعاً للتكرار.';
@@ -136,25 +151,123 @@
         if (m.includes('TX_ALREADY_PROCESSED')) {
             return 'تم البتّ في هذه الفاتورة بالفعل من قِبل المالك أو زميل آخر.';
         }
+        if (m.includes('TX_ALREADY_REVERSED')) {
+            return 'تم إلغاء أو إرجاع هذه الفاتورة مسبقاً.';
+        }
+        if (m.includes('TX_NOT_IN_PENDING_STATE') || m.includes('ONLY_PENDING_PURCHASE_CAN_BE_CANCELLED')) {
+            return 'هذه الفاتورة لم تعد في حالة الانتظار ولا يمكن تعديلها أو إلغاؤها الآن.';
+        }
+        if (m.includes('ONLY_COMPLETED_TX_CAN_BE_RETURNED') || m.includes('REVERSAL_REQUIRES_COMPLETED_TX') || m.includes('TX_NOT_REVERSIBLE')) {
+            return 'لا يمكن تنفيذ المرتجع إلا على فاتورة مكتملة ضمن نافذة المراجعة المعتمدة.';
+        }
+        if (m.includes('POST_PAYOUT_RETURN_FORBIDDEN')) {
+            return 'انتهت مهلة المرتجعات والاعتراضات لهذا الشهر بعد صرف عمولات يوم 15 نهائياً.';
+        }
+        if (m.includes('OPEN_DISPUTE_ALREADY_EXISTS')) {
+            return 'يوجد نزاع مفتوح بالفعل لهذه الفاتورة وهو قيد مراجعة الإدارة.';
+        }
+        if (m.includes('DISPUTE_REASON_REQUIRED')) {
+            return 'يرجى كتابة سبب الاعتراض أو النزاع بوضوح قبل الإرسال.';
+        }
+        if (m.includes('RETURN_DISPUTE_EVIDENCE_REQUIRED') || m.includes('RETURN_PROOF_URL_REQUIRED')) {
+            return 'يرجى إرفاق صورة إثبات المرتجع أو الفاتورة لاستكمال الطلب.';
+        }
+        if (m.includes('SHELF_AND_RECEIPT_PHOTOS_REQUIRED')) {
+            return 'يرجى إرفاق صورة السعر المعلن وصورة الفاتورة لإثبات بلاغ التلاعب بالأسعار.';
+        }
+        if (m.includes('MINIMUM_WITHDRAWAL_10_USD')) {
+            return 'الحد الأدنى لطلب السحب هو 10 دولار أمريكي (أو ما يعادله بالعملة المحلية).';
+        }
+        if (m.includes('KYC_VERIFICATION_REQUIRED_BEFORE_WITHDRAWAL')) {
+            return 'يرجى توثيق هويتك (KYC) من الإعدادات قبل تقديم أول طلب سحب.';
+        }
+        if (m.includes('PAYOUT_METHOD_COOLDOWN_72H_ACTIVE')) {
+            return 'لأمان حسابك، لا يمكن السحب إلى وسيلة استلام مضافة حديثاً قبل مرور فترة التهدئة الأمنية (72 ساعة).';
+        }
+        if (m.includes('WITHDRAWAL_DUAL_APPROVAL_REQUIRED_W05')) {
+            return 'تجاوز مبلغ السحب حد المراجعة المزدوجة — أُحيل الطلب لاعتماد مديرَين ماليَين.';
+        }
+        if (m.includes('FLASH_OFFER_WEEKLY_LIMIT_EXCEEDED')) {
+            return 'بلغ متجرك الحد الأقصى للإعلانات الترويجية (إعلانان خلال 7 أيام).';
+        }
+        if (m.includes('FLASH_OFFER_BLOCKED_PROHIBITED_CONTENT')) {
+            return 'يُمنع وضع روابط خارجية أو أرقام هاتف/دفع مباشر داخل نص الإعلان الترويجي.';
+        }
+        if (m.includes('FLASH_OFFER_EMPTY_TITLE_OR_BODY')) {
+            return 'يرجى كتابة عنوان واضح وتفاصيل العرض الترويجي قبل الإرسال.';
+        }
+        if (m.includes('PHONE_ALREADY_REGISTERED') || m.includes('MERCHANT_PHONE_ALREADY_REGISTERED')) {
+            return 'رقم الهاتف هذا مسجّل بالفعل في حساب آخر — يمكنك تسجيل الدخول مباشرة.';
+        }
+        if (m.includes('EMAIL_ALREADY_REGISTERED') || m.includes('MERCHANT_EMAIL_ALREADY_REGISTERED')) {
+            return 'البريد الإلكتروني هذا مسجّل بالفعل في حساب آخر.';
+        }
+        if (m.includes('SPONSOR_NOT_FOUND') || m.includes('SPONSOR_REQUIRED')) {
+            return 'كود الراعي المدخل غير صحيح أو غير نشط — تأكد من الرقم وحاول مجدداً.';
+        }
+        if (m.includes('UNAUTHORIZED_MEMBER_SESSION') || m.includes('MEMBER_SESSION_EXPIRED')) {
+            return 'انتهت جلستك الحالية — يرجى تسجيل الدخول مرة أخرى للمتابعة.';
+        }
+        if (m.includes('UNAUTHORIZED_MERCHANT_SESSION') || m.includes('MERCHANT_SESSION_EXPIRED')) {
+            return 'انتهت جلسة المتجر — يرجى تسجيل الدخول مرة أخرى للمتابعة.';
+        }
+        if (m.includes('POS_LOOKUP_RATE_LIMIT_EXCEEDED')) {
+            return 'عدد محاولات البحث سريع جداً — يرجى الانتظار دقيقة ثم المحاولة مجدداً.';
+        }
+        if (m.includes('PREREQUISITE_LESSON_INCOMPLETE')) {
+            return 'يرجى إتمام الدرس السابق أولاً لفتح هذا الدرس في الأكاديمية.';
+        }
+        if (m.includes('TICKET_MESSAGE_TOO_SHORT')) {
+            return 'يرجى كتابة تفاصيل أوضح في الرسالة قبل الإرسال.';
+        }
+        if (m.includes('REVIEW_NOTE_REQUIRED') || m.includes('REJECTION_REASON_REQUIRED')) {
+            return 'يرجى كتابة ملاحظة أو سبب واضح (3 أحرف على الأقل) ليصل للطرف الآخر.';
+        }
+        if (m.includes('OPTIMISTIC_LOCK_CONFLICT')) {
+            return 'تم تحديث هذا السجل للتو من شاشة أخرى — أعد التحميل وحاول مرة أخرى.';
+        }
+        if (m.includes('MERCHANT_MANUAL_REJECT_REVOKED_D2')) {
+            return 'صلاحية الرفض اليدوي مقيّدة حالياً على حساب المتجر — يرجى مراجعة الإدارة.';
+        }
+        if (m.includes('MERCHANT_PORTAL_RESTRICTED_MODE') || m.includes('MERCHANT_CANNOT_SELF_PAUSE_UNDER_SANCTION')) {
+            return 'حساب المتجر في وضع مقيّد حالياً من قِبل الإدارة — تواصل مع الدعم الفني.';
+        }
+        if (m.includes('RBAC_AUDITOR_READ_ONLY') || m.includes('RBAC_ROLE_FORBIDDEN')) {
+            return 'صلاحية هذا الحساب للقراءة فقط أو غير مخوّلة لتنفيذ هذا الإجراء.';
+        }
+        if (m.includes('MAKER_CANNOT_APPROVE_OWN_REQUEST')) {
+            return 'لا يمكن لمُنشئ الطلب اعتماده بنفسه — يلزم اعتماد مدير ثانٍ.';
+        }
         if (m.includes('OWNER_OVERRIDE_WINDOW_48H_EXPIRED')) {
             return 'انتهت مهلة الـ 48 ساعة للتراجع المباشر عن رفض الموظف.';
         }
         if (m.includes('CASHIER_TX_LIMIT_EXCEEDED')) {
-            return 'قيمة الفاتورة تتجاوز السقف الأقصى المسموح لك كمموظف — يرجى تحويل الاعتماد لمالك المتجر.';
+            return 'قيمة الفاتورة تتجاوز السقف الأقصى المسموح لك كموظف — يرجى تحويل الاعتماد لمالك المتجر.';
         }
         if (m.includes('MERCHANT_OWNER_SELF_PURCHASE_FORBIDDEN')) {
             return 'لا يمكن لمالك المتجر تسجيل مشتريات لنفسه من متجره الشخصي (منع الشراء الذاتي).';
         }
         if (m.includes('SELF_PURCHASE_PIN_FORBIDDEN') || m.includes('CASHIER_COLLUSION') || m.includes('CASHIER_SELF_APPROVAL_FORBIDDEN')) {
-            return 'لا يمكن للموظف اعتماد فاتورة لحسابه الشخصي (حظر التواطؤ الذاتي D25).';
+            return 'لا يمكن للموظف اعتماد فاتورة لحسابه الشخصي (حظر التواطؤ الذاتي).';
         }
-        if (m.includes('POSITIVE_TOPUP_AMOUNT_REQUIRED')) {
+        if (m.includes('POSITIVE_TOPUP_AMOUNT_REQUIRED') || m.includes('INVALID_TOPUP_AMOUNT')) {
             return 'يرجى إدخال مبلغ شحن صحيح أكبر من صفر.';
         }
         if (m.includes('TOPUP_AMOUNT_AND_BANK_REF_REQUIRED') || m.includes('VALID_TOPUP_AMOUNT_AND_BANK_REF_REQUIRED')) {
             return 'يرجى إدخال مبلغ التحويل ورقم مرجع الحوالة البنكية (3 أحرف على الأقل).';
         }
-        return m.replace(/^❌\s*/, '');
+        if (m.includes('CONTACT_NAME_REQUIRED') || m.includes('KYC_FULL_NAME_AND_DOC_NUMBER_REQUIRED') || m.includes('PAYOUT_METHOD_FIELDS_REQUIRED')) {
+            return 'يرجى استكمال جميع الحقول المطلوبة قبل الحفظ.';
+        }
+        if (/Failed to fetch|NetworkError|Load failed|timeout|AbortError/i.test(m)) {
+            return 'تعذّر الاتصال بالخادم حالياً — تأكد من اتصال الإنترنت وحاول مرة أخرى.';
+        }
+        // Never leak raw English `RPC[...] failed: UPPER_SNAKE_CODE` technical errors to Arabic users
+        const stripped = m.replace(/^❌\s*/, '').replace(/^RPC\[[^\]]+\]\s*failed:\s*/i, '').trim();
+        if (!/[\u0600-\u06FF]/.test(stripped)) {
+            return 'تعذّر إتمام هذا الطلب حالياً لسبب تشغيلي أو فني — يرجى التحقق من البيانات أو المحاولة مرة أخرى، أو التواصل مع الدعم الفني.';
+        }
+        return stripped;
     }
 
     function toast(message, type = null, durationMs = 4500) {

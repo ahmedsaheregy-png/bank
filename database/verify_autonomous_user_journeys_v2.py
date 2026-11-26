@@ -440,6 +440,33 @@ def run_v2_multi_persona_browser_journeys():
                 f"[JOURNEY V2 FAIL — visitor_home] {home_check}"
             )
 
+            # 1a-2. Mobile Hamburger Drawer (☰) Open + Visible On-Screen + Clean Close Guard
+            page_vis.locator("#mobileMenuBtn").click()
+            page_vis.wait_for_timeout(350)
+            drawer_open_chk = page_vis.evaluate(
+                """() => {
+                const ov = document.getElementById('mobileMenuOverlay');
+                const dr = ov ? ov.querySelector('.mobile-menu') : null;
+                const r = dr ? dr.getBoundingClientRect() : null;
+                return {
+                    ovActive: Boolean(ov && ov.classList.contains('active') && getComputedStyle(ov).display !== 'none'),
+                    drVisible: Boolean(r && r.width >= 200 && r.left >= -2 && r.right <= window.innerWidth + 2),
+                    rect: r ? { left: Math.round(r.left), right: Math.round(r.right), width: Math.round(r.width) } : null
+                };
+            }"""
+            )
+            assert drawer_open_chk["ovActive"] and drawer_open_chk["drVisible"], (
+                f"[JOURNEY V2 FAIL — visitor_hamburger_freeze] Clicking ☰ froze overlay without sliding drawer on-screen: {drawer_open_chk}"
+            )
+            page_vis.locator("#mobileMenuCloseBtn").click()
+            page_vis.wait_for_timeout(250)
+            drawer_close_chk = page_vis.evaluate(
+                "() => ({ ovActive: document.getElementById('mobileMenuOverlay')?.classList.contains('active'), overflow: document.body.style.overflow })"
+            )
+            assert not drawer_close_chk["ovActive"] and drawer_close_chk["overflow"] != "hidden", (
+                f"[JOURNEY V2 FAIL — visitor_hamburger_close] Drawer failed to close cleanly: {drawer_close_chk}"
+            )
+
             # 1b. Public Merchants Directory + Global Online Store Filter + Modal
             page_vis.goto(f"{base}/public/merchants.html", wait_until="domcontentloaded", timeout=30000)
             page_vis.wait_for_function(
@@ -527,6 +554,37 @@ def run_v2_multi_persona_browser_journeys():
             assert atf["boxesHaveCarryFields"] and (not atf["anyPositiveCarry"] or atf["carryDomRendered"]), (
                 f"[JOURNEY V2 FAIL — member_carry_on] Projected Carry-On fields missing from DB bundle or not rendered in UI: {atf}"
             )
+            # 2a-2. Stage 34 Guards: Flash Offer Modal (closeMemberModal + no stray submit btn) & 100% Arabic Error Humanization
+            s34_chk = page_mem.evaluate(
+                """() => {
+                const hasCloseFn = typeof window.closeMemberModal === 'function';
+                let noStraySubmit = false;
+                let closedCleanly = false;
+                if (typeof openMemberModal === 'function' && hasCloseFn) {
+                    openMemberModal('اختبار عرض', '<div>محتوى العرض</div>', null);
+                    noStraySubmit = !document.getElementById('sawyanModalSubmitBtn');
+                    window.closeMemberModal();
+                    const ov = document.getElementById('sawyanMemberModalOverlay');
+                    closedCleanly = Boolean(!ov || getComputedStyle(ov).display === 'none');
+                }
+                const errSoft = window.SAWYAN?.UI?.humanizeError('RPC[submit_member_pending_purchase] failed: MERCHANT_SOFT_HOLD_CAP_20PCT_EXCEEDED') || '';
+                const errUnk = window.SAWYAN?.UI?.humanizeError('RPC[any_rpc] failed: UNKNOWN_TECH_CODE_XYZ') || '';
+                const arRx = /[\\u0600-\\u06FF]/;
+                return {
+                    hasCloseFn, noStraySubmit, closedCleanly,
+                    softHoldArabic: arRx.test(errSoft) && !errSoft.includes('RPC[') && !errSoft.includes('MERCHANT_SOFT_HOLD'),
+                    unknownFallbackArabic: arRx.test(errUnk) && !errUnk.includes('RPC[') && !errUnk.includes('UNKNOWN_TECH_CODE'),
+                    errSoft, errUnk
+                };
+            }"""
+            )
+            assert (
+                s34_chk["hasCloseFn"]
+                and s34_chk["noStraySubmit"]
+                and s34_chk["closedCleanly"]
+                and s34_chk["softHoldArabic"]
+                and s34_chk["unknownFallbackArabic"]
+            ), f"[JOURNEY V2 FAIL — stage34_mobile_guards] {s34_chk}"
             audit_screen_purity(page_mem, "member_home_375", is_user_facing=True)
 
             # 2b. Walk Member Tabs + Wallet Arabic Localization + Browser Back Guard
@@ -534,6 +592,19 @@ def run_v2_multi_persona_browser_journeys():
                 page_mem.evaluate(f"() => typeof goToPage === 'function' && goToPage('{tab}')")
                 page_mem.wait_for_timeout(550)
                 audit_screen_purity(page_mem, f"member_{tab}_375", is_user_facing=True)
+                if tab == "tree":
+                    page_mem.wait_for_selector('.ts-wrap [data-spec-id="member-tree-kpis"]', timeout=12000)
+                    tree_team_check = page_mem.evaluate(
+                        """() => {
+                        const kpi = document.querySelector('.ts-wrap [data-spec-id="member-tree-kpis"]');
+                        const txt = kpi ? (kpi.innerText || '') : '';
+                        const m = txt.match(/أعضاء فريقك:\\s*(\\d+)/);
+                        return { found: Boolean(m), count: m ? Number(m[1]) : -1, snippet: txt.slice(0, 140) };
+                    }"""
+                    )
+                    assert tree_team_check["found"] and tree_team_check["count"] >= 1, (
+                        f"[JOURNEY V2 FAIL — member_tree_team_min1] Team count must include self (>= 1), got: {tree_team_check}"
+                    )
                 if tab == "wallet":
                     raw_wallet = page_mem.evaluate(
                         """() => {

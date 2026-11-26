@@ -661,9 +661,13 @@
         const mBtn = byId('merchantsMobileMenuBtn');
         const mOv = byId('merchantsMobileOverlay');
         const mClose = byId('merchantsMobileCloseBtn');
+        const mDrawer = mOv ? mOv.querySelector('.mobile-menu') : null;
         if (mBtn && mOv) {
             const setOpen = (open) => {
                 mOv.classList.toggle('active', open);
+                if (mDrawer) mDrawer.classList.toggle('active', open);
+                mBtn.classList.toggle('active', open);
+                mOv.style.display = open ? 'block' : '';
                 mOv.setAttribute('aria-hidden', String(!open));
                 mBtn.setAttribute('aria-expanded', String(open));
                 document.body.style.overflow = open ? 'hidden' : '';
@@ -671,6 +675,7 @@
             mBtn.addEventListener('click', () => setOpen(!mOv.classList.contains('active')));
             if (mClose) mClose.addEventListener('click', () => setOpen(false));
             mOv.addEventListener('click', (e) => { if (e.target === mOv) setOpen(false); });
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && mOv.classList.contains('active')) setOpen(false); });
         }
         if (byId('cancel-review-btn') && formBox) {
             byId('cancel-review-btn').addEventListener('click', function () {

@@ -400,14 +400,36 @@ function maybeShowFlashOfferSpotlightPopup() {
                 ${unseen.discount_hint ? `<div style="font-size:0.78rem;color:#b45309;font-weight:800;margin-top:6px;">${esc(unseen.discount_hint)}</div>` : ''}
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <button type="button" class="btn btn-primary" style="flex:1;" onclick="closeMemberModal(); openMemberPurchaseModal('${esc(unseen.merchant_id)}', '${esc(unseen.branch_id || '')}', '${esc(unseen.business_name)}', '${esc(unseen.currency_code || '')}', ${Number(unseen.plan_cashback_pct || 0)});">📝 الذهاب للمتجر وتوثيق شراء</button>
-                <button type="button" class="btn btn-outline" onclick="closeMemberModal(); goToPage('merchants');">🏪 تصفح المتاجر</button>
+                <button type="button" id="swFlashGoBuyBtn" class="btn btn-primary" style="flex:1;min-width:170px;">📝 الذهاب للمتجر وتوثيق شراء</button>
+                <button type="button" id="swFlashBrowseBtn" class="btn btn-outline">🏪 تصفح المتاجر</button>
             </div>
         </div>
     `;
     setTimeout(() => {
-        if (!document.getElementById('sawyanMemberModalOverlay')) {
+        const existing = document.getElementById('sawyanMemberModalOverlay');
+        const isExistingOpen = existing && window.getComputedStyle(existing).display !== 'none';
+        if (!isExistingOpen) {
             openMemberModal('🔥 عرض ترويجي مميز معتمد لك الآن', bodyHtml, null);
+            const goBuyBtn = document.getElementById('swFlashGoBuyBtn');
+            const browseBtn = document.getElementById('swFlashBrowseBtn');
+            if (goBuyBtn) {
+                goBuyBtn.addEventListener('click', () => {
+                    closeMemberModal();
+                    openMemberPurchaseModal(
+                        String(unseen.merchant_id || ''),
+                        String(unseen.branch_id || ''),
+                        String(unseen.business_name || ''),
+                        String(unseen.currency_code || ''),
+                        Number(unseen.plan_cashback_pct || 0)
+                    );
+                });
+            }
+            if (browseBtn) {
+                browseBtn.addEventListener('click', () => {
+                    closeMemberModal();
+                    goToPage('merchants');
+                });
+            }
         }
     }, 650);
 }
@@ -451,6 +473,12 @@ async function loadPublicMerchantsCatalogSafe() {
 // ---------------------------------------------------------------------------
 // Clean In-App Modal
 // ---------------------------------------------------------------------------
+function closeMemberModal() {
+    const overlay = document.getElementById('sawyanMemberModalOverlay');
+    if (overlay) overlay.style.display = 'none';
+}
+window.closeMemberModal = closeMemberModal;
+
 function openMemberModal(titleText, bodyHtml, onSubmit) {
     let overlay = document.getElementById('sawyanMemberModalOverlay');
     if (!overlay) {
@@ -459,41 +487,55 @@ function openMemberModal(titleText, bodyHtml, onSubmit) {
         overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.68);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10050;';
         document.body.appendChild(overlay);
     }
+    const hasSubmit = typeof onSubmit === 'function';
     overlay.style.display = 'flex';
     overlay.innerHTML = `
         <div style="background:#ffffff;border-radius:18px;max-width:520px;width:100%;max-height:92vh;overflow-y:auto;padding:22px;box-shadow:0 20px 50px rgba(0,0,0,0.28);direction:rtl;font-family:Tajawal,sans-serif;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
                 <h3 style="margin:0;color:#0f172a;font-size:1.08rem;">${titleText}</h3>
-                <button type="button" id="sawyanModalCloseX" style="border:none;background:#f1f5f9;border-radius:8px;width:32px;height:32px;cursor:pointer;font-weight:800;">✕</button>
+                <button type="button" id="sawyanModalCloseX" aria-label="إغلاق" style="border:1.5px solid #cbd5e1;background:#f1f5f9;color:#0f172a;border-radius:8px;width:34px;height:34px;cursor:pointer;font-weight:900;font-size:1rem;">✕</button>
             </div>
-            <form id="sawyanMemberModalForm" style="display:grid;gap:12px;">
-                ${bodyHtml}
-                <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">
-                    <button type="button" id="sawyanModalCancelBtn" class="btn btn-outline btn-sm">إلغاء</button>
-                    <button type="submit" id="sawyanModalSubmitBtn" class="btn btn-primary btn-sm">تأكيد وإرسال</button>
+            ${hasSubmit ? `
+                <form id="sawyanMemberModalForm" style="display:grid;gap:12px;">
+                    ${bodyHtml}
+                    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">
+                        <button type="button" id="sawyanModalCancelBtn" class="btn btn-outline btn-sm">إلغاء</button>
+                        <button type="submit" id="sawyanModalSubmitBtn" class="btn btn-primary btn-sm">تأكيد وإرسال</button>
+                    </div>
+                </form>
+            ` : `
+                <div id="sawyanMemberModalBody" style="display:grid;gap:12px;">
+                    ${bodyHtml}
+                    <div style="display:flex;justify-content:flex-end;margin-top:4px;border-top:1px solid #e2e8f0;padding-top:10px;">
+                        <button type="button" id="sawyanModalCancelBtn" class="btn btn-outline btn-sm" style="color:#0f172a;border-color:#94a3b8;">✕ إغلاق</button>
+                    </div>
                 </div>
-            </form>
+            `}
         </div>
     `;
     const close = () => { overlay.style.display = 'none'; };
-    document.getElementById('sawyanModalCloseX').onclick = close;
-    document.getElementById('sawyanModalCancelBtn').onclick = close;
+    const closeX = document.getElementById('sawyanModalCloseX');
+    const cancelBtn = document.getElementById('sawyanModalCancelBtn');
+    if (closeX) closeX.onclick = close;
+    if (cancelBtn) cancelBtn.onclick = close;
     overlay.onclick = (e) => { if (e.target === overlay) close(); };
 
     const form = document.getElementById('sawyanMemberModalForm');
-    form.onsubmit = async (e) => {
-        e.preventDefault();
-        const btn = document.getElementById('sawyanModalSubmitBtn');
-        btn.disabled = true;
-        btn.textContent = '⏳ جاري التنفيذ...';
-        try {
-            await onSubmit(form, close);
-        } catch (err) {
-            swMemToast(swMemErrText(err), 'error');
-            btn.disabled = false;
-            btn.textContent = 'تأكيد وإرسال';
-        }
-    };
+    if (hasSubmit && form) {
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('sawyanModalSubmitBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ جاري التنفيذ...';
+            try {
+                await onSubmit(form, close);
+            } catch (err) {
+                swMemToast(swMemErrText(err), 'error');
+                btn.disabled = false;
+                btn.textContent = 'تأكيد وإرسال';
+            }
+        };
+    }
 }
 
 function wireNavigationHandlers() {

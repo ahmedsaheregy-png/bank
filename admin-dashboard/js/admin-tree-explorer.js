@@ -403,7 +403,7 @@
                     `<td data-label="الأب / الراعي">${n.parent_member_code !== null && n.parent_member_code !== undefined ? `أب #${n.parent_member_code}` : '—'}${n.sponsor_code !== null && n.sponsor_code !== undefined ? ` • راعي #${n.sponsor_code}` : ''}</td>` +
                     `<td data-label="الدولة">${countryFlag(n.residency_country_code)} ${esc(n.residency_country_code || '')}</td>` +
                     `<td data-label="الصندوق والمحفظة"><b>${Number(n.target_pct || 0)}%</b> <small style="color:#64748b;">($${fmt2(n.box_accumulated_usd)}/$${fmt2(n.target_required_usd)})</small><div style="font-size:0.73rem;color:#059669;">محفظة: $${fmt2(n.wallet_balance_usd)}</div></td>` +
-                    `<td data-label="حجم فريقه"><b>${Number(n.subtree_total || 0)}</b> <small>(${Number(n.subtree_right || 0)} يمين / ${Number(n.subtree_left || 0)} يسار)</small></td>` +
+                    `<td data-label="حجم فريقه"><b>${Number(n.subtree_total || 0) + 1}</b> <small>(هو + ${Number(n.subtree_total || 0)} • ${Number(n.subtree_right || 0)} يمين / ${Number(n.subtree_left || 0)} يسار)</small></td>` +
                     `<td data-label="إجراءات" onclick="event.stopPropagation();"><div style="display:flex;gap:5px;flex-wrap:wrap;">` +
                         `<button type="button" class="btn-sm btn-primary" onclick="openAdminNetworkTree(${code})">🎯 تمركز</button>` +
                         `<button type="button" class="btn-sm btn-outline" onclick="openAdminTreeNodeModal(${code})">🪪 تفاصيل</button>` +
@@ -509,8 +509,8 @@
                     '</div>' +
                     '<div style="background:rgba(255,255,255,0.08);padding:9px;border-radius:12px;border:1px solid rgba(255,255,255,0.16);">' +
                         `<div style="font-size:0.75rem;color:#e2e8f0;font-weight:800;">${isRoot0 ? 'قادة الجيل الأول تحت #0' : 'حجم الشجرة المتمركزة'}</div>` +
-                        `<strong style="display:block;font-size:1.28rem;color:#34d399;margin:2px 0;">${isRoot0 ? Number(summary.direct_root_leaders_count || 0) : subtreeTotal}</strong>` +
-                        `<div style="font-size:0.71rem;color:#cbd5e1;">${isRoot0 ? 'فروع تأسيسية مباشرة' : `يمين ${Number(summary.right_arm_count || 0)} • يسار ${Number(summary.left_arm_count || 0)}`}</div>` +
+                        `<strong style="display:block;font-size:1.28rem;color:#34d399;margin:2px 0;">${isRoot0 ? Number(summary.direct_root_leaders_count || 0) : (subtreeTotal + 1)}</strong>` +
+                        `<div style="font-size:0.71rem;color:#cbd5e1;">${isRoot0 ? 'فروع تأسيسية مباشرة' : `هو + ${subtreeTotal} (يمين ${Number(summary.right_arm_count || 0)} • يسار ${Number(summary.left_arm_count || 0)})`}</div>` +
                     '</div>' +
                     '<div style="background:rgba(16,185,129,0.18);padding:9px;border-radius:12px;border:1px solid rgba(52,211,153,0.45);">' +
                         '<div style="font-size:0.75rem;color:#a7f3d0;font-weight:800;">🟢 مؤهلون (100%)</div>' +
@@ -1027,7 +1027,7 @@
                 n.visual_color || n.node_color || '',
                 `${n.target_pct || 0}%`,
                 n.wallet_balance_usd || 0,
-                n.subtree_total || 0
+                Number(n.subtree_total || 0) + 1
             ]);
         const headers = ['Code', 'Name', 'Phone', 'Country', 'CompanyGen', 'Side', 'ParentCode', 'SponsorCode', 'Status', 'BoxPct', 'WalletUSD', 'SubtreeCount'];
         const csvLines = [headers].concat(rows).map((r) =>

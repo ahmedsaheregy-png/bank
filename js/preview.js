@@ -283,19 +283,28 @@
         const openBtn = byId('mobileMenuBtn');
         const overlay = byId('mobileMenuOverlay');
         const closeBtn = byId('mobileMenuCloseBtn');
+        const drawer = overlay ? overlay.querySelector('.mobile-menu') : null;
         if (!openBtn || !overlay) return;
 
         function setOpen(isOpen) {
             overlay.classList.toggle('active', isOpen);
+            if (drawer) drawer.classList.toggle('active', isOpen);
+            openBtn.classList.toggle('active', isOpen);
             overlay.style.display = isOpen ? 'block' : '';
             openBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
             overlay.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+            document.body.style.overflow = isOpen ? 'hidden' : '';
         }
 
-        openBtn.addEventListener('click', function () { setOpen(true); });
+        openBtn.addEventListener('click', function () {
+            setOpen(!overlay.classList.contains('active'));
+        });
         if (closeBtn) closeBtn.addEventListener('click', function () { setOpen(false); });
         overlay.addEventListener('click', function (e) {
             if (e.target === overlay) setOpen(false);
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && overlay.classList.contains('active')) setOpen(false);
         });
         overlay.querySelectorAll('a').forEach(function (link) {
             link.addEventListener('click', function () { setOpen(false); });

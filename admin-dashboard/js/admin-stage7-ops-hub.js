@@ -438,7 +438,7 @@
                         '<td data-label="الاسم الكامل">' + esc(l.full_name) + '</td>' +
                         '<td data-label="الهاتف">' + esc(l.phone) + '</td>' +
                         '<td data-label="الدولة">' + esc(l.country_code) + '</td>' +
-                        '<td data-label="حجم فريقه"><b>' + Number(l.team_size || 0) + '</b> عضو</td>' +
+                        '<td data-label="حجم فريقه"><b>' + (Number(l.team_size || 0) + 1) + '</b> <small style="color:#64748b;">(هو + ' + Number(l.team_size || 0) + ')</small></td>' +
                         '<td data-label="إجراءات ورابط الإحالة"><div style="display:flex;gap:5px;flex-wrap:wrap;"><button type="button" class="btn-sm btn-outline" onclick="if (typeof openAdminNetworkTree === \'function\') openAdminNetworkTree(' + Number(l.member_code) + ')">🌳 شجرته</button><button type="button" class="btn-sm btn-primary" onclick="navigator.clipboard.writeText(\'' + esc(refUrl) + '\');window.SAWYAN?.UI?.toast(\'تم نسخ رابط إحالة القائد #' + l.member_code + '\',\'success\')">📋 نسخ رابط القائد</button></div></td>' +
                     '</tr>';
                 }).join('')) +

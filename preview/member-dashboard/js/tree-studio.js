@@ -611,11 +611,13 @@
                 '</div>';
             }).join('') + '</div>';
 
-        const totalTeamCount = Number(d.total_subtree_members || 0);
+        const totalDownlines = Number(d.total_subtree_members || 0);
+        const totalTeamIncSelf = totalDownlines + 1;
         const shownDownlines = Math.max(0, nodes.length - (rootNode ? 1 : 0));
-        const teamCountBadgeText = shownDownlines < totalTeamCount
-            ? ('أعضاء فريقك: ' + totalTeamCount + ' • المعروض حالياً: ' + shownDownlines)
-            : ('أعضاء فريقك: ' + totalTeamCount);
+        const shownIncSelf = Math.max(1, nodes.length);
+        const teamCountBadgeText = shownIncSelf < totalTeamIncSelf
+            ? ('أعضاء فريقك: ' + totalTeamIncSelf + ' • المعروض حالياً: ' + shownIncSelf)
+            : ('أعضاء فريقك: ' + totalTeamIncSelf);
 
         container.innerHTML = STUDIO_CSS +
             '<div class="ts-wrap">' +
@@ -668,7 +670,7 @@
                     '<div class="ts-lens-legend">' +
                         '<div data-spec-id="member-tree-lens-bar" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">' +
                             '<span style="font-size:0.76rem;font-weight:800;color:#64748b;">🌍 عدسة الدولة:</span>' +
-                            '<button type="button" class="ts-btn' + (!STATE.countryCode ? ' active' : '') + '" onclick="window.SAWYAN.TreeStudio.setCountry(null)">الكل (' + totalTeamCount + ')</button>' +
+                            '<button type="button" class="ts-btn' + (!STATE.countryCode ? ' active' : '') + '" onclick="window.SAWYAN.TreeStudio.setCountry(null)">الكل (' + totalTeamIncSelf + ')</button>' +
                             '<span data-spec-id="member-tree-country-reports" style="display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center;">' +
                                 countries.map(function (c) {
                                     const qCnt = Number(c.qualified || 0);
@@ -867,7 +869,10 @@
 
             const leftCnt = Number(node.left_team_count !== undefined ? node.left_team_count : 0);
             const rightCnt = Number(node.right_team_count !== undefined ? node.right_team_count : 0);
-            const totalTeam = Number(node.subtree_count || (leftCnt + rightCnt));
+            const downlinesCnt = Number(node.subtree_count || (leftCnt + rightCnt));
+            const totalTeamIncSelf = downlinesCnt + 1;
+            const teamUnitAr = totalTeamIncSelf === 1 ? 'عضو' : (totalTeamIncSelf === 2 ? 'عضوان' : (totalTeamIncSelf <= 10 ? 'أعضاء' : 'عضواً'));
+            const teamSelfNote = viewerDepth === 0 ? ('أنت + ' + downlinesCnt) : ('هو + ' + downlinesCnt);
 
             const wa = formatWaLink(node.phone, 'أهلاً ' + (node.full_name || '') + ' — فريق SAWYAN');
             const phoneBlockHtml = (node.phone && wa)
@@ -940,7 +945,7 @@
                             '<div class="ts-mm-team">' +
                                 '<div>' +
                                     '<div class="ts-mm-lbl">🌳 عدد فريقه</div>' +
-                                    '<div class="ts-mm-val">' + totalTeam + ' عضواً</div>' +
+                                    '<div class="ts-mm-val">' + totalTeamIncSelf + ' ' + teamUnitAr + ' <small style="color:#64748b;font-weight:700;">(' + teamSelfNote + ')</small></div>' +
                                 '</div>' +
                                 '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
                                     '<span class="ts-arm-pill ts-arm-right">يمين: ' + rightCnt + '</span>' +
