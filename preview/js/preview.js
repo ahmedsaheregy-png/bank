@@ -427,9 +427,9 @@
             ? m.cashbackRate
             : window.calcNetMemberCashback(m.generalCommissionRate || 10);
         const typeLabel = m.merchantType === 'online'
-            ? '🌐 أونلاين'
-            : (m.merchantType === 'both' ? '🏪🌐 محلي وأونلاين' : '🏪 فرع محلي');
-        const locationText = `${m.countryName || ''} — ${m.city || ''}`;
+            ? 'أونلاين'
+            : (m.merchantType === 'both' ? 'محلي وأونلاين' : 'فرع محلي');
+        const locationText = [m.countryName, m.city].filter(Boolean).join(' — ');
         const detailHref = `public/merchants.html?country=${encodeURIComponent(m.country)}&city=${encodeURIComponent(m.cityKey || 'all')}&merchant=${encodeURIComponent(m.id)}`;
 
         const isSafeHero = m.image && /^(https:\/\/|data:image\/(jpeg|jpg|png|webp);base64,|assets\/|\.\.\/assets\/|shared\/assets\/)/i.test(String(m.image));
@@ -437,45 +437,45 @@
         const heroVisual = `<img src="${escapeHtml(isSafeHero ? m.image : fallbackImg)}" alt="${escapeHtml(m.businessName)}" class="merchant-hero-img" loading="lazy" onerror="this.onerror=null;if(this.src.indexOf('card-merchant.jpg')===-1){this.src='${fallbackImg}';}else{this.style.display='none';}">`;
         const isSafeLogo = m.logoUrl && /^(https:\/\/|data:image\/(jpeg|jpg|png|webp);base64,|assets\/|\.\.\/assets\/)/i.test(String(m.logoUrl));
         const badgeVisual = isSafeLogo
-            ? `<img src="${escapeHtml(m.logoUrl)}" alt="" style="width:28px;height:28px;border-radius:8px;object-fit:cover;border:1px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.2);" loading="lazy">`
-            : `<span class="merchant-icon-floating">${icon}</span>`;
+            ? `<img src="${escapeHtml(m.logoUrl)}" alt="" style="width:24px;height:24px;border-radius:4px;object-fit:cover;border:1px solid #fff;" loading="lazy">`
+            : `<span class="merchant-icon-floating" style="font-size:0.95rem;">${icon}</span>`;
 
         const activeOffer = m.activeOffer || liveFlashOffersByMerchant.get(String(m.id)) || null;
         const promoRibbonHtml = activeOffer
-            ? `<div style="background:linear-gradient(90deg,#fef3c7,#fde68a);border:1px solid #f59e0b;border-radius:10px;padding:7px 10px;margin:8px 0;font-size:0.8rem;color:#78350f;font-weight:800;line-height:1.45;">🔥 عرض حصري الآن: ${escapeHtml(activeOffer.title)} <span style="display:inline-block;background:#dc2626;color:#fff;padding:1px 6px;border-radius:999px;font-size:0.68rem;margin-right:4px;">⏳ ${escapeHtml(formatOfferRemainingAr(activeOffer.remaining_seconds))}</span></div>`
+            ? `<div style="background:#FFF8EB;border:1px solid #FBAD1A;padding:5px 8px;margin:8px 0 4px;font-size:0.78rem;color:#082846;font-weight:700;line-height:1.4;">عرض حصري: ${escapeHtml(activeOffer.title)} · <span>${escapeHtml(formatOfferRemainingAr(activeOffer.remaining_seconds))}</span></div>`
             : '';
 
         return `
-            <article class="merchant-card" data-merchant-id="${escapeHtml(m.id)}" tabindex="0" role="link" aria-label="${escapeHtml(m.businessName)}"${activeOffer ? ' style="border:2px solid #f59e0b;box-shadow:0 8px 24px rgba(245,158,11,0.18);"' : ''}>
+            <article class="merchant-card ed-merchant-card" data-merchant-id="${escapeHtml(m.id)}" tabindex="0" role="link" aria-label="${escapeHtml(m.businessName)}"${activeOffer ? ' style="border:1.5px solid #FBAD1A;"' : ''}>
                 <div class="merchant-image-container">
                     ${heroVisual}
-                    ${activeOffer ? '<span style="position:absolute;top:10px;left:10px;z-index:3;background:#dc2626;color:#fff;font-size:0.72rem;font-weight:900;padding:4px 10px;border-radius:999px;box-shadow:0 3px 10px rgba(220,38,38,0.35);">🔥 عرض خاص الآن</span>' : ''}
+                    ${activeOffer ? '<span style="position:absolute;top:10px;left:10px;z-index:3;background:#082846;color:#FBAD1A;font-size:0.7rem;font-weight:800;padding:3px 9px;border-radius:3px;">عرض خاص</span>' : ''}
                     <div class="merchant-overlay">
                         <div class="merchant-overlay-content">
                             ${badgeVisual}
-                            <span class="merchant-cashback-badge net-cashback-badge">عائدات فريقك من هذا التاجر (${netRate}%)</span>
+                            <span class="merchant-cashback-badge net-cashback-badge">عائدات الفريق ${netRate}%</span>
                         </div>
                     </div>
                 </div>
-                <div class="merchant-info">
+                <div class="merchant-info ed-merchant-info">
                     <div class="merchant-header-row">
                         <h3 class="merchant-name">${escapeHtml(m.businessName)}</h3>
                         ${m.isVerified ? '<span class="verified-icon" title="تاجر موثق ومعتمد">✓</span>' : ''}
                     </div>
                     ${promoRibbonHtml}
-                    <div class="merchant-rating-compact" style="margin:4px 0 8px;">
-                        ${Number(m.reviewsCount || 0) > 0 && Number(m.rating || 0) > 0
-                            ? `<span class="stars" style="color:#f59e0b;">★</span><span class="rating-value">${escapeHtml(m.rating)}</span><span class="rating-count">(${window.formatNumber(m.reviewsCount || 0)} تقييم)</span>`
-                            : `<span style="background:#ecfdf5;color:#047857;padding:2px 8px;border-radius:999px;font-size:0.72rem;font-weight:800;">🆕 متجر معتمد</span>`}
-                        <span style="margin-right:auto; font-size:0.78rem; color:#047857; font-weight:700;">${typeLabel}</span>
+                    <div class="ed-merchant-meta">
+                        <span>${escapeHtml(m.category)}</span>
+                        <span aria-hidden="true">·</span>
+                        <span>${typeLabel}</span>
                     </div>
-                    <p class="merchant-desc-short">${escapeHtml(m.description)}</p>
-                    <div class="merchant-footer-row" style="gap:6px; flex-wrap:wrap;">
-                        <span class="merchant-category-tag">${escapeHtml(m.category)}</span>
-                        <span class="city-tag">📍 ${escapeHtml(locationText)}</span>
-                    </div>
-                    <div style="margin-top:12px;">
-                        <a href="${detailHref}" class="btn btn-outline btn-sm" style="width:100%; justify-content:center;">عرض التفاصيل وعائدات الفريق ↗</a>
+                    <div class="ed-merchant-loc">${escapeHtml(locationText)}</div>
+                    <div class="ed-merchant-card-foot">
+                        <span class="ed-merchant-rating">
+                            ${Number(m.reviewsCount || 0) > 0 && Number(m.rating || 0) > 0
+                                ? `<span style="color:#E59819;">★</span> ${escapeHtml(m.rating)} (${window.formatNumber(m.reviewsCount || 0)})`
+                                : 'متجر معتمد'}
+                        </span>
+                        <a href="${detailHref}" class="ed-chevron-link ed-chevron-link-sm">التفاصيل <span aria-hidden="true">‹</span></a>
                     </div>
                 </div>
             </article>
@@ -622,7 +622,7 @@
         const showLiveMatureStats = (!isProd && allInGeo.length >= 15) || (isProd && liveMerchantCount >= 15);
         const valueStrip = byId('heroValueStrip');
         const liveMetricsStrip = byId('heroCompactLiveMetrics');
-        if (valueStrip) valueStrip.style.display = showLiveMatureStats ? 'none' : 'grid';
+        if (valueStrip) valueStrip.style.display = showLiveMatureStats ? 'none' : '';
         if (liveMetricsStrip) liveMetricsStrip.style.display = showLiveMatureStats ? 'grid' : 'none';
         if (byId('valueStripCurrency')) byId('valueStripCurrency').textContent = cfg.currencyCode || 'USD';
 
@@ -1051,6 +1051,15 @@
         if (toggleBtn) {
             toggleBtn.addEventListener('click', function () {
                 if (vid && !vid.paused) pauseVideo(); else playVideo();
+            });
+        }
+        const chaptersToggleBtn = byId('promoChaptersToggleBtn');
+        const chaptersDrawer = byId('promoChaptersDrawer');
+        if (chaptersToggleBtn && chaptersDrawer) {
+            chaptersToggleBtn.addEventListener('click', function () {
+                const isOpen = chaptersDrawer.style.display !== 'none';
+                chaptersDrawer.style.display = isOpen ? 'none' : 'block';
+                chaptersToggleBtn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
             });
         }
         if (byId('heroWatchPromoBtn')) {

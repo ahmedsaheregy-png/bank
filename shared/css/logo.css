@@ -117,16 +117,17 @@
         gap: 8px;
     }
 
-    .auth-top-nav .sawyan-brand-mark svg {
+    .auth-top-nav .sawyan-brand-mark .sawyan-app-icon-svg {
         width: 26px !important;
         height: 26px !important;
     }
 
-    .auth-top-nav .sawyan-brand-mark > span > span:first-child {
-        font-size: 1.12rem !important;
+    .auth-top-nav .sawyan-brand-mark .sawyan-wordmark-svg {
+        height: 20px !important;
+        width: auto !important;
     }
 
-    .auth-top-nav .sawyan-brand-mark > span > span:nth-child(2) {
+    .auth-top-nav .sawyan-brand-mark .sawyan-brand-slogan {
         display: none !important;
     }
 
@@ -134,4 +135,8 @@
         padding: 6px 10px;
         font-size: 0.78rem;
     }
+}
+
+.sawyan-brand-slogan[dir="ltr"] {
+    font-family: 'Poppins', sans-serif !important;
 }

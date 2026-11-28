@@ -23,25 +23,25 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Poppins:wght@600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
-    <link rel="manifest" href="../manifest.json">
-    <link rel="icon" type="image/svg+xml" href="../shared/assets/sawyan-icon.svg">
+    <link rel="manifest" href="../manifest.json?v=20261121_launch_icon28">
+    <link rel="icon" type="image/svg+xml" href="../shared/assets/sawyan-icon.svg?v=20261121_launch_icon28">
     <link rel="stylesheet" href="../shared/css/image-upload.css?v=20261121_launch_50574cc9">
-    <link rel="stylesheet" href="../css/preview.css?v=20261121_launch_ae8889ea">
+    <link rel="stylesheet" href="../css/preview.css?v=20261121_launch_567eebbc">
     <link rel="stylesheet" href="../css/bidi-support.css?v=20261121_launch_4b2394fc">
-    <link rel="stylesheet" href="merchants.css?v=20261121_launch_cf2a6197">
-    <link rel="stylesheet" href="../shared/css/logo.css?v=20261121_launch_ada2fd4d">
+    <link rel="stylesheet" href="merchants.css?v=20261121_launch_3f86f7b9">
+    <link rel="stylesheet" href="../shared/css/logo.css?v=20261121_launch_366351db">
     <link rel="stylesheet" href="../shared/css/smart-search.css?v=20261121_launch_8ae07947">
 </head>
-<body>
+<body class="sw-editorial-body sw-merchants-editorial">
 
     <!-- Top Geo & Trust Strip -->
     <div class="top-geo-trust-bar">
         <div class="container top-bar-flex">
             <div class="top-geo-status">
-                <span id="merchantsGeoBanner">🌍 النطاق النشط: <strong>عرض جميع الدول</strong></span>
+                <span id="merchantsGeoBanner">النطاق النشط: <strong>عرض جميع الدول</strong></span>
             </div>
             <div class="top-trust-chips">
-                <span>✅ تعرف على آلاف التجار المعتمدين من سويا حول العالم</span>
+                <span>تجار SAWYAN المعتمدون حول العالم</span>
             </div>
         </div>
     </div>
@@ -50,7 +50,7 @@
     <nav class="preview-nav portal-nav">
         <div class="container nav-content">
             <a href="../index.html" class="nav-logo" id="navBrandLogo" aria-label="SAWYAN الرئيسية">
-                <strong style="font-size:1.35rem; color:#047857; font-weight:900;">SAWYAN</strong>
+                <strong style="font-size:1.35rem; color:#082846; font-weight:900;">SAWYAN</strong>
             </a>
 
             <div class="nav-links">
@@ -64,8 +64,8 @@
                 <button type="button" class="theme-toggle" id="themeToggleBtn" aria-label="تبديل المظهر">🌙</button>
                 <a href="../member-dashboard/register.html" class="mobile-quick-join" id="mobileJoinLink">انضم مجاناً</a>
                 <div class="nav-cta">
-                    <a href="../auth-gateway.html?mode=login" class="btn btn-outline btn-sm">تسجيل الدخول</a>
-                    <a href="../member-dashboard/register.html" class="btn btn-primary btn-sm" id="navJoinLink">انضم مجاناً</a>
+                    <a href="../auth-gateway.html?mode=login" class="btn btn-outline btn-sm">دخول</a>
+                    <a href="../member-dashboard/register.html" class="btn btn-primary btn-sm" id="navJoinLink">ابدأ الآن</a>
                 </div>
                 <button type="button" class="mobile-menu-btn" id="merchantsMobileMenuBtn" aria-label="فتح القائمة" aria-expanded="false">
                     <span class="hamburger-line"></span>
@@ -80,17 +80,17 @@
     <div class="mobile-menu-overlay" id="merchantsMobileOverlay" aria-hidden="true">
         <div class="mobile-menu">
             <div class="mobile-menu-header">
-                <a href="../index.html" class="mobile-menu-title sawyan-home-logo" data-sawyan-logo="default" data-sawyan-compact="1">SAWYAN</a>
+                <a href="../index.html" class="mobile-menu-title sawyan-home-logo" data-sawyan-logo="light-on-dark" data-sawyan-compact="1">SAWYAN</a>
                 <button type="button" class="mobile-menu-close" id="merchantsMobileCloseBtn" aria-label="إغلاق">✕</button>
             </div>
             <div class="mobile-menu-links">
-                <a href="../index.html">🏠 الرئيسية</a>
-                <a href="merchants.html">🏪 دليل التجار</a>
-                <a href="../member-dashboard/login.html?quick=member">👁️ جرّب كعضو</a>
-                <a href="../merchant-dashboard/register.html">🤝 سجّل متجرك</a>
-                <a href="terms.html">📜 الشروط والأحكام</a>
-                <a href="privacy.html">🔒 سياسة الخصوصية</a>
-                <a href="contact.html">📬 تواصل معنا</a>
+                <a href="../index.html">الرئيسية</a>
+                <a href="merchants.html">دليل التجار</a>
+                <a href="../member-dashboard/login.html?quick=member">جرّب كعضو</a>
+                <a href="../merchant-dashboard/register.html">سجّل متجرك</a>
+                <a href="terms.html">الشروط والأحكام</a>
+                <a href="privacy.html">سياسة الخصوصية</a>
+                <a href="contact.html">تواصل معنا</a>
             </div>
             <div class="mobile-menu-cta">
                 <a href="../member-dashboard/register.html" class="btn btn-primary">انضم مجاناً</a>
@@ -99,13 +99,13 @@
         </div>
     </div>
 
-    <!-- Page Header (Compact Above-the-Fold) -->
+    <!-- Page Header (Minimal Editorial) -->
     <section class="page-header page-header-compact">
         <div class="container">
             <div class="page-header-row">
                 <div>
-                    <h1>التجار <span class="text-gradient">المعتمدون</span></h1>
-                    <p id="pageHeaderSubtitle">المتاجر المحلية والإلكترونية المعتمدة في نطاقك الجغرافي مع عائدات فريقك.</p>
+                    <h1>التجار <em class="ed-em">المعتمدون</em></h1>
+                    <p id="pageHeaderSubtitle">تعرف على آلاف التجار المعتمدين من سويا حول العالم بأغلب المجالات.</p>
                 </div>
                 <div class="merchants-count" id="merchants-count">جاري التحميل...</div>
             </div>
@@ -178,15 +178,15 @@
         </div>
     </section>
 
-    <!-- Bottom CTA -->
-    <section class="cta-section" style="padding:36px 0;">
+    <!-- Bottom CTA (Warm Champagne Band) -->
+    <section class="cta-section ed-heritage-band" style="padding:64px 0;">
         <div class="container">
-            <div class="cta-box">
+            <div class="cta-box ed-heritage-inner">
                 <h2>هل تمتلك متجراً أو نشاطاً تجارياً؟</h2>
-                <p>انضم إلى شبكة تجار SAWYAN واستقطب زبائن متكررين بدون رسوم اشتراك ثابتة</p>
-                <div class="cta-buttons" style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-top:16px;">
-                    <a href="../merchant-dashboard/register.html" class="btn btn-secondary">سجّل متجرك الآن</a>
-                    <a href="../member-dashboard/register.html" id="bottomMemberCta" class="btn btn-primary">انضم كمتسوق مجاناً</a>
+                <p>ضاعف مبيعاتك دون المجازفة بمبالغ تنفق على حملات تسويقية مجهولة المردود — ادفع مقابل النتائج فقط.</p>
+                <div class="cta-buttons" style="display:flex; justify-content:center; gap:16px; flex-wrap:wrap; margin-top:20px;">
+                    <a href="../merchant-dashboard/register.html" class="btn btn-primary">سجّل متجرك الآن</a>
+                    <a href="../member-dashboard/register.html" id="bottomMemberCta" class="btn btn-outline">انضم كمتسوق مجاناً</a>
                 </div>
             </div>
         </div>
@@ -272,27 +272,27 @@
     </div>
 
     <!-- Footer -->
-    <footer class="preview-footer">
+    <footer class="preview-footer ed-footer">
         <div class="container">
             <div class="footer-content">
                 <div>
-                    <div id="footerBrandLogo" style="margin-bottom:8px;">
+                    <div id="footerBrandLogo" style="margin-bottom:12px;">
                         <a href="../index.html" class="logo-link sawyan-home-logo" aria-label="SAWYAN — الصفحة الرئيسية" title="العودة للصفحة الرئيسية">
-                            <strong style="font-size:1.3rem; color:#10b981;">SAWYAN</strong>
+                            <strong style="font-size:1.3rem; color:#FBAD1A;">SAWYAN</strong>
                         </a>
                     </div>
-                    <p style="color:#94a3b8; font-size:0.88rem;">بوابة التجار المعتمدين — الاستهلاك الاستثماري (Buy and Make Money).</p>
+                    <p class="ed-footer-copy">© 2026 SAWYAN — جميع الحقوق محفوظة</p>
                 </div>
                 <div class="footer-links">
-                    <div style="display:flex; flex-direction:column; gap:8px;">
-                        <strong style="color:#ffffff; margin-bottom:2px;">عن المنصة</strong>
+                    <div class="ed-footer-col">
+                        <strong>عن المنصة</strong>
                         <a href="../index.html">الصفحة الرئيسية</a>
                         <a href="terms.html">الشروط والأحكام</a>
                         <a href="privacy.html">سياسة الخصوصية</a>
                         <a href="contact.html">تواصل معنا</a>
                     </div>
-                    <div style="display:flex; flex-direction:column; gap:8px;">
-                        <strong style="color:#ffffff; margin-bottom:2px;">البوابات</strong>
+                    <div class="ed-footer-col">
+                        <strong>البوابات</strong>
                         <a href="../member-dashboard/register.html">تسجيل عضو</a>
                         <a href="../merchant-dashboard/register.html">تسجيل تاجر</a>
                         <a href="../auth-gateway.html?mode=login">تسجيل الدخول</a>
@@ -305,7 +305,7 @@
         </div>
     </footer>
 
-    <script src="../shared/components/logo.js?v=20261121_launch_35b13a6e"></script>
+    <script src="../shared/components/logo.js?v=20261121_launch_a1485437"></script>
     <script src="../shared/components/flags.js?v=20261121_launch_1213b387"></script>
     <script src="../shared/i18n/i18n.js?v=20261121_launch_95f5b0c6"></script>
     <script src="../shared/components/image-upload.js?v=20261121_launch_7c269213"></script>
@@ -315,6 +315,6 @@
     <script src="../shared/data/countries.js?v=20261121_launch_f6883716"></script>
     <script src="../shared/components/smart-search.js?v=20261121_launch_3a1fc622"></script>
     <script src="../js/demo-data.js?v=20261121_launch_b554283b"></script>
-    <script src="merchants.js?v=20261121_launch_3e9f8fe0"></script>
+    <script src="merchants.js?v=20261121_launch_3ce972ce"></script>
 </body>
 </html>

@@ -351,8 +351,8 @@
                 ? m.cashbackRate
                 : window.calcNetMemberCashback(m.generalCommissionRate || 10);
             const typeText = m.merchantType === 'online'
-                ? '🌐 أونلاين'
-                : (m.merchantType === 'both' ? '🏪🌐 محلي وأونلاين' : '🏪 فرع محلي');
+                ? 'أونلاين'
+                : (m.merchantType === 'both' ? 'محلي وأونلاين' : 'فرع محلي');
             const rawImg = m.image || m.coverImageUrl || m.logoUrl || '';
             const resolvedImg = resolvePublicImg(rawImg);
             const safeImg = resolvedImg && (
@@ -363,19 +363,19 @@
             );
             const imgMarkup = safeImg
                 ? `<img src="${escapeHtml(resolvedImg)}" alt="${escapeHtml(m.businessName)}" style="width:100%; height:100%; object-fit:cover;" loading="lazy" onerror="this.style.display='none';">`
-                : `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:3rem; background:linear-gradient(135deg,#0f2744 0%,#065f46 100%); color:#fff;">${icon}</div>`;
+                : `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:2.6rem; background:#082846; color:#FBAD1A;">${icon}</div>`;
 
             const activeOffer = m.activeOffer || (m.merchantId ? state.flashOffersByMerchant.get(String(m.merchantId)) : null);
             const promoRibbon = activeOffer
-                ? `<div style="background:linear-gradient(90deg,#fef3c7,#fde68a);border:1px solid #f59e0b;border-radius:9px;padding:6px 9px;margin:8px 0 4px;font-size:0.8rem;color:#78350f;font-weight:800;line-height:1.45;">🔥 عرض حصري الآن: ${escapeHtml(activeOffer.title)} <span style="background:#dc2626;color:#fff;padding:1px 6px;border-radius:999px;font-size:0.68rem;margin-right:4px;">⏳ ${escapeHtml(formatOfferRemainingAr(activeOffer.remaining_seconds))}</span></div>`
+                ? `<div style="background:#FFF8EB;border:1px solid #FBAD1A;padding:5px 8px;margin:8px 0 4px;font-size:0.78rem;color:#082846;font-weight:700;line-height:1.4;">عرض حصري: ${escapeHtml(activeOffer.title)} · <span>${escapeHtml(formatOfferRemainingAr(activeOffer.remaining_seconds))}</span></div>`
                 : '';
 
             return `
-                <article class="merchant-card" data-merchant-id="${escapeHtml(m.id)}" tabindex="0" style="cursor:pointer;${activeOffer ? 'border:2px solid #f59e0b;box-shadow:0 8px 24px rgba(245,158,11,0.18);' : ''}">
+                <article class="merchant-card" data-merchant-id="${escapeHtml(m.id)}" tabindex="0" style="cursor:pointer;${activeOffer ? 'border:1.5px solid #FBAD1A;' : ''}">
                     <div class="merchant-image">
                         ${imgMarkup}
-                        ${activeOffer ? '<span style="position:absolute;top:10px;left:10px;z-index:3;background:#dc2626;color:#fff;font-size:0.72rem;font-weight:900;padding:4px 10px;border-radius:999px;">🔥 عرض خاص الآن</span>' : ''}
-                        <span class="merchant-cashback net-cashback-badge">عائدات فريقك من هذا التاجر (${netRate}%)</span>
+                        ${activeOffer ? '<span style="position:absolute;top:10px;left:10px;z-index:3;background:#082846;color:#FBAD1A;font-size:0.7rem;font-weight:800;padding:3px 9px;border-radius:3px;">عرض خاص</span>' : ''}
+                        <span class="merchant-cashback net-cashback-badge">عائدات الفريق ${netRate}%</span>
                     </div>
                     <div class="merchant-info">
                         <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
@@ -384,19 +384,18 @@
                         </div>
                         ${promoRibbon}
                         <div class="merchant-category" style="margin-top:6px;">
-                            ${escapeHtml(m.category)} • <span>${typeText}</span>
+                            ${escapeHtml(m.category)} · <span>${typeText}</span>
                         </div>
-                        <div style="font-size:0.84rem; color:#475569; margin:6px 0;">
-                            📍 ${escapeHtml(m.countryName || '')} — ${escapeHtml(m.city || '')}
+                        <div style="font-size:0.84rem; color:#5F6368; margin:4px 0 10px;">
+                            ${escapeHtml([m.countryName, m.city].filter(Boolean).join(' — '))}
                         </div>
-                        <p style="font-size:0.85rem; color:#475569; margin:6px 0 12px; line-height:1.5;">${escapeHtml(m.description || '')}</p>
                         <div class="merchant-footer">
                             <div class="merchant-rating">
                                 ${(Number(m.reviewsCount || 0) > 0 && Number(m.rating || 0) > 0)
                                     ? `<span class="stars">★</span><span>${escapeHtml(Number(m.rating).toFixed(1))}</span><span class="rating-count">(${window.formatNumber(m.reviewsCount)})</span>`
-                                    : `<span style="background:#ecfdf5;color:#047857;padding:2px 8px;border-radius:999px;font-size:0.74rem;font-weight:800;">🆕 متجر جديد</span>`}
+                                    : `<span style="color:#082846;font-size:0.76rem;font-weight:700;">متجر معتمد</span>`}
                             </div>
-                            <span class="merchant-transactions">${Number(m.transactionsCount || 0) > 0 ? `${window.formatNumber(m.transactionsCount)} معاملة` : 'معتمد ✓'}</span>
+                            <span class="merchant-transactions">${Number(m.transactionsCount || 0) > 0 ? `${window.formatNumber(m.transactionsCount)} معاملة` : 'التفاصيل ‹'}</span>
                         </div>
                     </div>
                 </article>

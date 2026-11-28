@@ -28,12 +28,15 @@
         },
         'opt3_navy_gold': {
             id: 'opt3_navy_gold',
-            label: 'الخيار (3) — كحلي ملكي عميق + ذهبي استثماري للـ (Y والشدة والفتحة)',
+            label: 'الخيار (3) — كحلي سويان الرسمي (#082846) + ذهبي استثماري للـ (Y والشدة والفتحة)',
             mode: 'light',
-            baseColor: '#0f2744',
-            accentColor: '#d97706',
-            subColor: '#475569',
-            iconGrad: ['#1d5c8f', '#d97706']
+            baseColor: '#082846',
+            accentColor: '#E59819',
+            subColor: '#5F6368',
+            iconBg: '#082846',
+            iconAccent: '#FBAD1A',
+            iconY: '#FFFFFF',
+            iconGrad: ['#082846', '#082846']
         },
         'opt5_dark_skyblue': {
             id: 'opt5_dark_skyblue',
@@ -42,6 +45,9 @@
             baseColor: '#ffffff',
             accentColor: '#38bdf8',
             subColor: '#cbd5e1',
+            iconBg: '#082846',
+            iconAccent: '#FBAD1A',
+            iconY: '#FFFFFF',
             iconGrad: ['#38bdf8', '#1d4ed8']
         },
         'opt4_dark_emerald': {
@@ -51,22 +57,36 @@
             baseColor: '#ffffff',
             accentColor: '#10b981',
             subColor: '#cbd5e1',
+            iconBg: '#082846',
+            iconAccent: '#FBAD1A',
+            iconY: '#FFFFFF',
             iconGrad: ['#10b981', '#1d4ed8']
         },
         'opt6_dark_gold': {
             id: 'opt6_dark_gold',
-            label: 'الخيار (6) — أبيض ناصع + ذهبي ملكي مضيء للـ (Y والشدة والفتحة)',
+            label: 'الخيار (6) — أبيض ناصع + ذهبي سويان الرسمي (#FBAD1A) للـ (Y والشدة والفتحة)',
             mode: 'dark',
             baseColor: '#ffffff',
-            accentColor: '#fbbf24',
-            subColor: '#cbd5e1',
-            iconGrad: ['#fbbf24', '#1d4ed8']
+            accentColor: '#FBAD1A',
+            subColor: '#CBD5E1',
+            iconBg: '#082846',
+            iconAccent: '#FBAD1A',
+            iconY: '#FFFFFF',
+            iconGrad: ['#082846', '#082846']
         }
     };
 
-    // Active default palettes (Blue-leaning temporary default per management directive)
-    let activeLightPalette = 'opt2_blue_obsidian';
-    let activeDarkPalette = 'opt5_dark_skyblue';
+    // Active default palettes (Founder-approved Navy #082846 + Signature Gold #FBAD1A / #E59819)
+    let activeLightPalette = 'opt3_navy_gold';
+    let activeDarkPalette = 'opt6_dark_gold';
+
+    function getBrandSlogan() {
+        const lang = (typeof document !== 'undefined' && (document.documentElement.getAttribute('lang') || 'ar') || 'ar').toLowerCase();
+        if (lang.startsWith('ar')) {
+            return { text: 'استهلاكك الاستثماري', dir: 'rtl', font: "'Tajawal','Cairo',sans-serif", letterSpacing: '0' };
+        }
+        return { text: 'invest in your purchases', dir: 'ltr', font: "'Poppins',sans-serif", letterSpacing: '0.015em' };
+    }
 
     function resolveHomeHref() {
         const p = String((typeof window !== 'undefined' && window.location && window.location.pathname) || '').toLowerCase();
@@ -90,8 +110,8 @@
         const pal = resolvePalette(variant, opts);
         const baseCol = (opts && opts.baseColor) || pal.baseColor;
         const accentCol = (opts && opts.accentColor) || pal.accentColor;
-        const heightCss = (opts && opts.wordHeight) || (opts && opts.compact ? '25px' : '31px');
-        return `<svg viewBox="${VECTOR_PATHS.viewBox}" style="height:${heightCss};width:auto;display:block;overflow:visible;" shape-rendering="geometricPrecision" aria-hidden="true" focusable="false">` +
+        const heightCss = (opts && opts.wordHeight) || (opts && opts.compact ? '22px' : '27px');
+        return `<svg class="sawyan-wordmark-svg" viewBox="${VECTOR_PATHS.viewBox}" style="height:${heightCss};width:auto;display:block;overflow:visible;" shape-rendering="geometricPrecision" aria-hidden="true" focusable="false">` +
             `<g fill="${baseCol}" fill-rule="evenodd">` +
                 `<path d="${VECTOR_PATHS.s_path}"/>` +
                 `<path d="${VECTOR_PATHS.a1_path}"/>` +
@@ -111,30 +131,31 @@
         const isCompact = Boolean(opts && opts.compact);
         const pal = resolvePalette(variant, opts);
         const subColor = pal.subColor;
-        const gradId = `swGrad_${pal.id}_${++gradSeq}`;
-        const iconSize = isCompact ? 28 : 34;
-        const wordHeight = (opts && opts.wordHeight) || (isCompact ? '25px' : '31px');
+        const iconSize = isCompact ? 28 : 36;
+        const wordHeight = (opts && opts.wordHeight) || (isCompact ? '22px' : '27px');
         const bankBadge = BRAND_CONFIG.showBank
             ? '<span style="font-size:0.78rem;font-weight:800;background:#1d4ed8;color:#fff;padding:2px 7px;border-radius:6px;margin-left:6px;">BANK</span>'
             : '';
+        const slogan = getBrandSlogan();
         const subtitleHtml = (isCompact || (opts && opts.hideSubtitle))
             ? ''
-            : `<span style="font-family:'Tajawal','Cairo',sans-serif;font-size:0.68rem;font-weight:700;color:${subColor};letter-spacing:0;text-align:right;margin-top:2px;" dir="rtl">منصة الاستهلاك الاستثماري العالمية</span>`;
+            : `<span class="sawyan-brand-slogan" style="font-family:${slogan.font};font-size:0.66rem;font-weight:600;color:${subColor};letter-spacing:${slogan.letterSpacing};text-align:right;margin-top:3px;white-space:nowrap;" dir="${slogan.dir}">${slogan.text}</span>`;
 
         const wordmarkSvg = renderWordmarkOnlySvg(variant, { ...opts, compact: isCompact, wordHeight });
+        const iconBg = pal.iconBg || '#082846';
+        const iconAccent = pal.iconAccent || '#FBAD1A';
+        const iconY = pal.iconY || '#FFFFFF';
+        const darkRing = pal.mode === 'dark' ? ' stroke="rgba(255,255,255,0.16)" stroke-width="8"' : '';
 
         return `
-        <span class="sawyan-brand-mark" dir="ltr" data-palette-id="${pal.id}" style="display:inline-flex;align-items:center;gap:${isCompact ? '6px' : '8px'};vertical-align:middle;">
-            <svg width="${iconSize}" height="${iconSize}" viewBox="0 0 40 40" aria-hidden="true" style="flex-shrink:0;">
-                <defs>
-                    <linearGradient id="${gradId}" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="${pal.iconGrad[0]}"/>
-                        <stop offset="100%" stop-color="${pal.iconGrad[1]}"/>
-                    </linearGradient>
-                </defs>
-                <rect x="2" y="2" width="36" height="36" rx="10" fill="url(#${gradId})"/>
-                <path d="M12 25 C15 16, 25 16, 28 25" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round"/>
-                <circle cx="20" cy="14" r="3.2" fill="#ffffff"/>
+        <span class="sawyan-brand-mark" dir="ltr" data-palette-id="${pal.id}" style="display:inline-flex;align-items:center;gap:${isCompact ? '7px' : '10px'};vertical-align:middle;">
+            <svg class="sawyan-app-icon-svg" width="${iconSize}" height="${iconSize}" viewBox="432 51 320 320" aria-hidden="true" style="flex-shrink:0;border-radius:8px;display:block;">
+                <rect x="432" y="51" width="320" height="320" rx="68" fill="${iconBg}"${darkRing}/>
+                <g fill="${iconAccent}" fill-rule="evenodd">
+                    <path d="${VECTOR_PATHS.fathah_path}"/>
+                    <path d="${VECTOR_PATHS.shaddah_path}"/>
+                </g>
+                <path fill="${iconY}" fill-rule="evenodd" d="${VECTOR_PATHS.y_path}"/>
             </svg>
             <span style="display:inline-flex;flex-direction:column;line-height:1.05;">
                 <span style="position:relative;display:inline-flex;align-items:center;">
@@ -219,11 +240,41 @@
     window.SAWYAN.Logo = SawyanLogo;
     window.SAWYAN_BRAND_CONFIG = BRAND_CONFIG;
 
+    let _isHydrating = false;
+
     if (typeof document !== 'undefined') {
+        const safeHydrate = () => {
+            if (_isHydrating) return;
+            _isHydrating = true;
+            try {
+                SawyanLogo.hydrateAll(true);
+            } finally {
+                _isHydrating = false;
+            }
+        };
+
         if (document.readyState !== 'loading') {
-            SawyanLogo.hydrateAll();
+            safeHydrate();
         } else {
-            document.addEventListener('DOMContentLoaded', () => SawyanLogo.hydrateAll());
+            document.addEventListener('DOMContentLoaded', safeHydrate);
+        }
+
+        if (typeof MutationObserver !== 'undefined') {
+            let _obsTimer = null;
+            const attrObserver = new MutationObserver((mutations) => {
+                for (let i = 0; i < mutations.length; i++) {
+                    const attr = mutations[i].attributeName;
+                    if (attr === 'lang' || attr === 'data-theme') {
+                        clearTimeout(_obsTimer);
+                        _obsTimer = setTimeout(safeHydrate, 0);
+                        break;
+                    }
+                }
+            });
+            attrObserver.observe(document.documentElement, {
+                attributes: true,
+                attributeFilter: ['lang', 'data-theme']
+            });
         }
     }
 })();

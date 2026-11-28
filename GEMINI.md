@@ -27,6 +27,7 @@
 
 ## 3. Terminology & Domain Guardrails
 - Never use `كاشباك` / `كاش باك`, `SAWYAN BANK`, `التسويق الشبكي`, `-19.75$`, or `Rolling Reserve`. Use `عائدات الاستهلاك الاستثماري` / `صندوق الهدف الشهري` and `SAWYAN`.
+- **Visual & Media Modesty Rule (STRICT):** All website images, videos, and generated media MUST NEVER depict uncovered (non-hijabi) women. Prefer avoiding images of women altogether (use serene male shoppers/merchants, architectural interiors, studio product visuals, or warm everyday scenes); if a woman must ever appear, she must wear full modest hijab.
 - Legacy 2025 specs and V1/V2 prototypes live solely in `legacy_archive/` and must never be treated as active specifications or linked in production UI.
 
 ## 4. Product & Friction Judgment (Anti-Bloat Discipline)

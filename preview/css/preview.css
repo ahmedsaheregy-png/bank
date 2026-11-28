@@ -3752,3 +3752,1218 @@ section[id] {
     overflow: hidden !important;
     text-overflow: ellipsis !important;
 }
+
+
+/* =====================================================================
+   STAGE 37: VORWERK EDITORIAL MINIMALISM & APPROVED NAVY-GOLD IDENTITY
+   Alternating Surfaces (#082846 Hero / #FFFFFF / #F5F6F7 / #F4F1EA),
+   Architectural Flatness (0px cards, 3px CTAs), High Whitespace & Low Copy.
+   ===================================================================== */
+:root {
+    --sw-navy: #082846;
+    --sw-navy-deep: #061D33;
+    --sw-navy-card: #0D2F52;
+    --sw-gold: #FBAD1A;
+    --sw-gold-ink: #C87E00;
+    --sw-surface-white: #FFFFFF;
+    --sw-surface-soft: #F5F6F7;
+    --sw-surface-warm: #F4F1EA;
+    --sw-ink: #1C232B;
+    --sw-muted: #5F6368;
+    --sw-hairline: #E6E8EB;
+}
+
+.sw-editorial-body {
+    background: var(--sw-surface-white) !important;
+    color: var(--sw-ink) !important;
+}
+
+.sw-editorial-body .container {
+    max-width: 1320px;
+}
+
+/* 1. Whisper-Quiet Top Strip */
+.sw-editorial-body .top-geo-trust-bar {
+    background: var(--sw-navy-deep) !important;
+    padding: 6px 0 !important;
+    font-size: 0.78rem !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sw-editorial-body .top-geo-trust-bar span,
+.sw-editorial-body .top-geo-trust-bar strong {
+    color: rgba(255, 255, 255, 0.88) !important;
+    font-weight: 500;
+}
+
+/* 2. Clean Architectural Navbar */
+.sw-editorial-body .preview-nav.portal-nav {
+    background: rgba(255, 255, 255, 0.98) !important;
+    border-bottom: 1px solid var(--sw-hairline) !important;
+    box-shadow: none !important;
+    padding: 12px 0 !important;
+}
+
+.sw-editorial-body .portal-nav .nav-links {
+    gap: 24px !important;
+}
+
+.sw-editorial-body .portal-nav .nav-links a {
+    color: var(--sw-ink) !important;
+    font-weight: 600 !important;
+    font-size: 0.94rem !important;
+    padding: 6px 4px !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    border-bottom: 2px solid transparent;
+}
+
+.sw-editorial-body .portal-nav .nav-links a:hover,
+.sw-editorial-body .portal-nav .nav-links a.active {
+    color: var(--sw-navy) !important;
+    border-bottom-color: var(--sw-gold);
+    background: transparent !important;
+}
+
+.sw-editorial-body .geo-pill-btn {
+    background: var(--sw-surface-soft) !important;
+    color: var(--sw-navy) !important;
+    border: 1px solid var(--sw-hairline) !important;
+    border-radius: 3px !important;
+    padding: 6px 12px !important;
+    font-size: 0.82rem !important;
+    font-weight: 700 !important;
+}
+
+.sw-editorial-body .geo-pill-btn:hover {
+    background: #EAECEF !important;
+    transform: none !important;
+}
+
+.sw-editorial-body .portal-nav .theme-toggle {
+    border-radius: 3px !important;
+    background: var(--sw-surface-soft) !important;
+    border: 1px solid var(--sw-hairline) !important;
+}
+
+/* Architectural 3px Buttons */
+.sw-editorial-body .btn {
+    border-radius: 3px !important;
+    box-shadow: none !important;
+    font-weight: 700 !important;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease !important;
+}
+
+.sw-editorial-body .btn:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.sw-editorial-body .btn-primary {
+    background: var(--sw-navy) !important;
+    color: #FFFFFF !important;
+    border: 1px solid var(--sw-navy) !important;
+}
+
+.sw-editorial-body .btn-primary:hover {
+    background: #0D3A63 !important;
+}
+
+.sw-editorial-body .btn-outline {
+    background: transparent !important;
+    color: var(--sw-navy) !important;
+    border: 1px solid var(--sw-navy) !important;
+}
+
+.sw-editorial-body .btn-outline:hover {
+    background: var(--sw-navy) !important;
+    color: #FFFFFF !important;
+}
+
+.btn-gold-solid {
+    background: var(--sw-gold) !important;
+    color: var(--sw-navy) !important;
+    border: 1px solid var(--sw-gold) !important;
+    padding: 13px 30px !important;
+    font-size: 1rem !important;
+    font-weight: 800 !important;
+    border-radius: 3px !important;
+}
+
+.btn-gold-solid:hover {
+    background: #E59819 !important;
+    border-color: #E59819 !important;
+}
+
+.btn-hero-ghost {
+    background: transparent !important;
+    color: #FFFFFF !important;
+    border: 1px solid rgba(255, 255, 255, 0.36) !important;
+    padding: 13px 26px !important;
+    font-size: 0.98rem !important;
+    font-weight: 600 !important;
+    border-radius: 3px !important;
+}
+
+.btn-hero-ghost:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* 3. Editorial Navy Hero */
+.sw-editorial-body .ed-hero {
+    background: var(--sw-navy) !important;
+    color: #FFFFFF !important;
+    padding: 84px 0 92px !important;
+    min-height: auto !important;
+}
+
+.ed-hero-grid {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 56px;
+    align-items: center;
+}
+
+.sw-editorial-body .ed-hero .hero-content {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 18px !important;
+    grid-template-columns: none !important;
+}
+
+.sw-editorial-body .ed-hero h1,
+.sw-editorial-body .ed-hero h1 span:first-child {
+    color: #FFFFFF !important;
+    font-size: clamp(2.15rem, 4.2vw, 3.35rem) !important;
+    font-weight: 300 !important;
+    line-height: 1.18 !important;
+    margin: 0 !important;
+    letter-spacing: -0.01em;
+}
+
+.sw-editorial-body .ed-hero h1 .hero-accent-gold {
+    color: var(--sw-gold) !important;
+    font-weight: 700 !important;
+    font-size: inherit !important;
+}
+
+.sw-editorial-body .ed-hero .hero-subtitle {
+    color: rgba(255, 255, 255, 0.82) !important;
+    font-size: 1.12rem !important;
+    font-weight: 400 !important;
+    line-height: 1.75 !important;
+    max-width: 520px;
+    margin: 0 !important;
+}
+
+.sw-editorial-body .ed-hero .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 8px;
+}
+
+.hero-value-inline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    font-size: 0.88rem;
+    color: rgba(255, 255, 255, 0.72);
+}
+
+.hero-value-inline span,
+.hero-value-inline strong {
+    color: rgba(255, 255, 255, 0.86) !important;
+    font-weight: 500;
+}
+
+.hero-value-inline strong {
+    color: var(--sw-gold) !important;
+    font-weight: 700;
+}
+
+.hero-value-inline .dot-sep {
+    opacity: 0.45;
+}
+
+/* Serene Editorial Wallet Card */
+.ed-wallet-frame {
+    width: 100%;
+    max-width: 390px;
+    margin-inline-start: auto;
+}
+
+.ed-wallet-card {
+    background: var(--sw-navy-card) !important;
+    color: #FFFFFF !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-radius: 4px !important;
+    padding: 28px !important;
+    box-shadow: none !important;
+}
+
+.ed-wallet-card .wallet-title {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-weight: 700;
+    font-size: 0.92rem;
+}
+
+.ed-wallet-card .wallet-status-pill {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    border-radius: 3px !important;
+    font-size: 0.72rem !important;
+    font-weight: 600 !important;
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.ed-wallet-label {
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.65) !important;
+    margin-top: 10px;
+}
+
+.ed-wallet-amount {
+    font-size: 2.35rem;
+    font-weight: 700;
+    color: #FFFFFF !important;
+    margin: 4px 0 18px;
+    letter-spacing: 0.3px;
+}
+
+.ed-wallet-stats {
+    display: flex;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    margin-bottom: 16px;
+}
+
+.ed-wallet-stats strong {
+    display: block;
+    color: var(--sw-gold) !important;
+    font-size: 1.08rem;
+    font-weight: 700;
+}
+
+.ed-wallet-stats span {
+    color: rgba(255, 255, 255, 0.68) !important;
+    font-size: 0.78rem;
+}
+
+.ed-target-box {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 3px !important;
+    padding: 12px 14px !important;
+    margin-bottom: 16px !important;
+}
+
+.ed-target-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.ed-target-head strong {
+    color: var(--sw-gold) !important;
+}
+
+.ed-wallet-card .target-progress-track {
+    height: 5px !important;
+    background: rgba(255, 255, 255, 0.15) !important;
+    margin: 8px 0 0 !important;
+}
+
+.ed-wallet-card .target-progress-fill {
+    background: var(--sw-gold) !important;
+}
+
+.ed-wallet-qr-strip {
+    background: #FFFFFF;
+    color: var(--sw-navy);
+    border-radius: 3px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ed-qr-title {
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: var(--sw-navy) !important;
+}
+
+.ed-qr-code {
+    font-size: 0.76rem;
+    color: var(--sw-muted) !important;
+    margin-top: 2px;
+}
+
+.ed-qr-code code {
+    background: var(--sw-surface-soft);
+    padding: 1px 6px;
+    color: var(--sw-navy);
+    font-weight: 700;
+    border-radius: 2px;
+}
+
+/* 4. Alternating Surfaces & Vorwerk Typography */
+.ed-surface-white {
+    background: var(--sw-surface-white) !important;
+}
+
+.ed-surface-soft {
+    background: var(--sw-surface-soft) !important;
+}
+
+.ed-statement-section {
+    padding: 96px 0;
+    text-align: center;
+}
+
+.ed-bridge-section {
+    padding: 76px 0;
+    text-align: center;
+}
+
+.ed-statement-inner {
+    max-width: 860px;
+    margin: 0 auto;
+}
+
+.ed-display-h2 {
+    font-size: clamp(2rem, 3.8vw, 3.15rem) !important;
+    font-weight: 300 !important;
+    line-height: 1.28 !important;
+    color: var(--sw-ink) !important;
+    margin-bottom: 14px !important;
+}
+
+.ed-statement-sub {
+    font-size: 1.08rem;
+    color: var(--sw-muted) !important;
+    font-weight: 400;
+    margin: 0 auto;
+}
+
+.ed-em {
+    font-style: normal !important;
+    color: var(--sw-gold-ink) !important;
+    font-weight: 700 !important;
+}
+
+.sw-editorial-body .section {
+    padding: 88px 0 !important;
+}
+
+.ed-section-head {
+    margin-bottom: 48px !important;
+}
+
+.ed-section-h2 {
+    font-size: clamp(1.75rem, 3vw, 2.55rem) !important;
+    font-weight: 400 !important;
+    color: var(--sw-ink) !important;
+    margin-bottom: 10px !important;
+}
+
+.ed-section-head p {
+    font-size: 1.04rem !important;
+    color: var(--sw-muted) !important;
+    font-weight: 400 !important;
+}
+
+/* Editorial Chevron Links */
+.ed-chevron-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--sw-navy) !important;
+    font-weight: 700;
+    font-size: 0.96rem;
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    padding-bottom: 2px;
+    transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.ed-chevron-link:hover {
+    color: var(--sw-gold-ink) !important;
+    border-bottom-color: var(--sw-gold-ink);
+}
+
+.ed-chevron-link-lg {
+    font-size: 1.08rem;
+}
+
+.ed-chevron-link-sm {
+    font-size: 0.88rem;
+}
+
+/* 5. Clean Cinema Video Frame */
+.sw-editorial-body .ed-promo-frame {
+    max-width: 960px;
+    margin: 0 auto;
+    background: var(--sw-surface-white) !important;
+    border: 1px solid var(--sw-hairline) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+
+.sw-editorial-body .promo-stage-vignette {
+    background: linear-gradient(180deg, transparent 60%, rgba(8, 40, 70, 0.32) 100%) !important;
+}
+
+.sw-editorial-body .promo-play-circle {
+    background: rgba(8, 40, 70, 0.88) !important;
+    border: 2px solid var(--sw-gold) !important;
+    color: #FFFFFF !important;
+    box-shadow: none !important;
+}
+
+.promo-caption-below {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 18px 24px;
+    background: var(--sw-surface-white);
+    border-top: 1px solid var(--sw-hairline);
+}
+
+.promo-caption-text {
+    min-width: 0;
+    flex: 1 1 280px;
+}
+
+.promo-scene-label {
+    display: inline-block;
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: var(--sw-gold-ink) !important;
+    margin-bottom: 2px;
+}
+
+.promo-caption-text h3 {
+    margin: 0 !important;
+    font-size: 1.05rem !important;
+    font-weight: 700 !important;
+    color: var(--sw-ink) !important;
+}
+
+.sr-only-caption {
+    margin: 3px 0 0 !important;
+    font-size: 0.86rem !important;
+    color: var(--sw-muted) !important;
+}
+
+.promo-actions-minimal {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.ed-link-subtle {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--sw-muted) !important;
+    text-decoration: underline;
+}
+
+.ed-chapters-drawer {
+    background: var(--sw-surface-soft) !important;
+    border-top: 1px solid var(--sw-hairline) !important;
+    padding: 12px 20px !important;
+}
+
+.ed-chapters-drawer .promo-chapter-btn {
+    background: var(--sw-surface-white) !important;
+    color: var(--sw-ink) !important;
+    border: 1px solid var(--sw-hairline) !important;
+    border-radius: 3px !important;
+}
+
+.ed-chapters-drawer .promo-chapter-btn.active {
+    background: var(--sw-navy) !important;
+    color: #FFFFFF !important;
+    border-color: var(--sw-navy) !important;
+}
+
+/* 6. Flat Architectural Persona Cards (كلنا SAWYAN) */
+.sw-editorial-body .ed-persona-grid {
+    gap: 32px !important;
+    margin-top: 0 !important;
+}
+
+.sw-editorial-body .ed-flat-card {
+    background: var(--sw-surface-soft) !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+}
+
+.sw-editorial-body .ed-flat-card::before {
+    display: none !important;
+}
+
+.sw-editorial-body .ed-flat-card:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.sw-editorial-body .ed-flat-card .user-card-art {
+    border-radius: 0 !important;
+    border: none !important;
+    margin-bottom: 0 !important;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+}
+
+.sw-editorial-body .ed-flat-card .user-card-art img {
+    transition: transform 0.4s ease;
+}
+
+.sw-editorial-body .ed-flat-card:hover .user-card-art img {
+    transform: scale(1.04);
+}
+
+.ed-card-body {
+    padding: 32px 28px 36px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+}
+
+.ed-card-body h3 {
+    font-size: 1.55rem !important;
+    font-weight: 600 !important;
+    color: var(--sw-ink) !important;
+    margin-bottom: 10px !important;
+}
+
+.ed-card-body p {
+    font-size: 0.98rem !important;
+    color: var(--sw-muted) !important;
+    line-height: 1.65 !important;
+    margin-bottom: 22px !important;
+    max-width: 320px;
+}
+
+.ed-card-body .ed-pillar-lead {
+    font-size: 0.95rem !important;
+    color: var(--sw-ink) !important;
+    font-weight: 500;
+    line-height: 1.6 !important;
+    margin-bottom: 20px !important;
+    max-width: 310px;
+}
+
+.ed-pillar-list {
+    list-style: none !important;
+    margin: 0 0 24px !important;
+    padding: 0 !important;
+    width: 100%;
+    max-width: 310px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    text-align: start;
+}
+
+.ed-pillar-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 0.94rem;
+    line-height: 1.55;
+    color: var(--sw-muted) !important;
+    font-weight: 500;
+    margin: 0;
+    padding: 0;
+}
+
+.ed-pillar-list li::before {
+    display: none !important;
+    content: none !important;
+}
+
+.ed-pillar-check {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    border-radius: 50%;
+    background: var(--sw-navy);
+    color: #FFFFFF;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.ed-card-body .ed-chevron-link {
+    margin-top: auto;
+}
+
+[data-theme="dark"] .ed-card-body .ed-pillar-lead {
+    color: #F8FAFC !important;
+}
+
+[data-theme="dark"] .ed-pillar-list li {
+    color: #CBD5E1 !important;
+}
+
+[data-theme="dark"] .ed-pillar-check {
+    background: var(--sw-gold);
+    color: var(--sw-navy);
+}
+
+/* 7. Segmented Tabs & Architectural Steps */
+.ed-segmented-tabs {
+    display: inline-flex;
+    background: var(--sw-surface-soft);
+    padding: 4px;
+    border: 1px solid var(--sw-hairline);
+    border-radius: 3px;
+    margin-top: 14px;
+    gap: 4px;
+}
+
+.ed-seg-btn {
+    border: none;
+    background: transparent;
+    color: var(--sw-muted);
+    padding: 9px 26px;
+    font-family: inherit;
+    font-size: 0.94rem;
+    font-weight: 700;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.ed-seg-btn.active {
+    background: var(--sw-navy);
+    color: #FFFFFF;
+}
+
+.sw-editorial-body .ed-steps-row {
+    gap: 16px !important;
+    margin-top: 0 !important;
+}
+
+.sw-editorial-body .ed-step-flat {
+    background: var(--sw-surface-soft) !important;
+    border: none !important;
+    border-top: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    min-height: 220px !important;
+    padding: 34px 26px !important;
+    text-align: right !important;
+    align-items: flex-start !important;
+}
+
+.sw-editorial-body .ed-step-flat:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.sw-editorial-body .ed-step-flat .step-number {
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    color: var(--sw-gold-ink) !important;
+    font-family: 'Poppins', sans-serif !important;
+    font-size: 1.85rem !important;
+    font-weight: 700 !important;
+    margin-bottom: 14px;
+}
+
+.sw-editorial-body .ed-step-flat h4 {
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    color: var(--sw-ink) !important;
+    margin-bottom: 8px !important;
+}
+
+.sw-editorial-body .ed-step-flat p {
+    font-size: 0.96rem !important;
+    color: var(--sw-muted) !important;
+    line-height: 1.65 !important;
+    margin: 0 !important;
+}
+
+/* 8. Flat White Merchant Cards & Clean Filter Bar */
+.sw-editorial-body .ed-filter-bar {
+    background: var(--sw-surface-white) !important;
+    border: 1px solid var(--sw-hairline) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 20px 22px !important;
+    margin-bottom: 32px !important;
+}
+
+.sw-editorial-body .ed-inline-search {
+    box-shadow: none !important;
+    border: 1px solid var(--sw-hairline) !important;
+    border-radius: 3px !important;
+    margin: 0 0 14px 0 !important;
+    padding: 4px 6px !important;
+    background: var(--sw-surface-soft) !important;
+}
+
+.sw-editorial-body .country-tab-btn,
+.sw-editorial-body .geo-city-chip {
+    border-radius: 3px !important;
+    border: 1px solid var(--sw-hairline) !important;
+    background: var(--sw-surface-white) !important;
+    color: var(--sw-ink) !important;
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    padding: 6px 13px !important;
+}
+
+.sw-editorial-body .country-tab-btn.active,
+.sw-editorial-body .geo-city-chip.active {
+    background: var(--sw-navy) !important;
+    color: #FFFFFF !important;
+    border-color: var(--sw-navy) !important;
+}
+
+.sw-editorial-body .ed-merchants-grid {
+    gap: 28px !important;
+}
+
+.sw-editorial-body .ed-merchant-card {
+    background: var(--sw-surface-white) !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    display: flex;
+    flex-direction: column;
+}
+
+.sw-editorial-body .ed-merchant-card:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.sw-editorial-body .ed-merchant-card .merchant-image-container {
+    height: 190px;
+    background: var(--sw-surface-soft);
+}
+
+.sw-editorial-body .ed-merchant-card .merchant-hero-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.35s ease;
+}
+
+.sw-editorial-body .ed-merchant-card:hover .merchant-hero-img {
+    transform: scale(1.04);
+}
+
+.sw-editorial-body .ed-merchant-card .merchant-overlay {
+    background: linear-gradient(180deg, transparent 20%, rgba(8, 40, 70, 0.72) 100%) !important;
+}
+
+.sw-editorial-body .ed-merchant-card .merchant-cashback-badge {
+    background: var(--sw-navy) !important;
+    color: var(--sw-gold) !important;
+    border: 1px solid rgba(251, 173, 26, 0.45) !important;
+    border-radius: 3px !important;
+    font-size: 0.76rem !important;
+    padding: 3px 10px !important;
+    box-shadow: none !important;
+}
+
+.sw-editorial-body .ed-merchant-info {
+    padding: 20px 22px 22px !important;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.sw-editorial-body .ed-merchant-info .merchant-name {
+    font-size: 1.12rem !important;
+    font-weight: 700 !important;
+    color: var(--sw-ink) !important;
+    margin: 0 !important;
+}
+
+.ed-merchant-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.84rem;
+    color: var(--sw-gold-ink) !important;
+    font-weight: 600;
+    margin: 6px 0 4px;
+}
+
+.ed-merchant-meta span {
+    color: inherit !important;
+}
+
+.ed-merchant-loc {
+    font-size: 0.84rem;
+    color: var(--sw-muted) !important;
+    margin-bottom: 16px;
+}
+
+.ed-merchant-card-foot {
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--sw-hairline);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ed-merchant-rating {
+    font-size: 0.82rem;
+    color: var(--sw-muted) !important;
+    font-weight: 600;
+}
+
+/* 9. Warm Champagne Heritage Band */
+.sw-editorial-body .ed-heritage-band {
+    background: var(--sw-surface-warm) !important;
+    padding: 84px 0 !important;
+}
+
+.sw-editorial-body .ed-heritage-band::before {
+    display: none !important;
+}
+
+.sw-editorial-body .ed-heritage-inner {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    max-width: 720px;
+}
+
+.sw-editorial-body .ed-heritage-inner h2 {
+    color: var(--sw-ink) !important;
+    font-size: clamp(1.85rem, 3.2vw, 2.5rem) !important;
+    font-weight: 400 !important;
+    margin-bottom: 12px !important;
+}
+
+.sw-editorial-body .ed-heritage-en {
+    display: block;
+    direction: ltr;
+    unicode-bidi: isolate;
+    font-family: 'Poppins', sans-serif;
+    font-size: clamp(1.1rem, 2vw, 1.45rem);
+    font-weight: 600;
+    color: var(--sw-gold-ink);
+    letter-spacing: 0.02em;
+    margin-top: 8px;
+    line-height: 1.35;
+}
+
+[data-theme="dark"] .sw-editorial-body .ed-heritage-en {
+    color: var(--sw-gold) !important;
+}
+
+.sw-editorial-body .ed-heritage-inner p {
+    color: var(--sw-muted) !important;
+    font-size: 1.08rem !important;
+    margin-bottom: 28px !important;
+}
+
+.sw-editorial-body .ed-heritage-inner .cta-buttons {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+/* 10. Deep Royal Navy Footer */
+.sw-editorial-body .ed-footer {
+    background: var(--sw-navy) !important;
+    color: #FFFFFF !important;
+    padding: 64px 0 36px !important;
+    border-top: none !important;
+}
+
+.sw-editorial-body .ed-footer-copy {
+    color: rgba(255, 255, 255, 0.65) !important;
+    font-size: 0.84rem;
+    margin: 0;
+}
+
+.sw-editorial-body .ed-footer .footer-content {
+    align-items: flex-start;
+    margin-bottom: 28px;
+}
+
+.sw-editorial-body .ed-footer-col {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 150px;
+}
+
+.sw-editorial-body .ed-footer-col strong {
+    color: #FFFFFF;
+    font-size: 0.94rem;
+    margin-bottom: 4px;
+}
+
+.sw-editorial-body .ed-footer-col a {
+    color: rgba(255, 255, 255, 0.74) !important;
+    font-size: 0.88rem;
+}
+
+.sw-editorial-body .ed-footer-col a:hover {
+    color: var(--sw-gold) !important;
+}
+
+.sw-editorial-body .footer-y06-disclaimer {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 3px !important;
+    color: rgba(255, 255, 255, 0.78) !important;
+    font-size: 0.8rem !important;
+}
+
+.sw-editorial-body .footer-y06-disclaimer strong {
+    color: #FFFFFF !important;
+}
+
+/* Mobile & Half-Screen Refinements (Preserves Brand Wordmark Aspect Ratio) */
+@media (max-width: 960px) {
+    .ed-hero-grid {
+        grid-template-columns: 1fr;
+        gap: 36px;
+    }
+    .ed-wallet-frame {
+        margin: 0 auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .sw-editorial-body .ed-hero {
+        padding: 44px 0 54px !important;
+    }
+    .sw-editorial-body .ed-hero .hero-content {
+        align-items: center !important;
+        text-align: center !important;
+    }
+    .hero-value-inline {
+        justify-content: center;
+    }
+    .ed-statement-section {
+        padding: 56px 0;
+    }
+    .ed-bridge-section {
+        padding: 48px 0;
+    }
+    .sw-editorial-body .section {
+        padding: 56px 0 !important;
+    }
+    .ed-section-head {
+        margin-bottom: 28px !important;
+    }
+    .promo-caption-below {
+        padding: 14px 16px;
+    }
+}
+
+@media (max-width: 640px) {
+    .sw-editorial-body .top-bar-mobile-controls .geo-pill-btn {
+        background: rgba(255, 255, 255, 0.14) !important;
+        border: 1px solid rgba(255, 255, 255, 0.28) !important;
+        color: #FFFFFF !important;
+        border-radius: 3px !important;
+    }
+    .sw-editorial-body .top-bar-mobile-controls .geo-pill-btn #navGeoLabel {
+        color: #FFFFFF !important;
+    }
+    .sw-editorial-body .top-bar-mobile-controls .theme-toggle {
+        background: rgba(255, 255, 255, 0.14) !important;
+        border: 1px solid rgba(255, 255, 255, 0.28) !important;
+        color: #FFFFFF !important;
+        border-radius: 3px !important;
+    }
+    .sw-editorial-body .portal-nav .mobile-quick-join {
+        background: var(--sw-navy) !important;
+        color: #FFFFFF !important;
+        border-radius: 3px !important;
+        padding: 7px 14px !important;
+    }
+}
+
+@media (max-width: 600px) {
+    .portal-nav .sawyan-brand-mark .sawyan-app-icon-svg,
+    .preview-nav .sawyan-brand-mark .sawyan-app-icon-svg {
+        width: 26px !important;
+        height: 26px !important;
+    }
+    .portal-nav .sawyan-brand-mark .sawyan-wordmark-svg,
+    .preview-nav .sawyan-brand-mark .sawyan-wordmark-svg {
+        width: auto !important;
+        height: 20px !important;
+    }
+    .portal-nav .sawyan-brand-mark .sawyan-brand-slogan,
+    .preview-nav .sawyan-brand-mark .sawyan-brand-slogan {
+        display: none !important;
+    }
+}
+
+/* Dark Theme Harmony for Editorial Layout */
+[data-theme="dark"] .sw-editorial-body,
+[data-theme="dark"] .ed-surface-white {
+    background: #0A1624 !important;
+    color: #F1F5F9 !important;
+}
+
+[data-theme="dark"] .ed-surface-soft,
+[data-theme="dark"] .sw-editorial-body .ed-flat-card,
+[data-theme="dark"] .sw-editorial-body .ed-step-flat,
+[data-theme="dark"] .sw-editorial-body .ed-segmented-tabs {
+    background: #102033 !important;
+    color: #F1F5F9 !important;
+}
+
+[data-theme="dark"] .sw-editorial-body .ed-merchant-card,
+[data-theme="dark"] .sw-editorial-body .ed-filter-bar,
+[data-theme="dark"] .promo-caption-below,
+[data-theme="dark"] .sw-editorial-body .ed-promo-frame {
+    background: #0E1C2E !important;
+    border-color: #1E324A !important;
+}
+
+[data-theme="dark"] .ed-display-h2,
+[data-theme="dark"] .ed-section-h2,
+[data-theme="dark"] .ed-card-body h3,
+[data-theme="dark"] .sw-editorial-body .ed-step-flat h4,
+[data-theme="dark"] .sw-editorial-body .ed-merchant-info .merchant-name,
+[data-theme="dark"] .promo-caption-text h3,
+[data-theme="dark"] .sw-editorial-body .ed-heritage-inner h2 {
+    color: #F8FAFC !important;
+}
+
+[data-theme="dark"] .ed-statement-sub,
+[data-theme="dark"] .ed-section-head p,
+[data-theme="dark"] .ed-card-body p,
+[data-theme="dark"] .sw-editorial-body .ed-step-flat p,
+[data-theme="dark"] .ed-merchant-loc,
+[data-theme="dark"] .sr-only-caption,
+[data-theme="dark"] .sw-editorial-body .ed-heritage-inner p {
+    color: #CBD5E1 !important;
+}
+
+[data-theme="dark"] .ed-em,
+[data-theme="dark"] .sw-editorial-body .ed-step-flat .step-number,
+[data-theme="dark"] .ed-chevron-link,
+[data-theme="dark"] .ed-merchant-meta {
+    color: #FBAD1A !important;
+}
+
+[data-theme="dark"] .sw-editorial-body .ed-heritage-band {
+    background: #13253B !important;
+}
+
+[data-theme="dark"] .sw-editorial-body .preview-nav.portal-nav {
+    background: rgba(8, 22, 36, 0.96) !important;
+    border-color: #1E324A !important;
+}
+
+[data-theme="dark"] .sw-editorial-body .portal-nav .nav-links a {
+    color: #E2E8F0 !important;
+}
+
+/* Editorial Hero Lifestyle Visual Frame (Replaces Numeric Wallet Card) */
+.ed-hero-media-frame {
+    width: 100%;
+    max-width: 460px;
+    margin-inline-start: auto;
+}
+
+.ed-hero-media-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 0;
+    border: 1px solid rgba(251, 173, 26, 0.25);
+    background: var(--sw-navy-card);
+}
+
+.ed-hero-photo,
+.ed-hero-media-card video {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    object-position: center 22%;
+    display: block;
+}
+
+.ed-hero-media-caption {
+    position: absolute;
+    inset: auto 0 0 0;
+    background: linear-gradient(180deg, transparent 0%, rgba(6, 29, 51, 0.88) 100%);
+    padding: 36px 20px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.86rem;
+    font-weight: 600;
+}
+
+.ed-hero-media-caption span {
+    color: rgba(255, 255, 255, 0.94) !important;
+}
+
+.ed-hero-media-caption .ed-caption-dot {
+    color: var(--sw-gold) !important;
+    font-weight: 800;
+}
+
+@media (max-width: 960px) {
+    .ed-hero-media-frame {
+        margin: 0 auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .ed-hero-photo,
+    .ed-hero-media-card video {
+        aspect-ratio: 4 / 3;
+    }
+}
+
+@media (max-width: 640px) {
+    .ed-hero-media-caption {
+        padding: 28px 10px 12px;
+        font-size: 0.76rem;
+        gap: 6px;
+        white-space: nowrap;
+    }
+}

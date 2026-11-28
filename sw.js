@@ -4,14 +4,18 @@
  * ============================================================================ */
 'use strict';
 
-const SW_VERSION = 'sawyan-sw-v20261123-s15';
+const SW_VERSION = 'sawyan-sw-v20261128-brand-v2';
 
 self.addEventListener('install', (event) => {
     event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('activate', (event) => {
-    event.waitUntil(self.clients.claim());
+    event.waitUntil(
+        caches.keys()
+            .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+            .then(() => self.clients.claim())
+    );
 });
 
 // Network-first passthrough (required for PWA installability & Google Play TWA compliance)
@@ -37,8 +41,8 @@ self.addEventListener('push', (event) => {
     const title = payload.title || '🔔 إشعار جديد — SAWYAN';
     const options = {
         body: payload.body || 'افتح تطبيق SAWYAN للمتابعة.',
-        icon: payload.icon || (scopeUrl + 'shared/assets/icon-192.png'),
-        badge: payload.badge || (scopeUrl + 'shared/assets/icon-192.png'),
+        icon: payload.icon || (scopeUrl + 'shared/assets/icon-192.png?v=20261121_launch_icon28'),
+        badge: payload.badge || (scopeUrl + 'shared/assets/icon-192.png?v=20261121_launch_icon28'),
         tag: payload.tag || ('sawyan-push-' + Date.now()),
         dir: 'rtl',
         lang: 'ar',
